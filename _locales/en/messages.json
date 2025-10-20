@@ -1,0 +1,16 @@
+{
+  "extensionName": {
+    "message": "QuickGet Remote",
+    "description": "QuickGet Remote browser extension name."
+  },
+
+  "extensionDescription": {
+    "message": "QuickGet Remote client for QNAP Download Station 5.",
+    "description": "Brief description for QuickGet Remote."
+  },
+
+  "menuContextSendLink": {
+    "message": "Send with QuickGet",
+    "description": "Context menu label for QuickGet Remote"
+  }
+}

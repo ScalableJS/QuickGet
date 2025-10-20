@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickGet Remote</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-sort-label">Sort by</span>
+          <span class="toolbar-sort-value" id="sort-indicator">Date Added ▾</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="toolbar-play" class="toolbar-btn" title="Refresh downloads" aria-label="Refresh downloads">
+            ▶
+          </button>
+          <button id="toolbar-stop" class="toolbar-btn" title="Stop auto-refresh" aria-label="Stop auto-refresh">
+            ■
+          </button>
+          <button id="toolbar-pause" class="toolbar-btn" title="Pause auto-refresh" aria-label="Pause auto-refresh">
+            ⏸
+          </button>
+          <button id="toolbar-add" class="toolbar-btn" title="Add torrent" aria-label="Add torrent">
+            ＋
+          </button>
+          <button id="toolbar-remove" class="toolbar-btn" title="Remove selected download" aria-label="Remove selected download" disabled>
+            −
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <input type="file" id="torrentFileInput" accept=".torrent" hidden />
+
+        <section class="form-section">
+          <div class="form-group">
+            <label for="NASsecure">
+              <input type="checkbox" id="NASsecure" />
+              Use HTTPS
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="NASaddress">NAS Address</label>
+            <input
+              type="text"
+              id="NASaddress"
+              placeholder="192.168.88.185"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="NASport">NAS Port</label>
+            <input type="text" id="NASport" placeholder="8080" />
+          </div>
+
+          <div class="form-group">
+            <label for="NASlogin">Username</label>
+            <input type="text" id="NASlogin" placeholder="admin" required />
+          </div>
+
+          <div class="form-group">
+            <label for="NASpassword">Password</label>
+            <input type="password" id="NASpassword" placeholder="Password" required />
+          </div>
+
+          <div class="form-group">
+            <label for="NAStempdir">Temporary Directory</label>
+            <input type="text" id="NAStempdir" placeholder="Download" />
+          </div>
+
+          <div class="form-group">
+            <label for="NASdir">Final Directory</label>
+            <input type="text" id="NASdir" placeholder="Movies" />
+          </div>
+
+          <div class="form-group form-inline">
+            <label for="enableDebug">
+              <input type="checkbox" id="enableDebug" />
+              Enable debug logs
+            </label>
+          </div>
+        </section>
+
+        <section class="button-group">
+          <button id="save-btn" class="btn btn-primary">Save Settings</button>
+          <button id="test-btn" class="btn btn-secondary">Test Connection</button>
+          <button id="list-btn" class="btn btn-secondary">List Downloads</button>
+        </section>
+
+        <div class="status-bar">
+          <section id="status" class="status-pill" role="status" aria-live="polite">
+            <p id="status-message" class="status-message"></p>
+          </section>
+          <span id="status-speed" class="status-speed" aria-live="off">↓ 0 B/s ↑ 0 B/s</span>
+        </div>
+
+        <section id="downloads-section" class="downloads-section hidden">
+          <ul
+            id="downloads-list"
+            role="listbox"
+            aria-label="Download tasks"
+            aria-multiselectable="false"
+          ></ul>
+        </section>
+
+        <details class="debug-section hidden">
+          <summary>Debug Logs</summary>
+          <div id="debug-logs"></div>
+          <button id="copy-logs-btn" class="btn btn-small">Copy Logs</button>
+          <button id="clear-logs-btn" class="btn btn-small">Clear Logs</button>
+        </details>
+      </main>
+
+      <footer>
+        <p>QuickGet Remote v0.0.1 beta • <a href="#">GitHub</a></p>
+      </footer>
+    </div>
+
+    <script type="module" src="index.ts"></script>
+  </body>
+</html>

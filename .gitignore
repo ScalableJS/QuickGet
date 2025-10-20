@@ -1,0 +1,17 @@
+node_modules/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.env
+dist/
+build/
+*.zip
+web-ext-artifacts/
+
+# Ignore all markdown files except README
+*.md
+!README.md
