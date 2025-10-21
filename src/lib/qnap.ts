@@ -16,39 +16,48 @@ export async function testNASConnection(settings: Settings): Promise<boolean> {
   return client.testConnection();
 }
 
+/**
+ * Login to NAS - not needed anymore with middleware!
+ * The middleware handles SID automatically on first request.
+ * Kept for backward compatibility.
+ * @deprecated SID is managed automatically by middleware
+ */
 export async function loginNAS(settings: Settings): Promise<string> {
+  // The middleware will obtain SID on first request
+  // For now, we'll make a dummy request to trigger SID retrieval
   const client = createApiClient({ settings });
-  return client.login();
+  try {
+    await client.testConnection();
+    // If successful, SID will be obtained internally by the middleware
+    return "authenticated";
+  } catch {
+    throw new Error("Failed to authenticate");
+  }
 }
 
-export async function queryNASTasks(settings: Settings, sid?: string): Promise<any> {
+export async function queryNASTasks(settings: Settings): Promise<any> {
   const client = createApiClient({ settings });
-  if (sid) client.setSid(sid);
   return client.queryTasksRaw();
 }
 
-export async function queryNormalizedTasks(settings: Settings, sid?: string): Promise<Task[]> {
+export async function queryNormalizedTasks(settings: Settings): Promise<Task[]> {
   const client = createApiClient({ settings });
-  if (sid) client.setSid(sid);
   const { tasks } = await client.queryTasks();
   return tasks;
 }
 
-export async function addDownloadUrl(settings: Settings, sid: string, url: string): Promise<boolean> {
+export async function addDownloadUrl(settings: Settings, url: string): Promise<boolean> {
   const client = createApiClient({ settings });
-  client.setSid(sid);
   return client.addUrl(url);
 }
 
-export async function addTorrentFile(settings: Settings, sid: string, file: File): Promise<boolean> {
+export async function addTorrentFile(settings: Settings, file: File): Promise<boolean> {
   const client = createApiClient({ settings });
-  client.setSid(sid);
   const result = await client.addTorrent(file);
   return result.added;
 }
 
-export async function removeDownloadTask(settings: Settings, sid: string, hash: string): Promise<boolean> {
+export async function removeDownloadTask(settings: Settings, hash: string): Promise<boolean> {
   const client = createApiClient({ settings });
-  client.setSid(sid);
   return client.removeTask(hash);
 }
