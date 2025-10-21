@@ -35,17 +35,4 @@ export const DEFAULTS: Settings = {
   enableDebugLogging: false,
 };
 
-export const API_ENDPOINTS = {
-  AUTH_PROBE: "/cgi-bin/authLogin.cgi",
-  LOGIN: "/downloadstation/V4/Misc/Login",
-  TASK_QUERY: "/downloadstation/V4/Task/Query",
-  TASK_ADD_URL: "/downloadstation/V4/Task/AddUrl",
-  TASK_START: "/downloadstation/V4/Task/Start",
-  TASK_STOP: "/downloadstation/V4/Task/Stop",
-  TASK_ADD: "/downloadstation/V4/Task/Add",
-  TASK_ADD_TORRENT: "/downloadstation/V4/Task/AddTorrent",
-  TASK_ADD_TASK: "/downloadstation/V4/Task/AddTask",
-  TASK_REMOVE: "/downloadstation/V4/Task/Remove",
-} as const;
-
 export const DEBUG_ENABLED = false; // set to true for verbose logging

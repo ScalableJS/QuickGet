@@ -3,7 +3,7 @@
  * Polls QNAP for download status
  */
 
-import { createApiClient, type ApiClient } from "@lib/apiClient.js";
+import { createApiClient, type ApiClient } from "@api/client.js";
 import { loadSettings } from "@lib/settings.js";
 import { updateBadge, clearBadge } from "./actions.js";
 

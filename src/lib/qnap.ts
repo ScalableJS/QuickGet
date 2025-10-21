@@ -1,5 +1,6 @@
 import type { Settings } from "./config.js";
-import { createApiClient, buildNASBaseUrl } from "./apiClient.js";
+import { createApiClient } from "../api/client.js";
+import { buildNASBaseUrl } from "../api/index.js";
 import { normalizeTasks, type Task, type TaskStatus } from "./tasks.js";
 
 export { buildNASBaseUrl };

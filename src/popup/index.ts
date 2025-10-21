@@ -5,7 +5,7 @@
 
 import type { Settings } from "@lib/config.js";
 import { loadSettings, saveSettings } from "@lib/settings.js";
-import { createApiClient, type ApiClient } from "@lib/apiClient.js";
+import { createApiClient, type ApiClient } from "@api/client.js";
 import type { Task } from "@lib/tasks.js";
 import { createLogger } from "@lib/logger.js";
 import { renderDownloadsList } from "./render/downloads.js";
@@ -150,11 +150,7 @@ function toggleSelectionForItem(item: HTMLElement | null): void {
 
 async function refreshSnapshot(client: ApiClient): Promise<void> {
   const raw = await client.queryTasksRaw();
-  const list: any[] = Array.isArray(raw?.data)
-    ? raw.data
-    : Array.isArray(raw?.tasks)
-    ? raw.tasks
-    : [];
+  const list: any[] = Array.isArray(raw?.data) ? raw.data : [];
   snapshot = buildTaskSnapshot(list);
 }
 
@@ -213,9 +209,7 @@ async function listDownloads(): Promise<void> {
     morphDOMUpdateList(listElement, html);
     section.classList.remove("hidden");
 
-    snapshot = buildTaskSnapshot(
-      Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.tasks) ? raw.tasks : []
-    );
+    snapshot = buildTaskSnapshot(Array.isArray(raw?.data) ? raw.data : []);
 
     updateStatusSpeed(tasks);
 
