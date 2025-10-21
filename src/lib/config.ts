@@ -14,14 +14,24 @@ export type Settings = {
   enableDebugLogging: boolean;
 };
 
+const envString = (value: string | undefined): string => (value ?? "").trim();
+
+const envBoolean = (value: string | undefined): boolean => {
+  if (value == null) return false;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1") return true;
+  if (normalized === "false" || normalized === "0" || normalized === "") return false;
+  return Boolean(normalized);
+};
+
 export const DEFAULTS: Settings = {
-  NASsecure: false,
-  NASaddress: "192.168.88.185",
-  NASport: "8080",
-  NASlogin: "admin",
-  NASpassword: "", // leave empty by default for security
-  NAStempdir: "Download",
-  NASdir: "Movies",
+  NASsecure: envBoolean(import.meta.env.VITE_QNAP_SECURE),
+  NASaddress: envString(import.meta.env.VITE_QNAP_ADDRESS),
+  NASport: envString(import.meta.env.VITE_QNAP_PORT),
+  NASlogin: envString(import.meta.env.VITE_QNAP_LOGIN),
+  NASpassword: envString(import.meta.env.VITE_QNAP_PASSWORD),
+  NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR),
+  NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR),
   enableDebugLogging: false,
 };
 
@@ -30,6 +40,8 @@ export const API_ENDPOINTS = {
   LOGIN: "/downloadstation/V4/Misc/Login",
   TASK_QUERY: "/downloadstation/V4/Task/Query",
   TASK_ADD_URL: "/downloadstation/V4/Task/AddUrl",
+  TASK_START: "/downloadstation/V4/Task/Start",
+  TASK_STOP: "/downloadstation/V4/Task/Stop",
   TASK_ADD: "/downloadstation/V4/Task/Add",
   TASK_ADD_TORRENT: "/downloadstation/V4/Task/AddTorrent",
   TASK_ADD_TASK: "/downloadstation/V4/Task/AddTask",

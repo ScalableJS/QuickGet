@@ -7,6 +7,8 @@ node_modules/
 *.swo
 *~
 .env
+.env.local
+.env.*.local
 dist/
 build/
 *.zip

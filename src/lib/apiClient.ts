@@ -1,3 +1,4 @@
+import type { ApiRequest, ApiResponse } from "./schema.js";
 import type { Settings } from "./config.js";
 import { API_ENDPOINTS } from "./config.js";
 import { createLogger, Logger } from "./logger.js";
@@ -9,9 +10,30 @@ export interface ApiClientOptions {
   logger?: Logger;
 }
 
+type TaskQueryResponse = ApiResponse<"queryTasks">;
+type BaseResponse = ApiResponse<"startTask">;
+type TaskQueryRequest = ApiRequest<"queryTasks">;
+type AddUrlRequest = ApiRequest<"addUrl">;
+type ModifyTaskRequest = ApiRequest<"startTask">;
+type RemoveTaskRequest = ApiRequest<"removeTask">;
+
 export interface QueryTasksResult {
-  raw: any;
+  raw: TaskQueryResponse;
   tasks: Task[];
+}
+
+export interface QueryTasksParams {
+  limit?: number;
+  from?: number;
+  field?: string;
+  direction?: "ASC" | "DESC";
+  status?: string;
+  type?: string;
+}
+
+export interface QueryTasksOptions {
+  params?: QueryTasksParams;
+  signal?: AbortSignal;
 }
 
 export interface AddTorrentResult {
@@ -42,6 +64,15 @@ export function buildNASBaseUrl(settings: Settings): string {
 function delay(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildFormData(body: Record<string, string | number | undefined>): URLSearchParams {
+  const form = new URLSearchParams();
+  Object.entries(body).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    form.append(key, String(value));
+  });
+  return form;
 }
 
 export class ApiClient {
@@ -123,45 +154,51 @@ export class ApiClient {
     throw new Error("NAS login failed: no SID in response");
   }
 
-  async queryTasks(options: { signal?: AbortSignal } = {}): Promise<QueryTasksResult> {
+  async queryTasks(options: QueryTasksOptions = {}): Promise<QueryTasksResult> {
     const raw = await this.queryTasksRaw(options);
     const tasks = normalizeTasks("qnap", raw);
     return { raw, tasks };
   }
 
-  async queryTasksRaw(options: { signal?: AbortSignal } = {}): Promise<any> {
+  async queryTasksRaw(options: QueryTasksOptions = {}): Promise<TaskQueryResponse> {
+    const { params = {}, signal } = options;
     const sid = await this.ensureSid();
 
-    const formData = new URLSearchParams();
-    formData.append("sid", sid);
-    formData.append("limit", "0");
-    formData.append("status", "all");
-    formData.append("type", "all");
+    const request: TaskQueryRequest = {
+      sid,
+      limit: params.limit ?? 0,
+      from: params.from,
+      field: params.field ?? "priority",
+      direction: params.direction ?? "DESC",
+      status: params.status ?? "all",
+      type: params.type ?? "all",
+    };
+    const formData = buildFormData(request);
 
     const response = await this.postForm(API_ENDPOINTS.TASK_QUERY, formData, {
       label: "TaskQuery",
-      signal: options.signal,
+      signal,
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      return await response.json();
-    }
-
-    const text = await response.text();
-    if (contentType.includes("application/xml") || contentType.includes("text/xml")) {
-      return xmlToJSON(text);
-    }
-
-    return JSON.parse(text);
+    return await this.parseTaskQueryResponse(response);
   }
 
-  async addUrl(url: string): Promise<boolean> {
+  async addUrl(
+    url: string,
+    options: { savePath?: string; tempFolder?: string; targetFolder?: string } = {}
+  ): Promise<boolean> {
     const sid = await this.ensureSid();
-    const formData = new URLSearchParams();
-    formData.append("sid", sid);
-    formData.append("url", url);
-    formData.append("savepath", `/${this.settings.NAStempdir}`);
+    const request: AddUrlRequest = {
+      sid,
+      url,
+      savepath:
+        options.savePath ??
+        options.targetFolder ??
+        (this.settings.NASdir ? this.settings.NASdir : `/${this.settings.NAStempdir}`),
+      temp: options.tempFolder,
+      move: options.targetFolder,
+    };
+    const formData = buildFormData(request);
 
     const response = await this.postForm(API_ENDPOINTS.TASK_ADD_URL, formData, {
       label: "AddUrl",
@@ -250,17 +287,56 @@ export class ApiClient {
     throw lastError ?? new Error("Unknown error during torrent upload");
   }
 
-  async removeTask(hash: string): Promise<boolean> {
+  async startTask(hash: string): Promise<boolean> {
     const sid = await this.ensureSid();
-    const formData = new URLSearchParams();
-    formData.append("sid", sid);
-    formData.append("hash", hash);
+    const request: ModifyTaskRequest = { sid, hash };
+    const formData = buildFormData(request);
+
+    const response = await this.postForm(API_ENDPOINTS.TASK_START, formData, {
+      label: "StartTask",
+    });
+
+    const payload = await this.parseJsonSafe<BaseResponse>(response);
+    const errorCode = Number(payload?.error ?? -1);
+    if (errorCode === 0) {
+      return true;
+    }
+
+    throw new Error(`Start task failed: error ${errorCode}`);
+  }
+
+  async stopTask(hash: string): Promise<boolean> {
+    const sid = await this.ensureSid();
+    const request: ModifyTaskRequest = { sid, hash };
+    const formData = buildFormData(request);
+
+    const response = await this.postForm(API_ENDPOINTS.TASK_STOP, formData, {
+      label: "StopTask",
+    });
+
+    const payload = await this.parseJsonSafe<BaseResponse>(response);
+    const errorCode = Number(payload?.error ?? -1);
+    if (errorCode === 0) {
+      return true;
+    }
+
+    throw new Error(`Stop task failed: error ${errorCode}`);
+  }
+
+  async removeTask(hash: string, options: { clean?: boolean } = {}): Promise<boolean> {
+    const sid = await this.ensureSid();
+    const request: RemoveTaskRequest = {
+      sid,
+      hash,
+      clean: options.clean != null ? (options.clean ? 1 : 0) : undefined,
+    };
+    const formData = buildFormData(request);
 
     const response = await this.postForm(API_ENDPOINTS.TASK_REMOVE, formData, {
       label: "RemoveTask",
     });
 
-    const payload = await this.parseJsonSafe(response);
+    const payload = await this.parseJsonSafe<BaseResponse>(response);
     const errorCode = Number(payload?.error ?? -1);
     if (errorCode === 0) {
       return true;
@@ -297,15 +373,29 @@ export class ApiClient {
     return response;
   }
 
-  private async parseJsonSafe(response: Response): Promise<any> {
+  private async parseTaskQueryResponse(response: Response): Promise<TaskQueryResponse> {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return (await response.json()) as TaskQueryResponse;
+    }
+
+    const text = await response.text();
+    if (contentType.includes("application/xml") || contentType.includes("text/xml")) {
+      return xmlToJSON(text) as TaskQueryResponse;
+    }
+
+    return JSON.parse(text) as TaskQueryResponse;
+  }
+
+  private async parseJsonSafe<T>(response: Response): Promise<T> {
     try {
-      return await response.clone().json();
+      return (await response.clone().json()) as T;
     } catch {
       try {
         const text = await response.clone().text();
-        return JSON.parse(text);
+        return JSON.parse(text) as T;
       } catch {
-        return { error: -1 };
+        return { error: -1 } as T;
       }
     }
   }
