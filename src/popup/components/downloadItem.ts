@@ -46,14 +46,47 @@ function formatAddedDate(value?: number): string {
 }
 
 function formatStatus(status: string): string {
-  const normalized = status.replace(/_/g, " ");
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  const statusLabels: Record<string, string> = {
+    queued: "Queued",
+    downloading: "Downloading",
+    seeding: "Seeding",
+    paused: "Paused",
+    stopped: "Stopped",
+    checking: "Checking",
+    repairing: "Repairing",
+    extracting: "Extracting",
+    finishing: "Finishing",
+    finished: "Finished",
+    error: "Error",
+  };
+  return statusLabels[status] || status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function getStatusIcon(status: string): string {
+  const icons: Record<string, string> = {
+    queued: "⏸",
+    downloading: "▶",
+    seeding: "🌱",
+    paused: "⏸",
+    stopped: "⏹",
+    checking: "🔍",
+    repairing: "🔧",
+    extracting: "📦",
+    finishing: "⏳",
+    finished: "✓",
+    error: "✗",
+  };
+  return icons[status] || "•";
 }
 
 export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}): string {
   const progress = Math.max(0, Math.min(100, Math.round(task.progress)));
   const isComplete = task.status === "finished" || task.status === "seeding" || progress >= 100;
+  const isError = task.status === "error";
+  const isActive = task.status === "downloading" || task.status === "checking" || task.status === "repairing" || task.status === "extracting" || task.status === "finishing";
+  
   const statusText = `${formatStatus(task.status)} — ${progress}%`;
+  const statusIcon = getStatusIcon(task.status);
   const speedText = `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
   const etaText = formatETA(task.etaSec);
   const addedText = formatAddedDate(task.addedAt);
@@ -62,7 +95,15 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
   const ariaSelected = options.selected ? "true" : "false";
   const selectedClass = options.selected ? " selected" : "";
   const etaSuffix = etaText ? ` • ETA: ${escapeHtml(etaText)}` : "";
-  const progressClass = isComplete ? "progress-fill progress-complete" : "progress-fill progress-active";
+  
+  let progressClass = "progress-fill";
+  if (isError) {
+    progressClass += " progress-error";
+  } else if (isComplete) {
+    progressClass += " progress-complete";
+  } else if (isActive) {
+    progressClass += " progress-active";
+  }
 
   return `<article class="download-item${selectedClass}" data-hash="${hash}" data-status="${escapeHtml(
     task.status
@@ -78,8 +119,11 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
           ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>`
           : ""
       }
-      <div class="progress-bar">
-        <div class="${progressClass}" style="width: ${progress}%"></div>
+      <div class="progress-container">
+        <span class="progress-icon" aria-label="${escapeHtml(formatStatus(task.status))}">${statusIcon}</span>
+        <div class="progress-bar">
+          <div class="${progressClass}" style="width: ${progress}%"></div>
+        </div>
       </div>
     </div>
   </article>`;

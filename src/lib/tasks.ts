@@ -170,7 +170,9 @@ export const normalizeSynology = (task: any): Task => {
 
 export const normalizeQnap = (task: any): Task => {
   const size = Number(task.total_size ?? task.size ?? 0);
-  const downloaded = Number(task.total_down ?? task.done ?? task.completed ?? 0);
+  const downloaded = Number(task.total_down ?? task.done ?? task.down_size ?? task.completed ?? 0);
+  const uploaded = Number(task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded ?? 0);
+  
   const created =
     task.create_time ??
     task.created ??
@@ -187,17 +189,26 @@ export const normalizeQnap = (task: any): Task => {
         : parseDateToEpoch(created)
       : undefined;
 
+  // Приоритет для прогресса:
+  // 1. Если есть task.progress и оно валидное (0-100), используем его
+  // 2. Иначе вычисляем из downloaded/size
+  const rawProgress = Number(task.progress ?? -1);
+  const hasValidProgress = rawProgress >= 0 && rawProgress <= 100;
+  
+  const calculatedProgress = size > 0
+    ? Math.max(0, Math.min(100, (downloaded / size) * 100))
+    : 0;
+  
+  const progress = hasValidProgress ? rawProgress : calculatedProgress;
+
   return {
     id: String(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
     name: String(task.name ?? task.title ?? task.source ?? task.source_name ?? "task"),
     status: mapStatus("qnap", task.status ?? task.state ?? ""),
-    progress:
-      size > 0
-        ? Math.max(0, Math.min(100, (downloaded / size) * 100))
-        : Number(task.progress ?? 0),
+    progress,
     sizeBytes: size,
     downloadedBytes: downloaded,
-    uploadedBytes: Number(task.total_up ?? task.uploaded_size ?? task.uploaded ?? 0),
+    uploadedBytes: uploaded,
     downSpeedBps: Number(task.down_rate ?? task.download_speed ?? 0),
     upSpeedBps: Number(task.up_rate ?? task.upload_speed ?? 0),
     seeds: {
@@ -210,7 +221,7 @@ export const normalizeQnap = (task: any): Task => {
       total:
         task.peers_total != null ? Number(task.peers_total) : undefined,
     },
-    etaSec: task.eta != null ? Number(task.eta) : task.remain_time != null ? Number(task.remain_time) : undefined,
+    etaSec: task.eta != null && task.eta >= 0 ? Number(task.eta) : task.remain_time != null ? Number(task.remain_time) : undefined,
     hash: task.hash ?? task.bt_hash ?? undefined,
     addedAt,
     source: "qnap",

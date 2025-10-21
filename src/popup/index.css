@@ -686,8 +686,45 @@ textarea:focus {
   margin: 0;
 }
 
-.progress-bar {
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   width: 100%;
+}
+
+.progress-icon {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.download-item[data-status="downloading"] .progress-icon {
+  color: var(--color-success);
+}
+
+.download-item[data-status="seeding"] .progress-icon {
+  color: var(--color-success);
+}
+
+.download-item[data-status="finished"] .progress-icon {
+  color: var(--color-primary);
+}
+
+.download-item[data-status="error"] .progress-icon {
+  color: var(--color-error);
+}
+
+.download-item[data-status="paused"] .progress-icon,
+.download-item[data-status="stopped"] .progress-icon {
+  color: var(--color-text-secondary);
+}
+
+.progress-bar {
+  flex: 1;
   height: 4px;
   background: var(--progress-track-active);
   border-radius: 2px;
@@ -707,6 +744,10 @@ textarea:focus {
 
 .progress-fill.progress-complete {
   background: var(--progress-fill-complete);
+}
+
+.progress-fill.progress-error {
+  background: var(--progress-fill-error);
 }
 
 .download-item.selected .progress-fill {

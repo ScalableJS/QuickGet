@@ -107,9 +107,24 @@ function formatRate(bytesPerSecond: number): string {
 
 function updateToolbarState(): void {
   const removeBtn = document.getElementById("toolbar-remove") as HTMLButtonElement | null;
+  const playBtn = document.getElementById("toolbar-play") as HTMLButtonElement | null;
+  const stopBtn = document.getElementById("toolbar-stop") as HTMLButtonElement | null;
+  
+  const hasSelection = !!selectedHash;
+  
   if (removeBtn) {
-    removeBtn.disabled = !selectedHash;
+    removeBtn.disabled = !hasSelection;
     removeBtn.setAttribute("aria-disabled", removeBtn.disabled ? "true" : "false");
+  }
+  
+  if (playBtn) {
+    playBtn.disabled = !hasSelection;
+    playBtn.setAttribute("aria-disabled", playBtn.disabled ? "true" : "false");
+  }
+  
+  if (stopBtn) {
+    stopBtn.disabled = !hasSelection;
+    stopBtn.setAttribute("aria-disabled", stopBtn.disabled ? "true" : "false");
   }
 }
 
@@ -189,8 +204,10 @@ function updateStatusSpeed(tasks: Task[]): void {
 }
 
 async function listDownloads(): Promise<void> {
+  // If a request is already in progress, skip this call
   if (listAbortController) {
-    listAbortController.abort();
+    addLog("Download list request already in progress, skipping...");
+    return;
   }
 
   const controller = new AbortController();
@@ -221,9 +238,11 @@ async function listDownloads(): Promise<void> {
       return;
     }
     showStatus(`Failed to list downloads: ${error}`, "error");
+    addLog(`Download list error: ${error}`);
   } finally {
     if (listAbortController === controller) {
       listAbortController = null;
+      addLog("Download list request completed");
     }
   }
 }
@@ -307,6 +326,28 @@ async function removeDownload(hash: string): Promise<void> {
   }
 }
 
+async function startTorrent(hash: string): Promise<void> {
+  try {
+    const client = await getApiClient();
+    await client.startTask(hash);
+    showStatus("Torrent started", "success");
+    // Don't call listDownloads() - let auto-refresh handle it
+  } catch (error) {
+    showStatus(`Failed to start torrent: ${error}`, "error");
+  }
+}
+
+async function stopTorrent(hash: string): Promise<void> {
+  try {
+    const client = await getApiClient();
+    await client.stopTask(hash);
+    showStatus("Torrent stopped", "success");
+    // Don't call listDownloads() - let auto-refresh handle it
+  } catch (error) {
+    showStatus(`Failed to stop torrent: ${error}`, "error");
+  }
+}
+
 async function restoreOptions(): Promise<void> {
   try {
     const settings = await loadSettings();
@@ -381,14 +422,18 @@ async function testConnection(): Promise<void> {
 }
 
 function startAutoRefresh(): void {
-  if (refreshInterval) return;
+  if (refreshInterval) {
+    addLog("Auto-refresh already running");
+    return;
+  }
   refreshInterval = setInterval(() => {
-    addLog("Auto-refreshing downloads...");
+    const now = new Date().toLocaleTimeString();
+    addLog(`[${now}] Auto-refresh triggered`);
     listDownloads().catch((error) => {
       addLog(`Auto-refresh failed: ${error}`);
     });
   }, 5000);
-  addLog("Auto-refresh enabled");
+  addLog("Auto-refresh enabled (interval: 5s)");
 }
 
 function stopAutoRefresh(): void {
@@ -482,7 +527,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const enableDebugCheckbox = document.getElementById("enableDebug") as HTMLInputElement | null;
   const toolbarPlay = document.getElementById("toolbar-play") as HTMLButtonElement | null;
   const toolbarStop = document.getElementById("toolbar-stop") as HTMLButtonElement | null;
-  const toolbarPause = document.getElementById("toolbar-pause") as HTMLButtonElement | null;
   const toolbarRemove = document.getElementById("toolbar-remove") as HTMLButtonElement | null;
   const toolbarAdd = document.getElementById("toolbar-add") as HTMLButtonElement | null;
 
@@ -522,16 +566,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   toolbarPlay?.addEventListener("click", async () => {
-    await listDownloads();
-    startAutoRefresh();
+    if (!selectedHash) {
+      showStatus("Select a torrent to start", "info");
+      return;
+    }
+    await startTorrent(selectedHash);
   });
 
-  toolbarPause?.addEventListener("click", () => {
-    stopAutoRefresh();
-  });
-
-  toolbarStop?.addEventListener("click", () => {
-    stopAutoRefresh();
+  toolbarStop?.addEventListener("click", async () => {
+    if (!selectedHash) {
+      showStatus("Select a torrent to stop", "info");
+      return;
+    }
+    await stopTorrent(selectedHash);
   });
 
   toolbarRemove?.addEventListener("click", async () => {
@@ -552,6 +599,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   addLog("Auto-loading downloads...");
   await listDownloads();
+  
+  // Start auto-refresh after initial load completes
+  addLog("Starting auto-refresh...");
   startAutoRefresh();
 
   window.addEventListener("beforeunload", () => {

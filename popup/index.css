@@ -107,6 +107,12 @@ header.toolbar {
   opacity: 0.4;
   cursor: not-allowed;
   background: #f0f0f0;
+  pointer-events: none;
+}
+
+.toolbar-btn[disabled]:hover {
+  background: #f0f0f0;
+  border-color: var(--color-border);
 }
 
 .settings-panel {
