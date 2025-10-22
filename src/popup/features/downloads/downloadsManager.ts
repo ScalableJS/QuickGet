@@ -68,3 +68,12 @@ export async function stopTorrent(hash: string): Promise<void> {
   const client = await ensureClient();
   await client.stopTask(hash);
 }
+
+export async function pauseTorrent(hash: string): Promise<void> {
+  const client = await ensureClient();
+  if (typeof client.pauseTask === "function") {
+    await client.pauseTask(hash);
+    return;
+  }
+  await client.stopTask(hash);
+}

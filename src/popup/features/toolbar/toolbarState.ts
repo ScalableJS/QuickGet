@@ -28,9 +28,9 @@ export function getToolbarElements(): ToolbarElements {
 }
 
 export function setSelectionState(hasSelection: boolean): void {
-  const { play, stop, remove } = resolveElements();
+  const { play, stop, remove, pause } = resolveElements();
   const disabled = !hasSelection;
-  [play, stop, remove].forEach((button) => {
+  [play, stop, pause, remove].forEach((button) => {
     if (!button) return;
     button.disabled = disabled;
     button.setAttribute("aria-disabled", disabled ? "true" : "false");

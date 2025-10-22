@@ -67,8 +67,7 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
       return;
     }
 
-    await downloads.stop(selected);
-    showStatus("Torrent paused", "info", { autoHideMs: 2000 });
+    await downloads.pause(selected);
   });
 
   settingsBtn?.addEventListener("click", () => {

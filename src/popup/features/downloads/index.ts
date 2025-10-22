@@ -5,6 +5,7 @@ import {
   removeDownload as deleteDownload,
   startTorrent as startTask,
   stopTorrent as stopTask,
+  pauseTorrent as pauseTask,
   abortListDownloads,
 } from "./downloadsManager.js";
 import { setupDownloadsUI, renderDownloads, hideDownloads } from "./downloadsUI.js";
@@ -37,6 +38,7 @@ export interface DownloadsFeature {
   remove: (hash: string) => Promise<void>;
   start: (hash: string) => Promise<void>;
   stop: (hash: string) => Promise<void>;
+  pause: (hash: string) => Promise<void>;
   getSelected: () => string | null;
   setSelected: (hash: string | null) => void;
   clearSelection: () => void;
@@ -118,6 +120,10 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
     stop: async (hash: string) => {
       await stopTask(hash);
       showStatus("Torrent stopped", "success", { autoHideMs: 2000 });
+    },
+    pause: async (hash: string) => {
+      await pauseTask(hash);
+      showStatus("Torrent paused", "info", { autoHideMs: 2000 });
     },
     getSelected: () => getSelectedHash(),
     setSelected: (hash: string | null) => setSelectedHash(hash),

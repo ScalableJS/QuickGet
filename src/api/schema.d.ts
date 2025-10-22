@@ -193,6 +193,22 @@ export interface paths {
       };
     };
   };
+  "/downloadstation/V4/Task/Pause": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["ModifyTaskRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["BaseResponse"];
+          };
+        };
+      };
+    };
+  };
   "/downloadstation/V4/Task/Remove": {
     post: {
       requestBody: {
@@ -265,6 +281,7 @@ export type operations = {
   addUrl: paths["/downloadstation/V4/Task/AddUrl"]["post"];
   startTask: paths["/downloadstation/V4/Task/Start"]["post"];
   stopTask: paths["/downloadstation/V4/Task/Stop"]["post"];
+  pauseTask: paths["/downloadstation/V4/Task/Pause"]["post"];
   removeTask: paths["/downloadstation/V4/Task/Remove"]["post"];
   addTorrent: paths["/downloadstation/V4/Task/AddTorrent"]["post"];
   addTask: paths["/downloadstation/V4/Task/AddTask"]["post"];
@@ -276,4 +293,3 @@ export type ApiResponse<T extends keyof operations> =
 
 export type ApiRequest<T extends keyof operations> =
   operations[T]["requestBody"]["content"]["application/x-www-form-urlencoded"];
-

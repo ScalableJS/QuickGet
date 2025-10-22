@@ -91,7 +91,7 @@ export class ApiClient {
     formData.append("type", params.type ?? "all");
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Query", {
-      body: formData,
+      body: formData as any,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
@@ -190,7 +190,7 @@ export class ApiClient {
     const formData = new URLSearchParams();
     formData.append("hash", hash);
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Start", {
-      body: formData,
+      body: formData as any,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
@@ -209,7 +209,7 @@ export class ApiClient {
     const formData = new URLSearchParams();
     formData.append("hash", hash);
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Stop", {
-      body: formData,
+      body: formData as any,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
@@ -224,6 +224,25 @@ export class ApiClient {
     throw new Error(`Stop task failed: ${getErrorMessage(payload)}`);
   }
 
+  async pauseTask(hash: string): Promise<boolean> {
+    const formData = new URLSearchParams();
+    formData.append("hash", hash);
+    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Pause", {
+      body: formData as any,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: (body) => body,
+    });
+
+    const payload = data ?? error;
+    if (isSuccessResponse(payload)) {
+      return true;
+    }
+
+    throw new Error(`Pause task failed: ${getErrorMessage(payload)}`);
+  }
+
   async removeTask(hash: string, options: { clean?: boolean } = {}): Promise<boolean> {
     const formData = new URLSearchParams();
     formData.append("hash", hash);
@@ -231,7 +250,7 @@ export class ApiClient {
       formData.append("clean", options.clean ? "1" : "0");
     }
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Remove", {
-      body: formData,
+      body: formData as any,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
