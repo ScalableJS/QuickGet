@@ -231,7 +231,11 @@ async function listDownloads(): Promise<void> {
 
     const html = renderDownloadsList(tasks);
     morphDOMUpdateList(listElement, html);
-    section.classList.remove("hidden");
+    const settingsPanel = document.getElementById("settings-panel");
+    const settingsOpen = settingsPanel ? !settingsPanel.classList.contains("hidden") : false;
+    if (!settingsOpen) {
+      section.classList.remove("hidden");
+    }
 
     snapshot = buildTaskSnapshot(Array.isArray(raw?.data) ? raw.data : []);
 
@@ -531,6 +535,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const settingsPanel = document.getElementById("settings-panel");
   const toolbarSettings = document.getElementById("toolbar-settings") as HTMLButtonElement | null;
   const downloadsList = document.getElementById("downloads-list");
+  const downloadsSection = document.getElementById("downloads-section");
   const enableDebugCheckbox = document.getElementById("enableDebug") as HTMLInputElement | null;
   const toolbarPlay = document.getElementById("toolbar-play") as HTMLButtonElement | null;
   const toolbarStop = document.getElementById("toolbar-stop") as HTMLButtonElement | null;
@@ -569,6 +574,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const expanded = !hidden;
       toolbarSettings.setAttribute("aria-pressed", expanded ? "true" : "false");
       toolbarSettings.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+      if (downloadsSection) {
+        downloadsSection.classList.toggle("hidden", expanded);
+      }
     });
   }
 
