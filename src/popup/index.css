@@ -424,6 +424,13 @@ footer a {
   margin-bottom: var(--spacing-md);
 }
 
+.settings-panel .form-section {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
 .form-group {
   margin-bottom: var(--spacing-md);
 }
@@ -520,7 +527,7 @@ textarea:focus {
 /* Status Section */
 
 .status-bar {
-  display: flex;
+  display: none;
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
@@ -539,6 +546,10 @@ textarea:focus {
 
 .status-pill.visible {
   display: inline-flex;
+}
+
+.status-bar.visible {
+  display: flex;
 }
 
 .status-message {
