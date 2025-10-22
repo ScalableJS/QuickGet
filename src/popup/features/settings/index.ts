@@ -1,9 +1,8 @@
 import { loadSettings, saveSettings } from "@lib/settings.js";
 import type { Settings } from "@lib/config.js";
 import { showStatus } from "../../components/statusPill/index.js";
-import { invalidateClientCache } from "../../shared/api/index.js";
+import { invalidateClientCache, getApiClient } from "../../shared/api/index.js";
 import { fillSettingsForm, readSettingsForm, setupSettingsForm, getSettingsPanel, showSettingsPanel, hideSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
-import { testConnection } from "./connectionTest.js";
 
 interface InitializeSettingsOptions {
   onDebugToggle?: (enabled: boolean) => void;
@@ -47,7 +46,9 @@ async function handleTestConnection(): Promise<void> {
   try {
     const settings = readSettingsForm();
     showStatus("Testing connection...", "info");
-    const isConnected = await testConnection(settings);
+    const client = await getApiClient({ settings });
+    const { tasks } = await client.queryTasks({ params: { limit: 1 } });
+    const isConnected = Array.isArray(tasks);
     if (isConnected) {
       showStatus("Connection successful!", "success", { autoHideMs: 2000 });
     } else {

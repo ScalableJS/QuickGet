@@ -71,16 +71,6 @@ export class ApiClient {
     }
   }
 
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/cgi-bin/authLogin.cgi`);
-      return response.ok;
-    } catch (error) {
-      this.logger.error("NAS connection test failed", error);
-      return false;
-    }
-  }
-
   async queryTasks(options: QueryTasksOptions = {}): Promise<QueryTasksResult> {
     const raw = await this.queryTasksRaw(options);
     const tasks = normalizeTasks("qnap", raw);

@@ -82,7 +82,12 @@ await client.removeTask(hash, { clean: true });
 
 ### Connection Test
 ```typescript
-const isOnline = await client.testConnection();
+try {
+  await client.queryTasks({ params: { limit: 1 } });
+  console.log("NAS reachable");
+} catch (error) {
+  console.error("Connection failed", error);
+}
 ```
 
 ---

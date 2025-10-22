@@ -4,7 +4,7 @@
  */
 
 import { loadSettings } from "@lib/settings.js";
-import { loginNAS, addDownloadUrl, isTorrentUrl } from "@lib/qnap.js";
+import { createApiClient } from "@api/client.js";
 
 /**
  * Create context menu items
@@ -62,8 +62,8 @@ export async function handleContextMenuClick(
  */
 async function sendDownloadToStation(url: string): Promise<void> {
   const settings = await loadSettings();
-  const sid = await loginNAS(settings);
-  await addDownloadUrl(settings, sid, url);
+  const client = createApiClient({ settings });
+  await client.addUrl(url);
   showNotification("Success", `Download sent to Download Station: ${url}`);
 }
 
@@ -77,6 +77,10 @@ function isValidUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isTorrentUrl(url: string): boolean {
+  return /^magnet:/i.test(url) || /\.torrent$/i.test(url);
 }
 
 /**
