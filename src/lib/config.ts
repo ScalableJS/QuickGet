@@ -14,25 +14,39 @@ export type Settings = {
   enableDebugLogging: boolean;
 };
 
-const envString = (value: string | undefined): string => (value ?? "").trim();
+const FALLBACK_DEFAULTS: Settings = {
+  NASsecure: false,
+  NASaddress: "downloadstation.local",
+  NASport: "8080",
+  NASlogin: "download",
+  NASpassword: "",
+  NAStempdir: "/share/Download",
+  NASdir: "/share/Multimedia/Movies",
+  enableDebugLogging: false,
+};
 
-const envBoolean = (value: string | undefined): boolean => {
-  if (value == null) return false;
+const envString = (value: string | undefined, fallback: string): string => {
+  const normalized = (value ?? "").trim();
+  return normalized || fallback;
+};
+
+const envBoolean = (value: string | undefined, fallback: boolean): boolean => {
+  if (value == null) return fallback;
   const normalized = value.trim().toLowerCase();
   if (normalized === "true" || normalized === "1") return true;
   if (normalized === "false" || normalized === "0" || normalized === "") return false;
-  return Boolean(normalized);
+  return fallback;
 };
 
 export const DEFAULTS: Settings = {
-  NASsecure: envBoolean(import.meta.env.VITE_QNAP_SECURE),
-  NASaddress: envString(import.meta.env.VITE_QNAP_ADDRESS),
-  NASport: envString(import.meta.env.VITE_QNAP_PORT),
-  NASlogin: envString(import.meta.env.VITE_QNAP_LOGIN),
-  NASpassword: envString(import.meta.env.VITE_QNAP_PASSWORD),
-  NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR),
-  NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR),
-  enableDebugLogging: false,
+  NASsecure: envBoolean(import.meta.env.VITE_QNAP_SECURE, FALLBACK_DEFAULTS.NASsecure),
+  NASaddress: envString(import.meta.env.VITE_QNAP_ADDRESS, FALLBACK_DEFAULTS.NASaddress),
+  NASport: envString(import.meta.env.VITE_QNAP_PORT, FALLBACK_DEFAULTS.NASport),
+  NASlogin: envString(import.meta.env.VITE_QNAP_LOGIN, FALLBACK_DEFAULTS.NASlogin),
+  NASpassword: envString(import.meta.env.VITE_QNAP_PASSWORD, FALLBACK_DEFAULTS.NASpassword),
+  NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR, FALLBACK_DEFAULTS.NAStempdir),
+  NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
+  enableDebugLogging: FALLBACK_DEFAULTS.enableDebugLogging,
 };
 
 export const DEBUG_ENABLED = false; // set to true for verbose logging

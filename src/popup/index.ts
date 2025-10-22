@@ -128,6 +128,13 @@ function updateToolbarState(): void {
   }
 }
 
+function logToolbarAction(action: string): void {
+  const selectionInfo = selectedHash ? `selection=${selectedHash}` : "selection=none";
+  const message = `[Toolbar] ${action} (${selectionInfo})`;
+  console.debug(message);
+  addLog(message);
+}
+
 function refreshSelectionUI(): void {
   const items = document.querySelectorAll(".download-item");
   items.forEach((node) => {
@@ -566,6 +573,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   toolbarPlay?.addEventListener("click", async () => {
+    logToolbarAction("play");
     if (!selectedHash) {
       showStatus("Select a torrent to start", "info");
       return;
@@ -574,6 +582,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   toolbarStop?.addEventListener("click", async () => {
+    logToolbarAction("stop");
     if (!selectedHash) {
       showStatus("Select a torrent to stop", "info");
       return;
@@ -582,6 +591,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   toolbarRemove?.addEventListener("click", async () => {
+    logToolbarAction("remove");
     if (!selectedHash) {
       showStatus("Select a download to remove", "info");
       return;

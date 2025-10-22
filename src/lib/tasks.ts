@@ -29,6 +29,7 @@ export interface Task {
   etaSec?: number;
   hash?: string;
   addedAt?: number;
+  priority?: number;
   source?: Vendor;
 }
 
@@ -97,7 +98,7 @@ const synologyNumericStates: Record<number, TaskStatus> = {
 
 const qnapNumericStates: Record<number, TaskStatus> = {
   0: "queued",
-  1: "queued",
+  1: "queued", // Может быть paused - определяется по прогрессу
   2: "downloading",
   3: "paused",
   4: "error",
@@ -164,6 +165,7 @@ export const normalizeSynology = (task: any): Task => {
       task.additional?.detail?.create_time != null
         ? Number(task.additional.detail.create_time)
         : undefined,
+    priority: task.priority != null ? Number(task.priority) : undefined,
     source: "synology",
   };
 };
@@ -201,16 +203,64 @@ export const normalizeQnap = (task: any): Task => {
   
   const progress = hasValidProgress ? rawProgress : calculatedProgress;
 
+  // Определяем статус
+  let status = mapStatus("qnap", task.status ?? task.state ?? "");
+  
+  // QNAP Bug Fix: когда задача stopped, state остается 2 (downloading),
+  // но activity_time = 0 и скорость = 0
+  const activityTime = Number(task.activity_time ?? -1);
+  const downRate = Number(task.down_rate ?? task.download_speed ?? 0);
+  const upRate = Number(task.up_rate ?? task.upload_speed ?? 0);
+  const rawState = Number(task.status ?? task.state ?? 0);
+  const peers = Number(task.peers ?? task.peers_connected ?? 0);
+  const seeds = Number(task.seeds ?? task.seeds_connected ?? 0);
+  
+  // state=3 при прогрессе ~100% и activity_time > 0 - это finishing (перемещение файлов)
+  if (rawState === 3 && progress >= 99 && activityTime > 0) {
+    status = "finishing";
+  }
+  // state=1 может быть как queued, так и paused
+  // Если прогресс > 0 - это paused (пользователь поставил на паузу)
+  else if (rawState === 1 && progress > 0) {
+    status = "paused";
+  }
+  
+  // Если задача показывает downloading/checking, но activity_time=0 и нет скорости,
+  // и прогресс не 100% - это stopped задача
+  if (
+    (rawState === 2 || rawState === 6 || rawState === 104 || rawState === 102) && // downloading/checking states
+    activityTime === 0 &&
+    downRate === 0 &&
+    upRate === 0 &&
+    progress < 100
+  ) {
+    status = "stopped";
+  }
+  
+  // Если задача в состоянии checking (102) с прогрессом > 0, но нет пиров/сидов долгое время
+  // и нет скорости - это скорее queued (ищет пиров)
+  if (
+    rawState === 102 &&
+    progress > 0 &&
+    progress < 100 &&
+    downRate === 0 &&
+    peers === 0 &&
+    seeds === 0 &&
+    activityTime > 0
+  ) {
+    status = "queued"; // Ищет пиров
+  }
+
   return {
     id: String(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
     name: String(task.name ?? task.title ?? task.source ?? task.source_name ?? "task"),
-    status: mapStatus("qnap", task.status ?? task.state ?? ""),
+    status,
     progress,
     sizeBytes: size,
     downloadedBytes: downloaded,
     uploadedBytes: uploaded,
-    downSpeedBps: Number(task.down_rate ?? task.download_speed ?? 0),
-    upSpeedBps: Number(task.up_rate ?? task.upload_speed ?? 0),
+    downSpeedBps: downRate,
+    upSpeedBps: upRate,
     seeds: {
       connected: Number(task.seeds ?? task.seeds_connected ?? 0),
       total:
@@ -224,6 +274,7 @@ export const normalizeQnap = (task: any): Task => {
     etaSec: task.eta != null && task.eta >= 0 ? Number(task.eta) : task.remain_time != null ? Number(task.remain_time) : undefined,
     hash: task.hash ?? task.bt_hash ?? undefined,
     addedAt,
+    priority: task.priority != null ? Number(task.priority) : undefined,
     source: "qnap",
   };
 };

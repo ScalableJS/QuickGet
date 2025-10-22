@@ -17,3 +17,4 @@ web-ext-artifacts/
 # Ignore all markdown files except README
 *.md
 !README.md
+!docs/toolbar-actions.md

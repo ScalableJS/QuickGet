@@ -5,13 +5,19 @@
 
 import { createApiClient, type ApiClient } from "@api/client.js";
 import { loadSettings } from "@lib/settings.js";
-import { updateBadge, clearBadge } from "./actions.js";
+import {
+  updateBadge,
+  clearBadge,
+  startIconAnimation,
+  stopIconAnimation,
+} from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.1; // ~6 seconds
 
 let isMonitoring = false;
 let clientCache: { signature: string; client: ApiClient } | null = null;
+let completionTimeout: number | null = null;
 
 function serializeSettings(settings: Awaited<ReturnType<typeof loadSettings>>): string {
   return JSON.stringify([
@@ -55,6 +61,11 @@ export function startMonitoring(): void {
 export function stopMonitoring(): void {
   isMonitoring = false;
   chrome.alarms.clear(ALARM_NAME);
+  if (completionTimeout !== null) {
+    self.clearTimeout(completionTimeout);
+    completionTimeout = null;
+  }
+  stopIconAnimation();
   clearBadge();
 }
 
@@ -73,12 +84,23 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
       const avgProgress = Math.round(totalProgress / tasks.length);
 
       updateBadge(avgProgress);
+      if (completionTimeout !== null && avgProgress < 100) {
+        self.clearTimeout(completionTimeout);
+        completionTimeout = null;
+      }
 
       if (avgProgress === 100) {
+        stopIconAnimation();
         // All downloads completed
-        setTimeout(() => {
-          stopMonitoring();
-        }, 5000);
+        if (completionTimeout === null) {
+          completionTimeout = self.setTimeout(() => {
+            completionTimeout = null;
+            stopMonitoring();
+          }, 5000);
+        }
+      }
+      if (avgProgress < 100) {
+        await startIconAnimation();
       }
     } else {
       // No active downloads

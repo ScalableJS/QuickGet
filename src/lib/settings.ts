@@ -11,18 +11,60 @@ import { DEFAULTS } from "./config.js";
  */
 export async function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(DEFAULTS, (items) => {
-      const settings: Settings = {
-        NASsecure: Boolean(items.NASsecure),
-        NASaddress: String(items.NASaddress || DEFAULTS.NASaddress),
-        NASport: String(items.NASport || DEFAULTS.NASport),
-        NASlogin: String(items.NASlogin || DEFAULTS.NASlogin),
-        NASpassword: String(items.NASpassword || DEFAULTS.NASpassword),
-        NAStempdir: String(items.NAStempdir || DEFAULTS.NAStempdir),
-        NASdir: String(items.NASdir || DEFAULTS.NASdir),
-        enableDebugLogging: Boolean(items.enableDebugLogging ?? DEFAULTS.enableDebugLogging),
+    chrome.storage.local.get(null, (items) => {
+      const missing: Partial<Settings> = {};
+
+      const stringWithDefault = (key: keyof Settings, fallback: string): string => {
+        const raw = items[key];
+        if (typeof raw === "string") {
+          const trimmed = raw.trim();
+          if (trimmed) return trimmed;
+        } else if (typeof raw === "number") {
+          const asString = String(raw).trim();
+          if (asString) return asString;
+        }
+
+        if (fallback) {
+          (missing as Record<string, unknown>)[key] = fallback;
+        }
+        return fallback;
       };
-      resolve(settings);
+
+      const booleanWithDefault = (key: keyof Settings, fallback: boolean): boolean => {
+        const raw = items[key];
+        if (typeof raw === "boolean") {
+          return raw;
+        }
+        if (typeof raw === "string" && raw !== "") {
+          const normalized = raw.toLowerCase();
+          if (normalized === "true" || normalized === "1") return true;
+          if (normalized === "false" || normalized === "0") return false;
+        }
+        (missing as Record<string, unknown>)[key] = fallback;
+        return fallback;
+      };
+
+      const settings: Settings = {
+        NASsecure: booleanWithDefault("NASsecure", DEFAULTS.NASsecure),
+        NASaddress: stringWithDefault("NASaddress", DEFAULTS.NASaddress),
+        NASport: stringWithDefault("NASport", DEFAULTS.NASport),
+        NASlogin: stringWithDefault("NASlogin", DEFAULTS.NASlogin),
+        NASpassword: stringWithDefault("NASpassword", DEFAULTS.NASpassword),
+        NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
+        NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
+        enableDebugLogging: booleanWithDefault(
+          "enableDebugLogging",
+          DEFAULTS.enableDebugLogging
+        ),
+      };
+
+      const finish = (): void => resolve(settings);
+
+      if (Object.keys(missing).length > 0) {
+        chrome.storage.local.set(missing, finish);
+      } else {
+        finish();
+      }
     });
   });
 }
