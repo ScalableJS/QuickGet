@@ -20,7 +20,7 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
   const { downloads, settings, upload } = options;
   const log = options.onLog ?? ((message: string) => console.debug(message));
 
-  const { play, stop, remove, add, settings: settingsBtn } = getToolbarElements();
+  const { play, stop, remove, add, settings: settingsBtn, pause } = getToolbarElements();
 
   play?.addEventListener("click", async () => {
     const selected = downloads.getSelected();
@@ -57,6 +57,18 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
   add?.addEventListener("click", () => {
     logToolbarAction("add", log);
     upload.triggerFilePicker();
+  });
+
+  pause?.addEventListener("click", async () => {
+    const selected = downloads.getSelected();
+    logToolbarAction("pause", log);
+    if (!selected) {
+      showStatus("Select a torrent to pause", "info", { autoHideMs: 2000 });
+      return;
+    }
+
+    await downloads.stop(selected);
+    showStatus("Torrent paused", "info", { autoHideMs: 2000 });
   });
 
   settingsBtn?.addEventListener("click", () => {

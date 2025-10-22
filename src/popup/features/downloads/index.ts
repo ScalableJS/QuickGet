@@ -101,7 +101,13 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
   return {
     refreshNow,
     remove: async (hash: string) => {
-      await deleteDownload(hash);
+      const normalizedHash = hash?.trim();
+      if (!normalizedHash) {
+        showStatus("Cannot remove download: missing identifier", "error");
+        log("remove aborted: empty hash");
+        return;
+      }
+      await deleteDownload(normalizedHash);
       showStatus("Download removed", "success", { autoHideMs: 2000 });
       await refreshNow({ silent: true });
     },

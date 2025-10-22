@@ -80,7 +80,6 @@ export class ApiClient {
   async queryTasksRaw(options: QueryTasksOptions = {}): Promise<TaskQueryResponse> {
     const { params = {}, signal } = options;
 
-    // Build form data - API requires URLSearchParams format
     const formData = new URLSearchParams();
     formData.append("limit", String(params.limit ?? 0));
     if (params.from !== undefined) {
@@ -92,14 +91,16 @@ export class ApiClient {
     formData.append("type", params.type ?? "all");
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Query", {
-      body: formData as any,
+      body: formData,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
+      bodySerializer: (body) => body,
       signal,
     });
 
     if (error) {
+      console.error("Task query error payload", error);
       throw new Error(`Task query failed: ${getErrorMessage(error)}`);
     }
 
@@ -108,6 +109,7 @@ export class ApiClient {
     }
 
     if (!isSuccessResponse(data)) {
+      console.error("Task query non-success payload", data);
       throw new Error(`Task query failed: ${getErrorMessage(data)}`);
     }
 
@@ -187,12 +189,12 @@ export class ApiClient {
   async startTask(hash: string): Promise<boolean> {
     const formData = new URLSearchParams();
     formData.append("hash", hash);
-
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Start", {
-      body: formData as any,
+      body: formData,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
+      bodySerializer: (body) => body,
     });
 
     const payload = data ?? error;
@@ -206,12 +208,12 @@ export class ApiClient {
   async stopTask(hash: string): Promise<boolean> {
     const formData = new URLSearchParams();
     formData.append("hash", hash);
-
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Stop", {
-      body: formData as any,
+      body: formData,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
+      bodySerializer: (body) => body,
     });
 
     const payload = data ?? error;
@@ -228,12 +230,12 @@ export class ApiClient {
     if (options.clean != null) {
       formData.append("clean", options.clean ? "1" : "0");
     }
-
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Remove", {
-      body: formData as any,
+      body: formData,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
+      bodySerializer: (body) => body,
     });
 
     const payload = data ?? error;
