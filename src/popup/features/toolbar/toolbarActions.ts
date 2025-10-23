@@ -8,23 +8,13 @@ interface ToolbarActionsOptions {
   downloads: DownloadsFeature;
   settings: SettingsFeature;
   upload: UploadFeature;
-  onLog?: (message: string) => void;
 }
 
-function logToolbarAction(action: string, log: (message: string) => void): void {
-  const message = `[Toolbar] ${action}`;
-  log(message);
-}
-
-export function setupToolbarActions(options: ToolbarActionsOptions): void {
-  const { downloads, settings, upload } = options;
-  const log = options.onLog ?? ((message: string) => console.debug(message));
-
-  const { play, stop, remove, add, settings: settingsBtn, pause } = getToolbarElements();
+export function setupToolbarActions({ downloads, settings, upload }: ToolbarActionsOptions): void {
+  const { play, stop, remove, add, pause, settings: settingsBtn } = getToolbarElements();
 
   play?.addEventListener("click", async () => {
     const selected = downloads.getSelected();
-    logToolbarAction("play", log);
     if (!selected) {
       showStatus("Select a torrent to start", "info", { autoHideMs: 2000 });
       return;
@@ -34,7 +24,6 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
 
   stop?.addEventListener("click", async () => {
     const selected = downloads.getSelected();
-    logToolbarAction("stop", log);
     if (!selected) {
       showStatus("Select a torrent to stop", "info", { autoHideMs: 2000 });
       return;
@@ -42,9 +31,17 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
     await downloads.stop(selected);
   });
 
+  pause?.addEventListener("click", async () => {
+    const selected = downloads.getSelected();
+    if (!selected) {
+      showStatus("Select a torrent to pause", "info", { autoHideMs: 2000 });
+      return;
+    }
+    await downloads.pause(selected);
+  });
+
   remove?.addEventListener("click", async () => {
     const selected = downloads.getSelected();
-    logToolbarAction("remove", log);
     if (!selected) {
       showStatus("Select a download to remove", "info", { autoHideMs: 2000 });
       return;
@@ -55,27 +52,13 @@ export function setupToolbarActions(options: ToolbarActionsOptions): void {
   });
 
   add?.addEventListener("click", () => {
-    logToolbarAction("add", log);
     upload.triggerFilePicker();
   });
 
-  pause?.addEventListener("click", async () => {
-    const selected = downloads.getSelected();
-    logToolbarAction("pause", log);
-    if (!selected) {
-      showStatus("Select a torrent to pause", "info", { autoHideMs: 2000 });
-      return;
-    }
-
-    await downloads.pause(selected);
-  });
-
   settingsBtn?.addEventListener("click", () => {
-    logToolbarAction("settings", log);
     const visible = settings.togglePanel();
     setSettingsButtonState(visible);
   });
 
-  // Initialize selection state to disabled until selection happens.
   setSelectionState(false);
 }
