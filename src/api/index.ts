@@ -9,7 +9,7 @@ export type ApiFetchClient = ReturnType<typeof createClient<paths>>;
 export interface ClientSetupOptions {
   settings: Settings;
   fetchFn?: typeof fetch;
-  logger?: { error: (msg: string, err?: any) => void; debug: (msg: string, data?: any) => void };
+  logger?: LoggerAdapter;
 }
 
 export function buildNASBaseUrl(settings: Settings): string {
@@ -41,7 +41,7 @@ export function buildNASBaseUrl(settings: Settings): string {
  */
 export function createSidMiddleware(options: {
   settings: Settings;
-  logger?: { error: (msg: string, err?: any) => void; debug: (msg: string, data?: any) => void };
+  logger?: LoggerAdapter;
 }): Middleware {
   let sid: string | null = null;
   const { settings, logger } = options;
@@ -117,6 +117,11 @@ export interface LoginResult {
   user: string;
 }
 
+export interface LoggerAdapter {
+  error: (msg: string, err?: unknown) => void;
+  debug: (msg: string, data?: unknown) => void;
+}
+
 export async function performLogin(settings: Settings): Promise<LoginResult> {
   const baseUrl = buildNASBaseUrl(settings);
   const formData = new URLSearchParams();
@@ -133,20 +138,38 @@ export async function performLogin(settings: Settings): Promise<LoginResult> {
   }
 
   // QNAP V4 API returns JSON
-  let data: any;
+  let data: unknown;
   try {
     data = await response.json();
   } catch (error) {
     throw new Error("NAS login failed: invalid JSON response");
   }
 
-  if (!data?.sid) {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("NAS login failed: malformed response");
+  }
+
+  const payload = data as Record<string, unknown>;
+  const sidValue = payload.sid;
+  const sid =
+    typeof sidValue === "string"
+      ? sidValue
+      : sidValue != null
+        ? String(sidValue)
+        : null;
+
+  if (!sid) {
     throw new Error("NAS login failed: no SID in response");
   }
 
   return {
-    sid: String(data.sid),
-    user: String(data.user ?? settings.NASlogin),
+    sid,
+    user:
+      typeof payload.user === "string"
+        ? payload.user
+        : payload.user != null
+          ? String(payload.user)
+          : settings.NASlogin,
   };
 }
 

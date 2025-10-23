@@ -1,37 +1,69 @@
-/**
- * Utility functions for API data processing
- */
+import type { BaseResponse } from "./type.js";
+
+type ApiResult = Partial<BaseResponse> & Record<string, unknown>;
+
+function toApiResult(value: unknown): ApiResult {
+  if (typeof value === "object" && value !== null) {
+    return value as ApiResult;
+  }
+  return { error: -1 };
+}
+
+const hasFalsyString = (value: unknown): boolean =>
+  typeof value === "string" && value.trim().length === 0;
+
+const coerceNumber = (value: unknown, fallback: number): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? fallback : parsed;
+  }
+  return fallback;
+};
+
+const coerceString = (value: unknown, fallback = ""): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+};
 
 /**
  * Create a typed error from QNAP API response
  * Enriches error with code, reason, and flags for specific error types
  */
-export function createApiError(prefix: string, result: any): Error {
-  const errorCode = Number(result?.error ?? -1);
-  const reason = String(result?.reason ?? "").trim();
+export function createApiError(prefix: string, result: unknown): Error {
+  const payload = toApiResult(result);
+  const errorCode = coerceNumber(payload.error, -1);
+  const reason = coerceString(payload.reason).trim();
   const message = reason ? `${prefix} (${errorCode}): ${reason}` : `${prefix} (${errorCode})`;
-  
+
   const error = new Error(message) as Error & {
     code: number;
     reason: string;
     duplicate?: boolean;
     apiUnsupported?: boolean;
   };
-  
+
   error.code = errorCode;
   error.reason = reason;
-  
+
   // Flag duplicate errors
   const reasonLower = reason.toLowerCase();
   if (reasonLower.includes("duplicate") || reasonLower.includes("exist")) {
     error.duplicate = true;
   }
-  
+
   // Flag unsupported API errors
   if (errorCode === 2 || reasonLower.includes("no such api")) {
     error.apiUnsupported = true;
   }
-  
+
   return error;
 }
 
@@ -46,13 +78,27 @@ export function delay(ms: number): Promise<void> {
 /**
  * Check if API response indicates success
  */
-export function isSuccessResponse(data: any): boolean {
-  return data && Number(data.error ?? -1) === 0;
+export function isSuccessResponse(data: unknown): data is BaseResponse {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  const payload = data as Record<string, unknown>;
+  const errorCode = coerceNumber(payload.error, -1);
+  return errorCode === 0 && !hasFalsyString(payload.error);
 }
 
 /**
  * Extract error message from API response
  */
-export function getErrorMessage(data: any, defaultMessage = "Unknown error"): string {
-  return data?.reason ?? data?.error ?? defaultMessage;
+export function getErrorMessage(data: unknown, defaultMessage = "Unknown error"): string {
+  if (typeof data !== "object" || data === null) {
+    return defaultMessage;
+  }
+  const payload = data as Record<string, unknown>;
+  const reason = coerceString(payload.reason);
+  if (reason) {
+    return reason;
+  }
+  const error = coerceString(payload.error);
+  return error || defaultMessage;
 }

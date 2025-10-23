@@ -5,10 +5,9 @@
 
 import morphdom from "morphdom";
 
-export interface MorphdomOptions {
-  childrenOnly?: boolean;
-  onBeforeElUpdated?: (fromEl: Element, toEl: Element) => boolean;
-}
+type MorphdomInternalOptions = NonNullable<Parameters<typeof morphdom>[2]>;
+
+export type MorphdomOptions = Partial<MorphdomInternalOptions>;
 
 /**
  * Create a temporary container with HTML content
@@ -42,9 +41,9 @@ export function morphDOMUpdate(
   const tempNode = createTempNode(newHtml);
 
   // Default options
-  const defaultOptions: MorphdomOptions = {
+  const defaultOptions: MorphdomInternalOptions = {
     childrenOnly: true,
-    onBeforeElUpdated: (fromEl: Element, toEl: Element) => {
+    onBeforeElUpdated: (fromEl: HTMLElement, toEl: HTMLElement) => {
       // Preserve input values and states
       if (
         fromEl instanceof HTMLInputElement &&
@@ -75,10 +74,10 @@ export function morphDOMUpdate(
   };
 
   // Merge provided options with defaults
-  const mergedOptions = {
+  const mergedOptions: MorphdomInternalOptions = {
     ...defaultOptions,
     ...options,
-    onBeforeElUpdated: (fromEl: Element, toEl: Element) => {
+    onBeforeElUpdated: (fromEl: HTMLElement, toEl: HTMLElement) => {
       // Call custom handler if provided
       const customResult = options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
       // Call default handler
@@ -89,7 +88,7 @@ export function morphDOMUpdate(
   };
 
   // Apply morphdom update
-  morphdom(target, tempNode, mergedOptions as any);
+  morphdom(target, tempNode, mergedOptions);
 }
 
 /**

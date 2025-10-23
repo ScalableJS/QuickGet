@@ -10,9 +10,13 @@ interface ToolbarActionsOptions {
   downloads: DownloadsFeature;
   settings: SettingsFeature;
   upload: UploadFeature;
+  onLog?: (message: string) => void;
 }
 
-export function setupToolbarActions({ downloads, settings, upload }: ToolbarActionsOptions): void {
+export function setupToolbarActions(options: ToolbarActionsOptions): void {
+  const { downloads, settings, upload } = options;
+  const log = options.onLog ?? ((message: string) => console.debug(`[Toolbar] ${message}`));
+
   const { play, stop, remove, add, pause, settings: settingsBtn } = getToolbarElements();
 
   play?.addEventListener("click", async () => {
@@ -63,4 +67,5 @@ export function setupToolbarActions({ downloads, settings, upload }: ToolbarActi
   });
 
   setSelectionState(false);
+  log("Toolbar actions initialized");
 }

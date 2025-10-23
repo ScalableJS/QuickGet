@@ -6,9 +6,9 @@ import { buildTaskSnapshot, updateSnapshot } from "./downloadsState.js";
 
 let listAbortController: AbortController | null = null;
 
-export interface ListDownloadsResult extends QueryTasksResult {
-  skipped: boolean;
-}
+export type ListDownloadsResult =
+  | ({ skipped: false } & QueryTasksResult)
+  | { skipped: true };
 
 async function ensureClient(): Promise<ApiClient> {
   return getApiClient();
@@ -16,7 +16,7 @@ async function ensureClient(): Promise<ApiClient> {
 
 export async function listDownloads(): Promise<ListDownloadsResult> {
   if (listAbortController) {
-    return { skipped: true, raw: { data: [] } as any, tasks: [] };
+    return { skipped: true };
   }
 
   const controller = new AbortController();

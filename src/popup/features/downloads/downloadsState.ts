@@ -50,15 +50,32 @@ export function onSnapshotChange(listener: SnapshotListener): () => void {
   return () => snapshotListeners.delete(listener);
 }
 
-export function buildTaskSnapshot(tasks: any[]): DownloadsSnapshot {
+type SnapshotSource = Record<string, unknown> | Task;
+
+export function buildTaskSnapshot(tasks: SnapshotSource[]): DownloadsSnapshot {
   const hashes = new Set<string>();
   const names = new Set<string>();
 
-  tasks.forEach((task) => {
-    const hash = task?.hash ?? task?.bt_hash ?? task?.id ?? null;
+  tasks.forEach((item) => {
+    if (typeof item !== "object" || item === null) {
+      return;
+    }
+
+    const task = item as Record<string, unknown>;
+    const hash =
+      task.hash ??
+      task.bt_hash ??
+      task.id ??
+      null;
     if (hash) hashes.add(String(hash).toLowerCase());
 
-    [task?.name, task?.title, task?.source, task?.source_name, task?.filename]
+    [
+      task.name,
+      task.title,
+      task.source,
+      task.source_name,
+      task.filename,
+    ]
       .filter(Boolean)
       .forEach((value) => {
         const normalized = String(value)

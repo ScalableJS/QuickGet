@@ -6,15 +6,17 @@
 import { handleAlarm, startMonitoring } from "./alarms.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
 
+declare const self: ServiceWorkerGlobalScope;
+
 // Service worker lifecycle events
-self.addEventListener("install", () => {
+self.addEventListener("install", (event: ExtendableEvent) => {
   console.log("[QuickGet] Service worker installed");
-  self.skipWaiting();
+  event.waitUntil(self.skipWaiting());
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", (event: ExtendableEvent) => {
   console.log("[QuickGet] Service worker activated");
-  event.waitUntil(clients.claim());
+  event.waitUntil(self.clients.claim());
 });
 
 // Initialize on install

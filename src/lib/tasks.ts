@@ -115,66 +115,121 @@ const qnapNumericStates: Record<number, TaskStatus> = {
   105: "seeding",
 };
 
-export const normalizeSynology = (task: any): Task => {
-  const size = Number(task.size ?? task.additional?.transfer?.size ?? 0);
-  const downloaded = Number(task.additional?.transfer?.size_downloaded ?? 0);
+type RawTaskRecord = Record<string, unknown>;
+
+const asRecord = (value: unknown): RawTaskRecord =>
+  typeof value === "object" && value !== null ? (value as RawTaskRecord) : {};
+
+const parseNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+};
+
+const readNumber = (value: unknown, fallback = 0): number =>
+  parseNumber(value) ?? fallback;
+
+const parseOptionalNumber = (value: unknown): number | undefined =>
+  parseNumber(value);
+
+const parseString = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return undefined;
+};
+
+const readString = (value: unknown, fallback = ""): string =>
+  parseString(value) ?? fallback;
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max);
+
+const toRecordArray = (value: unknown): RawTaskRecord[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is RawTaskRecord => typeof item === "object" && item !== null)
+    .map((item) => item as RawTaskRecord);
+};
+
+export const normalizeSynology = (input: unknown): Task => {
+  const task = asRecord(input);
+  const additional = asRecord(task.additional);
+  const transfer = asRecord(additional.transfer);
+  const detail = asRecord(additional.detail);
+
+  const size = readNumber(task.size ?? transfer.size, 0);
+  const downloaded = readNumber(transfer.size_downloaded, 0);
+
+  const seedsTotal = parseOptionalNumber(detail.seeders);
+  const peersTotal = parseOptionalNumber(detail.leechers);
+  const eta =
+    parseOptionalNumber(transfer.eta) ??
+    parseOptionalNumber(detail.eta);
+  const createdAt = parseOptionalNumber(detail.create_time);
 
   return {
-    id: String(task.id ?? task.task_id ?? task.hash ?? crypto.randomUUID()),
-    name:
-      String(
-        task.title ??
-          task.display_name ??
-          task.additional?.detail?.destination ??
-          "task"
-      ),
-    status: mapStatus("synology", task.status ?? ""),
+    id: readString(task.id ?? task.task_id ?? task.hash ?? crypto.randomUUID()),
+    name: readString(
+      task.title ??
+        task.display_name ??
+        detail.destination ??
+        "task"
+    ),
+    status: mapStatus("synology", readString(task.status ?? "", "")),
     progress:
       size > 0
-        ? Math.max(0, Math.min(100, (downloaded / size) * 100))
-        : Number(task.additional?.transfer?.progress ?? 0),
+        ? clamp((downloaded / size) * 100, 0, 100)
+        : readNumber(transfer.progress, 0),
     sizeBytes: size,
     downloadedBytes: downloaded,
-    uploadedBytes: Number(task.additional?.transfer?.size_uploaded ?? 0),
-    downSpeedBps: Number(task.additional?.transfer?.speed_download ?? 0),
-    upSpeedBps: Number(task.additional?.transfer?.speed_upload ?? 0),
+    uploadedBytes: readNumber(transfer.size_uploaded, 0),
+    downSpeedBps: readNumber(transfer.speed_download, 0),
+    upSpeedBps: readNumber(transfer.speed_upload, 0),
     seeds: {
-      connected: Number(task.additional?.detail?.connected_seeders ?? 0),
-      total:
-        task.additional?.detail?.seeders != null
-          ? Number(task.additional.detail.seeders)
-          : undefined,
+      connected: readNumber(detail.connected_seeders, 0),
+      total: seedsTotal,
     },
     peers: {
-      connected: Number(task.additional?.detail?.connected_leechers ?? 0),
-      total:
-        task.additional?.detail?.leechers != null
-          ? Number(task.additional.detail.leechers)
-          : undefined,
+      connected: readNumber(detail.connected_leechers, 0),
+      total: peersTotal,
     },
-    etaSec:
-      task.additional?.transfer?.eta != null
-        ? Number(task.additional.transfer.eta)
-        : undefined,
+    etaSec: eta,
     hash:
-      task.hash ??
-      task.additional?.detail?.uri ??
-      task.additional?.detail?.destination ??
+      parseString(task.hash) ??
+      parseString(detail.uri) ??
+      parseString(detail.destination) ??
       undefined,
-    addedAt:
-      task.additional?.detail?.create_time != null
-        ? Number(task.additional.detail.create_time)
-        : undefined,
-    priority: task.priority != null ? Number(task.priority) : undefined,
+    addedAt: createdAt,
+    priority: parseOptionalNumber(task.priority),
     source: "synology",
   };
 };
 
-export const normalizeQnap = (task: any): Task => {
-  const size = Number(task.total_size ?? task.size ?? 0);
-  const downloaded = Number(task.total_down ?? task.done ?? task.down_size ?? task.completed ?? 0);
-  const uploaded = Number(task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded ?? 0);
-  
+export const normalizeQnap = (input: unknown): Task => {
+  const task = asRecord(input);
+
+  const size = readNumber(task.total_size ?? task.size, 0);
+  const downloaded = readNumber(
+    task.total_down ?? task.done ?? task.down_size ?? task.completed,
+    0
+  );
+  const uploaded = readNumber(
+    task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded,
+    0
+  );
+
   const created =
     task.create_time ??
     task.created ??
@@ -183,52 +238,46 @@ export const normalizeQnap = (task: any): Task => {
     null;
 
   const addedAt =
-    created != null
-      ? typeof created === "number"
-        ? created > 1e12
-          ? Number(created)
-          : Number(created) * 1000
-        : parseDateToEpoch(created)
-      : undefined;
+    typeof created === "number"
+      ? created > 1e12
+        ? created
+        : created * 1000
+      : typeof created === "string"
+        ? parseDateToEpoch(created)
+        : undefined;
 
-  // Приоритет для прогресса:
-  // 1. Если есть task.progress и оно валидное (0-100), используем его
-  // 2. Иначе вычисляем из downloaded/size
-  const rawProgress = Number(task.progress ?? -1);
-  const hasValidProgress = rawProgress >= 0 && rawProgress <= 100;
-  
-  const calculatedProgress = size > 0
-    ? Math.max(0, Math.min(100, (downloaded / size) * 100))
-    : 0;
-  
+  const rawProgress = parseOptionalNumber(task.progress);
+  const hasValidProgress =
+    rawProgress !== undefined && rawProgress >= 0 && rawProgress <= 100;
+
+  const calculatedProgress =
+    size > 0 ? clamp((downloaded / size) * 100, 0, 100) : 0;
+
   const progress = hasValidProgress ? rawProgress : calculatedProgress;
 
-  // Определяем статус
-  let status = mapStatus("qnap", task.status ?? task.state ?? "");
-  
-  // QNAP Bug Fix: когда задача stopped, state остается 2 (downloading),
-  // но activity_time = 0 и скорость = 0
-  const activityTime = Number(task.activity_time ?? -1);
-  const downRate = Number(task.down_rate ?? task.download_speed ?? 0);
-  const upRate = Number(task.up_rate ?? task.upload_speed ?? 0);
-  const rawState = Number(task.status ?? task.state ?? 0);
-  const peers = Number(task.peers ?? task.peers_connected ?? 0);
-  const seeds = Number(task.seeds ?? task.seeds_connected ?? 0);
-  
-  // state=3 при прогрессе ~100% и activity_time > 0 - это finishing (перемещение файлов)
+  let status = mapStatus(
+    "qnap",
+    readString(task.status ?? task.state ?? "", "")
+  );
+
+  const activityTime = readNumber(task.activity_time, -1);
+  const downRate = readNumber(task.down_rate ?? task.download_speed, 0);
+  const upRate = readNumber(task.up_rate ?? task.upload_speed, 0);
+  const rawState = readNumber(task.status ?? task.state, 0);
+  const peers = readNumber(task.peers ?? task.peers_connected, 0);
+  const seeds = readNumber(task.seeds ?? task.seeds_connected, 0);
+
   if (rawState === 3 && progress >= 99 && activityTime > 0) {
     status = "finishing";
-  }
-  // state=1 может быть как queued, так и paused
-  // Если прогресс > 0 - это paused (пользователь поставил на паузу)
-  else if (rawState === 1 && progress > 0) {
+  } else if (rawState === 1 && progress > 0) {
     status = "paused";
   }
-  
-  // Если задача показывает downloading/checking, но activity_time=0 и нет скорости,
-  // и прогресс не 100% - это stopped задача
+
   if (
-    (rawState === 2 || rawState === 6 || rawState === 104 || rawState === 102) && // downloading/checking states
+    (rawState === 2 ||
+      rawState === 6 ||
+      rawState === 104 ||
+      rawState === 102) &&
     activityTime === 0 &&
     downRate === 0 &&
     upRate === 0 &&
@@ -236,9 +285,7 @@ export const normalizeQnap = (task: any): Task => {
   ) {
     status = "stopped";
   }
-  
-  // Если задача в состоянии checking (102) с прогрессом > 0, но нет пиров/сидов долгое время
-  // и нет скорости - это скорее queued (ищет пиров)
+
   if (
     rawState === 102 &&
     progress > 0 &&
@@ -248,12 +295,19 @@ export const normalizeQnap = (task: any): Task => {
     seeds === 0 &&
     activityTime > 0
   ) {
-    status = "queued"; // Ищет пиров
+    status = "queued";
   }
 
+  const seedsTotal = parseOptionalNumber(task.seeds_total);
+  const peersTotal = parseOptionalNumber(task.peers_total);
+  const etaValue =
+    parseOptionalNumber(task.eta) ?? parseOptionalNumber(task.remain_time);
+
   return {
-    id: String(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
-    name: String(task.name ?? task.title ?? task.source ?? task.source_name ?? "task"),
+    id: readString(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
+    name: readString(
+      task.name ?? task.title ?? task.source ?? task.source_name ?? "task"
+    ),
     status,
     progress,
     sizeBytes: size,
@@ -262,35 +316,38 @@ export const normalizeQnap = (task: any): Task => {
     downSpeedBps: downRate,
     upSpeedBps: upRate,
     seeds: {
-      connected: Number(task.seeds ?? task.seeds_connected ?? 0),
-      total:
-        task.seeds_total != null ? Number(task.seeds_total) : undefined,
+      connected: seeds,
+      total: seedsTotal,
     },
     peers: {
-      connected: Number(task.peers ?? task.peers_connected ?? 0),
-      total:
-        task.peers_total != null ? Number(task.peers_total) : undefined,
+      connected: peers,
+      total: peersTotal,
     },
-    etaSec: task.eta != null && task.eta >= 0 ? Number(task.eta) : task.remain_time != null ? Number(task.remain_time) : undefined,
-    hash: task.hash ?? task.bt_hash ?? undefined,
+    etaSec: etaValue != null && etaValue >= 0 ? etaValue : undefined,
+    hash:
+      parseString(task.hash) ??
+      parseString(task.bt_hash) ??
+      undefined,
     addedAt,
-    priority: task.priority != null ? Number(task.priority) : undefined,
+    priority: parseOptionalNumber(task.priority),
     source: "qnap",
   };
 };
 
-export const normalizeTasks = (vendor: Vendor, payload: any): Task[] => {
-  const list: any[] = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.tasks)
-      ? payload.tasks
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : Array.isArray(payload?.result)
-          ? payload.result
-          : [];
+export const normalizeTasks = (vendor: Vendor, payload: unknown): Task[] => {
+  const root = asRecord(payload);
+  const variants = [
+    toRecordArray(payload),
+    toRecordArray(root.tasks),
+    toRecordArray(root.data),
+    toRecordArray(root.result),
+  ];
 
-  return vendor === "synology" ? list.map(normalizeSynology) : list.map(normalizeQnap);
+  const list = variants.find((items) => items.length > 0) ?? [];
+
+  return vendor === "synology"
+    ? list.map((item) => normalizeSynology(item))
+    : list.map((item) => normalizeQnap(item));
 };
 
 function parseDateToEpoch(value: string): number | undefined {

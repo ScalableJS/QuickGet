@@ -2,7 +2,7 @@ import type { Settings } from "../lib/config.js";
 import { createLogger, type Logger } from "../lib/logger.js";
 import { normalizeTasks, type Task } from "../lib/tasks.js";
 
-import type { ApiResponse } from "./type.js";
+import type { ApiResponse, components } from "./type.js";
 import { createApiError, isSuccessResponse, getErrorMessage } from "./utils.js";
 
 import { createOpenApiFetchClient, buildNASBaseUrl } from ".";
@@ -13,6 +13,11 @@ export interface ApiClientOptions extends ClientSetupOptions {
 }
 
 type TaskQueryResponse = ApiResponse<"queryTasks">;
+type TaskQueryRequest = components["schemas"]["TaskQueryRequest"];
+type AddUrlRequest = components["schemas"]["AddUrlRequest"];
+type ModifyTaskRequest = components["schemas"]["ModifyTaskRequest"];
+type RemoveTaskRequest = components["schemas"]["RemoveTaskRequest"];
+type AddTorrentRequest = components["schemas"]["AddTorrentRequest"];
 
 export interface QueryTasksResult {
   raw: TaskQueryResponse;
@@ -82,22 +87,21 @@ export class ApiClient {
   async queryTasksRaw(options: QueryTasksOptions = {}): Promise<TaskQueryResponse> {
     const { params = {}, signal } = options;
 
-    const formData = new URLSearchParams();
-    formData.append("limit", String(params.limit ?? 0));
-    if (params.from !== undefined) {
-      formData.append("from", String(params.from));
-    }
-    formData.append("field", params.field ?? "priority");
-    formData.append("direction", params.direction ?? "DESC");
-    formData.append("status", params.status ?? "all");
-    formData.append("type", params.type ?? "all");
+    const requestBody = withEmptySid<TaskQueryRequest>({
+      limit: params.limit ?? 0,
+      from: params.from,
+      field: params.field ?? "priority",
+      direction: params.direction ?? "DESC",
+      status: params.status ?? "all",
+      type: params.type ?? "all",
+    });
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Query", {
-      body: formData as any,
+      body: requestBody,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      bodySerializer: (body) => body,
+      bodySerializer: serializeUrlEncoded,
       signal,
     });
 
@@ -123,26 +127,22 @@ export class ApiClient {
     options: { savePath?: string; tempFolder?: string; targetFolder?: string } = {}
   ): Promise<boolean> {
     // Build form data - API requires URLSearchParams format
-    const formData = new URLSearchParams();
-    formData.append("url", url);
-    formData.append(
-      "savepath",
-      options.savePath ??
+    const requestBody = withEmptySid<AddUrlRequest>({
+      url,
+      savepath:
+        options.savePath ??
         options.targetFolder ??
-        (this.settings.NASdir ? this.settings.NASdir : `/${this.settings.NAStempdir}`)
-    );
-    if (options.tempFolder) {
-      formData.append("temp", options.tempFolder);
-    }
-    if (options.targetFolder) {
-      formData.append("move", options.targetFolder);
-    }
+        (this.settings.NASdir ? this.settings.NASdir : `/${this.settings.NAStempdir}`),
+      temp: options.tempFolder,
+      move: options.targetFolder,
+    });
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/AddUrl", {
-      body: formData as any,
+      body: requestBody,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
+      bodySerializer: serializeUrlEncoded,
     });
 
     if (error) {
@@ -158,20 +158,17 @@ export class ApiClient {
 
   async addTorrent(file: File): Promise<AddTorrentResult> {
     // Build FormData with torrent file
-    const formData = new FormData();
-    formData.append("bt", file, file.name);
-    formData.append("bt_task", file, file.name);
-    formData.append("temp", this.settings.NAStempdir);
-    if (this.settings.NASdir) {
-      formData.append("move", this.settings.NASdir);
-      formData.append("dest_path", this.settings.NASdir);
-    }
+    const body = withEmptySid<AddTorrentRequest>({
+      bt: file,
+      bt_task: file,
+      temp: this.settings.NAStempdir,
+      move: this.settings.NASdir ?? undefined,
+      dest_path: this.settings.NASdir ?? undefined,
+    });
 
-    // Send via openapi-fetch with FormData
-    // Middleware will add SID automatically
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/AddTorrent", {
-      body: formData as any,
-      bodySerializer: (body) => body, // Pass FormData as-is
+      body,
+      bodySerializer: serializeMultipart,
     });
 
     const payload = data ?? error;
@@ -181,7 +178,7 @@ export class ApiClient {
     }
 
     const err = createApiError("AddTorrent error", payload);
-    if ((err as any).duplicate) {
+    if (isErrorWithDuplicateFlag(err) && err.duplicate) {
       return { added: false, duplicate: true };
     }
 
@@ -189,14 +186,13 @@ export class ApiClient {
   }
 
   async startTask(hash: string): Promise<boolean> {
-    const formData = new URLSearchParams();
-    formData.append("hash", hash);
+    const body = withEmptySid<ModifyTaskRequest>({ hash });
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Start", {
-      body: formData as any,
+      body,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      bodySerializer: (body) => body,
+      bodySerializer: serializeUrlEncoded,
     });
 
     const payload = data ?? error;
@@ -208,14 +204,13 @@ export class ApiClient {
   }
 
   async stopTask(hash: string): Promise<boolean> {
-    const formData = new URLSearchParams();
-    formData.append("hash", hash);
+    const body = withEmptySid<ModifyTaskRequest>({ hash });
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Stop", {
-      body: formData as any,
+      body,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      bodySerializer: (body) => body,
+      bodySerializer: serializeUrlEncoded,
     });
 
     const payload = data ?? error;
@@ -227,14 +222,13 @@ export class ApiClient {
   }
 
   async pauseTask(hash: string): Promise<boolean> {
-    const formData = new URLSearchParams();
-    formData.append("hash", hash);
+    const body = withEmptySid<ModifyTaskRequest>({ hash });
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Pause", {
-      body: formData as any,
+      body,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      bodySerializer: (body) => body,
+      bodySerializer: serializeUrlEncoded,
     });
 
     const payload = data ?? error;
@@ -246,17 +240,16 @@ export class ApiClient {
   }
 
   async removeTask(hash: string, options: { clean?: boolean } = {}): Promise<boolean> {
-    const formData = new URLSearchParams();
-    formData.append("hash", hash);
-    if (options.clean != null) {
-      formData.append("clean", options.clean ? "1" : "0");
-    }
+    const body = withEmptySid<RemoveTaskRequest>({
+      hash,
+      clean: options.clean != null ? (options.clean ? 1 : 0) : undefined,
+    });
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Remove", {
-      body: formData as any,
+      body,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      bodySerializer: (body) => body,
+      bodySerializer: serializeUrlEncoded,
     });
 
     const payload = data ?? error;
@@ -270,4 +263,46 @@ export class ApiClient {
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
   return new ApiClient(options);
+}
+
+function withEmptySid<T extends { sid: string }>(
+  body: Omit<T, "sid"> & Partial<Pick<T, "sid">>
+): T {
+  return { sid: "", ...body } as T;
+}
+
+function serializeUrlEncoded<T extends { sid: string }>(body: T): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(body)) {
+    if (value === undefined || value === null) continue;
+    if (key === "sid" && value === "") continue;
+    params.append(key, String(value));
+  }
+  return params;
+}
+
+function serializeMultipart(body: AddTorrentRequest): FormData {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(body) as Array<
+    [keyof AddTorrentRequest, AddTorrentRequest[keyof AddTorrentRequest]]
+  >) {
+    if (value === undefined || value === null) continue;
+    if (key === "sid" && value === "") continue;
+    if (value instanceof Blob) {
+      formData.append(key, value);
+    } else {
+      formData.append(key, String(value));
+    }
+  }
+  return formData;
+}
+
+function isErrorWithDuplicateFlag(
+  error: unknown
+): error is Error & { duplicate?: boolean } {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  const candidate = error as { duplicate?: unknown };
+  return typeof candidate.duplicate === "boolean";
 }
