@@ -80,7 +80,7 @@ export function buildTaskSnapshot(tasks: SnapshotSource[]): DownloadsSnapshot {
       .forEach((value) => {
         const normalized = String(value)
           .replace(/\.torrent$/i, "")
-          .replace(/\[[^\]]*\]/g, "")
+          .replace(/\[[^\]]*]/g, "")
           .replace(/[._-]+/g, " ")
           .replace(/\s+/g, " ")
           .trim()
@@ -90,8 +90,4 @@ export function buildTaskSnapshot(tasks: SnapshotSource[]): DownloadsSnapshot {
   });
 
   return { hashes, names };
-}
-
-export function buildSnapshotFromTasks(tasks: Task[]): DownloadsSnapshot {
-  return buildTaskSnapshot(tasks);
 }
