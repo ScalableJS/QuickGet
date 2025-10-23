@@ -3,8 +3,8 @@
  * Orchestrates background tasks and event handlers
  */
 
-import { createContextMenus, handleContextMenuClick } from "./menus.js";
 import { handleAlarm, startMonitoring } from "./alarms.js";
+import { createContextMenus, handleContextMenuClick } from "./menus.js";
 
 // Service worker lifecycle events
 self.addEventListener("install", () => {

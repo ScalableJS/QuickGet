@@ -3,8 +3,8 @@
  * Creates and manages extension context menu items
  */
 
-import { loadSettings } from "@lib/settings.js";
 import { createApiClient } from "@api/client.js";
+import { loadSettings } from "@lib/settings.js";
 
 /**
  * Create context menu items

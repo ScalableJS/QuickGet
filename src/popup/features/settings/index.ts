@@ -1,7 +1,10 @@
-import { loadSettings, saveSettings } from "@lib/settings.js";
 import type { Settings } from "@lib/config.js";
-import { showStatus } from "../../components/statusPill/index.js";
-import { invalidateClientCache, getApiClient } from "../../shared/api/index.js";
+import { loadSettings, saveSettings } from "@lib/settings.js";
+
+import { showStatus } from "@/popup/components";
+
+import { invalidateClientCache, getApiClient } from "../../shared/api";
+
 import { fillSettingsForm, readSettingsForm, setupSettingsForm, getSettingsPanel, showSettingsPanel, hideSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
 
 interface InitializeSettingsOptions {

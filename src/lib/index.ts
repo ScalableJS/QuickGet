@@ -1,5 +1,5 @@
 export * from "../api/client.js";
-export * from "../api/index.js";
+export * from "../api";
 export * from "../api/type.js";
 export * from "./config.js";
 export * from "./logger.js";

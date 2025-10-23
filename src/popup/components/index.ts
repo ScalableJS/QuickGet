@@ -1,2 +1,2 @@
-export * from "./downloadItem/index.js";
-export * from "./statusPill/index.js";
+export * from "./downloadItem";
+export * from "./statusPill";

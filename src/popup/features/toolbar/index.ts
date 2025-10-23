@@ -1,8 +1,9 @@
-import { setSelectionState, setSettingsButtonState } from "./toolbarState.js";
+import type { DownloadsFeature } from "../downloads";
+import type { SettingsFeature } from "../settings";
+import type { UploadFeature } from "../upload";
+
 import { setupToolbarActions } from "./toolbarActions.js";
-import type { DownloadsFeature } from "../downloads/index.js";
-import type { SettingsFeature } from "../settings/index.js";
-import type { UploadFeature } from "../upload/index.js";
+import { setSelectionState, setSettingsButtonState } from "./toolbarState.js";
 
 interface InitializeToolbarOptions {
   downloads: DownloadsFeature;

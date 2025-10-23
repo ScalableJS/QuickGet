@@ -1,10 +1,11 @@
-import { initializeDebug } from "./features/debug/index.js";
-import { initializeSettings } from "./features/settings/index.js";
-import { initializeDownloads, type DownloadsFeature } from "./features/downloads/index.js";
-import { initializeToolbar } from "./features/toolbar/index.js";
-import { initializeUpload } from "./features/upload/index.js";
-import { showStatus } from "./components/statusPill/index.js";
-import { setDefaultClientLogger } from "./shared/api/index.js";
+import { showStatus } from "@/popup/components";
+
+import { initializeDebug } from "./features/debug";
+import { initializeDownloads, type DownloadsFeature } from "./features/downloads";
+import { initializeSettings } from "./features/settings";
+import { initializeToolbar } from "./features/toolbar";
+import { initializeUpload } from "./features/upload";
+import { setDefaultClientLogger } from "./shared/api";
 
 function handleInitializationError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);

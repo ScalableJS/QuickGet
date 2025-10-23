@@ -1,7 +1,9 @@
-import { showStatus } from "../../components/statusPill/index.js";
-import { getApiClient } from "../../shared/api/index.js";
+import { showStatus } from "@/popup/components";
+
+import { getApiClient } from "../../shared/api";
 import { refreshSnapshot } from "../downloads/downloadsManager.js";
 import { getSnapshot } from "../downloads/downloadsState.js";
+
 import { checkDuplicate, normalizeFileName } from "./duplicateCheck.js";
 
 interface UploadOptions {

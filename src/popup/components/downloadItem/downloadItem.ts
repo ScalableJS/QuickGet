@@ -115,10 +115,10 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
         <span class="download-speed">${escapeHtml(speedText)}${etaSuffix}</span>
       </div>
       ${
-        addedText
-          ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>`
-          : ""
-      }
+  addedText
+    ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>`
+    : ""
+}
       <div class="progress-container">
         <span class="progress-icon" aria-label="${escapeHtml(formatStatus(task.status))}">${statusIcon}</span>
         <div class="progress-bar">
@@ -130,7 +130,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
 }
 
 export function renderEmptyDownloadState(): string {
-  return `<div class="download-empty" role="note">No active downloads</div>`;
+  return "<div class=\"download-empty\" role=\"note\">No active downloads</div>";
 }
 
 export function createDownloadItemElement(task: Task, options: DownloadItemOptions = {}): HTMLElement {

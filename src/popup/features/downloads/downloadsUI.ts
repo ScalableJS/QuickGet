@@ -1,7 +1,9 @@
 import type { Task } from "@lib/tasks.js";
-import { morphDOMUpdateList } from "../../shared/dom/index.js";
-import { formatRate } from "../../shared/formatters/index.js";
+
 import { renderDownloadsList } from "../../render/downloads.js";
+import { morphDOMUpdateList } from "../../shared/dom";
+import { formatRate } from "../../shared/formatters";
+
 import {
   getSelectedHash,
   setSelectedHash,

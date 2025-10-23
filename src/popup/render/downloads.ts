@@ -1,6 +1,6 @@
 import type { Task } from "@lib/tasks.js";
 
-import { renderDownloadItem, renderEmptyDownloadState } from "../components/downloadItem/index.js";
+import { renderDownloadItem, renderEmptyDownloadState } from "../components/downloadItem";
 
 export { renderDownloadItem, renderEmptyDownloadState };
 

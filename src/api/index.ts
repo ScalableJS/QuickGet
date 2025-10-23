@@ -1,6 +1,8 @@
 import createClient, { type Middleware, type MiddlewareRequest } from "openapi-fetch";
-import type { paths } from "./type.js";
+
 import type { Settings } from "../lib/config.js";
+
+import type { paths } from "./type.js";
 
 export type ApiFetchClient = ReturnType<typeof createClient<paths>>;
 

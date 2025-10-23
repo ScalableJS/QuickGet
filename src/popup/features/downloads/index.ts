@@ -1,5 +1,13 @@
 import type { Task } from "@lib/tasks.js";
-import { showStatus } from "../../components/statusPill/index.js";
+
+import { showStatus } from "@/popup/components";
+
+import {
+  configureAutoRefresh,
+  startAutoRefresh as runAutoRefresh,
+  stopAutoRefresh as haltAutoRefresh,
+  isAutoRefreshRunning,
+} from "./autoRefresh.js";
 import {
   listDownloads as queryDownloads,
   removeDownload as deleteDownload,
@@ -8,19 +16,13 @@ import {
   pauseTorrent as pauseTask,
   abortListDownloads,
 } from "./downloadsManager.js";
-import { setupDownloadsUI, renderDownloads, hideDownloads } from "./downloadsUI.js";
-import {
-  configureAutoRefresh,
-  startAutoRefresh as runAutoRefresh,
-  stopAutoRefresh as haltAutoRefresh,
-  isAutoRefreshRunning,
-} from "./autoRefresh.js";
 import {
   getSelectedHash,
   setSelectedHash,
   clearSelection,
   onSelectionChange,
 } from "./downloadsState.js";
+import { setupDownloadsUI, renderDownloads, hideDownloads } from "./downloadsUI.js";
 
 interface InitializeDownloadsOptions {
   onSelectionChange?: (hash: string | null) => void;

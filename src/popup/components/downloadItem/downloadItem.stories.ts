@@ -1,6 +1,6 @@
+import type { Task, TaskStatus } from "@lib/tasks.js";
 import type { Meta, StoryObj } from "@storybook/html";
 
-import type { Task, TaskStatus } from "@lib/tasks.js";
 import { renderDownloadItem } from "./downloadItem.js";
 
 interface DownloadItemStoryArgs {

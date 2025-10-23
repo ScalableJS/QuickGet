@@ -5,6 +5,7 @@
 
 import { createApiClient, type ApiClient } from "@api/client.js";
 import { loadSettings } from "@lib/settings.js";
+
 import {
   updateBadge,
   clearBadge,

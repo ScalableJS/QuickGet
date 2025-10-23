@@ -31,7 +31,8 @@
         "varsIgnorePattern": "^_"
       }
     ],
-    "@typescript-eslint/explicit-module-boundary-types": "warn",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-explicit-any": "off",
     "import/order": [
       "warn",
       {
@@ -42,15 +43,40 @@
             "group": "internal"
           }
         ],
-        "alphabeticalOptions": {
+        "alphabetize": {
           "order": "asc",
           "caseInsensitive": true
-        }
+        },
+        "newlines-between": "always",
+        "warnOnUnassignedImports": false
       }
     ],
-    "no-console": ["warn", { "allow": ["warn", "error", "log"] }],
-    "eqeqeq": ["error", "always"],
-    "no-eval": "error"
+    "no-console": ["warn", { "allow": ["warn", "error", "log", "info", "debug"] }],
+    "eqeqeq": ["error", "smart"],
+    "no-eval": "error",
+    "import/no-useless-path-segments": [
+      "warn",
+      {
+        "noUselessIndex": true
+      }
+    ],
+    "import/newline-after-import": ["warn", { "count": 1 }],
+    "import/no-duplicates": "warn",
+    "prefer-template": "warn",
+    "object-shorthand": ["warn", "always"],
+    "arrow-body-style": ["warn", "as-needed"],
+    "prefer-arrow-callback": ["warn", { "allowNamedFunctions": true }],
+    "no-useless-return": "warn",
+    "no-useless-concat": "warn",
+    "dot-notation": "warn",
+    "no-useless-rename": "warn",
+    "no-return-await": "warn",
+    "no-else-return": ["warn", { "allowElseIf": false }],
+    "operator-assignment": ["warn", "always"],
+    "no-extra-bind": "warn",
+    "no-undef-init": "warn",
+    "prefer-object-spread": "warn",
+    "prefer-exponentiation-operator": "warn"
   },
   "ignorePatterns": [
     "dist/",
@@ -58,6 +84,7 @@
     ".vscode/",
     ".idea/",
     "*.config.js",
-    "*.config.ts"
+    "*.config.ts",
+    "scripts/"
   ]
 }

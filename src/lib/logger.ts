@@ -33,7 +33,7 @@ export interface Logger {
 
 export function createLogger(namespace: string, options: LoggerOptions = {}): Logger {
   let enabled = Boolean(options.enabled);
-  let minLevel = options.minLevel ?? "info";
+  const minLevel = options.minLevel ?? "info";
   const listener = options.listener;
 
   const shouldEmit = (level: LogLevel): boolean => {
@@ -58,11 +58,12 @@ export function createLogger(namespace: string, options: LoggerOptions = {}): Lo
   const write = (level: LogLevel, method: "debug" | "info" | "warn" | "error", message: string, details: unknown[]): void => {
     if (!shouldEmit(level)) return;
     const prefix = `[${namespace}]`;
+    // eslint-disable-next-line no-console
     (console[method] ?? console.log).call(console, `${prefix} ${message}`, ...details);
     emit(level, message, details);
   };
-
-  const logger: Logger = {
+  
+  return {
     debug(message: string, ...details: unknown[]) {
       write("debug", "debug", message, details);
     },
@@ -86,6 +87,4 @@ export function createLogger(namespace: string, options: LoggerOptions = {}): Lo
       return enabled;
     },
   };
-
-  return logger;
 }

@@ -283,12 +283,12 @@ export const normalizeTasks = (vendor: Vendor, payload: any): Task[] => {
   const list: any[] = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.tasks)
-    ? payload.tasks
-    : Array.isArray(payload?.data)
-    ? payload.data
-    : Array.isArray(payload?.result)
-    ? payload.result
-    : [];
+      ? payload.tasks
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.result)
+          ? payload.result
+          : [];
 
   return vendor === "synology" ? list.map(normalizeSynology) : list.map(normalizeQnap);
 };

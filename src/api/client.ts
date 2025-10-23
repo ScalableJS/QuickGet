@@ -1,10 +1,12 @@
-import type { ApiResponse } from "./type.js";
-import type { ClientSetupOptions, ApiFetchClient } from "./index.js";
-import { createOpenApiFetchClient, buildNASBaseUrl } from "./index.js";
 import type { Settings } from "../lib/config.js";
-import { createLogger, Logger } from "../lib/logger.js";
+import { createLogger, type Logger } from "../lib/logger.js";
 import { normalizeTasks, type Task } from "../lib/tasks.js";
+
+import type { ApiResponse } from "./type.js";
 import { createApiError, isSuccessResponse, getErrorMessage } from "./utils.js";
+
+import { createOpenApiFetchClient, buildNASBaseUrl } from ".";
+import type { ClientSetupOptions, ApiFetchClient } from ".";
 
 export interface ApiClientOptions extends ClientSetupOptions {
   logger?: Logger;

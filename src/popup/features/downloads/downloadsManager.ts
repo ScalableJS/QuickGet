@@ -1,6 +1,7 @@
-import type { QueryTasksResult } from "@api/client.js";
-import type { ApiClient } from "@api/client.js";
-import { getApiClient } from "../../shared/api/index.js";
+import type { QueryTasksResult, ApiClient } from "@api/client.js";
+
+import { getApiClient } from "../../shared/api";
+
 import { buildTaskSnapshot, updateSnapshot } from "./downloadsState.js";
 
 let listAbortController: AbortController | null = null;

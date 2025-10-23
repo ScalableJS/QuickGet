@@ -1,5 +1,7 @@
 import type { Logger } from "@lib/logger.js";
-import { showStatus } from "../../components/statusPill/index.js";
+
+import { showStatus } from "@/popup/components";
+
 import {
   addDebugLog,
   setDebugLoggingEnabled,
