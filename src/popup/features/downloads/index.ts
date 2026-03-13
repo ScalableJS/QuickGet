@@ -4,25 +4,20 @@ import { showStatus } from "@/popup/components";
 
 import {
   configureAutoRefresh,
-  startAutoRefresh as runAutoRefresh,
   stopAutoRefresh as haltAutoRefresh,
   isAutoRefreshRunning,
+  startAutoRefresh as runAutoRefresh,
 } from "./autoRefresh.js";
 import {
-  listDownloads as queryDownloads,
+  abortListDownloads,
   removeDownload as deleteDownload,
+  pauseTorrent as pauseTask,
+  listDownloads as queryDownloads,
   startTorrent as startTask,
   stopTorrent as stopTask,
-  pauseTorrent as pauseTask,
-  abortListDownloads,
 } from "./downloadsManager.js";
-import {
-  getSelectedHash,
-  setSelectedHash,
-  clearSelection,
-  onSelectionChange,
-} from "./downloadsState.js";
-import { setupDownloadsUI, renderDownloads, hideDownloads } from "./downloadsUI.js";
+import { clearSelection, getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
+import { hideDownloads, renderDownloads, setupDownloadsUI } from "./downloadsUI.js";
 
 interface InitializeDownloadsOptions {
   onSelectionChange?: (hash: string | null) => void;
@@ -51,9 +46,7 @@ export interface DownloadsFeature {
   onSelectionChange: (listener: (hash: string | null) => void) => () => void;
 }
 
-function defaultLog(message: string): void {
-  console.debug(`[Downloads] ${message}`);
-}
+function defaultLog(_message: string): void {}
 
 export async function initializeDownloads(options: InitializeDownloadsOptions = {}): Promise<DownloadsFeature> {
   const log = options.onLog ?? defaultLog;
@@ -77,8 +70,7 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
       options.onRefresh?.(result.tasks);
       options.onSnapshotUpdated?.(result.tasks);
 
-      const message =
-        result.tasks.length === 0 ? "No active downloads" : `Found ${result.tasks.length} download(s)`;
+      const message = result.tasks.length === 0 ? "No active downloads" : `Found ${result.tasks.length} download(s)`;
       if (!refreshOptions.silent) {
         log(message);
       }

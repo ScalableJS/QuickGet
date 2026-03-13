@@ -7,13 +7,9 @@ const sharedApiMock = vi.hoisted(() => ({
 
 vi.mock("../../shared/api", () => sharedApiMock);
 
-import {
-  abortListDownloads,
-  listDownloads,
-  pauseTorrent,
-} from "./downloadsManager.js";
-import { getSnapshot, updateSnapshot } from "./downloadsState.js";
 import type { Task } from "@lib/tasks.js";
+import { abortListDownloads, listDownloads, pauseTorrent } from "./downloadsManager.js";
+import { getSnapshot, updateSnapshot } from "./downloadsState.js";
 
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
@@ -51,7 +47,7 @@ describe("downloadsManager", () => {
       () =>
         new Promise<{ raw: { error: number; data: unknown[] }; tasks: Task[] }>((resolve) => {
           resolveQuery = resolve;
-        })
+        }),
     );
 
     sharedApiMock.getApiClient.mockResolvedValue({ queryTasks } as never);
@@ -93,11 +89,12 @@ describe("downloadsManager", () => {
   });
 
   it("aborts an in-flight query and clears the lock for the next refresh", async () => {
-    const queryTasks = vi.fn(({ signal }: { signal: AbortSignal }) => {
-      return new Promise<never>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
-      });
-    });
+    const queryTasks = vi.fn(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+        }),
+    );
 
     sharedApiMock.getApiClient.mockResolvedValueOnce({ queryTasks } as never);
 
@@ -127,6 +124,3 @@ describe("downloadsManager", () => {
     expect(stopTask).toHaveBeenCalledWith("hash-123");
   });
 });
-
-
-

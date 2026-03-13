@@ -1,9 +1,9 @@
 import {
-  onDebugLogs,
-  onDebugEnabledChange,
-  copyDebugLogs,
   clearDebugLogs,
+  copyDebugLogs,
   isDebugLoggingEnabled,
+  onDebugEnabledChange,
+  onDebugLogs,
 } from "./debugLogger.js";
 
 interface DebugUIOptions {

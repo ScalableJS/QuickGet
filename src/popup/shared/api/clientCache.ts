@@ -25,7 +25,10 @@ function serializeSettings(settings: Settings): ClientSignature {
   ]);
 }
 
-export async function getApiClient(options?: { settings?: Settings; logger?: ApiClientOptions["logger"] }): Promise<ApiClient> {
+export async function getApiClient(options?: {
+  settings?: Settings;
+  logger?: ApiClientOptions["logger"];
+}): Promise<ApiClient> {
   const settings = options?.settings ?? (await loadSettings());
   const signature = serializeSettings(settings);
   const logger = options?.logger ?? defaultLogger;

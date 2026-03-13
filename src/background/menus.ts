@@ -28,7 +28,7 @@ export function createContextMenus(): void {
  */
 export async function handleContextMenuClick(
   info: chrome.contextMenus.OnClickData,
-  tab?: chrome.tabs.Tab
+  tab?: chrome.tabs.Tab,
 ): Promise<void> {
   try {
     let url = "";

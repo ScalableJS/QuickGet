@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildTaskSnapshot,
   clearSelection,
-  getSnapshot,
   getSelectedHash,
+  getSnapshot,
   onSelectionChange,
   onSnapshotChange,
   setSelectedHash,
@@ -48,7 +48,7 @@ describe("downloadsState", () => {
   });
 
   it("notifies snapshot listeners on updates", () => {
-    const updates = new Array<ReturnType<typeof getSnapshot>>();
+    const updates: ReturnType<typeof getSnapshot>[] = [];
     const unsubscribe = onSnapshotChange((snapshot) => updates.push(snapshot));
 
     const snapshot = buildTaskSnapshot([{ hash: "AA11", name: "Fedora.ISO" }]);
@@ -61,4 +61,3 @@ describe("downloadsState", () => {
     expect(getSnapshot().hashes.has("aa11")).toBe(true);
   });
 });
-

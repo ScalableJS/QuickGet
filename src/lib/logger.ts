@@ -55,14 +55,20 @@ export function createLogger(namespace: string, options: LoggerOptions = {}): Lo
     }
   };
 
-  const write = (level: LogLevel, method: "debug" | "info" | "warn" | "error", message: string, details: unknown[]): void => {
+  const write = (
+    level: LogLevel,
+    method: "debug" | "info" | "warn" | "error",
+    message: string,
+    details: unknown[],
+  ): void => {
     if (!shouldEmit(level)) return;
     const prefix = `[${namespace}]`;
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- intentional logger output
+    // biome-ignore lint/suspicious/noConsole: intentional logger implementation
     (console[method] ?? console.log).call(console, `${prefix} ${message}`, ...details);
     emit(level, message, details);
   };
-  
+
   return {
     debug(message: string, ...details: unknown[]) {
       write("debug", "debug", message, details);

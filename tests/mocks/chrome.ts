@@ -103,5 +103,3 @@ export function installChromeMock(): typeof chrome {
   vi.stubGlobal("chrome", chromeMock);
   return chromeMock;
 }
-
-

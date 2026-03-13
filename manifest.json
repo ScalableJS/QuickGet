@@ -17,16 +17,8 @@
     "96": "icons/96_download.png",
     "128": "icons/128_download.png"
   },
-  "permissions": [
-    "contextMenus",
-    "storage",
-    "alarms",
-    "notifications"
-  ],
-  "host_permissions": [
-    "http://*/",
-    "https://*/"
-  ],
+  "permissions": ["contextMenus", "storage", "alarms", "notifications"],
+  "host_permissions": ["http://*/", "https://*/"],
   "action": {
     "default_icon": {
       "32": "icons/32_download.png"
@@ -44,9 +36,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": [
-        "icons/*.png"
-      ],
+      "resources": ["icons/*.png"],
       "matches": ["<all_urls>"]
     }
   ]

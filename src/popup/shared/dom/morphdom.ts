@@ -22,18 +22,10 @@ function createTempNode(html: string): HTMLElement {
  * Update a DOM node with new HTML using morphdom
  * Preserves input values and event listeners
  */
-export function morphDOMUpdate(
-  targetNode: Element | string,
-  newHtml: string,
-  options: MorphdomOptions = {}
-): void {
-  const target =
-    typeof targetNode === "string"
-      ? document.getElementById(targetNode)
-      : targetNode;
+export function morphDOMUpdate(targetNode: Element | string, newHtml: string, options: MorphdomOptions = {}): void {
+  const target = typeof targetNode === "string" ? document.getElementById(targetNode) : targetNode;
 
   if (!target) {
-    console.warn("Target node not found for morphdom update");
     return;
   }
 
@@ -45,27 +37,18 @@ export function morphDOMUpdate(
     childrenOnly: true,
     onBeforeElUpdated: (fromEl: HTMLElement, toEl: HTMLElement) => {
       // Preserve input values and states
-      if (
-        fromEl instanceof HTMLInputElement &&
-        toEl instanceof HTMLInputElement
-      ) {
+      if (fromEl instanceof HTMLInputElement && toEl instanceof HTMLInputElement) {
         toEl.value = fromEl.value;
         toEl.checked = fromEl.checked;
       }
 
       // Preserve textarea values
-      if (
-        fromEl instanceof HTMLTextAreaElement &&
-        toEl instanceof HTMLTextAreaElement
-      ) {
+      if (fromEl instanceof HTMLTextAreaElement && toEl instanceof HTMLTextAreaElement) {
         toEl.value = fromEl.value;
       }
 
       // Preserve select selections
-      if (
-        fromEl instanceof HTMLSelectElement &&
-        toEl instanceof HTMLSelectElement
-      ) {
+      if (fromEl instanceof HTMLSelectElement && toEl instanceof HTMLSelectElement) {
         toEl.value = fromEl.value;
       }
 
@@ -81,8 +64,7 @@ export function morphDOMUpdate(
       // Call custom handler if provided
       const customResult = options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
       // Call default handler
-      const defaultResult =
-        defaultOptions.onBeforeElUpdated?.(fromEl, toEl) ?? true;
+      const defaultResult = defaultOptions.onBeforeElUpdated?.(fromEl, toEl) ?? true;
       return customResult && defaultResult;
     },
   };
@@ -94,17 +76,14 @@ export function morphDOMUpdate(
 /**
  * Replace list children using morphdom
  */
-export function morphDOMUpdateList(
-  listElement: Element | string,
-  newHtml: string
-): void {
+export function morphDOMUpdateList(listElement: Element | string, newHtml: string): void {
   morphDOMUpdate(listElement, newHtml, { childrenOnly: true });
 }
 
 /**
  * Batch multiple DOM updates
  */
-export function morphDOMBatch(updates: Array<[Element | string, string]>): void {
+export function morphDOMBatch(updates: [Element | string, string][]): void {
   updates.forEach(([node, html]) => {
     morphDOMUpdate(node, html);
   });

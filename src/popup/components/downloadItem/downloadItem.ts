@@ -83,8 +83,13 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
   const progress = Math.max(0, Math.min(100, Math.round(task.progress)));
   const isComplete = task.status === "finished" || task.status === "seeding" || progress >= 100;
   const isError = task.status === "error";
-  const isActive = task.status === "downloading" || task.status === "checking" || task.status === "repairing" || task.status === "extracting" || task.status === "finishing";
-  
+  const isActive =
+    task.status === "downloading" ||
+    task.status === "checking" ||
+    task.status === "repairing" ||
+    task.status === "extracting" ||
+    task.status === "finishing";
+
   const statusText = `${formatStatus(task.status)} — ${progress}%`;
   const statusIcon = getStatusIcon(task.status);
   const speedText = `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
@@ -95,7 +100,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
   const ariaSelected = options.selected ? "true" : "false";
   const selectedClass = options.selected ? " selected" : "";
   const etaSuffix = etaText ? ` • ETA: ${escapeHtml(etaText)}` : "";
-  
+
   let progressClass = "progress-fill";
   if (isError) {
     progressClass += " progress-error";
@@ -106,7 +111,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
   }
 
   return `<article class="download-item${selectedClass}" data-hash="${hash}" data-status="${escapeHtml(
-    task.status
+    task.status,
   )}" tabindex="0" role="option" aria-selected="${ariaSelected}">
     <div class="download-info">
       <p class="download-name">${name}</p>
@@ -114,11 +119,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
         <span class="download-status">${escapeHtml(statusText)}</span>
         <span class="download-speed">${escapeHtml(speedText)}${etaSuffix}</span>
       </div>
-      ${
-  addedText
-    ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>`
-    : ""
-}
+      ${addedText ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>` : ""}
       <div class="progress-container">
         <span class="progress-icon" aria-label="${escapeHtml(formatStatus(task.status))}">${statusIcon}</span>
         <div class="progress-bar">
@@ -130,7 +131,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
 }
 
 export function renderEmptyDownloadState(): string {
-  return "<div class=\"download-empty\" role=\"note\">No active downloads</div>";
+  return '<div class="download-empty" role="note">No active downloads</div>';
 }
 
 export function createDownloadItemElement(task: Task, options: DownloadItemOptions = {}): HTMLElement {

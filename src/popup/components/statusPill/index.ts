@@ -1,1 +1,1 @@
-export { showStatus, clearStatus } from "./statusPill.js";
+export { clearStatus, showStatus } from "./statusPill.js";

@@ -14,11 +14,15 @@ const enabledListeners = new Set<EnabledListener>();
 
 function notifyLogs(): void {
   const snapshot = [...debugLogs];
-  logsListeners.forEach((listener) => listener(snapshot));
+  logsListeners.forEach((listener) => {
+    listener(snapshot);
+  });
 }
 
 function notifyEnabled(): void {
-  enabledListeners.forEach((listener) => listener(debugLoggingEnabled));
+  enabledListeners.forEach((listener) => {
+    listener(debugLoggingEnabled);
+  });
 }
 
 export function addDebugLog(message: string): void {

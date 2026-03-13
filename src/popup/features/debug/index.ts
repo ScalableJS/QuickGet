@@ -4,11 +4,11 @@ import { showStatus } from "@/popup/components";
 
 import {
   addDebugLog,
-  setDebugLoggingEnabled,
-  isDebugLoggingEnabled,
-  getDebugLogs,
   getApiLogger as fetchApiLogger,
   getUiLogger as fetchUiLogger,
+  getDebugLogs,
+  isDebugLoggingEnabled,
+  setDebugLoggingEnabled,
 } from "./debugLogger.js";
 import { setupDebugPanel } from "./debugUI.js";
 

@@ -21,17 +21,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: [
-        "src/api/**/*.ts",
-        "src/popup/features/downloads/**/*.ts",
-        "src/lib/settings.ts",
-      ],
-      exclude: [
-        "src/**/*.stories.ts",
-        "src/**/index.ts",
-        "src/env.d.ts",
-      ],
+      include: ["src/api/**/*.ts", "src/popup/features/downloads/**/*.ts", "src/lib/settings.ts"],
+      exclude: ["src/**/*.stories.ts", "src/**/index.ts", "src/env.d.ts"],
     },
   },
 });
-

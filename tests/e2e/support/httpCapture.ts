@@ -47,7 +47,7 @@ export function attachHttpCapture(context: BrowserContext, host: string, port: s
 export async function installClientSideRequestCapture(
   context: BrowserContext,
   host: string,
-  port: string
+  port: string,
 ): Promise<void> {
   await context.addInitScript(
     ({ hostWithPort }) => {
@@ -82,7 +82,10 @@ export async function installClientSideRequestCapture(
           return serializeFormData(await request.clone().formData());
         }
 
-        return await request.clone().text().catch(() => "");
+        return await request
+          .clone()
+          .text()
+          .catch(() => "");
       };
 
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -105,13 +108,11 @@ export async function installClientSideRequestCapture(
         return originalFetch(input, init);
       };
     },
-    { hostWithPort: `${host}:${port}` }
+    { hostWithPort: `${host}:${port}` },
   );
 }
 
-export async function readClientSideRequestCapture(
-  page: Page
-): Promise<ClientSideRequestCaptureEntry[]> {
+export async function readClientSideRequestCapture(page: Page): Promise<ClientSideRequestCaptureEntry[]> {
   return await page.evaluate(() => {
     const value = (globalThis as Record<string, unknown>).__quickgetHttpRequestCapture;
     return Array.isArray(value) ? (value as ClientSideRequestCaptureEntry[]) : [];
@@ -129,7 +130,7 @@ export async function persistHttpCapture(rootDir: string, fileName: string, cont
 export async function persistHttpCaptureBundle(
   rootDir: string,
   baseName: string,
-  log: RedactedHttpLog
+  log: RedactedHttpLog,
 ): Promise<{ textPath: string; jsonPath: string }> {
   const artifactsDir = path.join(rootDir, ".e2e-artifacts");
   await mkdir(artifactsDir, { recursive: true });
@@ -142,4 +143,3 @@ export async function persistHttpCaptureBundle(
 
   return { textPath, jsonPath };
 }
-

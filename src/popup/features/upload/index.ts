@@ -16,7 +16,7 @@ function getFileInput(): HTMLInputElement | null {
 }
 
 export function initializeUpload(options: InitializeUploadOptions = {}): UploadFeature {
-  const log = options.onLog ?? ((message: string) => console.debug(`[Upload] ${message}`));
+  const log = options.onLog ?? ((_message: string) => {});
   const fileInput = getFileInput();
 
   fileInput?.addEventListener("change", () => {

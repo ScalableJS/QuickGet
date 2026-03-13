@@ -1,4 +1,4 @@
-import type { QueryTasksResult, ApiClient } from "@api/client.js";
+import type { ApiClient, QueryTasksResult } from "@api/client.js";
 
 import { getApiClient } from "../../shared/api";
 
@@ -6,9 +6,7 @@ import { buildTaskSnapshot, updateSnapshot } from "./downloadsState.js";
 
 let listAbortController: AbortController | null = null;
 
-export type ListDownloadsResult =
-  | ({ skipped: false } & QueryTasksResult)
-  | { skipped: true };
+export type ListDownloadsResult = ({ skipped: false } & QueryTasksResult) | { skipped: true };
 
 async function ensureClient(): Promise<ApiClient> {
   return getApiClient();

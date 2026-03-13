@@ -52,10 +52,7 @@ export async function loadSettings(): Promise<Settings> {
         NASpassword: stringWithDefault("NASpassword", DEFAULTS.NASpassword),
         NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
         NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
-        enableDebugLogging: booleanWithDefault(
-          "enableDebugLogging",
-          DEFAULTS.enableDebugLogging
-        ),
+        enableDebugLogging: booleanWithDefault("enableDebugLogging", DEFAULTS.enableDebugLogging),
       };
 
       const finish = (): void => resolve(settings);

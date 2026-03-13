@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { getChromeStorageSnapshot, seedChromeStorage } from "../../tests/mocks/chrome";
+
 import { DEFAULTS } from "./config.js";
 import { loadSettings, resetSettings, saveSettings } from "./settings.js";
-import {
-  getChromeStorageSnapshot,
-  seedChromeStorage,
-} from "../../tests/mocks/chrome";
 
 describe("settings", () => {
   it("loads settings, normalizes values, and backfills missing defaults", async () => {
@@ -37,10 +35,7 @@ describe("settings", () => {
   it("saves partial settings into chrome.storage.local", async () => {
     await saveSettings({ NASdir: "/share/Downloads/New" });
 
-    expect(chrome.storage.local.set).toHaveBeenCalledWith(
-      { NASdir: "/share/Downloads/New" },
-      expect.any(Function)
-    );
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({ NASdir: "/share/Downloads/New" }, expect.any(Function));
     expect(getChromeStorageSnapshot().NASdir).toBe("/share/Downloads/New");
   });
 
@@ -54,4 +49,3 @@ describe("settings", () => {
     expect(getChromeStorageSnapshot()).toMatchObject(DEFAULTS);
   });
 });
-

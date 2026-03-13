@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
-import { loadRealNasEnv, hasRequiredRealNasEnv } from "./support/e2eEnv.js";
+import { hasRequiredRealNasEnv, loadRealNasEnv } from "./support/e2eEnv.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import {
   attachHttpCapture,
@@ -142,4 +142,3 @@ test.describe("real NAS popup e2e", () => {
     }
   });
 });
-

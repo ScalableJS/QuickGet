@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-import { resetChromeMockState, installChromeMock } from "./mocks/chrome";
+import { installChromeMock, resetChromeMockState } from "./mocks/chrome";
 import { server } from "./msw/server";
 
 installChromeMock();
@@ -25,5 +25,3 @@ afterAll(() => {
   server.close();
   vi.unstubAllGlobals();
 });
-
-

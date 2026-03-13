@@ -130,8 +130,7 @@ export const LongNameQueued: Story = {
     downSpeedBps: 0,
     upSpeedBps: 0,
     etaSec: undefined,
-    name:
-      "A Very Long Movie Title — Director's Cut Extended Edition [UltraHD Remaster] (2025) WebRip 1080p Dual Audio",
+    name: "A Very Long Movie Title — Director's Cut Extended Edition [UltraHD Remaster] (2025) WebRip 1080p Dual Audio",
   },
 };
 
@@ -191,8 +190,7 @@ export const Gallery: Story = {
       },
       {
         ...DEFAULT_ARGS,
-        name:
-          "A Very Long Movie Title — Director's Cut Extended Edition [UltraHD Remaster] (2025) WebRip 1080p Dual Audio",
+        name: "A Very Long Movie Title — Director's Cut Extended Edition [UltraHD Remaster] (2025) WebRip 1080p Dual Audio",
         status: "queued",
         progress: 0,
         downSpeedBps: 0,

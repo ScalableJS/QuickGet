@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
 const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
 
-test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {
+test("popup full cycle: configure, connect, list, control, upload, remove", async (_fixtures, testInfo) => {
   const mockNas = await startMockNas();
   const session = await launchExtensionPopup(extensionDistPath);
   const { page } = session;
@@ -34,10 +34,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await expect(page.locator("#status-message")).toContainText("Settings saved successfully");
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText(
-      "Ubuntu ISO",
-      { timeout: 15_000 }
-    );
+    await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO", {
+      timeout: 15_000,
+    });
 
     await page.click("#downloads-list .download-item");
 
@@ -55,19 +54,14 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
       timeout: 15_000,
     });
 
-    await expect(page.locator("#downloads-list .download-item .download-name")).toContainText([
-      "Ubuntu ISO",
-      "sample",
-    ]);
+    await expect(page.locator("#downloads-list .download-item .download-name")).toContainText(["Ubuntu ISO", "sample"]);
 
     await page.locator("#downloads-list .download-item").filter({ hasText: "sample" }).click();
     await page.click("#toolbar-remove");
     await expect(page.locator("#downloads-list .download-item .download-name")).toHaveCount(1, {
       timeout: 15_000,
     });
-    await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText(
-      "Ubuntu ISO"
-    );
+    await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO");
 
     expect(mockNas.requestLog.includesPath("/downloadstation/V4/Misc/Login")).toBe(true);
     expect(mockNas.requestLog.includesPath("/downloadstation/V4/Task/Query")).toBe(true);
@@ -87,4 +81,3 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await mockNas.close();
   }
 });
-

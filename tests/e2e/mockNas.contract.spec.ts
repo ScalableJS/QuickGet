@@ -5,11 +5,7 @@ import type { Task } from "../../src/lib/tasks.js";
 
 import { startMockNas } from "./support/mockNas.js";
 
-function createUnifiedTask(
-  name: string,
-  status: Task["status"],
-  overrides: Partial<Task> = {}
-): Task {
+function createUnifiedTask(name: string, status: Task["status"], overrides: Partial<Task> = {}): Task {
   return {
     id: overrides.id ?? `${name.toLowerCase().replace(/\s+/g, "-")}-${status}`,
     name,
@@ -94,7 +90,7 @@ test("mock NAS returns richer login payload and paged Task/Query response", asyn
     const login = await postJson<Record<string, unknown>>(
       baseUrl,
       "/downloadstation/V4/Misc/Login",
-      new URLSearchParams({ user: "admin", pass: "secret" })
+      new URLSearchParams({ user: "admin", pass: "secret" }),
     );
 
     expect(login).toMatchObject({
@@ -117,7 +113,7 @@ test("mock NAS returns richer login payload and paged Task/Query response", asyn
         direction: "DESC",
         status: "all",
         type: "all",
-      })
+      }),
     );
 
     expect(query.error).toBe(0);
@@ -232,18 +228,14 @@ test("mock NAS upload flow returns real-like added jobs and duplicate/missing si
     addForm.append("bt", new File(["torrent-body"], "sample.torrent", { type: "application/x-bittorrent" }));
     addForm.append("bt_task", new File(["torrent-body"], "sample.torrent", { type: "application/x-bittorrent" }));
 
-    const addPayload = await postJson<{ error: number }>(
-      baseUrl,
-      "/downloadstation/V4/Task/AddTorrent",
-      addForm
-    );
+    const addPayload = await postJson<{ error: number }>(baseUrl, "/downloadstation/V4/Task/AddTorrent", addForm);
 
     expect(addPayload).toEqual({ error: 0 });
 
     const queried = await postJson<DownloadJobsListResponse>(
       baseUrl,
       "/downloadstation/V4/Task/Query",
-      new URLSearchParams({ sid: "E2E-SID-123", status: "all", type: "all" })
+      new URLSearchParams({ sid: "E2E-SID-123", status: "all", type: "all" }),
     );
 
     const uploaded = queried.data.find((task) => task.source_name === "sample");
@@ -271,7 +263,7 @@ test("mock NAS upload flow returns real-like added jobs and duplicate/missing si
     const duplicatePayload = await postJson<{ error: number; reason: string }>(
       baseUrl,
       "/downloadstation/V4/Task/AddTask",
-      duplicateForm
+      duplicateForm,
     );
 
     expect(duplicatePayload).toMatchObject({
@@ -282,4 +274,3 @@ test("mock NAS upload flow returns real-like added jobs and duplicate/missing si
     await mockNas.close();
   }
 });
-

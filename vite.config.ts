@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
-import { resolve } from "path";
+import { resolve } from "node:path";
 import { crx } from "@crxjs/vite-plugin";
+import { defineConfig } from "vite";
 import manifest from "./manifest.json";
 
 export default defineConfig({
@@ -20,7 +20,5 @@ export default defineConfig({
       "@types": resolve(__dirname, "./src/types"),
     },
   },
-  plugins: [
-    crx({ manifest }),
-  ],
+  plugins: [crx({ manifest })],
 });

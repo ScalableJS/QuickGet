@@ -1,11 +1,11 @@
 import type { components as SchemaComponents } from "./schema.js";
 
 export type {
-  components,
-  paths,
-  operations,
   ApiRequest,
   ApiResponse,
+  components,
+  operations,
+  paths,
 } from "./schema.js";
 
 export type DownloadJob = SchemaComponents["schemas"]["DownloadJob"];

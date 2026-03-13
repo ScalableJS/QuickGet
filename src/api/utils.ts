@@ -9,8 +9,7 @@ function toApiResult(value: unknown): ApiResult {
   return { error: -1 };
 }
 
-const hasFalsyString = (value: unknown): boolean =>
-  typeof value === "string" && value.trim().length === 0;
+const hasFalsyString = (value: unknown): boolean => typeof value === "string" && value.trim().length === 0;
 
 const coerceNumber = (value: unknown, fallback: number): number => {
   if (typeof value === "number" && Number.isFinite(value)) {

@@ -3,15 +3,10 @@
  * Polls QNAP for download status
  */
 
-import { createApiClient, type ApiClient } from "@api/client.js";
+import { type ApiClient, createApiClient } from "@api/client.js";
 import { loadSettings } from "@lib/settings.js";
 
-import {
-  updateBadge,
-  clearBadge,
-  startIconAnimation,
-  stopIconAnimation,
-} from "./actions.js";
+import { clearBadge, startIconAnimation, stopIconAnimation, updateBadge } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.1; // ~6 seconds

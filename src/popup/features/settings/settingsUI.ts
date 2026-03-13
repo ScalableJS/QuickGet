@@ -26,14 +26,14 @@ function getFormElements(): SettingsFormElements {
 
 export function fillSettingsForm(settings: Settings): void {
   const elements = getFormElements();
-  elements.secure && (elements.secure.checked = settings.NASsecure);
-  elements.address && (elements.address.value = settings.NASaddress);
-  elements.port && (elements.port.value = settings.NASport);
-  elements.login && (elements.login.value = settings.NASlogin);
-  elements.password && (elements.password.value = settings.NASpassword);
-  elements.tempDir && (elements.tempDir.value = settings.NAStempdir);
-  elements.destDir && (elements.destDir.value = settings.NASdir);
-  elements.enableDebug && (elements.enableDebug.checked = settings.enableDebugLogging);
+  if (elements.secure) elements.secure.checked = settings.NASsecure;
+  if (elements.address) elements.address.value = settings.NASaddress;
+  if (elements.port) elements.port.value = settings.NASport;
+  if (elements.login) elements.login.value = settings.NASlogin;
+  if (elements.password) elements.password.value = settings.NASpassword;
+  if (elements.tempDir) elements.tempDir.value = settings.NAStempdir;
+  if (elements.destDir) elements.destDir.value = settings.NASdir;
+  if (elements.enableDebug) elements.enableDebug.checked = settings.enableDebugLogging;
 }
 
 export function readSettingsForm(): Settings {
@@ -67,9 +67,7 @@ export function isSettingsPanelVisible(): boolean {
   return panel ? !panel.classList.contains("hidden") : false;
 }
 
-export function setupSettingsForm(options: {
-  onDebugToggle?: (enabled: boolean) => void;
-} = {}): void {
+export function setupSettingsForm(options: { onDebugToggle?: (enabled: boolean) => void } = {}): void {
   const elements = getFormElements();
   elements.enableDebug?.addEventListener("change", () => {
     options.onDebugToggle?.(elements.enableDebug?.checked ?? false);

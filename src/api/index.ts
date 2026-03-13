@@ -31,18 +31,15 @@ export function buildNASBaseUrl(settings: Settings): string {
 
 /**
  * Creates SID middleware for automatic SID injection and refresh
- * 
+ *
  * Implementation follows openapi-fetch middleware pattern:
  * - onRequest: Injects SID into every request (except login)
  * - onResponse: Clears SID on 401/403 to trigger re-authentication
  * - Handles both URLSearchParams and FormData body types
- * 
+ *
  * See: openapi-fetch-context.md for best practices
  */
-export function createSidMiddleware(options: {
-  settings: Settings;
-  logger?: LoggerAdapter;
-}): Middleware {
+export function createSidMiddleware(options: { settings: Settings; logger?: LoggerAdapter }): Middleware {
   let sid: string | null = null;
   const { settings, logger } = options;
   const UNPROTECTED_ROUTES = ["/downloadstation/V4/Misc/Login"];
@@ -68,7 +65,7 @@ export function createSidMiddleware(options: {
 
       // Add SID to form data
       const contentType = request.headers.get("content-type") || "";
-      
+
       if (contentType.includes("application/x-www-form-urlencoded")) {
         const body = await request.clone().text();
         const form = new URLSearchParams(body);
@@ -87,7 +84,7 @@ export function createSidMiddleware(options: {
           }
           newFormData.append("sid", sid);
           return new Request(request, { body: newFormData });
-        } catch (e) {
+        } catch (_e) {
           // Если не FormData, возможно это объект - нужно преобразовать
           // Но это сложно, так как мы не знаем тип body
           logger?.debug("Failed to parse as FormData, trying as JSON object");
@@ -99,7 +96,10 @@ export function createSidMiddleware(options: {
 
     async onResponse(response: Response, _options, request: MiddlewareRequest) {
       // Handle 403/401 - invalid SID
-      if ((response.status === 403 || response.status === 401) && !UNPROTECTED_ROUTES.some((route) => request.schemaPath.startsWith(route))) {
+      if (
+        (response.status === 403 || response.status === 401) &&
+        !UNPROTECTED_ROUTES.some((route) => request.schemaPath.startsWith(route))
+      ) {
         sid = null; // Clear SID to force re-login next time
         logger?.debug("SID invalidated, will refresh on next request");
       }
@@ -173,21 +173,11 @@ async function requestLogin(baseUrl: string, username: string, passwordValue: st
 
   const payload = data as Record<string, unknown>;
   const sidValue = payload.sid;
-  const sid =
-    typeof sidValue === "string"
-      ? sidValue
-      : sidValue != null
-        ? String(sidValue)
-        : null;
+  const sid = typeof sidValue === "string" ? sidValue : sidValue != null ? String(sidValue) : null;
 
   return {
     sid,
-    user:
-      typeof payload.user === "string"
-        ? payload.user
-        : payload.user != null
-          ? String(payload.user)
-          : username,
+    user: typeof payload.user === "string" ? payload.user : payload.user != null ? String(payload.user) : username,
     payload,
   };
 }
@@ -196,9 +186,7 @@ function buildLoginError(payload: Record<string, unknown>): Error {
   const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
   const errorCode = typeof payload.error === "number" ? payload.error : Number(payload.error ?? -1);
   if (!Number.isNaN(errorCode) && errorCode >= 0) {
-    return new Error(
-      reason ? `NAS login failed (${errorCode}): ${reason}` : `NAS login failed (${errorCode})`
-    );
+    return new Error(reason ? `NAS login failed (${errorCode}): ${reason}` : `NAS login failed (${errorCode})`);
   }
   return new Error("NAS login failed: no SID in response");
 }

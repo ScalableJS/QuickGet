@@ -1,9 +1,10 @@
+import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
-import { http, HttpResponse } from "msw";
+
+import { createTestSettings } from "../../tests/fixtures/settings";
+import { server } from "../../tests/msw/server";
 
 import { createApiClient } from "./client.js";
-import { server } from "../../tests/msw/server";
-import { createTestSettings } from "../../tests/fixtures/settings";
 
 describe("ApiClient", () => {
   it("normalizes queried QNAP tasks and reuses a cached SID across calls", async () => {
@@ -90,12 +91,12 @@ describe("ApiClient", () => {
       http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async ({ request }) => {
         torrentBody = await request.text();
         return HttpResponse.json({ error: 0 });
-      })
+      }),
     );
 
     const queried = await client.queryTasks();
     const added = await client.addTorrent(
-      new File(["torrent-body"], "ubuntu.torrent", { type: "application/x-bittorrent" })
+      new File(["torrent-body"], "ubuntu.torrent", { type: "application/x-bittorrent" }),
     );
 
     expect(loginHits).toBe(2);
@@ -127,11 +128,11 @@ describe("ApiClient", () => {
 
     server.use(
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" })
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
       http.post("http://nas.local:8080/downloadstation/V4/Task/Query", () =>
-        HttpResponse.json({ error: 24501, reason: "Permission denied" })
-      )
+        HttpResponse.json({ error: 24501, reason: "Permission denied" }),
+      ),
     );
 
     await expect(client.queryTasksRaw()).rejects.toThrow(/Permission denied/);
@@ -145,16 +146,16 @@ describe("ApiClient", () => {
 
     server.use(
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" })
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
       http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async ({ request }) => {
         torrentBody = await request.text();
         return HttpResponse.json({ error: 24593, reason: "Duplicate task already exists" });
-      })
+      }),
     );
 
     await expect(
-      client.addTorrent(new File(["torrent-body"], "existing.torrent", { type: "application/x-bittorrent" }))
+      client.addTorrent(new File(["torrent-body"], "existing.torrent", { type: "application/x-bittorrent" })),
     ).resolves.toEqual({ added: false, duplicate: true });
 
     expect(torrentBody).toContain('name="sid"');
@@ -168,10 +169,3 @@ describe("ApiClient", () => {
     expect(torrentBody).toContain('name="bt_task"');
   });
 });
-
-
-
-
-
-
-

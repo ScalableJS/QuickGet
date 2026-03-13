@@ -24,7 +24,9 @@ export function getSelectedHash(): string | null {
 export function setSelectedHash(hash: string | null): void {
   if (selectedHash === hash) return;
   selectedHash = hash;
-  selectionListeners.forEach((listener) => listener(selectedHash));
+  selectionListeners.forEach((listener) => {
+    listener(selectedHash);
+  });
 }
 
 export function clearSelection(): void {
@@ -42,7 +44,9 @@ export function getSnapshot(): DownloadsSnapshot {
 
 export function updateSnapshot(next: DownloadsSnapshot): void {
   snapshot = next;
-  snapshotListeners.forEach((listener) => listener(snapshot));
+  snapshotListeners.forEach((listener) => {
+    listener(snapshot);
+  });
 }
 
 export function onSnapshotChange(listener: SnapshotListener): () => void {
@@ -62,31 +66,19 @@ export function buildTaskSnapshot(tasks: SnapshotSource[]): DownloadsSnapshot {
     }
 
     const task = item as Record<string, unknown>;
-    const hash =
-      task.hash ??
-      task.bt_hash ??
-      task.id ??
-      null;
+    const hash = task.hash ?? task.bt_hash ?? task.id ?? null;
     if (hash) hashes.add(String(hash).toLowerCase());
 
-    [
-      task.name,
-      task.title,
-      task.source,
-      task.source_name,
-      task.filename,
-    ]
-      .filter(Boolean)
-      .forEach((value) => {
-        const normalized = String(value)
-          .replace(/\.torrent$/i, "")
-          .replace(/\[[^\]]*]/g, "")
-          .replace(/[._-]+/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
-        if (normalized) names.add(normalized);
-      });
+    [task.name, task.title, task.source, task.source_name, task.filename].filter(Boolean).forEach((value) => {
+      const normalized = String(value)
+        .replace(/\.torrent$/i, "")
+        .replace(/\[[^\]]*]/g, "")
+        .replace(/[._-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+      if (normalized) names.add(normalized);
+    });
   });
 
   return { hashes, names };

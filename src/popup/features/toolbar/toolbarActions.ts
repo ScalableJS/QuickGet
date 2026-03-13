@@ -15,7 +15,7 @@ interface ToolbarActionsOptions {
 
 export function setupToolbarActions(options: ToolbarActionsOptions): void {
   const { downloads, settings, upload } = options;
-  const log = options.onLog ?? ((message: string) => console.debug(`[Toolbar] ${message}`));
+  const log = options.onLog ?? ((_message: string) => {});
 
   const { play, stop, remove, add, pause, settings: settingsBtn } = getToolbarElements();
 

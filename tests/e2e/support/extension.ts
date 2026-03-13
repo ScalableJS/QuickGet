@@ -2,7 +2,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { chromium, type BrowserContext, type Page, type Worker } from "@playwright/test";
+import { type BrowserContext, chromium, type Page, type Worker } from "@playwright/test";
 
 export interface ExtensionSession {
   context: BrowserContext;
@@ -30,17 +30,14 @@ async function resolveExtensionId(context: BrowserContext): Promise<string> {
 
 export async function launchExtensionPopup(
   extensionPath: string,
-  options: LaunchExtensionPopupOptions = {}
+  options: LaunchExtensionPopupOptions = {},
 ): Promise<ExtensionSession> {
   const userDataDir = await mkdtemp(path.join(tmpdir(), "sendtoqnap-e2e-"));
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: "chromium",
     headless: true,
-    args: [
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`,
-    ],
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   });
 
   await options.beforePageLoad?.(context);
@@ -60,4 +57,3 @@ export async function launchExtensionPopup(
     },
   };
 }
-

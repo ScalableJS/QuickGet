@@ -14,4 +14,3 @@ export async function openSettingsPanel(page: Page): Promise<void> {
   await page.click("#toolbar-settings");
   await expect(panel).toBeVisible({ timeout: 10_000 });
 }
-

@@ -1,5 +1,5 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { once } from "node:events";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import type { DownloadJob, DownloadJobsListResponse } from "@api/type.js";
 import type { Task, TaskStatus } from "@lib/tasks.js";
@@ -97,7 +97,6 @@ function mapUnifiedStatusToQnapState(status: TaskStatus): number {
       return 5;
     case "error":
       return 4;
-    case "queued":
     default:
       return 0;
   }
@@ -128,14 +127,8 @@ function toRawQnapJob(input: DownloadJob | Task, index: number): DownloadJob {
   const size = sanitizePositiveInteger(input.sizeBytes, 0);
   const totalDown = sanitizePositiveInteger(input.downloadedBytes, 0);
   const totalUp = sanitizePositiveInteger(input.uploadedBytes, 0);
-  const downRate = sanitizePositiveInteger(
-    input.downSpeedBps,
-    input.status === "downloading" ? 1024 : 0
-  );
-  const upRate = sanitizePositiveInteger(
-    input.upSpeedBps,
-    input.status === "seeding" ? 64 : 0
-  );
+  const downRate = sanitizePositiveInteger(input.downSpeedBps, input.status === "downloading" ? 1024 : 0);
+  const upRate = sanitizePositiveInteger(input.upSpeedBps, input.status === "seeding" ? 64 : 0);
   const state = mapUnifiedStatusToQnapState(input.status);
   const isActive =
     input.status === "downloading" ||
@@ -204,7 +197,7 @@ function createTask(name: string, index: number): DownloadJob {
       peers: { connected: 4 },
       source: "qnap",
     },
-    index
+    index,
   );
 }
 
@@ -221,7 +214,7 @@ function buildQueryStatus(tasks: DownloadJob[]): DownloadJobsListResponse["statu
         task.activity_time === 0 &&
         task.down_rate === 0 &&
         task.up_rate === 0 &&
-        task.progress < 100)
+        task.progress < 100),
   ).length;
 
   return {
@@ -256,7 +249,7 @@ function buildTaskQueryResponse(tasks: DownloadJob[], rawBody: string): Download
 export async function startMockNas(options: MockNasOptions = {}): Promise<MockNasHandle> {
   const requestLog = new RedactedHttpLog();
   const tasks = (options.initialTasks ?? [createTask("Ubuntu ISO", 1)]).map((task, index) =>
-    toRawQnapJob(task, index + 1)
+    toRawQnapJob(task, index + 1),
   );
 
   const server: Server = createServer(async (request, response) => {
@@ -343,7 +336,11 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
     }
 
     if (
-      ["/downloadstation/V4/Task/AddTorrent", "/downloadstation/V4/Task/AddTask", "/downloadstation/V4/Task/Add"].includes(path) &&
+      [
+        "/downloadstation/V4/Task/AddTorrent",
+        "/downloadstation/V4/Task/AddTask",
+        "/downloadstation/V4/Task/Add",
+      ].includes(path) &&
       method === "POST"
     ) {
       const fileName =
@@ -384,7 +381,7 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
           peers: { connected: 0 },
           source: "qnap",
         },
-        nextIndex
+        nextIndex,
       );
       task.move = readMultipartField(body, "move") ?? "Movies";
       task.path = `/Download/@DownloadStationTempFiles/admin/${normalizedName}.${task.hash}`;
@@ -424,4 +421,3 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
     },
   };
 }
-

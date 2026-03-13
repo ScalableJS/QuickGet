@@ -1,4 +1,3 @@
-
 export type Vendor = "synology" | "qnap";
 
 export type TaskStatus =
@@ -64,7 +63,9 @@ const qnapToUnified: Record<string, TaskStatus> = {
 };
 
 const mapStatus = (vendor: Vendor, raw: string): TaskStatus => {
-  const keyString = String(raw ?? "").trim().toLowerCase();
+  const keyString = String(raw ?? "")
+    .trim()
+    .toLowerCase();
 
   if (vendor === "qnap") {
     const numeric = Number(keyString);
@@ -131,11 +132,9 @@ const parseNumber = (value: unknown): number | undefined => {
   return undefined;
 };
 
-const readNumber = (value: unknown, fallback = 0): number =>
-  parseNumber(value) ?? fallback;
+const readNumber = (value: unknown, fallback = 0): number => parseNumber(value) ?? fallback;
 
-const parseOptionalNumber = (value: unknown): number | undefined =>
-  parseNumber(value);
+const parseOptionalNumber = (value: unknown): number | undefined => parseNumber(value);
 
 const parseString = (value: unknown): string | undefined => {
   if (typeof value === "string") {
@@ -147,11 +146,9 @@ const parseString = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const readString = (value: unknown, fallback = ""): string =>
-  parseString(value) ?? fallback;
+const readString = (value: unknown, fallback = ""): string => parseString(value) ?? fallback;
 
-const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), max);
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
 const toRecordArray = (value: unknown): RawTaskRecord[] => {
   if (!Array.isArray(value)) {
@@ -174,24 +171,14 @@ export const normalizeSynology = (input: unknown): Task => {
 
   const seedsTotal = parseOptionalNumber(detail.seeders);
   const peersTotal = parseOptionalNumber(detail.leechers);
-  const eta =
-    parseOptionalNumber(transfer.eta) ??
-    parseOptionalNumber(detail.eta);
+  const eta = parseOptionalNumber(transfer.eta) ?? parseOptionalNumber(detail.eta);
   const createdAt = parseOptionalNumber(detail.create_time);
 
   return {
     id: readString(task.id ?? task.task_id ?? task.hash ?? crypto.randomUUID()),
-    name: readString(
-      task.title ??
-        task.display_name ??
-        detail.destination ??
-        "task"
-    ),
+    name: readString(task.title ?? task.display_name ?? detail.destination ?? "task"),
     status: mapStatus("synology", readString(task.status ?? "", "")),
-    progress:
-      size > 0
-        ? clamp((downloaded / size) * 100, 0, 100)
-        : readNumber(transfer.progress, 0),
+    progress: size > 0 ? clamp((downloaded / size) * 100, 0, 100) : readNumber(transfer.progress, 0),
     sizeBytes: size,
     downloadedBytes: downloaded,
     uploadedBytes: readNumber(transfer.size_uploaded, 0),
@@ -206,11 +193,7 @@ export const normalizeSynology = (input: unknown): Task => {
       total: peersTotal,
     },
     etaSec: eta,
-    hash:
-      parseString(task.hash) ??
-      parseString(detail.uri) ??
-      parseString(detail.destination) ??
-      undefined,
+    hash: parseString(task.hash) ?? parseString(detail.uri) ?? parseString(detail.destination) ?? undefined,
     addedAt: createdAt,
     priority: parseOptionalNumber(task.priority),
     source: "synology",
@@ -221,21 +204,10 @@ export const normalizeQnap = (input: unknown): Task => {
   const task = asRecord(input);
 
   const size = readNumber(task.total_size ?? task.size, 0);
-  const downloaded = readNumber(
-    task.total_down ?? task.done ?? task.down_size ?? task.completed,
-    0
-  );
-  const uploaded = readNumber(
-    task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded,
-    0
-  );
+  const downloaded = readNumber(task.total_down ?? task.done ?? task.down_size ?? task.completed, 0);
+  const uploaded = readNumber(task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded, 0);
 
-  const created =
-    task.create_time ??
-    task.created ??
-    task.added_time ??
-    task.start_time ??
-    null;
+  const created = task.create_time ?? task.created ?? task.added_time ?? task.start_time ?? null;
 
   const addedAt =
     typeof created === "number"
@@ -247,18 +219,13 @@ export const normalizeQnap = (input: unknown): Task => {
         : undefined;
 
   const rawProgress = parseOptionalNumber(task.progress);
-  const hasValidProgress =
-    rawProgress !== undefined && rawProgress >= 0 && rawProgress <= 100;
+  const hasValidProgress = rawProgress !== undefined && rawProgress >= 0 && rawProgress <= 100;
 
-  const calculatedProgress =
-    size > 0 ? clamp((downloaded / size) * 100, 0, 100) : 0;
+  const calculatedProgress = size > 0 ? clamp((downloaded / size) * 100, 0, 100) : 0;
 
   const progress = hasValidProgress ? rawProgress : calculatedProgress;
 
-  let status = mapStatus(
-    "qnap",
-    readString(task.status ?? task.state ?? "", "")
-  );
+  let status = mapStatus("qnap", readString(task.status ?? task.state ?? "", ""));
 
   const activityTime = readNumber(task.activity_time, -1);
   const downRate = readNumber(task.down_rate ?? task.download_speed, 0);
@@ -274,10 +241,7 @@ export const normalizeQnap = (input: unknown): Task => {
   }
 
   if (
-    (rawState === 2 ||
-      rawState === 6 ||
-      rawState === 104 ||
-      rawState === 102) &&
+    (rawState === 2 || rawState === 6 || rawState === 104 || rawState === 102) &&
     activityTime === 0 &&
     downRate === 0 &&
     upRate === 0 &&
@@ -300,14 +264,11 @@ export const normalizeQnap = (input: unknown): Task => {
 
   const seedsTotal = parseOptionalNumber(task.seeds_total);
   const peersTotal = parseOptionalNumber(task.peers_total);
-  const etaValue =
-    parseOptionalNumber(task.eta) ?? parseOptionalNumber(task.remain_time);
+  const etaValue = parseOptionalNumber(task.eta) ?? parseOptionalNumber(task.remain_time);
 
   return {
     id: readString(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
-    name: readString(
-      task.name ?? task.title ?? task.source ?? task.source_name ?? "task"
-    ),
+    name: readString(task.name ?? task.title ?? task.source ?? task.source_name ?? "task"),
     status,
     progress,
     sizeBytes: size,
@@ -324,10 +285,7 @@ export const normalizeQnap = (input: unknown): Task => {
       total: peersTotal,
     },
     etaSec: etaValue != null && etaValue >= 0 ? etaValue : undefined,
-    hash:
-      parseString(task.hash) ??
-      parseString(task.bt_hash) ??
-      undefined,
+    hash: parseString(task.hash) ?? parseString(task.bt_hash) ?? undefined,
     addedAt,
     priority: parseOptionalNumber(task.priority),
     source: "qnap",
@@ -345,9 +303,7 @@ export const normalizeTasks = (vendor: Vendor, payload: unknown): Task[] => {
 
   const list = variants.find((items) => items.length > 0) ?? [];
 
-  return vendor === "synology"
-    ? list.map((item) => normalizeSynology(item))
-    : list.map((item) => normalizeQnap(item));
+  return vendor === "synology" ? list.map((item) => normalizeSynology(item)) : list.map((item) => normalizeQnap(item));
 };
 
 function parseDateToEpoch(value: string): number | undefined {

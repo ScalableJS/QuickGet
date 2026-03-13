@@ -3,9 +3,17 @@ import { loadSettings, saveSettings } from "@lib/settings.js";
 
 import { showStatus } from "@/popup/components";
 
-import { invalidateClientCache, getApiClient } from "../../shared/api";
+import { getApiClient, invalidateClientCache } from "../../shared/api";
 
-import { fillSettingsForm, readSettingsForm, setupSettingsForm, getSettingsPanel, showSettingsPanel, hideSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
+import {
+  fillSettingsForm,
+  getSettingsPanel,
+  hideSettingsPanel,
+  isSettingsPanelVisible,
+  readSettingsForm,
+  setupSettingsForm,
+  showSettingsPanel,
+} from "./settingsUI.js";
 
 interface InitializeSettingsOptions {
   onDebugToggle?: (enabled: boolean) => void;

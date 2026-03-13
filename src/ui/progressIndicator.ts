@@ -18,10 +18,7 @@ const DEFAULT_OPTIONS: Required<ProgressOptions> = {
 /**
  * Create or update progress indicator element
  */
-export function updateProgressIndicator(
-  progress: number,
-  options?: ProgressOptions
-): void {
+export function updateProgressIndicator(progress: number, options?: ProgressOptions): void {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const percent = Math.max(0, Math.min(100, Math.round(progress || 0)));
 

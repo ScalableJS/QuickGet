@@ -60,4 +60,3 @@ export function loadRealNasEnv(rootDir: string): RealNasEnv {
 export function hasRequiredRealNasEnv(env: RealNasEnv): boolean {
   return Boolean(env.host && env.port && env.login && env.password);
 }
-

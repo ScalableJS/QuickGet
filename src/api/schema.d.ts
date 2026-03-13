@@ -291,8 +291,7 @@ export type operations = {
   addLegacy: paths["/downloadstation/V4/Task/Add"]["post"];
 };
 
-export type ApiResponse<T extends keyof operations> =
-  operations[T]["responses"][200]["content"]["application/json"];
+export type ApiResponse<T extends keyof operations> = operations[T]["responses"][200]["content"]["application/json"];
 
 export type ApiRequest<T extends keyof operations> =
   operations[T]["requestBody"]["content"]["application/x-www-form-urlencoded"];

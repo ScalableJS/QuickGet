@@ -1,13 +1,10 @@
+import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
-import { http, HttpResponse } from "msw";
 
-import {
-  buildNASBaseUrl,
-  createOpenApiFetchClient,
-  performLogin,
-} from "./index.js";
-import { server } from "../../tests/msw/server";
 import { createTestSettings } from "../../tests/fixtures/settings";
+import { server } from "../../tests/msw/server";
+
+import { buildNASBaseUrl, createOpenApiFetchClient, performLogin } from ".";
 
 function serializeUrlEncoded(body: Record<string, unknown>): URLSearchParams {
   const params = new URLSearchParams();
@@ -22,19 +19,13 @@ describe("api/index", () => {
   describe("buildNASBaseUrl", () => {
     it("builds http and https NAS URLs from settings", () => {
       expect(buildNASBaseUrl(createTestSettings())).toBe("http://nas.local:8080");
-      expect(buildNASBaseUrl(createTestSettings({ NASsecure: true, NASport: "443" }))).toBe(
-        "https://nas.local:443"
-      );
+      expect(buildNASBaseUrl(createTestSettings({ NASsecure: true, NASport: "443" }))).toBe("https://nas.local:443");
       expect(buildNASBaseUrl(createTestSettings({ NASport: "" }))).toBe("http://nas.local");
     });
 
     it("throws on empty address or invalid port", () => {
-      expect(() => buildNASBaseUrl(createTestSettings({ NASaddress: "   " }))).toThrow(
-        /NAS address is empty/
-      );
-      expect(() => buildNASBaseUrl(createTestSettings({ NASport: "eighty" }))).toThrow(
-        /Invalid NAS port/
-      );
+      expect(() => buildNASBaseUrl(createTestSettings({ NASaddress: "   " }))).toThrow(/NAS address is empty/);
+      expect(() => buildNASBaseUrl(createTestSettings({ NASport: "eighty" }))).toThrow(/Invalid NAS port/);
     });
   });
 
@@ -47,7 +38,7 @@ describe("api/index", () => {
         http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", async ({ request }) => {
           loginBody = await request.text();
           return HttpResponse.json({ error: 0, sid: "SID-123", user: "admin" });
-        })
+        }),
       );
 
       await expect(performLogin(settings)).resolves.toEqual({ sid: "SID-123", user: "admin" });
@@ -63,7 +54,7 @@ describe("api/index", () => {
         http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", async ({ request }) => {
           loginBody = await request.text();
           return HttpResponse.json({ error: 0, sid: "SID-UTF8", user: "admin" });
-        })
+        }),
       );
 
       await expect(performLogin(settings)).resolves.toEqual({ sid: "SID-UTF8", user: "admin" });
@@ -83,7 +74,7 @@ describe("api/index", () => {
             return HttpResponse.json({ error: 4, reason: "" });
           }
           return HttpResponse.json({ error: 0, sid: "SID-RAW", user: "admin" });
-        })
+        }),
       );
 
       await expect(performLogin(settings)).resolves.toEqual({ sid: "SID-RAW", user: "admin" });
@@ -96,9 +87,7 @@ describe("api/index", () => {
       const settings = createTestSettings();
 
       server.use(
-        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-          HttpResponse.json({ user: "admin" })
-        )
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => HttpResponse.json({ user: "admin" })),
       );
 
       await expect(performLogin(settings)).rejects.toThrow(/NAS login failed/i);
@@ -139,7 +128,7 @@ describe("api/index", () => {
             },
             total: 0,
           });
-        })
+        }),
       );
 
       const response = await client.POST("/downloadstation/V4/Task/Query", {
@@ -163,13 +152,5 @@ describe("api/index", () => {
       expect(protectedBody).toContain("limit=25");
       expect(protectedBody).toContain("field=priority");
     });
-
   });
 });
-
-
-
-
-
-
-

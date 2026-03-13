@@ -12,9 +12,7 @@ interface UploadOptions {
   onSuccess?: () => void;
 }
 
-function defaultLog(message: string): void {
-  console.debug(`[Upload] ${message}`);
-}
+function defaultLog(_message: string): void {}
 
 export async function uploadTorrent(file: File, options: UploadOptions = {}): Promise<void> {
   const log = options.log ?? defaultLog;

@@ -150,11 +150,7 @@ function createCanvasFrames(): FrameSet[] {
   return frames;
 }
 
-function drawBackground(
-  ctx: OffscreenCanvasRenderingContext2D,
-  size: number,
-  unit: number
-): void {
+function drawBackground(ctx: OffscreenCanvasRenderingContext2D, size: number, unit: number): void {
   const radius = 6 * unit;
   const gradient = ctx.createLinearGradient(0, 0, 0, size);
   gradient.addColorStop(0, "#38c3ff");
@@ -178,12 +174,7 @@ function drawBackground(
   ctx.fill();
 }
 
-function drawArrow(
-  ctx: OffscreenCanvasRenderingContext2D,
-  size: number,
-  unit: number,
-  offsetY: number
-): void {
+function drawArrow(ctx: OffscreenCanvasRenderingContext2D, size: number, unit: number, offsetY: number): void {
   ctx.fillStyle = "#ffffff";
 
   const centerX = size / 2;
@@ -202,12 +193,7 @@ function drawArrow(
   ctx.fill();
 }
 
-function drawBaseline(
-  ctx: OffscreenCanvasRenderingContext2D,
-  size: number,
-  unit: number,
-  theta: number
-): void {
+function drawBaseline(ctx: OffscreenCanvasRenderingContext2D, size: number, unit: number, theta: number): void {
   const barY = size - 7 * unit;
   const barHeight = 3 * unit;
   const inset = 8 * unit;
@@ -224,12 +210,7 @@ function drawBaseline(
   ctx.fillRect(offset, barY, pulseWidth, barHeight);
 }
 
-function drawSpinner(
-  ctx: OffscreenCanvasRenderingContext2D,
-  size: number,
-  unit: number,
-  theta: number
-): void {
+function drawSpinner(ctx: OffscreenCanvasRenderingContext2D, size: number, unit: number, theta: number): void {
   const center = size / 2;
   const radius = size * 0.36;
   const sweep = Math.PI * 1.4;
@@ -248,19 +229,15 @@ function drawSpinner(
 }
 
 function createFallbackFrames(): FrameSet[] {
-  const palettes: Array<{ background: [number, number, number]; accent: [number, number, number] }> =
-    [
-      { background: [14, 165, 233], accent: [255, 255, 255] },
-      { background: [249, 115, 22], accent: [30, 64, 175] },
-    ];
+  const palettes: Array<{ background: [number, number, number]; accent: [number, number, number] }> = [
+    { background: [14, 165, 233], accent: [255, 255, 255] },
+    { background: [249, 115, 22], accent: [30, 64, 175] },
+  ];
 
   return palettes.map((palette) => createSolidFrameSet(palette.background, palette.accent));
 }
 
-function createSolidFrameSet(
-  background: [number, number, number],
-  accent: [number, number, number]
-): FrameSet {
+function createSolidFrameSet(background: [number, number, number], accent: [number, number, number]): FrameSet {
   const frame = {} as FrameSet;
 
   for (const size of ICON_SIZES) {
@@ -276,7 +253,7 @@ function drawRoundedRect(
   y: number,
   width: number,
   height: number,
-  radius: number
+  radius: number,
 ): void {
   const r = Math.min(radius, width / 2, height / 2);
 
@@ -296,7 +273,7 @@ function drawRoundedRect(
 function createSolidFrame(
   size: IconSize,
   background: [number, number, number],
-  accent: [number, number, number]
+  accent: [number, number, number],
 ): ImageData {
   const data = new Uint8ClampedArray(size * size * 4);
 

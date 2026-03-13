@@ -1,12 +1,10 @@
 import type { Settings } from "@lib/config.js";
 import { createLogger, type Logger } from "@lib/logger.js";
 import { normalizeTasks, type Task } from "@lib/tasks.js";
-
+import type { ApiFetchClient, ClientSetupOptions } from ".";
+import { buildNASBaseUrl, createOpenApiFetchClient, performLogin } from ".";
 import type { ApiResponse, components } from "./type.js";
-import { createApiError, isSuccessResponse, getErrorMessage } from "./utils.js";
-
-import { createOpenApiFetchClient, buildNASBaseUrl, performLogin } from ".";
-import type { ClientSetupOptions, ApiFetchClient } from ".";
+import { createApiError, getErrorMessage, isSuccessResponse } from "./utils.js";
 
 export interface ApiClientOptions extends ClientSetupOptions {
   logger?: Logger;
@@ -110,7 +108,6 @@ export class ApiClient {
     });
 
     if (error) {
-      console.error("Task query error payload", error);
       throw new Error(`Task query failed: ${getErrorMessage(error)}`);
     }
 
@@ -119,7 +116,6 @@ export class ApiClient {
     }
 
     if (!isSuccessResponse(data)) {
-      console.error("Task query non-success payload", data);
       throw new Error(`Task query failed: ${getErrorMessage(data)}`);
     }
 
@@ -128,7 +124,7 @@ export class ApiClient {
 
   async addUrl(
     url: string,
-    options: { savePath?: string; tempFolder?: string; targetFolder?: string } = {}
+    options: { savePath?: string; tempFolder?: string; targetFolder?: string } = {},
   ): Promise<boolean> {
     // Build form data - API requires URLSearchParams format
     const requestBody = withEmptySid<AddUrlRequest>({
@@ -184,10 +180,11 @@ export class ApiClient {
     try {
       payload = await response.clone().json();
     } catch {
-      const rawText = await response.clone().text().catch(() => "");
-      payload = response.ok
-        ? { error: 0 }
-        : { error: response.status || -1, reason: rawText || response.statusText };
+      const rawText = await response
+        .clone()
+        .text()
+        .catch(() => "");
+      payload = response.ok ? { error: 0 } : { error: response.status || -1, reason: rawText || response.statusText };
     }
 
     if (isSuccessResponse(payload)) {
@@ -282,9 +279,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   return new ApiClient(options);
 }
 
-function withEmptySid<T extends { sid: string }>(
-  body: Omit<T, "sid"> & Partial<Pick<T, "sid">>
-): T {
+function withEmptySid<T extends { sid: string }>(body: Omit<T, "sid"> & Partial<Pick<T, "sid">>): T {
   return { sid: "", ...body } as T;
 }
 
@@ -298,10 +293,7 @@ function serializeUrlEncoded<T extends { sid: string }>(body: T): URLSearchParam
   return params;
 }
 
-
-function isErrorWithDuplicateFlag(
-  error: unknown
-): error is Error & { duplicate?: boolean } {
+function isErrorWithDuplicateFlag(error: unknown): error is Error & { duplicate?: boolean } {
   if (typeof error !== "object" || error === null) {
     return false;
   }

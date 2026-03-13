@@ -283,8 +283,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
-    Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--color-text);
@@ -314,7 +313,7 @@ header.toolbar {
 }
 
 .toolbar-speed {
-  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-family: "SF Mono", "Monaco", "Courier New", monospace;
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text);
@@ -344,7 +343,9 @@ header.toolbar {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
   padding: 0;
 }
 
@@ -382,7 +383,6 @@ header.toolbar {
   flex-direction: column;
   min-height: 100%;
 }
-
 
 header h1 {
   font-size: 18px;
@@ -609,7 +609,9 @@ textarea:focus {
   gap: var(--spacing-md);
   background: var(--torrent-bg);
   color: var(--torrent-text-primary);
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .download-item:hover {
@@ -749,7 +751,9 @@ textarea:focus {
   height: 100%;
   background: var(--progress-fill-active);
   border-radius: 2px;
-  transition: width 0.3s ease, background 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
 }
 
 .progress-fill.progress-active {
@@ -862,5 +866,5 @@ textarea:focus {
 }
 
 .hidden {
-  display: none !important;
+  display: none;
 }

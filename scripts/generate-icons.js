@@ -5,19 +5,19 @@
  * Creates PNG icons at different resolutions for the Chrome extension
  */
 
-import sharp from 'sharp';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const projectRoot = path.dirname(path.dirname(__filename));
 
-const sourceIcon = path.join(projectRoot, 'icons', 'sources', 'download-source.svg');
+const sourceIcon = path.join(projectRoot, "icons", "sources", "download-source.svg");
 const sizes = [32, 48, 96, 128];
-const iconsDir = path.join(projectRoot, 'icons');
+const iconsDir = path.join(projectRoot, "icons");
 
 async function generateIcons() {
-  console.log('🎨 Generating icons from SVG...\n');
+  console.log("🎨 Generating icons from SVG...\n");
 
   for (const size of sizes) {
     const outputPath = path.join(iconsDir, `${size}_download.png`);
@@ -25,7 +25,7 @@ async function generateIcons() {
     try {
       await sharp(sourceIcon)
         .resize(size, size, {
-          fit: 'contain',
+          fit: "contain",
           background: { r: 0, g: 0, b: 0, alpha: 0 },
         })
         .png()
@@ -38,7 +38,7 @@ async function generateIcons() {
     }
   }
 
-  console.log('\n✨ All icons generated successfully!');
+  console.log("\n✨ All icons generated successfully!");
 }
 
 generateIcons();

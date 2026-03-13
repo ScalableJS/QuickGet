@@ -5,11 +5,11 @@ import { morphDOMUpdateList } from "../../shared/dom";
 import { formatRate } from "../../shared/formatters";
 
 import {
+  type DownloadsSnapshot,
   getSelectedHash,
-  setSelectedHash,
   onSelectionChange,
   onSnapshotChange,
-  type DownloadsSnapshot,
+  setSelectedHash,
 } from "./downloadsState.js";
 
 interface DownloadsUIOptions {
