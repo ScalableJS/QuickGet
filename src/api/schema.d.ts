@@ -14,8 +14,11 @@ export interface components {
       reason?: string;
     };
     LoginResponse: components["schemas"]["BaseResponse"] & {
+      admin?: number;
+      privilege?: number;
       user: string;
       sid: string;
+      token?: string;
     };
     DownloadStationStatus: {
       active: number;

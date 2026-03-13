@@ -55,6 +55,8 @@ npm install
 npm run dev              # Start Vite in watch mode
 npm run build            # Create production bundle
 npm run typecheck        # Run TypeScript without emitting files
+npm run test             # Run unit/integration tests with Vitest
+npm run test:e2e:mock    # Run safe mock-only Playwright E2E tests
 npm run lint             # Execute ESLint checks
 npm run lint:fix         # Auto-fix lint warnings
 npm run format           # Format with Prettier
@@ -90,6 +92,8 @@ SendToQNAP/
 Additional documentation is available in the `docs/` directory:
 - [popup-refactoring-plan.md](./docs/popup-refactoring-plan.md) — Popup architecture and refactoring notes
 - [toolbar-actions.md](./docs/toolbar-actions.md) — Toolbar implementation details
+
+For the complete testing map, runbook, and capture refresh workflow, see [`tests/README.md`](./tests/README.md).
 
 ## Security and Data Handling
 
@@ -140,7 +144,7 @@ The extension uses `openapi-fetch` with OpenAPI schema definitions for type-safe
 
 1. Fork the repository.
 2. Create a feature branch: `git checkout -b feature/<name>`.
-3. Run `npm run typecheck && npm run lint && npm run build` before submitting changes.
+3. Run `npm run typecheck && npm run test && npm run build && npm run test:e2e:mock` before submitting changes.
 4. Open a pull request with a concise description of the change.
 
 Pull requests are preferred to long-lived forks so improvements remain consolidated.

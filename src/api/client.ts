@@ -1,9 +1,11 @@
-import type { Settings , createLogger, type Logger , normalizeTasks, type Task } from "@/lib";
+import type { Settings } from "@lib/config.js";
+import { createLogger, type Logger } from "@lib/logger.js";
+import { normalizeTasks, type Task } from "@lib/tasks.js";
 
 import type { ApiResponse, components } from "./type.js";
 import { createApiError, isSuccessResponse, getErrorMessage } from "./utils.js";
 
-import { createOpenApiFetchClient, buildNASBaseUrl } from ".";
+import { createOpenApiFetchClient, buildNASBaseUrl, performLogin } from ".";
 import type { ClientSetupOptions, ApiFetchClient } from ".";
 
 export interface ApiClientOptions extends ClientSetupOptions {
@@ -15,7 +17,6 @@ type TaskQueryRequest = components["schemas"]["TaskQueryRequest"];
 type AddUrlRequest = components["schemas"]["AddUrlRequest"];
 type ModifyTaskRequest = components["schemas"]["ModifyTaskRequest"];
 type RemoveTaskRequest = components["schemas"]["RemoveTaskRequest"];
-type AddTorrentRequest = components["schemas"]["AddTorrentRequest"];
 
 export interface QueryTasksResult {
   raw: TaskQueryResponse;
@@ -48,9 +49,14 @@ export class ApiClient {
   private readonly settings: Settings;
   private readonly logger: Logger;
   private readonly client: ApiFetchClient;
+  private readonly fetchFn: typeof fetch;
 
   constructor(options: ApiClientOptions) {
     this.settings = options.settings;
+    this.fetchFn = (input, init) => {
+      const fetchImpl = options.fetchFn ?? fetch;
+      return fetchImpl(input, init);
+    };
     this.logger =
       options.logger ??
       createLogger("ApiClient", {
@@ -155,21 +161,34 @@ export class ApiClient {
   }
 
   async addTorrent(file: File): Promise<AddTorrentResult> {
-    // Build FormData with torrent file
-    const body = withEmptySid<AddTorrentRequest>({
-      bt: file,
-      bt_task: file,
-      temp: this.settings.NAStempdir,
-      move: this.settings.NASdir ?? undefined,
-      dest_path: this.settings.NASdir ?? undefined,
+    const loginResult = await performLogin(this.settings);
+
+    const formData = new FormData();
+    formData.append("sid", loginResult.sid);
+    formData.append("bt", file);
+    formData.append("bt_task", file);
+    formData.append("temp", this.settings.NAStempdir);
+
+    if (this.settings.NASdir) {
+      formData.append("move", this.settings.NASdir);
+      formData.append("dest_path", this.settings.NASdir);
+    }
+
+    const response = await this.fetchFn(`${this.baseUrl}/downloadstation/V4/Task/AddTorrent`, {
+      method: "POST",
+      body: formData,
     });
 
-    const { data, error } = await this.client.POST("/downloadstation/V4/Task/AddTorrent", {
-      body,
-      bodySerializer: serializeMultipart,
-    });
+    let payload: unknown;
 
-    const payload = data ?? error;
+    try {
+      payload = await response.clone().json();
+    } catch {
+      const rawText = await response.clone().text().catch(() => "");
+      payload = response.ok
+        ? { error: 0 }
+        : { error: response.status || -1, reason: rawText || response.statusText };
+    }
 
     if (isSuccessResponse(payload)) {
       return { added: true };
@@ -279,21 +298,6 @@ function serializeUrlEncoded<T extends { sid: string }>(body: T): URLSearchParam
   return params;
 }
 
-function serializeMultipart(body: AddTorrentRequest): FormData {
-  const formData = new FormData();
-  for (const [key, value] of Object.entries(body) as Array<
-    [keyof AddTorrentRequest, AddTorrentRequest[keyof AddTorrentRequest]]
-  >) {
-    if (value === undefined || value === null) continue;
-    if (key === "sid" && value === "") continue;
-    if (value instanceof Blob) {
-      formData.append(key, value);
-    } else {
-      formData.append(key, String(value));
-    }
-  }
-  return formData;
-}
 
 function isErrorWithDuplicateFlag(
   error: unknown

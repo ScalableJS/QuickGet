@@ -13,6 +13,9 @@ dist/
 build/
 *.zip
 web-ext-artifacts/
+playwright-report/
+test-results/
+.e2e-artifacts/
 
 # Ignore all markdown files except README
 *.md

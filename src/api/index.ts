@@ -124,9 +124,32 @@ export interface LoggerAdapter {
 
 export async function performLogin(settings: Settings): Promise<LoginResult> {
   const baseUrl = buildNASBaseUrl(settings);
+  const encodedAttempt = await requestLogin(baseUrl, settings.NASlogin, encodeQnapPassword(settings.NASpassword));
+  if (encodedAttempt.sid) {
+    return { sid: encodedAttempt.sid, user: encodedAttempt.user };
+  }
+
+  const shouldRetryWithRawPassword = encodedAttempt.payload.error === 4 && settings.NASpassword.length > 0;
+  if (shouldRetryWithRawPassword) {
+    const rawAttempt = await requestLogin(baseUrl, settings.NASlogin, settings.NASpassword);
+    if (rawAttempt.sid) {
+      return { sid: rawAttempt.sid, user: rawAttempt.user };
+    }
+  }
+
+  throw buildLoginError(encodedAttempt.payload);
+}
+
+interface LoginAttemptResult {
+  sid: string | null;
+  user: string;
+  payload: Record<string, unknown>;
+}
+
+async function requestLogin(baseUrl: string, username: string, passwordValue: string): Promise<LoginAttemptResult> {
   const formData = new URLSearchParams();
-  formData.append("user", settings.NASlogin);
-  formData.append("pass", btoa(settings.NASpassword));
+  formData.append("user", username);
+  formData.append("pass", passwordValue);
 
   const response = await fetch(`${baseUrl}/downloadstation/V4/Misc/Login`, {
     method: "POST",
@@ -137,11 +160,10 @@ export async function performLogin(settings: Settings): Promise<LoginResult> {
     throw new Error(`NAS login failed: ${response.statusText}`);
   }
 
-  // QNAP V4 API returns JSON
   let data: unknown;
   try {
     data = await response.json();
-  } catch (error) {
+  } catch {
     throw new Error("NAS login failed: invalid JSON response");
   }
 
@@ -158,10 +180,6 @@ export async function performLogin(settings: Settings): Promise<LoginResult> {
         ? String(sidValue)
         : null;
 
-  if (!sid) {
-    throw new Error("NAS login failed: no SID in response");
-  }
-
   return {
     sid,
     user:
@@ -169,8 +187,29 @@ export async function performLogin(settings: Settings): Promise<LoginResult> {
         ? payload.user
         : payload.user != null
           ? String(payload.user)
-          : settings.NASlogin,
+          : username,
+    payload,
   };
+}
+
+function buildLoginError(payload: Record<string, unknown>): Error {
+  const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
+  const errorCode = typeof payload.error === "number" ? payload.error : Number(payload.error ?? -1);
+  if (!Number.isNaN(errorCode) && errorCode >= 0) {
+    return new Error(
+      reason ? `NAS login failed (${errorCode}): ${reason}` : `NAS login failed (${errorCode})`
+    );
+  }
+  return new Error("NAS login failed: no SID in response");
+}
+
+function encodeQnapPassword(password: string): string {
+  const bytes = new TextEncoder().encode(password);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 }
 
 /**
