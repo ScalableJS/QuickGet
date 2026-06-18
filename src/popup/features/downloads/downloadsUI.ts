@@ -2,6 +2,7 @@ import type { Task } from "@lib/tasks.js";
 import { mount } from "svelte";
 
 import { formatRate } from "../../shared/formatters";
+import { toolbarView } from "../toolbar/toolbarView.svelte.js";
 
 import DownloadsList from "./DownloadsList.svelte";
 import { getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
@@ -13,7 +14,6 @@ interface DownloadsUIOptions {
 
 let downloadsSection: HTMLElement | null = null;
 let downloadsList: HTMLElement | null = null;
-let statusSpeedElement: HTMLElement | null = null;
 let mounted = false;
 
 function toggleSelection(hash: string): void {
@@ -22,10 +22,9 @@ function toggleSelection(hash: string): void {
 }
 
 function updateStatusSpeed(tasks: Task[]): void {
-  if (!statusSpeedElement) return;
   const totalDown = tasks.reduce((sum, task) => sum + (task.downSpeedBps || 0), 0);
   const totalUp = tasks.reduce((sum, task) => sum + (task.upSpeedBps || 0), 0);
-  statusSpeedElement.textContent = `↓ ${formatRate(totalDown)} ↑ ${formatRate(totalUp)}`;
+  toolbarView.statusSpeed = `↓ ${formatRate(totalDown)} ↑ ${formatRate(totalUp)}`;
 }
 
 function ensureElements(): void {
@@ -34,9 +33,6 @@ function ensureElements(): void {
   }
   if (!downloadsList) {
     downloadsList = document.getElementById("downloads-list") as HTMLElement | null;
-  }
-  if (!statusSpeedElement) {
-    statusSpeedElement = document.getElementById("status-speed") as HTMLElement | null;
   }
 }
 
