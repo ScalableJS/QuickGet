@@ -44,16 +44,3 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
   </article>`;
 }
 
-export function renderEmptyDownloadState(): string {
-  return '<div class="download-empty" role="note">No active downloads</div>';
-}
-
-export function createDownloadItemElement(task: Task, options: DownloadItemOptions = {}): HTMLElement {
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = renderDownloadItem(task, options);
-  const element = wrapper.firstElementChild;
-  if (!element || !(element instanceof HTMLElement)) {
-    throw new Error("Failed to create download item element");
-  }
-  return element;
-}

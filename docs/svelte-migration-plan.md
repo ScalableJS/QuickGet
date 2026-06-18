@@ -1,6 +1,34 @@
 # Svelte Migration Plan — QuickGet Remote
 
-Status: **proposal** · Target: Svelte 5 (runes) · Owner: TBD
+Status: **largely complete** · Target: Svelte 5 (runes) · Owner: TBD
+
+## Migration status (final)
+
+| Phase | Scope | State |
+|---|---|---|
+| 0 | Tooling + spike | ✅ done |
+| 1 | Downloads list (`DownloadItem`/`DownloadsList`); remove morphdom | ✅ done |
+| 2 | Settings panel (`Settings.svelte`) | ✅ done |
+| 3 | Toolbar (`Toolbar.svelte`) | ✅ done |
+| 5 | Folder chooser (`Chooser.svelte`) | ✅ done |
+| 6 | Cleanup (dead string renderers, `render/`, dead toolbar state) | ✅ done |
+| 4 | Single-root `App.svelte` + migrate upload/debug | ⏸ **deliberately skipped** |
+
+**All genuinely component-worthy UI is now Svelte** (list rendering, settings
+form, toolbar, chooser), and `morphdom` is gone. The popup uses Svelte "islands"
+mounted into the existing HTML shell; Rollup hoists the shared Svelte runtime
+into a common chunk, so the popup entry is small (~10 KB gzip) again.
+
+**Why Phase 4 is skipped (engineering judgment):** the remaining vanilla code is
+non-visual imperative glue — the upload **file picker** (hidden `<input>` + dialog),
+the debug **log panel** (buffer + clipboard), and the **status toast**. Svelte adds
+no meaningful value there, and folding them plus a single bootstrap root carries
+real regression risk for ~zero user benefit. The plan's own checkpoint (§9)
+sanctions stopping when the remaining win is marginal. Revisit only if these
+areas gain genuinely reactive UI. Validated end-to-end by the Playwright
+full-cycle mock-NAS e2e after every phase.
+
+Target: Svelte 5 (runes).
 
 ## 1. Goal & scope
 

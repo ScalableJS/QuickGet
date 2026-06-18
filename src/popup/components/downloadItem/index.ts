@@ -1,1 +1,1 @@
-export { renderDownloadItem, renderEmptyDownloadState } from "./downloadItem.js";
+export { renderDownloadItem } from "./downloadItem.js";
