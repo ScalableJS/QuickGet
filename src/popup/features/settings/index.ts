@@ -1,23 +1,33 @@
-import type { Settings } from "@lib/config.js";
-import { loadSettings } from "@lib/settings.js";
 import { mount } from "svelte";
 
 import SettingsPanel from "./Settings.svelte";
-import { getSettingsPanel, hideSettingsPanel, isSettingsPanelVisible, showSettingsPanel } from "./settingsUI.js";
+import { getSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
 
-interface InitializeSettingsOptions {
+type InitializeSettingsOptions = {
   onDebugToggle?: (enabled: boolean) => void;
   onVisibilityChange?: (visible: boolean) => void;
-}
+};
 
-export interface SettingsFeature {
-  restore: () => Promise<void>;
-  save: () => Promise<void>;
+export type SettingsFeature = {
   togglePanel: () => boolean;
-  openPanel: () => void;
-  closePanel: () => void;
   isPanelVisible: () => boolean;
-  getCurrentSettings: () => Promise<Settings>;
+};
+
+export function initializeSettings(options: InitializeSettingsOptions = {}): SettingsFeature {
+  const panel = getSettingsPanel();
+  if (panel) {
+    panel.replaceChildren();
+    // Settings.svelte loads on mount and saves via its own buttons — no parent-driven lifecycle.
+    mount(SettingsPanel, {
+      target: panel,
+      props: { onDebugToggle: options.onDebugToggle },
+    });
+  }
+
+  return {
+    togglePanel: () => toggleSettingsPanel(options.onVisibilityChange),
+    isPanelVisible: () => isSettingsPanelVisible(),
+  };
 }
 
 function toggleSettingsPanel(onVisibilityChange?: (visible: boolean) => void): boolean {
@@ -27,33 +37,4 @@ function toggleSettingsPanel(onVisibilityChange?: (visible: boolean) => void): b
   const visible = !hidden;
   onVisibilityChange?.(visible);
   return visible;
-}
-
-export async function initializeSettings(options: InitializeSettingsOptions = {}): Promise<SettingsFeature> {
-  const panel = getSettingsPanel();
-  let app: { load: () => Promise<void>; save: () => Promise<void> } | null = null;
-
-  if (panel) {
-    panel.replaceChildren();
-    app = mount(SettingsPanel, {
-      target: panel,
-      props: { onDebugToggle: options.onDebugToggle },
-    }) as unknown as { load: () => Promise<void>; save: () => Promise<void> };
-  }
-
-  return {
-    restore: () => app?.load() ?? Promise.resolve(),
-    save: () => app?.save() ?? Promise.resolve(),
-    togglePanel: () => toggleSettingsPanel(options.onVisibilityChange),
-    openPanel: () => {
-      showSettingsPanel();
-      options.onVisibilityChange?.(true);
-    },
-    closePanel: () => {
-      hideSettingsPanel();
-      options.onVisibilityChange?.(false);
-    },
-    isPanelVisible: () => isSettingsPanelVisible(),
-    getCurrentSettings: () => loadSettings(),
-  };
 }

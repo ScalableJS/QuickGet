@@ -18,27 +18,23 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function formatSpeed(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B/s";
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < SPEED_UNITS.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const precision = unitIndex === 0 ? 0 : 1;
-  return `${value.toFixed(precision)} ${SPEED_UNITS[unitIndex]}`;
+  return scaleUnit(bytes, SPEED_UNITS);
 }
 
 export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  return scaleUnit(bytes, SIZE_UNITS);
+}
+
+function scaleUnit(bytes: number, units: readonly string[]): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return `0 ${units[0]}`;
   let value = bytes;
   let unitIndex = 0;
-  while (value >= 1024 && unitIndex < SIZE_UNITS.length - 1) {
+  while (value >= 1024 && unitIndex < units.length - 1) {
     value /= 1024;
     unitIndex += 1;
   }
   const precision = unitIndex === 0 ? 0 : 1;
-  return `${value.toFixed(precision)} ${SIZE_UNITS[unitIndex]}`;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
 
 export function formatETA(seconds: number | undefined): string {
@@ -63,7 +59,7 @@ export function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export interface DownloadItemView {
+export type DownloadItemView = {
   hash: string;
   statusText: string;
   statusLabel: string;
@@ -72,11 +68,11 @@ export interface DownloadItemView {
   addedText: string;
   progress: number;
   progressModifier: string;
-}
+};
 
 /**
  * Pure presentation model for a download item — shared by the Svelte component
- * and the legacy string renderer / Storybook stories.
+ * and the Storybook stories.
  */
 export function getDownloadItemView(task: Task): DownloadItemView {
   const progress = Math.max(0, Math.min(100, Math.round(task.progress)));

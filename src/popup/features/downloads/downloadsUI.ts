@@ -8,9 +8,9 @@ import DownloadsList from "./DownloadsList.svelte";
 import { getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
 import { downloadsView } from "./downloadsView.svelte.js";
 
-interface DownloadsUIOptions {
+type DownloadsUIOptions = {
   onSelectionChange?: (hash: string | null) => void;
-}
+};
 
 let downloadsSection: HTMLElement | null = null;
 let downloadsList: HTMLElement | null = null;

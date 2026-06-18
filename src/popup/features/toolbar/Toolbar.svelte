@@ -8,14 +8,14 @@
 
   import { toolbarView } from "./toolbarView.svelte.js";
 
-  interface ToolbarActions {
+  type ToolbarActions = {
     start: () => void;
     stop: () => void;
     pause: () => void;
     remove: () => void;
     add: () => void;
     toggleSettings: () => void;
-  }
+  };
 
   let { actions }: { actions: ToolbarActions } = $props();
 

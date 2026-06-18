@@ -8,19 +8,16 @@
  *   - "always" → cancel and send straight to the NAS default folder
  */
 
+import type { Settings } from "@lib/config.js";
 import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
   isRestartable,
   isTorrentSource,
+  type PendingTorrent,
   resumeTask,
   sendTorrentUrlToNas,
 } from "@lib/torrentSender.js";
-
-interface PendingTorrent {
-  url: string;
-  filename: string;
-}
 
 const NOTIFICATION_PREFIX = "qg-torrent-";
 const RESUME_PREFIX = "qg-resume-";
@@ -115,7 +112,7 @@ async function openFolderChooser(id: number): Promise<void> {
   await chrome.windows.create({ url, type: "popup", width: 420, height: 320 });
 }
 
-async function sendAndNotify(settings: Awaited<ReturnType<typeof loadSettings>>, url: string): Promise<void> {
+async function sendAndNotify(settings: Settings, url: string): Promise<void> {
   try {
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url);
     if (duplicate) {
@@ -133,13 +130,11 @@ async function sendAndNotify(settings: Awaited<ReturnType<typeof loadSettings>>,
  * The torrent is already on the NAS. Inspect the existing task: offer to resume
  * it if it stalled (error/stopped/paused), otherwise just report its status.
  */
-async function notifyDuplicate(settings: Awaited<ReturnType<typeof loadSettings>>, name: string): Promise<void> {
-  let existing: Awaited<ReturnType<typeof findExistingTask>>;
-  try {
-    existing = await findExistingTask(settings, name);
-  } catch (error) {
+async function notifyDuplicate(settings: Settings, name: string): Promise<void> {
+  const existing = await findExistingTask(settings, name).catch((error) => {
     console.warn("[QuickGet] could not look up existing task:", error);
-  }
+    return undefined;
+  });
 
   if (existing?.hash && isRestartable(existing.status)) {
     chrome.notifications.create(`${RESUME_PREFIX}${existing.hash}`, {

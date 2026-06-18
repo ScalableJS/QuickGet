@@ -10,10 +10,16 @@ import { createApiClient } from "@api/client.js";
 import type { Settings } from "./config.js";
 import type { Task, TaskStatus } from "./tasks.js";
 
-export interface SendTorrentResult {
+export type SendTorrentResult = {
   name: string;
   duplicate: boolean;
-}
+};
+
+/** A .torrent download that was intercepted and is waiting to be sent to the NAS. */
+export type PendingTorrent = {
+  url: string;
+  filename: string;
+};
 
 /** Statuses where a re-clicked torrent can be resumed instead of re-added. */
 const RESTARTABLE_STATUSES: readonly TaskStatus[] = ["error", "stopped", "paused"];

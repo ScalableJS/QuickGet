@@ -2,12 +2,13 @@
   import { parseDestinationFolders } from "@lib/config.js";
   import type { Settings } from "@lib/config.js";
   import { loadSettings } from "@lib/settings.js";
-  import { findExistingTask, isRestartable, resumeTask, sendTorrentUrlToNas } from "@lib/torrentSender.js";
-
-  interface PendingTorrent {
-    url: string;
-    filename: string;
-  }
+  import {
+    findExistingTask,
+    isRestartable,
+    type PendingTorrent,
+    resumeTask,
+    sendTorrentUrlToNas,
+  } from "@lib/torrentSender.js";
 
   const downloadId = Number(new URLSearchParams(location.search).get("id"));
   const pendingKey = `pending_${downloadId}`;

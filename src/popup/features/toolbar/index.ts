@@ -8,20 +8,14 @@ import type { UploadFeature } from "../upload";
 import Toolbar from "./Toolbar.svelte";
 import { toolbarView } from "./toolbarView.svelte.js";
 
-interface InitializeToolbarOptions {
+type InitializeToolbarOptions = {
   downloads: DownloadsFeature;
   settings: SettingsFeature;
   upload: UploadFeature;
   onLog?: (message: string) => void;
-}
+};
 
-export interface ToolbarFeature {
-  updateSelectionState: () => void;
-  setSettingsExpanded: (expanded: boolean) => void;
-  dispose: () => void;
-}
-
-export function initializeToolbar(options: InitializeToolbarOptions): ToolbarFeature {
+export function initializeToolbar(options: InitializeToolbarOptions): void {
   const { downloads, settings, upload } = options;
   const log = options.onLog ?? ((_message: string) => {});
 
@@ -67,21 +61,9 @@ export function initializeToolbar(options: InitializeToolbarOptions): ToolbarFea
   toolbarView.hasSelection = Boolean(downloads.getSelected());
   toolbarView.settingsExpanded = settings.isPanelVisible();
 
-  const unsubscribe = downloads.onSelectionChange((hash) => {
+  downloads.onSelectionChange((hash) => {
     toolbarView.hasSelection = Boolean(hash);
   });
 
   log("Toolbar initialized");
-
-  return {
-    updateSelectionState: () => {
-      toolbarView.hasSelection = Boolean(downloads.getSelected());
-    },
-    setSettingsExpanded: (expanded: boolean) => {
-      toolbarView.settingsExpanded = expanded;
-    },
-    dispose: () => {
-      unsubscribe();
-    },
-  };
 }
