@@ -1,4 +1,4 @@
-import type { Settings } from "@lib/config.js";
+import type { Settings, TorrentInterceptMode } from "@lib/config.js";
 
 interface SettingsFormElements {
   secure: HTMLInputElement | null;
@@ -9,6 +9,14 @@ interface SettingsFormElements {
   tempDir: HTMLInputElement | null;
   destDir: HTMLInputElement | null;
   enableDebug: HTMLInputElement | null;
+  interceptMode: HTMLSelectElement | null;
+  destinationFolders: HTMLTextAreaElement | null;
+}
+
+const INTERCEPT_MODES: readonly TorrentInterceptMode[] = ["off", "ask", "always"];
+
+function normalizeMode(value: string | undefined): TorrentInterceptMode {
+  return (INTERCEPT_MODES as string[]).includes(value ?? "") ? (value as TorrentInterceptMode) : "ask";
 }
 
 function getFormElements(): SettingsFormElements {
@@ -21,6 +29,8 @@ function getFormElements(): SettingsFormElements {
     tempDir: document.getElementById("NAStempdir") as HTMLInputElement | null,
     destDir: document.getElementById("NASdir") as HTMLInputElement | null,
     enableDebug: document.getElementById("enableDebug") as HTMLInputElement | null,
+    interceptMode: document.getElementById("torrentInterceptMode") as HTMLSelectElement | null,
+    destinationFolders: document.getElementById("destinationFolders") as HTMLTextAreaElement | null,
   };
 }
 
@@ -34,6 +44,8 @@ export function fillSettingsForm(settings: Settings): void {
   if (elements.tempDir) elements.tempDir.value = settings.NAStempdir;
   if (elements.destDir) elements.destDir.value = settings.NASdir;
   if (elements.enableDebug) elements.enableDebug.checked = settings.enableDebugLogging;
+  if (elements.interceptMode) elements.interceptMode.value = settings.torrentInterceptMode;
+  if (elements.destinationFolders) elements.destinationFolders.value = settings.destinationFolders;
 }
 
 export function readSettingsForm(): Settings {
@@ -47,6 +59,8 @@ export function readSettingsForm(): Settings {
     NAStempdir: elements.tempDir?.value ?? "",
     NASdir: elements.destDir?.value ?? "",
     enableDebugLogging: elements.enableDebug?.checked ?? false,
+    torrentInterceptMode: normalizeMode(elements.interceptMode?.value),
+    destinationFolders: elements.destinationFolders?.value ?? "",
   };
 }
 

@@ -27,6 +27,20 @@ function formatSpeed(bytes: number): string {
   return `${value.toFixed(precision)} ${SPEED_UNITS[unitIndex]}`;
 }
 
+const SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < SIZE_UNITS.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${SIZE_UNITS[unitIndex]}`;
+}
+
 function formatETA(seconds: number | undefined): string {
   if (!seconds || seconds <= 0) return "";
   const hours = Math.floor(seconds / 3600);
@@ -90,10 +104,19 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
     task.status === "extracting" ||
     task.status === "finishing";
 
-  const statusText = `${formatStatus(task.status)} — ${progress}%`;
+  // Seeding/finished tasks have finished downloading — show a full bar and skip
+  // the misleading partial percentage QNAP reports for them.
+  const isDownloadComplete = task.status === "seeding" || task.status === "finished";
+  const displayProgress = isComplete ? 100 : progress;
+  const statusText = isDownloadComplete ? formatStatus(task.status) : `${formatStatus(task.status)} — ${progress}%`;
   const statusIcon = getStatusIcon(task.status);
-  const speedText = `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
-  const etaText = formatETA(task.etaSec);
+  // While seeding/finished, surface torrent metrics (uploaded volume + ratio)
+  // instead of download speed/percentage, which is no longer meaningful.
+  const ratioText = task.shareRatio !== undefined && Number.isFinite(task.shareRatio) ? task.shareRatio.toFixed(2) : "";
+  const speedText = isDownloadComplete
+    ? `↑ ${formatBytes(task.uploadedBytes)}${ratioText ? ` • ratio ${ratioText}` : ""} • ${formatSpeed(task.upSpeedBps)} ↑`
+    : `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
+  const etaText = isDownloadComplete ? "" : formatETA(task.etaSec);
   const addedText = formatAddedDate(task.addedAt);
   const hash = escapeHtml(task.hash ?? task.id);
   const name = escapeHtml(task.name);
@@ -123,7 +146,7 @@ export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}
       <div class="progress-container">
         <span class="progress-icon" aria-label="${escapeHtml(formatStatus(task.status))}">${statusIcon}</span>
         <div class="progress-bar">
-          <div class="${progressClass}" style="width: ${progress}%"></div>
+          <div class="${progressClass}" style="width: ${displayProgress}%"></div>
         </div>
       </div>
     </div>

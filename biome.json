@@ -16,7 +16,8 @@
       "!coverage",
       "!storybook-static",
       "!.vite",
-      "!**/*.min.js"
+      "!**/*.min.js",
+      "!**/*.svelte"
     ]
   },
   "assist": {

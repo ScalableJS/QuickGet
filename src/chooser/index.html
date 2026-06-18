@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Send torrent to NAS</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font-size: 14px;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 12px;
+      }
+      .name {
+        font-weight: 600;
+        word-break: break-all;
+        margin-bottom: 14px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        opacity: 0.8;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      button {
+        padding: 8px 14px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .primary {
+        background: #0ea5e9;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+      }
+      .status {
+        margin-top: 12px;
+        min-height: 18px;
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Send torrent to NAS</h1>
+    <div class="name" id="torrent-name">…</div>
+
+    <label for="folder">Destination folder</label>
+    <input id="folder" list="folders" placeholder="/share/Multimedia/Movies" />
+    <datalist id="folders"></datalist>
+
+    <div class="actions">
+      <button type="button" id="cancel-btn">Cancel</button>
+      <button type="button" id="add-btn" class="primary">Add to NAS</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

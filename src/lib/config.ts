@@ -3,6 +3,8 @@
  * Single source of truth for all configuration values
  */
 
+export type TorrentInterceptMode = "off" | "ask" | "always";
+
 export type Settings = {
   NASsecure: boolean;
   NASaddress: string; // e.g. "192.168.88.185" or hostname
@@ -12,6 +14,8 @@ export type Settings = {
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   enableDebugLogging: boolean;
+  torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
+  destinationFolders: string; // newline-separated NAS folders offered when choosing
 };
 
 const FALLBACK_DEFAULTS: Settings = {
@@ -23,6 +27,8 @@ const FALLBACK_DEFAULTS: Settings = {
   NAStempdir: "/share/Download",
   NASdir: "/share/Multimedia/Movies",
   enableDebugLogging: false,
+  torrentInterceptMode: "ask",
+  destinationFolders: "",
 };
 
 const envString = (value: string | undefined, fallback: string): string => {
@@ -47,6 +53,21 @@ export const DEFAULTS: Settings = {
   NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR, FALLBACK_DEFAULTS.NAStempdir),
   NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
   enableDebugLogging: FALLBACK_DEFAULTS.enableDebugLogging,
+  torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
+  destinationFolders: FALLBACK_DEFAULTS.destinationFolders,
 };
+
+/**
+ * Parse the destination-folder list, falling back to the final directory.
+ */
+export function parseDestinationFolders(settings: Settings): string[] {
+  const folders = settings.destinationFolders
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (folders.length > 0) return folders;
+  return settings.NASdir ? [settings.NASdir] : [];
+}
 
 export const DEBUG_ENABLED = false; // set to true for verbose logging

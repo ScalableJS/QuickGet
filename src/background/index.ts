@@ -4,6 +4,7 @@
  */
 
 import { handleAlarm, startMonitoring } from "./alarms.js";
+import { initDownloadInterception } from "./downloads.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -30,6 +31,9 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
 
 // Alarm handler for download monitoring
 chrome.alarms.onAlarm.addListener(handleAlarm);
+
+// Redirect browser downloads to the NAS when enabled in settings
+initDownloadInterception();
 
 // Start monitoring on first context menu click
 let firstInteraction = true;

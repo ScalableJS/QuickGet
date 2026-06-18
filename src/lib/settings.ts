@@ -3,8 +3,10 @@
  * Consolidated storage I/O for application configuration
  */
 
-import type { Settings } from "./config.js";
+import type { Settings, TorrentInterceptMode } from "./config.js";
 import { DEFAULTS } from "./config.js";
+
+const INTERCEPT_MODES: readonly TorrentInterceptMode[] = ["off", "ask", "always"];
 
 /**
  * Load settings from chrome.storage.local with fallback to defaults
@@ -44,6 +46,20 @@ export async function loadSettings(): Promise<Settings> {
         return fallback;
       };
 
+      const modeWithDefault = (key: keyof Settings, fallback: TorrentInterceptMode): TorrentInterceptMode => {
+        const raw = items[key];
+        if (typeof raw === "string" && (INTERCEPT_MODES as string[]).includes(raw)) {
+          return raw as TorrentInterceptMode;
+        }
+        (missing as Record<string, unknown>)[key] = fallback;
+        return fallback;
+      };
+
+      const rawString = (key: keyof Settings, fallback: string): string => {
+        const raw = items[key];
+        return typeof raw === "string" ? raw : fallback;
+      };
+
       const settings: Settings = {
         NASsecure: booleanWithDefault("NASsecure", DEFAULTS.NASsecure),
         NASaddress: stringWithDefault("NASaddress", DEFAULTS.NASaddress),
@@ -53,6 +69,8 @@ export async function loadSettings(): Promise<Settings> {
         NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
         NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
         enableDebugLogging: booleanWithDefault("enableDebugLogging", DEFAULTS.enableDebugLogging),
+        torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
+        destinationFolders: rawString("destinationFolders", DEFAULTS.destinationFolders),
       };
 
       const finish = (): void => resolve(settings);

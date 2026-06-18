@@ -23,6 +23,7 @@ export interface Task {
   uploadedBytes: number;
   downSpeedBps: number;
   upSpeedBps: number;
+  shareRatio?: number; // uploaded / size (seeding metric)
   seeds?: { connected: number; total?: number };
   peers?: { connected: number; total?: number };
   etaSec?: number;
@@ -266,6 +267,9 @@ export const normalizeQnap = (input: unknown): Task => {
   const peersTotal = parseOptionalNumber(task.peers_total);
   const etaValue = parseOptionalNumber(task.eta) ?? parseOptionalNumber(task.remain_time);
 
+  const rawShare = parseOptionalNumber(task.share);
+  const shareRatio = rawShare ?? (size > 0 ? uploaded / size : undefined);
+
   return {
     id: readString(task.id ?? task.gid ?? task.hash ?? crypto.randomUUID()),
     name: readString(task.name ?? task.title ?? task.source ?? task.source_name ?? "task"),
@@ -276,6 +280,7 @@ export const normalizeQnap = (input: unknown): Task => {
     uploadedBytes: uploaded,
     downSpeedBps: downRate,
     upSpeedBps: upRate,
+    shareRatio,
     seeds: {
       connected: seeds,
       total: seedsTotal,

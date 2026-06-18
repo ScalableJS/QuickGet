@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { crx } from "@crxjs/vite-plugin";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 import manifest from "./manifest.json";
 
@@ -8,6 +9,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, "src/popup/index.html"),
+        chooser: resolve(__dirname, "src/chooser/index.html"),
       },
     },
   },
@@ -20,5 +22,5 @@ export default defineConfig({
       "@types": resolve(__dirname, "./src/types"),
     },
   },
-  plugins: [crx({ manifest })],
+  plugins: [svelte(), crx({ manifest })],
 });

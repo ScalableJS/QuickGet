@@ -10,6 +10,8 @@ export function createTestSettings(overrides: Partial<Settings> = {}): Settings 
     NAStempdir: "/share/Download",
     NASdir: "/share/Multimedia/Movies",
     enableDebugLogging: false,
+    torrentInterceptMode: "ask",
+    destinationFolders: "",
     ...overrides,
   };
 }
