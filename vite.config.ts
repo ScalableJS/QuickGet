@@ -5,6 +5,12 @@ import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 import manifest from "./manifest.json";
 
+const isStorybook = process.argv.some((arg) => arg.includes("storybook") || arg.includes("build-storybook"));
+const plugins = [svelte(), Icons({ compiler: "svelte" })];
+if (!isStorybook) {
+  plugins.push(crx({ manifest }));
+}
+
 export default defineConfig({
   build: {
     rollupOptions: {
@@ -23,5 +29,5 @@ export default defineConfig({
       "@types": resolve(__dirname, "./src/types"),
     },
   },
-  plugins: [svelte(), Icons({ compiler: "svelte" }), crx({ manifest })],
+  plugins,
 });
