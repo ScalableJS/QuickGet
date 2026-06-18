@@ -1,19 +1,9 @@
 import type { Settings } from "@lib/config.js";
-import { loadSettings, saveSettings } from "@lib/settings.js";
+import { loadSettings } from "@lib/settings.js";
+import { mount } from "svelte";
 
-import { showStatus } from "@/popup/components";
-
-import { getApiClient, invalidateClientCache } from "../../shared/api";
-
-import {
-  fillSettingsForm,
-  getSettingsPanel,
-  hideSettingsPanel,
-  isSettingsPanelVisible,
-  readSettingsForm,
-  setupSettingsForm,
-  showSettingsPanel,
-} from "./settingsUI.js";
+import SettingsPanel from "./Settings.svelte";
+import { getSettingsPanel, hideSettingsPanel, isSettingsPanelVisible, showSettingsPanel } from "./settingsUI.js";
 
 interface InitializeSettingsOptions {
   onDebugToggle?: (enabled: boolean) => void;
@@ -30,61 +20,6 @@ export interface SettingsFeature {
   getCurrentSettings: () => Promise<Settings>;
 }
 
-async function restoreSettings(onDebugToggle?: (enabled: boolean) => void): Promise<void> {
-  try {
-    const settings = await loadSettings();
-    fillSettingsForm(settings);
-    onDebugToggle?.(settings.enableDebugLogging);
-    showStatus("Settings loaded", "info", { autoHideMs: 1500 });
-  } catch (error) {
-    showStatus(`Failed to load settings: ${error}`, "error");
-  }
-}
-
-async function saveSettingsFromForm(onDebugToggle?: (enabled: boolean) => void): Promise<void> {
-  try {
-    const settings = readSettingsForm();
-    await saveSettings(settings);
-    invalidateClientCache();
-    onDebugToggle?.(settings.enableDebugLogging);
-    showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
-  } catch (error) {
-    showStatus(`Failed to save settings: ${error}`, "error");
-  }
-}
-
-async function handleTestConnection(): Promise<void> {
-  try {
-    const settings = readSettingsForm();
-    showStatus("Testing connection...", "info");
-    const client = await getApiClient({ settings });
-    const { tasks } = await client.queryTasks({ params: { limit: 1 } });
-    const isConnected = Array.isArray(tasks);
-    if (isConnected) {
-      showStatus("Connection successful!", "success", { autoHideMs: 2000 });
-    } else {
-      showStatus("Connection failed. Check settings and try again.", "error");
-    }
-  } catch (error) {
-    showStatus(`Connection error: ${error}`, "error");
-  }
-}
-
-function wireFormButtons(options: InitializeSettingsOptions): void {
-  const saveBtn = document.getElementById("save-btn");
-  const testBtn = document.getElementById("test-btn");
-
-  saveBtn?.addEventListener("click", (event) => {
-    event.preventDefault();
-    void saveSettingsFromForm(options.onDebugToggle);
-  });
-
-  testBtn?.addEventListener("click", (event) => {
-    event.preventDefault();
-    void handleTestConnection();
-  });
-}
-
 function toggleSettingsPanel(onVisibilityChange?: (visible: boolean) => void): boolean {
   const panel = getSettingsPanel();
   if (!panel) return false;
@@ -95,18 +30,20 @@ function toggleSettingsPanel(onVisibilityChange?: (visible: boolean) => void): b
 }
 
 export async function initializeSettings(options: InitializeSettingsOptions = {}): Promise<SettingsFeature> {
-  setupSettingsForm({
-    onDebugToggle: (enabled) => {
-      options.onDebugToggle?.(enabled);
-    },
-  });
+  const panel = getSettingsPanel();
+  let app: { load: () => Promise<void>; save: () => Promise<void> } | null = null;
 
-  wireFormButtons(options);
-  await restoreSettings(options.onDebugToggle);
+  if (panel) {
+    panel.replaceChildren();
+    app = mount(SettingsPanel, {
+      target: panel,
+      props: { onDebugToggle: options.onDebugToggle },
+    }) as unknown as { load: () => Promise<void>; save: () => Promise<void> };
+  }
 
   return {
-    restore: () => restoreSettings(options.onDebugToggle),
-    save: () => saveSettingsFromForm(options.onDebugToggle),
+    restore: () => app?.load() ?? Promise.resolve(),
+    save: () => app?.save() ?? Promise.resolve(),
     togglePanel: () => toggleSettingsPanel(options.onVisibilityChange),
     openPanel: () => {
       showSettingsPanel();
