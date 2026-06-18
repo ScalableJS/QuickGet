@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
 const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
 
-test("popup full cycle: configure, connect, list, control, upload, remove", async (_fixtures, testInfo) => {
+test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {
   const mockNas = await startMockNas();
   const session = await launchExtensionPopup(extensionDistPath);
   const { page } = session;
