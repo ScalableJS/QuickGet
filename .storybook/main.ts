@@ -9,11 +9,13 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|ts|svelte)"],
-  addons: ["@storybook/addon-essentials", "@storybook/addon-interactions"],
+  addons: ["@storybook/addon-docs"],
+
   framework: {
     name: "@storybook/svelte-vite",
     options: {},
   },
+
   async viteFinal(baseConfig) {
     const overrides: UserConfig = {
       resolve: {
@@ -29,9 +31,6 @@ const config: StorybookConfig = {
     };
 
     return mergeConfig(baseConfig, overrides);
-  },
-  docs: {
-    autodocs: false,
   },
 };
 

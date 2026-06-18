@@ -1,5 +1,5 @@
 import type { Task } from "@lib/tasks.js";
-import type { Meta, StoryObj } from "@storybook/svelte";
+import type { Meta, StoryObj } from "@storybook/svelte-vite";
 
 import DownloadItem from "./DownloadItem.svelte";
 import DownloadItemGallery from "./DownloadItemGallery.svelte";
