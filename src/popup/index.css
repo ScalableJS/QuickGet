@@ -349,6 +349,11 @@ header.toolbar {
   padding: 0;
 }
 
+.toolbar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .toolbar-btn:hover {
   background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-alt));
   border-color: var(--color-primary);
@@ -713,27 +718,40 @@ textarea:focus {
   font-size: 12px;
   line-height: 1;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* lucide status icon (svg), coloured via currentColor below */
+.status-icon {
   width: 14px;
-  text-align: center;
-  opacity: 0.8;
+  height: 14px;
 }
 
-.download-item[data-status="downloading"] .progress-icon {
-  color: var(--color-success);
-}
-
-.download-item[data-status="seeding"] .progress-icon {
-  color: var(--color-success);
-}
-
-.download-item[data-status="finished"] .progress-icon {
+/* Colour follows torrent-client convention: download/active = blue,
+   seed/done = green, error = red, repairing = orange, idle = muted. */
+.download-item[data-status="downloading"] .progress-icon,
+.download-item[data-status="checking"] .progress-icon,
+.download-item[data-status="finishing"] .progress-icon {
   color: var(--color-primary);
+}
+
+.download-item[data-status="seeding"] .progress-icon,
+.download-item[data-status="finished"] .progress-icon {
+  color: var(--color-success);
 }
 
 .download-item[data-status="error"] .progress-icon {
   color: var(--color-error);
 }
 
+.download-item[data-status="repairing"] .progress-icon {
+  color: var(--color-warning);
+}
+
+.download-item[data-status="queued"] .progress-icon,
+.download-item[data-status="extracting"] .progress-icon,
 .download-item[data-status="paused"] .progress-icon,
 .download-item[data-status="stopped"] .progress-icon {
   color: var(--color-text-secondary);

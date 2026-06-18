@@ -38,6 +38,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
     "@crxjs/vite-plugin": "^2.2.0",
+    "@iconify-json/lucide": "^1.2.113",
     "@playwright/test": "^1.58.2",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
@@ -56,6 +57,7 @@
     "svelte": "^5.56.3",
     "svelte-check": "^4.6.0",
     "typescript": "^5.3.3",
+    "unplugin-icons": "^23.0.1",
     "vite": "^5.1.0",
     "vitest": "^4.0.18"
   },

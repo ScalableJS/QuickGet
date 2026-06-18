@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from "@lib/tasks.js";
   import { getDownloadItemView } from "./format.js";
+  import StatusIcon from "./StatusIcon.svelte";
 
   let {
     task,
@@ -56,7 +57,7 @@
       <p class="download-added">Added {view.addedText}</p>
     {/if}
     <div class="progress-container">
-      <span class="progress-icon" aria-label={view.statusLabel}>{view.statusIcon}</span>
+      <span class="progress-icon" aria-label={view.statusLabel}><StatusIcon status={task.status} /></span>
       <div class="progress-bar">
         <div class="progress-fill {view.progressModifier}" style="width: {view.progress}%"></div>
       </div>

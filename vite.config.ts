@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { crx } from "@crxjs/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
+import Icons from "unplugin-icons/vite";
 import manifest from "./manifest.json";
 
 export default defineConfig({
@@ -22,5 +23,5 @@ export default defineConfig({
       "@types": resolve(__dirname, "./src/types"),
     },
   },
-  plugins: [svelte(), crx({ manifest })],
+  plugins: [svelte(), Icons({ compiler: "svelte" }), crx({ manifest })],
 });

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 /// <reference types="svelte" />
+/// <reference types="unplugin-icons/types/svelte" />
 
 interface ImportMetaEnv {
   readonly VITE_QNAP_LOGIN?: string;
