@@ -1,16 +1,11 @@
 import type { Task } from "@lib/tasks.js";
+import { mount } from "svelte";
 
-import { renderDownloadsList } from "../../render/downloads.js";
-import { morphDOMUpdateList } from "../../shared/dom";
 import { formatRate } from "../../shared/formatters";
 
-import {
-  type DownloadsSnapshot,
-  getSelectedHash,
-  onSelectionChange,
-  onSnapshotChange,
-  setSelectedHash,
-} from "./downloadsState.js";
+import DownloadsList from "./DownloadsList.svelte";
+import { getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
+import { downloadsView } from "./downloadsView.svelte.js";
 
 interface DownloadsUIOptions {
   onSelectionChange?: (hash: string | null) => void;
@@ -19,41 +14,11 @@ interface DownloadsUIOptions {
 let downloadsSection: HTMLElement | null = null;
 let downloadsList: HTMLElement | null = null;
 let statusSpeedElement: HTMLElement | null = null;
+let mounted = false;
 
-function findDownloadItem(target: EventTarget | null): HTMLElement | null {
-  if (!(target instanceof HTMLElement)) return null;
-  return target.closest(".download-item");
-}
-
-function refreshSelectionUI(): void {
-  if (!downloadsList) return;
-  const items = downloadsList.querySelectorAll(".download-item");
-  const currentSelection = getSelectedHash();
-  items.forEach((node) => {
-    const item = node as HTMLElement;
-    const hash = item.getAttribute("data-hash");
-    const isSelected = !!currentSelection && hash === currentSelection;
-    item.classList.toggle("selected", isSelected);
-    item.setAttribute("aria-selected", isSelected ? "true" : "false");
-  });
-}
-
-function focusSelected(): void {
-  if (!downloadsList) return;
-  const currentSelection = getSelectedHash();
-  if (!currentSelection) return;
-  const selector = `.download-item[data-hash="${currentSelection.replace(/["\\]/g, "\\$&")}"]`;
-  const selectedItem = downloadsList.querySelector<HTMLElement>(selector);
-  selectedItem?.focus({ preventScroll: false });
-}
-
-function toggleSelectionForItem(item: HTMLElement | null): void {
-  if (!item) return;
-  const hash = item.getAttribute("data-hash");
-  if (!hash) return;
+function toggleSelection(hash: string): void {
   const current = getSelectedHash();
   setSelectedHash(current === hash ? null : hash);
-  refreshSelectionUI();
 }
 
 function updateStatusSpeed(tasks: Task[]): void {
@@ -78,26 +43,19 @@ function ensureElements(): void {
 export function setupDownloadsUI(options: DownloadsUIOptions = {}): void {
   ensureElements();
 
-  downloadsList?.addEventListener("click", (event) => {
-    toggleSelectionForItem(findDownloadItem(event.target));
-  });
-
-  downloadsList?.addEventListener("keydown", (event) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    const item = findDownloadItem(event.target);
-    if (!item) return;
-    event.preventDefault();
-    toggleSelectionForItem(item);
-  });
+  if (downloadsList && !mounted) {
+    downloadsList.replaceChildren();
+    downloadsView.selectedHash = getSelectedHash();
+    mount(DownloadsList, {
+      target: downloadsList,
+      props: { view: downloadsView, onToggle: toggleSelection },
+    });
+    mounted = true;
+  }
 
   onSelectionChange((hash) => {
-    refreshSelectionUI();
+    downloadsView.selectedHash = hash;
     options.onSelectionChange?.(hash);
-  });
-
-  onSnapshotChange((_snapshot: DownloadsSnapshot) => {
-    // Snapshot updates do not require immediate UI work here,
-    // but hook left for future enhancements.
   });
 }
 
@@ -105,8 +63,7 @@ export function renderDownloads(tasks: Task[]): void {
   ensureElements();
   if (!downloadsList || !downloadsSection) return;
 
-  const html = renderDownloadsList(tasks);
-  morphDOMUpdateList(downloadsList, html);
+  downloadsView.tasks = tasks;
 
   const settingsPanel = document.getElementById("settings-panel");
   const settingsOpen = settingsPanel ? !settingsPanel.classList.contains("hidden") : false;
@@ -114,8 +71,6 @@ export function renderDownloads(tasks: Task[]): void {
     downloadsSection.classList.remove("hidden");
   }
 
-  refreshSelectionUI();
-  focusSelected();
   updateStatusSpeed(tasks);
 }
 

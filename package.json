@@ -60,7 +60,6 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "morphdom": "^2.7.7",
     "openapi-fetch": "^0.9.4"
   }
 }

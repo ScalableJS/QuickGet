@@ -1,10 +1,10 @@
 import type { Task } from "@lib/tasks.js";
 
+import { getDownloadItemView } from "./format.js";
+
 export interface DownloadItemOptions {
   selected?: boolean;
 }
-
-const SPEED_UNITS = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"] as const;
 
 function escapeHtml(value: string): string {
   return value
@@ -15,138 +15,29 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function formatSpeed(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B/s";
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < SPEED_UNITS.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const precision = unitIndex === 0 ? 0 : 1;
-  return `${value.toFixed(precision)} ${SPEED_UNITS[unitIndex]}`;
-}
-
-const SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
-
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < SIZE_UNITS.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const precision = unitIndex === 0 ? 0 : 1;
-  return `${value.toFixed(precision)} ${SIZE_UNITS[unitIndex]}`;
-}
-
-function formatETA(seconds: number | undefined): string {
-  if (!seconds || seconds <= 0) return "";
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
-  if (minutes > 0) return `${minutes}m ${secs}s`;
-  return `${secs}s`;
-}
-
-function formatAddedDate(value?: number): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString(undefined, { hour12: false });
-}
-
-function formatStatus(status: string): string {
-  const statusLabels: Record<string, string> = {
-    queued: "Queued",
-    downloading: "Downloading",
-    seeding: "Seeding",
-    paused: "Paused",
-    stopped: "Stopped",
-    checking: "Checking",
-    repairing: "Repairing",
-    extracting: "Extracting",
-    finishing: "Finishing",
-    finished: "Finished",
-    error: "Error",
-  };
-  return statusLabels[status] || status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function getStatusIcon(status: string): string {
-  const icons: Record<string, string> = {
-    queued: "⏸",
-    downloading: "▶",
-    seeding: "🌱",
-    paused: "⏸",
-    stopped: "⏹",
-    checking: "🔍",
-    repairing: "🔧",
-    extracting: "📦",
-    finishing: "⏳",
-    finished: "✓",
-    error: "✗",
-  };
-  return icons[status] || "•";
-}
-
+/**
+ * Legacy string renderer — retained for Storybook stories and tests. The live
+ * popup renders via DownloadItem.svelte; both share `getDownloadItemView`.
+ */
 export function renderDownloadItem(task: Task, options: DownloadItemOptions = {}): string {
-  const progress = Math.max(0, Math.min(100, Math.round(task.progress)));
-  const isComplete = task.status === "finished" || task.status === "seeding" || progress >= 100;
-  const isError = task.status === "error";
-  const isActive =
-    task.status === "downloading" ||
-    task.status === "checking" ||
-    task.status === "repairing" ||
-    task.status === "extracting" ||
-    task.status === "finishing";
-
-  // Seeding/finished tasks have finished downloading — show a full bar and skip
-  // the misleading partial percentage QNAP reports for them.
-  const isDownloadComplete = task.status === "seeding" || task.status === "finished";
-  const displayProgress = isComplete ? 100 : progress;
-  const statusText = isDownloadComplete ? formatStatus(task.status) : `${formatStatus(task.status)} — ${progress}%`;
-  const statusIcon = getStatusIcon(task.status);
-  // While seeding/finished, surface torrent metrics (uploaded volume + ratio)
-  // instead of download speed/percentage, which is no longer meaningful.
-  const ratioText = task.shareRatio !== undefined && Number.isFinite(task.shareRatio) ? task.shareRatio.toFixed(2) : "";
-  const speedText = isDownloadComplete
-    ? `↑ ${formatBytes(task.uploadedBytes)}${ratioText ? ` • ratio ${ratioText}` : ""} • ${formatSpeed(task.upSpeedBps)} ↑`
-    : `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
-  const etaText = isDownloadComplete ? "" : formatETA(task.etaSec);
-  const addedText = formatAddedDate(task.addedAt);
-  const hash = escapeHtml(task.hash ?? task.id);
-  const name = escapeHtml(task.name);
-  const ariaSelected = options.selected ? "true" : "false";
+  const view = getDownloadItemView(task);
   const selectedClass = options.selected ? " selected" : "";
-  const etaSuffix = etaText ? ` • ETA: ${escapeHtml(etaText)}` : "";
+  const ariaSelected = options.selected ? "true" : "false";
 
-  let progressClass = "progress-fill";
-  if (isError) {
-    progressClass += " progress-error";
-  } else if (isComplete) {
-    progressClass += " progress-complete";
-  } else if (isActive) {
-    progressClass += " progress-active";
-  }
-
-  return `<article class="download-item${selectedClass}" data-hash="${hash}" data-status="${escapeHtml(
-    task.status,
-  )}" tabindex="0" role="option" aria-selected="${ariaSelected}">
+  return `<article class="download-item${selectedClass}" data-hash="${escapeHtml(
+    view.hash,
+  )}" data-status="${escapeHtml(task.status)}" tabindex="0" role="option" aria-selected="${ariaSelected}">
     <div class="download-info">
-      <p class="download-name">${name}</p>
+      <p class="download-name">${escapeHtml(task.name)}</p>
       <div class="download-meta">
-        <span class="download-status">${escapeHtml(statusText)}</span>
-        <span class="download-speed">${escapeHtml(speedText)}${etaSuffix}</span>
+        <span class="download-status">${escapeHtml(view.statusText)}</span>
+        <span class="download-speed">${escapeHtml(view.metaText)}${escapeHtml(view.etaSuffix)}</span>
       </div>
-      ${addedText ? `<p class="download-added">Added ${escapeHtml(addedText)}</p>` : ""}
+      ${view.addedText ? `<p class="download-added">Added ${escapeHtml(view.addedText)}</p>` : ""}
       <div class="progress-container">
-        <span class="progress-icon" aria-label="${escapeHtml(formatStatus(task.status))}">${statusIcon}</span>
+        <span class="progress-icon" aria-label="${escapeHtml(view.statusLabel)}">${view.statusIcon}</span>
         <div class="progress-bar">
-          <div class="${progressClass}" style="width: ${displayProgress}%"></div>
+          <div class="progress-fill ${view.progressModifier}" style="width: ${view.progress}%"></div>
         </div>
       </div>
     </div>

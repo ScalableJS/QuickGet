@@ -1,11 +1,9 @@
-import { mount } from "svelte";
 import { showStatus } from "@/popup/components";
 import { initializeDebug } from "./features/debug";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
 import { initializeUpload } from "./features/upload";
-import Hello from "./Hello.svelte";
 import { setDefaultClientLogger } from "./shared/api";
 
 function handleInitializationError(error: unknown): void {
@@ -16,13 +14,6 @@ function handleInitializationError(error: unknown): void {
 document.addEventListener("DOMContentLoaded", async () => {
   const debug = initializeDebug();
   debug.log("Popup loaded");
-
-  // Phase 0 spike: mount a Svelte component in the real popup to validate
-  // crxjs + Svelte + MV3 CSP. Remove after the spike is validated.
-  const probe = document.getElementById("svelte-probe");
-  if (probe) {
-    mount(Hello, { target: probe, props: { name: "QuickGet" } });
-  }
 
   setDefaultClientLogger(debug.getApiLogger());
 
