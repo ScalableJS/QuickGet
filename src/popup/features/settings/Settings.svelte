@@ -1,6 +1,7 @@
 <script lang="ts">
   import { showStatus } from "@/popup/components";
   import { DEFAULTS, type Settings } from "@lib/config.js";
+  import { getErrorMessage } from "@lib/errors.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
@@ -19,7 +20,7 @@
       form = await loadSettings();
       showStatus("Settings loaded", "info", { autoHideMs: 1500 });
     } catch (error) {
-      showStatus(`Failed to load settings: ${error}`, "error");
+      showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
     }
   }
 
@@ -29,7 +30,7 @@
       invalidateClientCache();
       showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
     } catch (error) {
-      showStatus(`Failed to save settings: ${error}`, "error");
+      showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
     }
   }
 
@@ -44,7 +45,7 @@
         showStatus("Connection failed. Check settings and try again.", "error");
       }
     } catch (error) {
-      showStatus(`Connection error: ${error}`, "error");
+      showStatus(`Connection error: ${getErrorMessage(error)}`, "error");
     }
   }
 

@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@lib/errors.js";
 import { showStatus } from "@/popup/components";
 import { initializeDebug } from "./features/debug";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
@@ -7,8 +8,7 @@ import { initializeUpload } from "./features/upload";
 import { setDefaultClientLogger } from "./shared/api";
 
 function handleInitializationError(error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error);
-  showStatus(`Popup initialization failed: ${message}`, "error");
+  showStatus(`Popup initialization failed: ${getErrorMessage(error)}`, "error");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

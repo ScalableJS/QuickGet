@@ -1,6 +1,7 @@
 <script lang="ts">
   import { parseDestinationFolders } from "@lib/config.js";
   import type { Settings } from "@lib/config.js";
+  import { getErrorMessage } from "@lib/errors.js";
   import { loadSettings } from "@lib/settings.js";
   import {
     findExistingTask,
@@ -56,7 +57,7 @@
       status = `Added: ${result.name}`;
       setTimeout(() => window.close(), 900);
     } catch (error) {
-      status = `Failed: ${(error as Error).message}`;
+      status = `Failed: ${getErrorMessage(error)}`;
       addDisabled = false;
     }
   }
@@ -87,7 +88,7 @@
       status = "Resumed.";
       setTimeout(() => window.close(), 900);
     } catch (error) {
-      status = `Failed: ${(error as Error).message}`;
+      status = `Failed: ${getErrorMessage(error)}`;
       addDisabled = false;
     }
   }

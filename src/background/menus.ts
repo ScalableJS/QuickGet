@@ -4,6 +4,7 @@
  */
 
 import { createApiClient } from "@api/client.js";
+import { getErrorMessage } from "@lib/errors.js";
 import { loadSettings } from "@lib/settings.js";
 
 /**
@@ -53,7 +54,7 @@ export async function handleContextMenuClick(
     await sendDownloadToStation(url);
   } catch (error) {
     console.error("Context menu error:", error);
-    showNotification("Failed to send with QuickGet", (error as Error).message);
+    showNotification("Failed to send with QuickGet", getErrorMessage(error));
   }
 }
 

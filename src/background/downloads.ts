@@ -9,6 +9,7 @@
  */
 
 import type { Settings } from "@lib/config.js";
+import { getErrorMessage } from "@lib/errors.js";
 import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
@@ -73,7 +74,7 @@ async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promi
     });
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
-    notify("Failed to redirect download", (error as Error).message);
+    notify("Failed to redirect download", getErrorMessage(error));
   }
 }
 
@@ -122,7 +123,7 @@ async function sendAndNotify(settings: Settings, url: string): Promise<void> {
     }
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
-    notify("Failed to send torrent", (error as Error).message);
+    notify("Failed to send torrent", getErrorMessage(error));
   }
 }
 
@@ -162,7 +163,7 @@ async function handleResumeButton(notificationId: string): Promise<void> {
     notify("Resumed on NAS", "Task restarted");
   } catch (error) {
     console.error("[QuickGet] Failed to resume task:", error);
-    notify("Failed to resume task", (error as Error).message);
+    notify("Failed to resume task", getErrorMessage(error));
   }
 }
 
