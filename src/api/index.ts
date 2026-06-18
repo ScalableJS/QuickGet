@@ -1,4 +1,4 @@
-import createClient, { type Middleware, type MiddlewareRequest } from "openapi-fetch";
+import createClient, { type Middleware } from "openapi-fetch";
 
 import type { Settings } from "@/lib";
 
@@ -45,9 +45,9 @@ export function createSidMiddleware(options: { settings: Settings; logger?: Logg
   const UNPROTECTED_ROUTES = ["/downloadstation/V4/Misc/Login"];
 
   return {
-    async onRequest(request: MiddlewareRequest) {
+    async onRequest({ request, schemaPath }) {
       // Skip login endpoint itself
-      if (UNPROTECTED_ROUTES.some((route) => request.schemaPath.startsWith(route))) {
+      if (UNPROTECTED_ROUTES.some((route) => schemaPath.startsWith(route))) {
         return request;
       }
 
@@ -74,7 +74,7 @@ export function createSidMiddleware(options: { settings: Settings; logger?: Logg
       }
 
       // For multipart/form-data
-      if (contentType.includes("multipart/form-data") || request.schemaPath.includes("/Task/Add")) {
+      if (contentType.includes("multipart/form-data") || schemaPath.includes("/Task/Add")) {
         // Если body это FormData - используем как есть
         try {
           const originalForm = await request.clone().formData();
@@ -94,11 +94,11 @@ export function createSidMiddleware(options: { settings: Settings; logger?: Logg
       return request;
     },
 
-    async onResponse(response: Response, _options, request: MiddlewareRequest) {
+    async onResponse({ response, schemaPath }) {
       // Handle 403/401 - invalid SID
       if (
         (response.status === 403 || response.status === 401) &&
-        !UNPROTECTED_ROUTES.some((route) => request.schemaPath.startsWith(route))
+        !UNPROTECTED_ROUTES.some((route) => schemaPath.startsWith(route))
       ) {
         sid = null; // Clear SID to force re-login next time
         logger?.debug("SID invalidated, will refresh on next request");

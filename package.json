@@ -44,23 +44,23 @@
     "@storybook/svelte-vite": "^10.4.6",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@types/chrome": "^0.1.43",
-    "@types/node": "^24.13.2",
+    "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.1.9",
-    "bestzip": "^2.0.0",
+    "bestzip": "^3.0.1",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "msw": "^2.14.6",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.1",
     "storybook": "^10.4.6",
     "svelte": "^5.56.3",
     "svelte-check": "^4.6.0",
-    "typescript": "^5.3.3",
+    "typescript": "^5.9.3",
     "unplugin-icons": "^23.0.1",
     "vite": "^7.1.12",
     "vitest": "^4.1.9",
     "@storybook/addon-docs": "^10.4.6"
   },
   "dependencies": {
-    "openapi-fetch": "^0.9.4"
+    "openapi-fetch": "^0.17.0"
   }
 }
