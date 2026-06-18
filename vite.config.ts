@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import { crx } from "@crxjs/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { defineConfig } from "vite";
 import Icons from "unplugin-icons/vite";
+import { defineConfig } from "vite";
 import manifest from "./manifest.json";
 
 export default defineConfig({

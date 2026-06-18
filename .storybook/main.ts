@@ -1,32 +1,34 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { StorybookConfig } from "@storybook/html-vite";
+import type { StorybookConfig } from "@storybook/svelte-vite";
+import Icons from "unplugin-icons/vite";
 import { mergeConfig, type UserConfig } from "vite";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.stories.@(js|ts)"],
+  stories: ["../src/**/*.stories.@(js|ts|svelte)"],
   addons: ["@storybook/addon-essentials", "@storybook/addon-interactions"],
   framework: {
-    name: "@storybook/html-vite",
+    name: "@storybook/svelte-vite",
     options: {},
   },
   async viteFinal(baseConfig) {
-    const aliasConfig: UserConfig = {
+    const overrides: UserConfig = {
       resolve: {
         alias: {
           "@": resolve(projectRoot, "src"),
+          "@api": resolve(projectRoot, "src/api"),
           "@lib": resolve(projectRoot, "src/lib"),
           "@ui": resolve(projectRoot, "src/ui"),
           "@types": resolve(projectRoot, "src/types"),
         },
       },
-      plugins: [],
+      plugins: [Icons({ compiler: "svelte" })],
     };
 
-    return mergeConfig(baseConfig, aliasConfig);
+    return mergeConfig(baseConfig, overrides);
   },
   docs: {
     autodocs: false,

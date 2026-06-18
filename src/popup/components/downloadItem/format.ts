@@ -17,20 +17,6 @@ const STATUS_LABELS: Record<string, string> = {
   error: "Error",
 };
 
-const STATUS_ICONS: Record<string, string> = {
-  queued: "⏸",
-  downloading: "▶",
-  seeding: "🌱",
-  paused: "⏸",
-  stopped: "⏹",
-  checking: "🔍",
-  repairing: "🔧",
-  extracting: "📦",
-  finishing: "⏳",
-  finished: "✓",
-  error: "✗",
-};
-
 export function formatSpeed(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B/s";
   let value = bytes;
@@ -77,15 +63,10 @@ export function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export function getStatusIcon(status: string): string {
-  return STATUS_ICONS[status] || "•";
-}
-
 export interface DownloadItemView {
   hash: string;
   statusText: string;
   statusLabel: string;
-  statusIcon: string;
   metaText: string;
   etaSuffix: string;
   addedText: string;
@@ -128,7 +109,6 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     hash: task.hash ?? task.id,
     statusText: isDownloadComplete ? formatStatus(task.status) : `${formatStatus(task.status)} — ${progress}%`,
     statusLabel: formatStatus(task.status),
-    statusIcon: getStatusIcon(task.status),
     metaText,
     etaSuffix: etaText ? ` • ETA: ${etaText}` : "",
     addedText: formatAddedDate(task.addedAt),

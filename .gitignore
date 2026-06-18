@@ -23,3 +23,5 @@ test-results/
 !docs/toolbar-actions.md
 
 !docs/svelte-migration-plan.md
+
+storybook-static/

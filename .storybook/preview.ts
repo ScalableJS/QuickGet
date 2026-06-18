@@ -1,31 +1,19 @@
-import type { Decorator, Preview } from "@storybook/html";
+import type { Preview } from "@storybook/svelte";
 
 import "../src/popup/index.css";
 
-const themeDecorator: Decorator = (Story, context) => {
-  const theme = context.globals.theme ?? "light";
+function applyTheme(theme: string): void {
   const root = document.documentElement;
-
-  if (theme === "light") {
-    root.setAttribute("data-theme", "light");
-  } else {
-    root.setAttribute("data-theme", "dark");
-  }
-
-  // Sync body colors to current CSS variables for clean canvas background
+  root.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
   const styles = getComputedStyle(root);
   document.body.style.backgroundColor = styles.getPropertyValue("--color-bg").trim();
   document.body.style.color = styles.getPropertyValue("--color-text").trim();
-
-  return Story();
-};
+}
 
 const preview: Preview = {
   parameters: {
     layout: "padded",
-    controls: {
-      expanded: true,
-    },
+    controls: { expanded: true },
   },
   globalTypes: {
     theme: {
@@ -42,7 +30,12 @@ const preview: Preview = {
       },
     },
   },
-  decorators: [themeDecorator],
+  decorators: [
+    (story, context) => {
+      applyTheme(context.globals.theme ?? "light");
+      return story();
+    },
+  ],
 };
 
 export default preview;

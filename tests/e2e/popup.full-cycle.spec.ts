@@ -11,6 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
 const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
 
+// biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {
   const mockNas = await startMockNas();
   const session = await launchExtensionPopup(extensionDistPath);
