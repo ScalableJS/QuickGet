@@ -52,9 +52,12 @@ export function createApiError(prefix: string, result: unknown): Error {
   error.code = errorCode;
   error.reason = reason;
 
-  // Flag duplicate errors
+  // Flag duplicate errors. QNAP DS V4 reports an already-existing task via
+  // AddTorrent as error code 8196 with reason set to the torrent name (no
+  // "duplicate"/"exist" keyword) — verified on a live NAS — so match the code
+  // as well as the textual reason.
   const reasonLower = reason.toLowerCase();
-  if (reasonLower.includes("duplicate") || reasonLower.includes("exist")) {
+  if (errorCode === 8196 || reasonLower.includes("duplicate") || reasonLower.includes("exist")) {
     error.duplicate = true;
   }
 
