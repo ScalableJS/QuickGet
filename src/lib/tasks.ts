@@ -136,8 +136,6 @@ const parseNumber = (value: unknown): number | undefined => {
 
 const readNumber = (value: unknown, fallback = 0): number => parseNumber(value) ?? fallback;
 
-const parseOptionalNumber = (value: unknown): number | undefined => parseNumber(value);
-
 const parseString = (value: unknown): string | undefined => {
   if (typeof value === "string") {
     return value;
@@ -157,12 +155,10 @@ const toRecordArray = (value: unknown): RawTaskRecord[] => {
     return [];
   }
 
-  return value
-    .filter((item): item is RawTaskRecord => typeof item === "object" && item !== null)
-    .map((item) => item as RawTaskRecord);
+  return value.filter((item): item is RawTaskRecord => typeof item === "object" && item !== null);
 };
 
-export const normalizeSynology = (input: unknown): Task => {
+const normalizeSynology = (input: unknown): Task => {
   const task = asRecord(input);
   const additional = asRecord(task.additional);
   const transfer = asRecord(additional.transfer);
@@ -171,10 +167,10 @@ export const normalizeSynology = (input: unknown): Task => {
   const size = readNumber(task.size ?? transfer.size, 0);
   const downloaded = readNumber(transfer.size_downloaded, 0);
 
-  const seedsTotal = parseOptionalNumber(detail.seeders);
-  const peersTotal = parseOptionalNumber(detail.leechers);
-  const eta = parseOptionalNumber(transfer.eta) ?? parseOptionalNumber(detail.eta);
-  const createdAt = parseOptionalNumber(detail.create_time);
+  const seedsTotal = parseNumber(detail.seeders);
+  const peersTotal = parseNumber(detail.leechers);
+  const eta = parseNumber(transfer.eta) ?? parseNumber(detail.eta);
+  const createdAt = parseNumber(detail.create_time);
 
   return {
     id: readString(task.id ?? task.task_id ?? task.hash ?? crypto.randomUUID()),
@@ -197,12 +193,12 @@ export const normalizeSynology = (input: unknown): Task => {
     etaSec: eta,
     hash: parseString(task.hash) ?? parseString(detail.uri) ?? parseString(detail.destination) ?? undefined,
     addedAt: createdAt,
-    priority: parseOptionalNumber(task.priority),
+    priority: parseNumber(task.priority),
     source: "synology",
   };
 };
 
-export const normalizeQnap = (input: unknown): Task => {
+const normalizeQnap = (input: unknown): Task => {
   const task = asRecord(input);
 
   const size = readNumber(task.total_size ?? task.size, 0);
@@ -220,7 +216,7 @@ export const normalizeQnap = (input: unknown): Task => {
         ? parseDateToEpoch(created)
         : undefined;
 
-  const rawProgress = parseOptionalNumber(task.progress);
+  const rawProgress = parseNumber(task.progress);
   const hasValidProgress = rawProgress !== undefined && rawProgress >= 0 && rawProgress <= 100;
 
   const calculatedProgress = size > 0 ? clamp((downloaded / size) * 100, 0, 100) : 0;
@@ -264,11 +260,11 @@ export const normalizeQnap = (input: unknown): Task => {
     status = "queued";
   }
 
-  const seedsTotal = parseOptionalNumber(task.seeds_total);
-  const peersTotal = parseOptionalNumber(task.peers_total);
-  const etaValue = parseOptionalNumber(task.eta) ?? parseOptionalNumber(task.remain_time);
+  const seedsTotal = parseNumber(task.seeds_total);
+  const peersTotal = parseNumber(task.peers_total);
+  const etaValue = parseNumber(task.eta) ?? parseNumber(task.remain_time);
 
-  const rawShare = parseOptionalNumber(task.share);
+  const rawShare = parseNumber(task.share);
   const shareRatio = rawShare ?? (size > 0 ? uploaded / size : undefined);
 
   return {
@@ -293,8 +289,8 @@ export const normalizeQnap = (input: unknown): Task => {
     etaSec: etaValue != null && etaValue >= 0 ? etaValue : undefined,
     hash: parseString(task.hash) ?? parseString(task.bt_hash) ?? undefined,
     addedAt,
-    priority: parseOptionalNumber(task.priority),
-    totalFiles: parseOptionalNumber(task.total_files),
+    priority: parseNumber(task.priority),
+    totalFiles: parseNumber(task.total_files),
     source: "qnap",
   };
 };

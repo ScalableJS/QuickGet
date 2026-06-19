@@ -17,9 +17,11 @@ playwright-report/
 test-results/
 .e2e-artifacts/
 
-# Ignore all markdown files except README
+# Ignore all markdown files except README, project instructions, and tracked docs
 *.md
 !README.md
+!CLAUDE.md
+!.github/**/*.md
 !docs/toolbar-actions.md
 
 !docs/svelte-migration-plan.md

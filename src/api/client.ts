@@ -408,9 +408,5 @@ function serializeUrlEncoded<T extends { sid: string }>(body: T): URLSearchParam
 }
 
 function isErrorWithDuplicateFlag(error: unknown): error is Error & { duplicate?: boolean } {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-  const candidate = error as { duplicate?: unknown };
-  return typeof candidate.duplicate === "boolean";
+  return typeof error === "object" && error !== null && "duplicate" in error && typeof error.duplicate === "boolean";
 }

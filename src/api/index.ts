@@ -1,6 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 
-import type { Settings } from "@/lib";
+import type { Settings } from "@lib/config.js";
 
 import type { paths } from "./type.js";
 
@@ -51,7 +51,7 @@ const SESSION_ERROR_CODES = new Set([5]);
  * `fetchFn` must be the same fetch implementation the client uses, so the
  * replay is intercepted by MSW in tests and behaves identically in production.
  */
-export function createSidMiddleware(options: {
+function createSidMiddleware(options: {
   settings: Settings;
   logger?: LoggerAdapter;
   fetchFn?: typeof fetch;

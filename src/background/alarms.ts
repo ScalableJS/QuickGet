@@ -60,11 +60,6 @@ export async function ensureMonitoring(): Promise<void> {
   });
 }
 
-/** Back-compat alias for the service-worker bootstrap. */
-export function startMonitoring(): void {
-  void ensureMonitoring();
-}
-
 /**
  * Stop monitoring downloads
  */
