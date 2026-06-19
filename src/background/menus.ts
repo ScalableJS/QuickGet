@@ -11,16 +11,21 @@ import { loadSettings } from "@lib/settings.js";
  * Create context menu items
  */
 export function createContextMenus(): void {
-  chrome.contextMenus.create({
-    id: "quickget-send-link",
-    title: "Send with QuickGet",
-    contexts: ["link", "selection"],
-  });
+  // Remove first so re-running this (onInstalled fires on update/reload, the MV3
+  // service worker can restart) never throws "duplicate id".
+  chrome.contextMenus.removeAll(() => {
+    void chrome.runtime.lastError; // ignore "no items" on a fresh worker
+    chrome.contextMenus.create({
+      id: "quickget-send-link",
+      title: "Send with QuickGet",
+      contexts: ["link", "selection"],
+    });
 
-  chrome.contextMenus.create({
-    id: "quickget-send-page",
-    title: "Send current page with QuickGet",
-    contexts: ["page"],
+    chrome.contextMenus.create({
+      id: "quickget-send-page",
+      title: "Send current page with QuickGet",
+      contexts: ["page"],
+    });
   });
 }
 
