@@ -6,7 +6,7 @@
 import { type ApiClient, createApiClient } from "@api/client.js";
 import { loadSettings } from "@lib/settings.js";
 
-import { clearBadge, startIconAnimation, stopIconAnimation, updateBadge } from "./actions.js";
+import { clearBadge, startIconAnimation, stopIconAnimation, updateStatsBadge } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.1; // ~6 seconds
@@ -73,13 +73,19 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
 
   try {
     const client = await getClient();
-    const { tasks } = await client.queryTasks();
+    const { raw, tasks } = await client.queryTasks();
 
     if (tasks.length > 0) {
       const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
       const avgProgress = Math.round(totalProgress / tasks.length);
 
-      updateBadge(avgProgress);
+      const status = raw.status;
+      updateStatsBadge({
+        active: status.active,
+        all: status.all,
+        downRate: status.down_rate,
+        upRate: status.up_rate,
+      });
       if (completionTimeout !== null && avgProgress < 100) {
         self.clearTimeout(completionTimeout);
         completionTimeout = null;

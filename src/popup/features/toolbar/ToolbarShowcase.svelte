@@ -20,6 +20,7 @@
     pause: noop,
     remove: noop,
     add: noop,
+    addUrls: noop,
     toggleSettings: () => {
       toolbarView.settingsExpanded = !toolbarView.settingsExpanded;
     },

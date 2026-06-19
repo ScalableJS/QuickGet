@@ -1,4 +1,4 @@
-import type { ApiClient, QueryTasksResult } from "@api/client.js";
+import type { ApiClient, QueryTasksResult, TorrentFile } from "@api/client.js";
 
 import { getApiClient } from "../../shared/api";
 
@@ -75,4 +75,17 @@ export async function pauseTorrent(hash: string): Promise<void> {
     return;
   }
   await client.stopTask(hash);
+}
+
+export async function getTorrentFiles(hash: string): Promise<TorrentFile[]> {
+  const client = await ensureClient();
+  return client.getTaskFiles(hash);
+}
+
+export async function setTorrentFiles(
+  hash: string,
+  selections: { index: number; priority: 0 | 1 }[],
+): Promise<{ index: number; ok: boolean; error?: string }[]> {
+  const client = await ensureClient();
+  return client.setTaskFiles(hash, selections);
 }

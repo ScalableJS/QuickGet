@@ -15,6 +15,13 @@ type TaskQueryRequest = components["schemas"]["TaskQueryRequest"];
 type AddUrlRequest = components["schemas"]["AddUrlRequest"];
 type ModifyTaskRequest = components["schemas"]["ModifyTaskRequest"];
 type RemoveTaskRequest = components["schemas"]["RemoveTaskRequest"];
+type DirListRequest = components["schemas"]["DirListRequest"];
+export type DirEntry = components["schemas"]["DirEntry"];
+type StatusRequest = components["schemas"]["StatusRequest"];
+export type DownloadStationStatus = components["schemas"]["DownloadStationStatus"];
+type GetFileRequest = components["schemas"]["GetFileRequest"];
+type SetFileRequest = components["schemas"]["SetFileRequest"];
+export type TorrentFile = components["schemas"]["TorrentFile"];
 
 export interface QueryTasksResult {
   raw: TaskQueryResponse;
@@ -267,6 +274,124 @@ export class ApiClient {
     }
 
     throw new Error(`Remove task failed: ${getErrorMessage(payload)}`);
+  }
+
+  /**
+   * Add several URLs as independent tasks. Each URL is sent through `addUrl`
+   * (reusing the required temp/move handling), so the per-URL outcome is known.
+   */
+  async addUrls(
+    urls: string[],
+    options: { tempFolder?: string; targetFolder?: string } = {},
+  ): Promise<{ url: string; ok: boolean; error?: string }[]> {
+    const settled = await Promise.allSettled(urls.map((url) => this.addUrl(url, options)));
+    return settled.map((result, i) => {
+      const url = urls[i];
+      if (result.status === "fulfilled") {
+        return { url, ok: result.value };
+      }
+      const reason = result.reason;
+      return { url, ok: false, error: reason instanceof Error ? reason.message : String(reason) };
+    });
+  }
+
+  /**
+   * Fetch aggregated Download Station stats without pulling the task array —
+   * cheaper than queryTasks for background badge polling.
+   */
+  async getStatus(): Promise<DownloadStationStatus> {
+    const body = withEmptySid<StatusRequest>({});
+    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Status", {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+
+    const payload = data ?? error;
+    if (!data || !isSuccessResponse(payload)) {
+      throw new Error(`Get status failed: ${getErrorMessage(payload)}`);
+    }
+
+    return data.data;
+  }
+
+  /** List the files inside a (multi-file) torrent task. */
+  async getTaskFiles(hash: string): Promise<TorrentFile[]> {
+    const body = withEmptySid<GetFileRequest>({ hash });
+    const { data, error } = await this.client.POST("/downloadstation/V4/Task/GetFile", {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+
+    const payload = data ?? error;
+    if (!data || !isSuccessResponse(payload)) {
+      throw new Error(`Get task files failed: ${getErrorMessage(payload)}`);
+    }
+
+    return data.data[0]?.files ?? [];
+  }
+
+  /**
+   * Set per-file download priority. The API takes one file per call
+   * (`index` + `priority`), so selections are applied with Promise.allSettled.
+   * Note: only works while the task is active — completed tasks reject (error 16387).
+   */
+  async setTaskFiles(
+    hash: string,
+    selections: { index: number; priority: 0 | 1 }[],
+  ): Promise<{ index: number; ok: boolean; error?: string }[]> {
+    const settled = await Promise.allSettled(
+      selections.map(({ index, priority }) => this.setTaskFile(hash, index, priority)),
+    );
+    return settled.map((result, i) => {
+      const { index } = selections[i];
+      if (result.status === "fulfilled") {
+        return { index, ok: true };
+      }
+      const reason = result.reason;
+      return { index, ok: false, error: reason instanceof Error ? reason.message : String(reason) };
+    });
+  }
+
+  private async setTaskFile(hash: string, index: number, priority: 0 | 1): Promise<boolean> {
+    const body = withEmptySid<SetFileRequest>({ hash, index, priority });
+    const { data, error } = await this.client.POST("/downloadstation/V4/Task/SetFile", {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+
+    const payload = data ?? error;
+    if (isSuccessResponse(payload)) {
+      return true;
+    }
+
+    throw new Error(`Set file failed: ${getErrorMessage(payload)}`);
+  }
+
+  async listDir(path = ""): Promise<DirEntry[]> {
+    const body = withEmptySid<DirListRequest>({ path });
+    const { data, error } = await this.client.POST("/downloadstation/V4/Misc/Dir", {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+
+    const payload = data ?? error;
+    if (!data || !isSuccessResponse(payload)) {
+      throw new Error(`List dir failed: ${getErrorMessage(payload)}`);
+    }
+
+    return data.data;
   }
 }
 

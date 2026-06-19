@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { parseDestinationFolders } from "@lib/config.js";
   import type { Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
   import { loadSettings } from "@lib/settings.js";
@@ -10,13 +9,13 @@
     resumeTask,
     sendTorrentUrlToNas,
   } from "@lib/torrentSender.js";
+  import FolderSelect from "../popup/features/folderPicker/FolderSelect.svelte";
 
   const downloadId = Number(new URLSearchParams(location.search).get("id"));
   const pendingKey = `pending_${downloadId}`;
 
   let settings = $state<Settings | null>(null);
   let pending = $state<PendingTorrent | null>(null);
-  let folders = $state<string[]>([]);
   let folder = $state("");
   let name = $state("…");
   let status = $state("");
@@ -27,8 +26,7 @@
 
   async function init(): Promise<void> {
     settings = await loadSettings();
-    folders = parseDestinationFolders(settings);
-    folder = folders[0] ?? settings.NASdir;
+    folder = settings.NASdir;
 
     const stored = await chrome.storage.session.get(pendingKey);
     pending = (stored[pendingKey] as PendingTorrent | undefined) ?? null;
@@ -104,13 +102,12 @@
 <h1>Send torrent to NAS</h1>
 <div class="name" id="torrent-name">{name}</div>
 
-<label for="folder">Destination folder</label>
-<input id="folder" list="folders" placeholder="/share/Multimedia/Movies" bind:value={folder} disabled={folderDisabled} />
-<datalist id="folders">
-  {#each folders as f (f)}
-    <option value={f}></option>
-  {/each}
-</datalist>
+<label for="folder">Target Folder</label>
+{#if folderDisabled}
+  <input id="folder" type="text" placeholder="/share/Multimedia/Movies" bind:value={folder} disabled />
+{:else}
+  <FolderSelect id="folder" placeholder="/share/Multimedia/Movies" settings={settings ?? undefined} bind:value={folder} />
+{/if}
 
 <div class="actions">
   <button type="button" id="cancel-btn" onclick={cancel}>Cancel</button>

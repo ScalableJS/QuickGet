@@ -147,6 +147,171 @@ describe("ApiClient", () => {
     expect(params.has("savepath")).toBe(false);
   });
 
+  it("adds multiple URLs as separate tasks with temp/move and per-URL results", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    const bodies: string[] = [];
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", async ({ request }) => {
+        const body = await request.text();
+        bodies.push(body);
+        // Reject the second URL to verify per-URL outcome reporting.
+        if (new URLSearchParams(body).get("url") === "http://b.example/2.zip") {
+          return HttpResponse.json({ error: 1, reason: "rejected" });
+        }
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    const results = await client.addUrls(["http://a.example/1.zip", "http://b.example/2.zip"]);
+
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      const params = new URLSearchParams(body);
+      expect(params.get("temp")).toBe("/share/Download");
+      expect(params.get("move")).toBe("/share/Multimedia/Movies");
+    }
+    expect(results[0]).toEqual({ url: "http://a.example/1.zip", ok: true });
+    expect(results[1].ok).toBe(false);
+    expect(results[1].error).toContain("rejected");
+  });
+
+  it("fetches aggregated download-station status", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Status", () =>
+        HttpResponse.json({
+          error: 0,
+          data: {
+            active: 2,
+            all: 6,
+            bt: 6,
+            completed: 4,
+            down_rate: 1234,
+            downloading: 2,
+            inactive: 4,
+            paused: 0,
+            seeding: 0,
+            stopped: 0,
+            up_rate: 56,
+            url: 0,
+          },
+        }),
+      ),
+    );
+
+    const status = await client.getStatus();
+
+    expect(status).toMatchObject({ active: 2, all: 6, down_rate: 1234, up_rate: 56, downloading: 2 });
+  });
+
+  it("gets the file list of a multi-file torrent", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/GetFile", () =>
+        HttpResponse.json({
+          error: 0,
+          total: 1,
+          data: [
+            {
+              hash: "ABC123",
+              name: "Pack",
+              files: [
+                { no: 0, filename: "a.iso", size: 100, done: 1, priority: 1 },
+                { no: 1, filename: "b.txt", size: 5, done: 1, priority: 1 },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    const files = await client.getTaskFiles("ABC123");
+    expect(files).toHaveLength(2);
+    expect(files[0]).toEqual({ no: 0, filename: "a.iso", size: 100, done: 1, priority: 1 });
+  });
+
+  it("sets per-file priority with one request per index and reports outcomes", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    const seen: { index: string | null; priority: string | null }[] = [];
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/SetFile", async ({ request }) => {
+        const params = new URLSearchParams(await request.text());
+        seen.push({ index: params.get("index"), priority: params.get("priority") });
+        // Reject index 1 to exercise per-file error reporting.
+        if (params.get("index") === "1") {
+          return HttpResponse.json({ error: 16387, reason: "ABC123" });
+        }
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    const results = await client.setTaskFiles("ABC123", [
+      { index: 0, priority: 1 },
+      { index: 1, priority: 0 },
+    ]);
+
+    expect(seen).toEqual([
+      { index: "0", priority: "1" },
+      { index: "1", priority: "0" },
+    ]);
+    expect(results[0]).toEqual({ index: 0, ok: true });
+    expect(results[1].ok).toBe(false);
+  });
+
+  it("lists NAS directories and forwards the requested path", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    let dirBody = "";
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Dir", async ({ request }) => {
+        dirBody = await request.text();
+        return HttpResponse.json({
+          base_path: "Download",
+          error: 0,
+          total: 2,
+          data: [
+            { dir: "Movies", path: "Download/Movies", temporary: true, writtable: true },
+            { dir: "ReadOnly", path: "Download/ReadOnly", temporary: false, writtable: false },
+          ],
+        });
+      }),
+    );
+
+    const entries = await client.listDir("Download");
+
+    expect(new URLSearchParams(dirBody).get("path")).toBe("Download");
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toEqual({ dir: "Movies", path: "Download/Movies", temporary: true, writtable: true });
+    expect(entries[1].writtable).toBe(false);
+  });
+
   it("throws a readable error when task query fails", async () => {
     const settings = createTestSettings();
     const client = createApiClient({ settings, fetchFn: fetch });

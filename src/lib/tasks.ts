@@ -30,6 +30,7 @@ export interface Task {
   hash?: string;
   addedAt?: number;
   priority?: number;
+  totalFiles?: number; // file count inside the torrent (for the file-selection dialog)
   source?: Vendor;
 }
 
@@ -293,6 +294,7 @@ export const normalizeQnap = (input: unknown): Task => {
     hash: parseString(task.hash) ?? parseString(task.bt_hash) ?? undefined,
     addedAt,
     priority: parseOptionalNumber(task.priority),
+    totalFiles: parseOptionalNumber(task.total_files),
     source: "qnap",
   };
 };

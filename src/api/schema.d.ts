@@ -109,6 +109,58 @@ export interface components {
       move?: string;
       dest_path?: string;
     };
+    StatusRequest: {
+      sid: string;
+    };
+    TorrentFile: {
+      no: number;
+      filename: string;
+      size: number;
+      // 1 = file is included/wanted (NOT download progress — verified on a 41%-done task).
+      done: number;
+      // 0 = skip, 1 = normal (verified on live QTS 5 NAS).
+      priority: number;
+    };
+    GetFileRequest: {
+      sid: string;
+      hash: string;
+    };
+    GetFileResponse: components["schemas"]["BaseResponse"] & {
+      data: {
+        hash: string;
+        name: string;
+        files: components["schemas"]["TorrentFile"][];
+      }[];
+      total: number;
+    };
+    SetFileRequest: {
+      sid: string;
+      hash: string;
+      // File index (the `no` field from GetFile). Field name verified on live NAS.
+      index: number;
+      // Required — server returns {error:1, reason:"priority"} if omitted.
+      priority: 0 | 1;
+    };
+    StatusResponse: components["schemas"]["BaseResponse"] & {
+      data: components["schemas"]["DownloadStationStatus"];
+    };
+    DirListRequest: {
+      sid: string;
+      // Relative path; "" lists the share root.
+      path?: string;
+    };
+    DirEntry: {
+      dir: string;
+      path: string;
+      temporary: boolean;
+      // NB: "writtable" (two t's) is the QNAP API spelling — do not "fix" it.
+      writtable: boolean;
+    };
+    DirListResponse: components["schemas"]["BaseResponse"] & {
+      base_path: string;
+      data: components["schemas"]["DirEntry"][];
+      total: number;
+    };
   };
 }
 
@@ -276,6 +328,70 @@ export interface paths {
       };
     };
   };
+  "/downloadstation/V4/Task/Status": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["StatusRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["StatusResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/downloadstation/V4/Task/GetFile": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["GetFileRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["GetFileResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/downloadstation/V4/Task/SetFile": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["SetFileRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["BaseResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/downloadstation/V4/Misc/Dir": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["DirListRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["DirListResponse"];
+          };
+        };
+      };
+    };
+  };
 }
 
 export type operations = {
@@ -289,6 +405,10 @@ export type operations = {
   addTorrent: paths["/downloadstation/V4/Task/AddTorrent"]["post"];
   addTask: paths["/downloadstation/V4/Task/AddTask"]["post"];
   addLegacy: paths["/downloadstation/V4/Task/Add"]["post"];
+  listDir: paths["/downloadstation/V4/Misc/Dir"]["post"];
+  getStatus: paths["/downloadstation/V4/Task/Status"]["post"];
+  getTaskFiles: paths["/downloadstation/V4/Task/GetFile"]["post"];
+  setTaskFile: paths["/downloadstation/V4/Task/SetFile"]["post"];
 };
 
 export type ApiResponse<T extends keyof operations> = operations[T]["responses"][200]["content"]["application/json"];

@@ -47,6 +47,7 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
       void downloads.remove(hash).then(() => downloads.clearSelection());
     },
     add: () => upload.triggerFilePicker(),
+    addUrls: () => upload.toggleUrlPanel(),
     toggleSettings: () => {
       toolbarView.settingsExpanded = settings.togglePanel();
     },

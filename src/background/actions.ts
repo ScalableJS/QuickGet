@@ -3,6 +3,8 @@
  * Manages extension icon badge, animation, and title
  */
 
+import { formatRate } from "../popup/shared/formatters/speed.js";
+
 const ICON_SIZES = [16, 32] as const;
 type IconSize = (typeof ICON_SIZES)[number];
 
@@ -15,19 +17,28 @@ let animationTimer: number | null = null;
 let frameIndex = 0;
 let frameCache: FrameSet[] | null = null;
 
+export interface BadgeStats {
+  active: number;
+  all: number;
+  downRate: number;
+  upRate: number;
+}
+
 /**
- * Update badge with progress percentage
+ * Update badge with aggregated download-station stats: active-task count on the
+ * badge, full breakdown in the icon tooltip.
  */
-export function updateBadge(progress: number): void {
-  const text = progress > 0 && progress < 100 ? `${progress}%` : "";
+export function updateStatsBadge(stats: BadgeStats): void {
+  const text = stats.active > 0 ? String(stats.active) : "";
 
   chrome.action.setBadgeText({ text });
-
-  if (progress > 0 && progress < 100) {
+  if (stats.active > 0) {
     chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // Green
-  } else if (progress === 100) {
-    chrome.action.setBadgeBackgroundColor({ color: "#2196F3" }); // Blue
   }
+
+  setActionTitle(
+    `Активных: ${stats.active}\nВсего: ${stats.all}\n↓ ${formatRate(stats.downRate)}  ↑ ${formatRate(stats.upRate)}`,
+  );
 }
 
 /**

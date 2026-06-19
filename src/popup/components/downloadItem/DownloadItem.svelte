@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Task } from "@lib/tasks.js";
+  import TorrentFiles from "../../features/torrentFiles/TorrentFiles.svelte";
   import { getDownloadItemView } from "./format.js";
   import StatusIcon from "./StatusIcon.svelte";
 
@@ -15,6 +16,13 @@
 
   const view = $derived(getDownloadItemView(task));
   const selected = $derived(view.hash === selectedHash);
+
+  // File selection is only possible on active multi-file tasks (the NAS rejects it
+  // once the task is finished — verified live: error 16387 on completed tasks).
+  const canChooseFiles = $derived(
+    Boolean(view.hash) && (task.totalFiles ?? 0) > 1 && task.status !== "finished" && task.status !== "seeding",
+  );
+  let filesOpen = $state(false);
 
   let el = $state<HTMLElement | null>(null);
 
@@ -62,5 +70,41 @@
         <div class="progress-fill {view.progressModifier}" style="width: {view.progress}%"></div>
       </div>
     </div>
+    {#if canChooseFiles}
+      <button
+        type="button"
+        class="files-toggle"
+        aria-expanded={filesOpen}
+        onclick={(e) => {
+          e.stopPropagation();
+          filesOpen = !filesOpen;
+        }}
+      >
+        {filesOpen ? "Hide files" : `Files (${task.totalFiles})`}
+      </button>
+      {#if filesOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+          <TorrentFiles hash={view.hash} />
+        </div>
+      {/if}
+    {/if}
   </div>
 </article>
+
+<style>
+  .files-toggle {
+    margin-top: 6px;
+    background: none;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #2196f3;
+  }
+
+  .files-toggle:hover {
+    background: #f0f0f0;
+  }
+</style>

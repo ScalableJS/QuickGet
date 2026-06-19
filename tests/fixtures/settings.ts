@@ -11,7 +11,6 @@ export function createTestSettings(overrides: Partial<Settings> = {}): Settings 
     NASdir: "/share/Multimedia/Movies",
     enableDebugLogging: false,
     torrentInterceptMode: "ask",
-    destinationFolders: "",
     ...overrides,
   };
 }

@@ -55,11 +55,6 @@ export async function loadSettings(): Promise<Settings> {
         return fallback;
       };
 
-      const rawString = (key: keyof Settings, fallback: string): string => {
-        const raw = items[key];
-        return typeof raw === "string" ? raw : fallback;
-      };
-
       const settings: Settings = {
         NASsecure: booleanWithDefault("NASsecure", DEFAULTS.NASsecure),
         NASaddress: stringWithDefault("NASaddress", DEFAULTS.NASaddress),
@@ -70,7 +65,6 @@ export async function loadSettings(): Promise<Settings> {
         NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
         enableDebugLogging: booleanWithDefault("enableDebugLogging", DEFAULTS.enableDebugLogging),
         torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
-        destinationFolders: rawString("destinationFolders", DEFAULTS.destinationFolders),
       };
 
       const finish = (): void => resolve(settings);
