@@ -29,8 +29,6 @@
 
       const session = await chrome.storage.session.get("cachedMasterPassword");
       hasCachedMasterPassword = Boolean(session.cachedMasterPassword);
-
-      showStatus("Settings loaded", "info", { autoHideMs: 1500 });
     } catch (error) {
       showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
     }
