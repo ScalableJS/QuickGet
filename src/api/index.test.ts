@@ -152,5 +152,106 @@ describe("api/index", () => {
       expect(protectedBody).toContain("limit=25");
       expect(protectedBody).toContain("field=priority");
     });
+
+    it("re-logs in and replays the request when the session expires (body error:5)", async () => {
+      const settings = createTestSettings();
+      const client = createOpenApiFetchClient({ settings, fetchFn: fetch });
+
+      let loginHits = 0;
+      let queryHits = 0;
+      const queryBodies: string[] = [];
+
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => {
+          loginHits += 1;
+          return HttpResponse.json({ error: 0, sid: `SID-${loginHits}`, user: "admin" });
+        }),
+        http.post("http://nas.local:8080/downloadstation/V4/Task/Query", async ({ request }) => {
+          queryHits += 1;
+          queryBodies.push(await request.text());
+          // First call: stale SID → session error (HTTP 200 with error:5).
+          if (queryHits === 1) {
+            return HttpResponse.json({ error: 5, reason: "session error" });
+          }
+          return HttpResponse.json({ error: 0, data: [], total: 0 });
+        }),
+      );
+
+      const response = await client.POST("/downloadstation/V4/Task/Query", {
+        body: { sid: "", limit: 1 },
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        bodySerializer: serializeUrlEncoded,
+      });
+
+      expect(response.error).toBeUndefined();
+      expect(response.data?.error).toBe(0);
+      expect(loginHits).toBe(2); // initial login + re-login after expiry
+      expect(queryHits).toBe(2); // original + replayed request
+      expect(queryBodies[0]).toContain("sid=SID-1"); // stale
+      expect(queryBodies[1]).toContain("sid=SID-2"); // fresh, no duplicate sid
+      expect(queryBodies[1].match(/(^|&)sid=/g)).toHaveLength(1);
+    });
+
+    it("re-logs in and replays the request on HTTP 401", async () => {
+      const settings = createTestSettings();
+      const client = createOpenApiFetchClient({ settings, fetchFn: fetch });
+
+      let loginHits = 0;
+      let queryHits = 0;
+
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => {
+          loginHits += 1;
+          return HttpResponse.json({ error: 0, sid: `SID-${loginHits}`, user: "admin" });
+        }),
+        http.post("http://nas.local:8080/downloadstation/V4/Task/Query", () => {
+          queryHits += 1;
+          if (queryHits === 1) {
+            return new HttpResponse(null, { status: 401 });
+          }
+          return HttpResponse.json({ error: 0, data: [], total: 0 });
+        }),
+      );
+
+      const response = await client.POST("/downloadstation/V4/Task/Query", {
+        body: { sid: "", limit: 1 },
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        bodySerializer: serializeUrlEncoded,
+      });
+
+      expect(response.data?.error).toBe(0);
+      expect(loginHits).toBe(2);
+      expect(queryHits).toBe(2);
+    });
+
+    it("does not loop more than once when the session stays invalid", async () => {
+      const settings = createTestSettings();
+      const client = createOpenApiFetchClient({ settings, fetchFn: fetch });
+
+      let loginHits = 0;
+      let queryHits = 0;
+
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => {
+          loginHits += 1;
+          return HttpResponse.json({ error: 0, sid: `SID-${loginHits}`, user: "admin" });
+        }),
+        http.post("http://nas.local:8080/downloadstation/V4/Task/Query", () => {
+          queryHits += 1;
+          return HttpResponse.json({ error: 5, reason: "session error" });
+        }),
+      );
+
+      const response = await client.POST("/downloadstation/V4/Task/Query", {
+        body: { sid: "", limit: 1 },
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
+        bodySerializer: serializeUrlEncoded,
+      });
+
+      // The replayed request still fails — the error is surfaced, not retried again.
+      expect(response.data?.error).toBe(5);
+      expect(loginHits).toBe(2); // one initial + exactly one re-login
+      expect(queryHits).toBe(2); // original + one replay, no infinite loop
+    });
   });
 });

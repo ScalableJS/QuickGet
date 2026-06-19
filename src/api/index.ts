@@ -30,81 +30,158 @@ export function buildNASBaseUrl(settings: Settings): string {
 }
 
 /**
- * Creates SID middleware for automatic SID injection and refresh
+ * QNAP DS body-level error codes that mean "the session is no longer valid".
+ * Verified on a live NAS: `{"error":5,"reason":"session error"}` is returned
+ * with HTTP 200 when the SID has expired — so it cannot be detected by status
+ * code alone.
+ */
+const SESSION_ERROR_CODES = new Set([5]);
+
+/**
+ * Creates SID middleware for automatic SID injection and transparent re-login.
  *
  * Implementation follows openapi-fetch middleware pattern:
- * - onRequest: Injects SID into every request (except login)
- * - onResponse: Clears SID on 401/403 to trigger re-authentication
- * - Handles both URLSearchParams and FormData body types
+ * - onRequest: injects SID into every request (except login)
+ * - onResponse: detects an expired session (HTTP 401/403 OR body `error:5`),
+ *   re-logs in once and transparently replays the original request with the
+ *   fresh SID. The replay goes straight through `fetchFn` (bypassing this
+ *   middleware) so it can never loop more than once.
+ * - Handles both URLSearchParams and FormData body types.
  *
- * See: openapi-fetch-context.md for best practices
+ * `fetchFn` must be the same fetch implementation the client uses, so the
+ * replay is intercepted by MSW in tests and behaves identically in production.
  */
-export function createSidMiddleware(options: { settings: Settings; logger?: LoggerAdapter }): Middleware {
+export function createSidMiddleware(options: {
+  settings: Settings;
+  logger?: LoggerAdapter;
+  fetchFn?: typeof fetch;
+}): Middleware {
   let sid: string | null = null;
+  let loginInFlight: Promise<string> | null = null;
   const { settings, logger } = options;
+  const fetchFn = options.fetchFn ?? fetch;
   const UNPROTECTED_ROUTES = ["/downloadstation/V4/Misc/Login"];
+  const isUnprotected = (schemaPath: string) => UNPROTECTED_ROUTES.some((route) => schemaPath.startsWith(route));
+
+  // Remembers the urlencoded body we sent for each request so it can be replayed
+  // after a re-login. openapi-fetch consumes the request body before onResponse,
+  // so we cannot clone it there — we rebuild from this stored text instead.
+  const sentUrlencodedBodies = new WeakMap<Request, string>();
+
+  /** Returns a valid SID, logging in if needed. Concurrent callers share one login. */
+  async function ensureSid(): Promise<string> {
+    if (sid) {
+      return sid;
+    }
+    if (!loginInFlight) {
+      loginInFlight = performLogin(settings)
+        .then((result) => {
+          sid = result.sid;
+          logger?.debug("SID obtained", { user: result.user });
+          return result.sid;
+        })
+        .finally(() => {
+          loginInFlight = null;
+        });
+    }
+    return loginInFlight;
+  }
+
+  /** Returns a copy of `request` with `sid` set (replacing any existing value). */
+  async function injectSid(request: Request, sidValue: string): Promise<Request> {
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const form = new URLSearchParams(await request.clone().text());
+      form.set("sid", sidValue);
+      const text = form.toString();
+      const injected = new Request(request, { body: text });
+      sentUrlencodedBodies.set(injected, text);
+      return injected;
+    }
+
+    if (contentType.includes("multipart/form-data") || request.url.includes("/Task/Add")) {
+      try {
+        const originalForm = await request.clone().formData();
+        const newFormData = new FormData();
+        for (const [key, value] of originalForm) {
+          if (key !== "sid") {
+            newFormData.append(key, value);
+          }
+        }
+        newFormData.append("sid", sidValue);
+        return new Request(request, { body: newFormData });
+      } catch {
+        logger?.debug("Failed to parse body as FormData, sending request unchanged");
+      }
+    }
+
+    return request;
+  }
+
+  /** True if the response signals an expired/invalid session. */
+  async function isSessionExpired(response: Response): Promise<boolean> {
+    if (response.status === 401 || response.status === 403) {
+      return true;
+    }
+    try {
+      const payload = (await response.clone().json()) as { error?: unknown };
+      return typeof payload.error === "number" && SESSION_ERROR_CODES.has(payload.error);
+    } catch {
+      return false;
+    }
+  }
 
   return {
     async onRequest({ request, schemaPath }) {
-      // Skip login endpoint itself
-      if (UNPROTECTED_ROUTES.some((route) => schemaPath.startsWith(route))) {
+      if (isUnprotected(schemaPath)) {
         return request;
       }
-
-      // Ensure SID exists
-      if (!sid) {
-        try {
-          const loginResult = await performLogin(settings);
-          sid = loginResult.sid;
-          logger?.debug("SID obtained", { sid, user: loginResult.user });
-        } catch (error) {
-          logger?.error("Failed to obtain SID", error);
-          throw error;
-        }
+      try {
+        const current = await ensureSid();
+        return injectSid(request, current);
+      } catch (error) {
+        logger?.error("Failed to obtain SID", error);
+        throw error;
       }
-
-      // Add SID to form data
-      const contentType = request.headers.get("content-type") || "";
-
-      if (contentType.includes("application/x-www-form-urlencoded")) {
-        const body = await request.clone().text();
-        const form = new URLSearchParams(body);
-        form.append("sid", sid);
-        return new Request(request, { body: form.toString() });
-      }
-
-      // For multipart/form-data
-      if (contentType.includes("multipart/form-data") || schemaPath.includes("/Task/Add")) {
-        // Если body это FormData - используем как есть
-        try {
-          const originalForm = await request.clone().formData();
-          const newFormData = new FormData();
-          for (const [key, value] of originalForm) {
-            newFormData.append(key, value);
-          }
-          newFormData.append("sid", sid);
-          return new Request(request, { body: newFormData });
-        } catch (_e) {
-          // Если не FormData, возможно это объект - нужно преобразовать
-          // Но это сложно, так как мы не знаем тип body
-          logger?.debug("Failed to parse as FormData, trying as JSON object");
-        }
-      }
-
-      return request;
     },
 
-    async onResponse({ response, schemaPath }) {
-      // Handle 403/401 - invalid SID
-      if (
-        (response.status === 403 || response.status === 401) &&
-        !UNPROTECTED_ROUTES.some((route) => schemaPath.startsWith(route))
-      ) {
-        sid = null; // Clear SID to force re-login next time
-        logger?.debug("SID invalidated, will refresh on next request");
+    async onResponse({ request, response, schemaPath }) {
+      if (isUnprotected(schemaPath) || !(await isSessionExpired(response))) {
+        return response;
       }
 
-      return response;
+      // We can only safely replay requests whose body we captured (urlencoded).
+      // Non-replayable requests just surface the original error after clearing
+      // the SID, so the next call re-authenticates.
+      const previousBody = sentUrlencodedBodies.get(request);
+      if (previousBody === undefined) {
+        sid = null;
+        logger?.debug("Session expired on a non-replayable request; SID cleared for next call");
+        return response;
+      }
+
+      logger?.debug("Session expired, re-logging in and retrying request once");
+      sid = null; // force a fresh login
+
+      let freshSid: string;
+      try {
+        freshSid = await ensureSid();
+      } catch (error) {
+        logger?.error("Re-login after session expiry failed", error);
+        return response; // surface the original error
+      }
+
+      // Rebuild the request from the captured body with the fresh SID and replay
+      // it straight through fetchFn, bypassing this middleware so it never recurses.
+      const form = new URLSearchParams(previousBody);
+      form.set("sid", freshSid);
+      const retried = new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: form.toString(),
+      });
+      return fetchFn(retried);
     },
   };
 }
@@ -216,6 +293,7 @@ export function createOpenApiFetchClient(options: ClientSetupOptions): ApiFetchC
   const sidMiddleware = createSidMiddleware({
     settings: options.settings,
     logger: options.logger,
+    fetchFn,
   });
 
   client.use(sidMiddleware);
