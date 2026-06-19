@@ -5,7 +5,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Optionally intercept browser `.torrent` downloads and route them to the NAS — *Off*, *Ask*, or *Always*, with a destination-folder picker (Chrome).
+- Optionally intercept browser `.torrent` downloads and route them to the NAS — *Off*, *Ask*, or *Always*, with a destination-folder picker. **Experimental (Chrome only):** the intercepted download is cancelled (not erased, so it stays retryable from the browser's download list) and the `.torrent` is re-fetched for the NAS; one-time/signed tracker URLs may not survive the round-trip.
 - Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
 - Validate NAS settings directly from the popup and persist them locally.
 - Operate on Chromium-based browsers and Firefox without additional plugins.
@@ -166,5 +166,5 @@ Full text: <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode>
 ---
 
 Version 2.9.0 (October 2025)  
-Status: Production ready  
+Status: Production ready (core); torrent download interception is experimental and Chrome-only  
 License: CC BY-NC-SA 4.0

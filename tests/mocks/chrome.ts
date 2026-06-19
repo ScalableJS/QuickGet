@@ -5,88 +5,93 @@ type StorageState = Record<string, unknown>;
 let storageState: StorageState = {};
 let sessionStorageState: StorageState = {};
 
-const storageGet = vi.fn((keys: unknown, callback: (items: StorageState) => void) => {
-  if (keys == null) {
-    callback({ ...storageState });
-    return;
-  }
-
-  if (typeof keys === "string") {
-    callback({ [keys]: storageState[keys] });
-    return;
-  }
-
-  if (Array.isArray(keys)) {
-    const result = Object.fromEntries(keys.map((key) => [key, storageState[key]]));
-    callback(result);
-    return;
-  }
-
+/**
+ * Chrome 120+ (the extension's minimum) supports both the callback and the
+ * Promise form of storage methods. The mock mirrors that: when a callback is
+ * passed it is invoked (legacy style); when it is omitted a Promise resolving
+ * to the same value is returned (modern style used by newer code paths).
+ */
+function readState(state: StorageState, keys: unknown): StorageState {
+  if (keys == null) return { ...state };
+  if (typeof keys === "string") return { [keys]: state[keys] };
+  if (Array.isArray(keys)) return Object.fromEntries(keys.map((key) => [key, state[key]]));
   const defaults = typeof keys === "object" && keys !== null ? (keys as StorageState) : {};
-  callback({ ...defaults, ...storageState });
-});
+  return { ...defaults, ...state };
+}
+
+function makeGet(getState: () => StorageState) {
+  return vi.fn((keys: unknown, callback?: (items: StorageState) => void) => {
+    const result = readState(getState(), keys);
+    if (callback) {
+      callback(result);
+      return;
+    }
+    return Promise.resolve(result);
+  });
+}
+
+function deleteKeys(state: StorageState, keys: string | string[]): void {
+  for (const key of typeof keys === "string" ? [keys] : keys) {
+    delete state[key];
+  }
+}
+
+const storageGet = makeGet(() => storageState);
 
 const storageSet = vi.fn((items: StorageState, callback?: () => void) => {
   storageState = { ...storageState, ...items };
-  callback?.();
+  if (callback) {
+    callback();
+    return;
+  }
+  return Promise.resolve();
 });
 
 const storageRemove = vi.fn((keys: string | string[], callback?: () => void) => {
-  if (typeof keys === "string") {
-    delete storageState[keys];
-  } else if (Array.isArray(keys)) {
-    for (const key of keys) {
-      delete storageState[key];
-    }
+  deleteKeys(storageState, keys);
+  if (callback) {
+    callback();
+    return;
   }
-  callback?.();
+  return Promise.resolve();
 });
 
 const storageClear = vi.fn((callback?: () => void) => {
   storageState = {};
-  callback?.();
+  if (callback) {
+    callback();
+    return;
+  }
+  return Promise.resolve();
 });
 
-const sessionStorageGet = vi.fn((keys: unknown, callback: (items: StorageState) => void) => {
-  if (keys == null) {
-    callback({ ...sessionStorageState });
-    return;
-  }
-
-  if (typeof keys === "string") {
-    callback({ [keys]: sessionStorageState[keys] });
-    return;
-  }
-
-  if (Array.isArray(keys)) {
-    const result = Object.fromEntries(keys.map((key) => [key, sessionStorageState[key]]));
-    callback(result);
-    return;
-  }
-
-  const defaults = typeof keys === "object" && keys !== null ? (keys as StorageState) : {};
-  callback({ ...defaults, ...sessionStorageState });
-});
+const sessionStorageGet = makeGet(() => sessionStorageState);
 
 const sessionStorageSet = vi.fn((items: StorageState, callback?: () => void) => {
   sessionStorageState = { ...sessionStorageState, ...items };
-  callback?.();
+  if (callback) {
+    callback();
+    return;
+  }
+  return Promise.resolve();
 });
 
 const sessionStorageRemove = vi.fn((keys: string | string[], callback?: () => void) => {
-  if (typeof keys === "string") {
-    delete sessionStorageState[keys];
-  } else if (Array.isArray(keys)) {
-    for (const key of keys) {
-      delete sessionStorageState[key];
-    }
+  deleteKeys(sessionStorageState, keys);
+  if (callback) {
+    callback();
+    return;
   }
-  callback?.();
+  return Promise.resolve();
 });
 
 const sessionStorageClear = vi.fn((callback?: () => void) => {
   sessionStorageState = {};
-  callback?.();
+  if (callback) {
+    callback();
+    return;
+  }
+  return Promise.resolve();
 });
 
 const actionSetBadgeText = vi.fn();

@@ -1,6 +1,7 @@
 import type { ApiClient, QueryTasksResult, TorrentFile } from "@api/client.js";
 
 import { getApiClient } from "../../shared/api";
+import { requestMonitoring } from "../../shared/monitor.js";
 
 import { buildTaskSnapshot, updateSnapshot } from "./downloadsState.js";
 
@@ -61,6 +62,7 @@ export async function removeDownload(hash: string): Promise<void> {
 export async function startTorrent(hash: string): Promise<void> {
   const client = await ensureClient();
   await client.startTask(hash);
+  requestMonitoring();
 }
 
 export async function stopTorrent(hash: string): Promise<void> {

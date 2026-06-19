@@ -19,6 +19,8 @@ export type SendTorrentResult = {
 export type PendingTorrent = {
   url: string;
   filename: string;
+  /** Epoch ms when the interception happened — used to expire stale records. */
+  createdAt: number;
 };
 
 /** Statuses where a re-clicked torrent can be resumed instead of re-added. */

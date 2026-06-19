@@ -1,6 +1,7 @@
 import { showStatus } from "@/popup/components";
 
 import { getApiClient } from "../../shared/api";
+import { requestMonitoring } from "../../shared/monitor.js";
 import { refreshSnapshot } from "../downloads/downloadsManager.js";
 import { getSnapshot } from "../downloads/downloadsState.js";
 
@@ -43,6 +44,7 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
     const result = await client.addTorrent(file);
 
     if (result.added) {
+      requestMonitoring();
       showStatus("Torrent added successfully!", "success", { autoHideMs: 2000 });
       options.onSuccess?.();
       return;

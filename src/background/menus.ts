@@ -7,6 +7,8 @@ import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { loadSettings } from "@lib/settings.js";
 
+import { ensureMonitoring } from "./alarms.js";
+
 /**
  * Create context menu items
  */
@@ -70,6 +72,7 @@ async function sendDownloadToStation(url: string): Promise<void> {
   const settings = await loadSettings();
   const client = createApiClient({ settings });
   await client.addUrl(url);
+  void ensureMonitoring();
   showNotification("Success", `Download sent to Download Station: ${url}`);
 }
 

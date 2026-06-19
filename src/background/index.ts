@@ -3,9 +3,10 @@
  * Orchestrates background tasks and event handlers
  */
 
-import { handleAlarm, startMonitoring } from "./alarms.js";
-import { initDownloadInterception } from "./downloads.js";
+import { ensureMonitoring, handleAlarm } from "./alarms.js";
+import { initDownloadInterception, sweepStalePending } from "./downloads.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
+import { MONITOR_MESSAGE } from "./monitorMessage.js";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -35,13 +36,15 @@ chrome.alarms.onAlarm.addListener(handleAlarm);
 // Redirect browser downloads to the NAS when enabled in settings
 initDownloadInterception();
 
-// Start monitoring on first context menu click
-let firstInteraction = true;
-chrome.contextMenus.onClicked.addListener(() => {
-  if (firstInteraction) {
-    firstInteraction = false;
-    startMonitoring();
+// Other contexts (the popup) can't call ensureMonitoring() directly, so they
+// post a message after any task mutation and we arm the poll here.
+chrome.runtime.onMessage.addListener((message: unknown) => {
+  if (typeof message === "object" && message !== null && (message as { type?: unknown }).type === MONITOR_MESSAGE) {
+    void ensureMonitoring();
   }
 });
+
+// Drop any pending-torrent records left over from a previous session.
+void sweepStalePending();
 
 console.log("[QuickGet] Service worker loaded");

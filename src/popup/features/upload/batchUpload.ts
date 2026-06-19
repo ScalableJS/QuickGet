@@ -1,6 +1,7 @@
 import { showStatus } from "@/popup/components";
 
 import { getApiClient } from "../../shared/api";
+import { requestMonitoring } from "../../shared/monitor.js";
 
 interface BatchOptions {
   targetFolder?: string;
@@ -41,6 +42,10 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
 
     const ok = results.filter((r) => r.ok).length;
     const failed = results.length - ok;
+
+    if (ok > 0) {
+      requestMonitoring();
+    }
 
     if (failed === 0) {
       showStatus(`Added ${ok} task(s)`, "success", { autoHideMs: 2000 });

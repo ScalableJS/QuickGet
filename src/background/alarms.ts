@@ -1,6 +1,15 @@
 /**
  * Download monitoring via alarms
- * Polls QNAP for download status
+ *
+ * Polls QNAP for aggregated Download Station status and reflects it on the
+ * toolbar badge. Two deliberate constraints shaped this design:
+ *
+ *  - Chrome 120+ clamps any alarm period below 0.5 min to 30 seconds (and logs
+ *    a warning), so 0.5 is the real floor — a "6 second" period was never
+ *    honoured. We poll at the 30s minimum.
+ *  - The MV3 service worker is torn down when idle, so in-memory monitoring
+ *    flags/timers desync from reality after a restart. We keep no such flags:
+ *    chrome.alarms persist across restarts and are the single source of truth.
  */
 
 import { type ApiClient, createApiClient } from "@api/client.js";
@@ -9,11 +18,9 @@ import { loadSettings } from "@lib/settings.js";
 import { clearBadge, startIconAnimation, stopIconAnimation, updateStatsBadge } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
-const CHECK_INTERVAL_MINUTES = 0.1; // ~6 seconds
+const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
 
-let isMonitoring = false;
 let clientCache: { signature: string; client: ApiClient } | null = null;
-let completionTimeout: number | null = null;
 
 function serializeSettings(settings: Awaited<ReturnType<typeof loadSettings>>): string {
   return JSON.stringify([
@@ -39,77 +46,60 @@ async function getClient(): Promise<ApiClient> {
 }
 
 /**
- * Start monitoring downloads
+ * Ensure the background poll is armed. Idempotent and cheap, so it can be called
+ * after every task mutation (add/start/stop/remove) from any context. Because
+ * the alarm itself survives service-worker restarts, re-arming an already-armed
+ * alarm is a no-op rather than a reset.
  */
-export function startMonitoring(): void {
-  if (isMonitoring) return;
-
-  isMonitoring = true;
+export async function ensureMonitoring(): Promise<void> {
+  const existing = await chrome.alarms.get(ALARM_NAME);
+  if (existing) return;
   chrome.alarms.create(ALARM_NAME, {
     delayInMinutes: CHECK_INTERVAL_MINUTES,
     periodInMinutes: CHECK_INTERVAL_MINUTES,
   });
 }
 
+/** Back-compat alias for the service-worker bootstrap. */
+export function startMonitoring(): void {
+  void ensureMonitoring();
+}
+
 /**
  * Stop monitoring downloads
  */
 export function stopMonitoring(): void {
-  isMonitoring = false;
-  chrome.alarms.clear(ALARM_NAME);
-  if (completionTimeout !== null) {
-    self.clearTimeout(completionTimeout);
-    completionTimeout = null;
-  }
+  void chrome.alarms.clear(ALARM_NAME);
   stopIconAnimation();
   clearBadge();
 }
 
 /**
- * Handle alarm tick
+ * Handle alarm tick. Uses the cheap aggregated status endpoint (no task array)
+ * and stops polling once nothing is active — the next mutation re-arms it.
  */
 export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
   if (alarm.name !== ALARM_NAME) return;
 
   try {
     const client = await getClient();
-    const { raw, tasks } = await client.queryTasks();
+    const status = await client.getStatus();
 
-    if (tasks.length > 0) {
-      const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
-      const avgProgress = Math.round(totalProgress / tasks.length);
+    updateStatsBadge({
+      active: status.active,
+      all: status.all,
+      downRate: status.down_rate,
+      upRate: status.up_rate,
+    });
 
-      const status = raw.status;
-      updateStatsBadge({
-        active: status.active,
-        all: status.all,
-        downRate: status.down_rate,
-        upRate: status.up_rate,
-      });
-      if (completionTimeout !== null && avgProgress < 100) {
-        self.clearTimeout(completionTimeout);
-        completionTimeout = null;
-      }
-
-      if (avgProgress === 100) {
-        stopIconAnimation();
-        // All downloads completed
-        if (completionTimeout === null) {
-          completionTimeout = self.setTimeout(() => {
-            completionTimeout = null;
-            stopMonitoring();
-          }, 5000);
-        }
-      }
-      if (avgProgress < 100) {
-        await startIconAnimation();
-      }
+    if (status.active > 0) {
+      await startIconAnimation();
     } else {
-      // No active downloads
+      // Nothing downloading — clear the badge/animation and stop polling.
       stopMonitoring();
     }
   } catch (error) {
     console.error("Monitoring error:", error);
-    // Continue monitoring even on error
+    // Continue monitoring even on transient errors.
   }
 }

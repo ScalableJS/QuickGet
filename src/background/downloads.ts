@@ -20,9 +20,14 @@ import {
   sendTorrentUrlToNas,
 } from "@lib/torrentSender.js";
 
+import { ensureMonitoring } from "./alarms.js";
+
 const NOTIFICATION_PREFIX = "qg-torrent-";
 const RESUME_PREFIX = "qg-resume-";
-const pendingKey = (id: number): string => `pending_${id}`;
+const PENDING_PREFIX = "pending_";
+/** Pending torrents older than this are assumed abandoned (notification dismissed, etc.). */
+const PENDING_TTL_MS = 60 * 60 * 1000; // 1 hour
+const pendingKey = (id: number): string => `${PENDING_PREFIX}${id}`;
 
 export function initDownloadInterception(): void {
   if (!chrome.downloads?.onCreated) {
@@ -36,6 +41,14 @@ export function initDownloadInterception(): void {
 
   chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
     void handleNotificationButton(notificationId, buttonIndex);
+  });
+
+  // Drop the stashed torrent if the user dismisses the notification without acting.
+  chrome.notifications.onClosed.addListener((notificationId) => {
+    if (notificationId.startsWith(NOTIFICATION_PREFIX)) {
+      const id = Number(notificationId.slice(NOTIFICATION_PREFIX.length));
+      if (!Number.isNaN(id)) void chrome.storage.session.remove(pendingKey(id));
+    }
   });
 
   console.log("[QuickGet] download interception listener registered");
@@ -63,7 +76,9 @@ async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promi
     }
 
     // "ask": stash the pending torrent and present the choice.
-    await chrome.storage.session.set({ [pendingKey(item.id)]: { url, filename } satisfies PendingTorrent });
+    await chrome.storage.session.set({
+      [pendingKey(item.id)]: { url, filename, createdAt: Date.now() } satisfies PendingTorrent,
+    });
     chrome.notifications.create(`${NOTIFICATION_PREFIX}${item.id}`, {
       type: "basic",
       iconUrl: chrome.runtime.getURL("icons/128_download.png"),
@@ -116,6 +131,7 @@ async function openFolderChooser(id: number): Promise<void> {
 async function sendAndNotify(settings: Settings, url: string): Promise<void> {
   try {
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url);
+    void ensureMonitoring();
     if (duplicate) {
       await notifyDuplicate(settings, name);
     } else {
@@ -173,10 +189,30 @@ async function cancelBrowserDownload(id: number): Promise<void> {
   } catch {
     // Already finished or not cancellable — ignore.
   }
+  // Intentionally NOT erasing the item: a cancelled download stays in the
+  // browser's download list with a "Retry" affordance, so the user can still
+  // fetch the original .torrent normally if the NAS hand-off fails or the
+  // notification is dismissed. Erasing it would make the download unrecoverable.
+}
+
+/**
+ * Remove pending-torrent records that were never acted on (notification
+ * dismissed, chooser closed, URL expired). Called on service-worker startup.
+ */
+export async function sweepStalePending(): Promise<void> {
   try {
-    await chrome.downloads.erase({ id });
-  } catch {
-    // Erase is best-effort.
+    const all = await chrome.storage.session.get(null);
+    const now = Date.now();
+    const stale = Object.keys(all).filter((key) => {
+      if (!key.startsWith(PENDING_PREFIX)) return false;
+      const createdAt = (all[key] as Partial<PendingTorrent> | undefined)?.createdAt;
+      return typeof createdAt !== "number" || now - createdAt > PENDING_TTL_MS;
+    });
+    if (stale.length > 0) {
+      await chrome.storage.session.remove(stale);
+    }
+  } catch (error) {
+    console.warn("[QuickGet] failed to sweep stale pending torrents:", error);
   }
 }
 
