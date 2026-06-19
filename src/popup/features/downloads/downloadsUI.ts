@@ -9,7 +9,6 @@ import { getSelectedHash, onSelectionChange, setSelectedHash } from "./downloads
 import { downloadsView } from "./downloadsView.svelte.js";
 
 let downloadsSection: HTMLElement | null = null;
-let downloadsList: HTMLElement | null = null;
 let mounted = false;
 
 function toggleSelection(hash: string): void {
@@ -27,19 +26,16 @@ function ensureElements(): void {
   if (!downloadsSection) {
     downloadsSection = document.getElementById("downloads-section") as HTMLElement | null;
   }
-  if (!downloadsList) {
-    downloadsList = document.getElementById("downloads-list") as HTMLElement | null;
-  }
 }
 
 export function setupDownloadsUI(): void {
   ensureElements();
 
-  if (downloadsList && !mounted) {
-    downloadsList.replaceChildren();
+  if (downloadsSection && !mounted) {
+    downloadsSection.replaceChildren();
     downloadsView.selectedHash = getSelectedHash();
     mount(DownloadsList, {
-      target: downloadsList,
+      target: downloadsSection,
       props: { view: downloadsView, onToggle: toggleSelection },
     });
     mounted = true;
@@ -52,7 +48,7 @@ export function setupDownloadsUI(): void {
 
 export function renderDownloads(tasks: Task[]): void {
   ensureElements();
-  if (!downloadsList || !downloadsSection) return;
+  if (!downloadsSection) return;
 
   downloadsView.tasks = tasks;
 
