@@ -2,13 +2,23 @@
   import { showStatus } from "@/popup/components";
   import { DEFAULTS, type Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
+  import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
+  import FolderSelect from "../folderPicker/FolderSelect.svelte";
 
   let { onDebugToggle }: { onDebugToggle?: (enabled: boolean) => void } = $props();
 
   let form = $state<Settings>({ ...DEFAULTS });
+
+  // Single "Server address" field, kept only in the form. On load we compose it
+  // from the stored protocol/host/port; on save we parse it back into them.
+  let serverUrl = $state("");
+
+  function applyServerUrl(raw: string): void {
+    Object.assign(form, parseServerUrl(raw));
+  }
 
   // Keep the debug logger in sync with the toggle (load + user changes).
   $effect(() => {
@@ -18,6 +28,7 @@
   export async function load(): Promise<void> {
     try {
       form = await loadSettings();
+      serverUrl = composeServerUrl(form);
       showStatus("Settings loaded", "info", { autoHideMs: 1500 });
     } catch (error) {
       showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
@@ -26,6 +37,7 @@
 
   export async function save(): Promise<void> {
     try {
+      applyServerUrl(serverUrl);
       await saveSettings($state.snapshot(form));
       invalidateClientCache();
       showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
@@ -36,6 +48,7 @@
 
   async function testConnection(): Promise<void> {
     try {
+      applyServerUrl(serverUrl);
       showStatus("Testing connection...", "info");
       const client = await getApiClient({ settings: $state.snapshot(form) });
       const { tasks } = await client.queryTasks({ params: { limit: 1 } });
@@ -55,20 +68,8 @@
 
 <section class="form-section">
   <div class="form-group">
-    <label for="NASsecure">
-      <input type="checkbox" id="NASsecure" bind:checked={form.NASsecure} />
-      Use HTTPS
-    </label>
-  </div>
-
-  <div class="form-group">
-    <label for="NASaddress">NAS Address</label>
-    <input type="text" id="NASaddress" placeholder="downloadstation.local" required bind:value={form.NASaddress} />
-  </div>
-
-  <div class="form-group">
-    <label for="NASport">NAS Port</label>
-    <input type="text" id="NASport" placeholder="8080" bind:value={form.NASport} />
+    <label for="serverUrl">Server address</label>
+    <input type="text" id="serverUrl" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
   </div>
 
   <div class="form-group">
@@ -82,13 +83,13 @@
   </div>
 
   <div class="form-group">
-    <label for="NAStempdir">Temporary Directory</label>
-    <input type="text" id="NAStempdir" placeholder="/share/Download" bind:value={form.NAStempdir} />
+    <label for="NAStempdir">Temp Folder</label>
+    <FolderSelect id="NAStempdir" placeholder="/share/Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} />
   </div>
 
   <div class="form-group">
-    <label for="NASdir">Final Directory</label>
-    <input type="text" id="NASdir" placeholder="/share/Multimedia/Movies" bind:value={form.NASdir} />
+    <label for="NASdir">Target Folder</label>
+    <FolderSelect id="NASdir" placeholder="/share/Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} />
   </div>
 
   <div class="form-group">
@@ -98,16 +99,6 @@
       <option value="ask">Ask — offer to send to NAS</option>
       <option value="always">Always send to NAS</option>
     </select>
-  </div>
-
-  <div class="form-group">
-    <label for="destinationFolders">Destination folders (one per line)</label>
-    <textarea
-      id="destinationFolders"
-      rows="3"
-      placeholder={"/share/Multimedia/Movies\n/share/Multimedia/TV\n/share/Download"}
-      bind:value={form.destinationFolders}
-    ></textarea>
   </div>
 
   <div class="form-group form-inline">
