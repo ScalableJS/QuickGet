@@ -89,9 +89,9 @@ export interface components {
     AddUrlRequest: {
       sid: string;
       url: string;
-      savepath?: string;
-      temp?: string;
-      move?: string;
+      // Both required by QNAP DS V4 — server rejects the request if either is missing.
+      temp: string;
+      move: string;
     };
     ModifyTaskRequest: {
       sid: string;

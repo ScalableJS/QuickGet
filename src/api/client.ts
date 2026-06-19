@@ -122,19 +122,14 @@ export class ApiClient {
     return data;
   }
 
-  async addUrl(
-    url: string,
-    options: { savePath?: string; tempFolder?: string; targetFolder?: string } = {},
-  ): Promise<boolean> {
-    // Build form data - API requires URLSearchParams format
+  async addUrl(url: string, options: { tempFolder?: string; targetFolder?: string } = {}): Promise<boolean> {
+    // QNAP DS V4 AddUrl requires BOTH `temp` and `move`; omitting either is rejected
+    // (`{"error":1,"reason":"temp"}` / `"move"`). The `savepath` field does not exist
+    // in the API and is silently ignored, so we always send temp/move from settings.
     const requestBody = withEmptySid<AddUrlRequest>({
       url,
-      savepath:
-        options.savePath ??
-        options.targetFolder ??
-        (this.settings.NASdir ? this.settings.NASdir : `/${this.settings.NAStempdir}`),
-      temp: options.tempFolder,
-      move: options.targetFolder,
+      temp: options.tempFolder ?? this.settings.NAStempdir,
+      move: options.targetFolder ?? this.settings.NASdir,
     });
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/AddUrl", {

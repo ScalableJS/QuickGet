@@ -61,7 +61,8 @@ const { tasks, raw } = await client.queryTasks({
 
 ### Add Download
 ```typescript
-// URL
+// URL — temp/move default to settings.NAStempdir / settings.NASdir
+// (QNAP DS V4 requires both; pass overrides if needed)
 await client.addUrl('http://example.com/file.zip', {
   targetFolder: '/downloads'
 });

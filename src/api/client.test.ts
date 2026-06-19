@@ -122,6 +122,31 @@ describe("ApiClient", () => {
     expect(torrentBody).toContain('name="bt_task"');
   });
 
+  it("sends temp and move (not savepath) when adding a URL", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    let addBody = "";
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", async ({ request }) => {
+        addBody = await request.text();
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await expect(client.addUrl("http://example.com/file.zip")).resolves.toBe(true);
+
+    const params = new URLSearchParams(addBody);
+    expect(params.get("url")).toBe("http://example.com/file.zip");
+    expect(params.get("temp")).toBe("/share/Download");
+    expect(params.get("move")).toBe("/share/Multimedia/Movies");
+    expect(params.has("savepath")).toBe(false);
+  });
+
   it("throws a readable error when task query fails", async () => {
     const settings = createTestSettings();
     const client = createApiClient({ settings, fetchFn: fetch });
