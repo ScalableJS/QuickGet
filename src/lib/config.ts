@@ -15,6 +15,7 @@ export type Settings = {
   NASdir: string; // final destination folder on NAS
   enableDebugLogging: boolean;
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
+  rememberPassword: boolean;
 };
 
 const FALLBACK_DEFAULTS: Settings = {
@@ -27,6 +28,7 @@ const FALLBACK_DEFAULTS: Settings = {
   NASdir: "/share/Multimedia/Movies",
   enableDebugLogging: false,
   torrentInterceptMode: "ask",
+  rememberPassword: false,
 };
 
 const envString = (value: string | undefined, fallback: string): string => {
@@ -52,6 +54,7 @@ export const DEFAULTS: Settings = {
   NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
   enableDebugLogging: FALLBACK_DEFAULTS.enableDebugLogging,
   torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
+  rememberPassword: false,
 };
 
 export const DEBUG_ENABLED = false; // set to true for verbose logging

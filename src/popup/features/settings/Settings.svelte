@@ -16,6 +16,10 @@
   // from the stored protocol/host/port; on save we parse it back into them.
   let serverUrl = $state("");
 
+  let masterPasswordInput = $state("");
+  let confirmMasterPasswordInput = $state("");
+  let hasCachedMasterPassword = $state(false);
+
   function applyServerUrl(raw: string): void {
     Object.assign(form, parseServerUrl(raw));
   }
@@ -29,6 +33,10 @@
     try {
       form = await loadSettings();
       serverUrl = composeServerUrl(form);
+
+      const session = await chrome.storage.session.get("cachedMasterPassword");
+      hasCachedMasterPassword = Boolean(session.cachedMasterPassword);
+
       showStatus("Settings loaded", "info", { autoHideMs: 1500 });
     } catch (error) {
       showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
@@ -38,7 +46,39 @@
   export async function save(): Promise<void> {
     try {
       applyServerUrl(serverUrl);
-      await saveSettings($state.snapshot(form));
+
+      let masterPasswordToUse: string | undefined;
+
+      if (form.rememberPassword) {
+        if (!hasCachedMasterPassword) {
+          if (!masterPasswordInput) {
+            showStatus("Please enter a master password", "error");
+            return;
+          }
+          if (masterPasswordInput.length < 8) {
+            showStatus("Master password must be at least 8 characters long", "error");
+            return;
+          }
+          if (masterPasswordInput !== confirmMasterPasswordInput) {
+            showStatus("Master passwords do not match", "error");
+            return;
+          }
+          masterPasswordToUse = masterPasswordInput;
+        } else {
+          const session = await chrome.storage.session.get("cachedMasterPassword");
+          masterPasswordToUse = session.cachedMasterPassword as string | undefined;
+        }
+      }
+
+      await saveSettings($state.snapshot(form), { masterPassword: masterPasswordToUse });
+
+      if (masterPasswordToUse) {
+        await chrome.storage.session.set({ cachedMasterPassword: masterPasswordToUse });
+        hasCachedMasterPassword = true;
+        masterPasswordInput = "";
+        confirmMasterPasswordInput = "";
+      }
+
       invalidateClientCache();
       showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
     } catch (error) {
@@ -62,6 +102,12 @@
     }
   }
 
+  function triggerChangeMasterPassword(): void {
+    hasCachedMasterPassword = false;
+    masterPasswordInput = "";
+    confirmMasterPasswordInput = "";
+  }
+
   // Auto-load on mount (mirrors the previous restoreSettings-on-init behaviour).
   void load();
 </script>
@@ -81,6 +127,31 @@
     <label for="NASpassword">Password</label>
     <input type="password" id="NASpassword" placeholder="App-specific password" required bind:value={form.NASpassword} />
   </div>
+
+  <div class="form-group form-inline">
+    <label for="rememberPassword">
+      <input type="checkbox" id="rememberPassword" bind:checked={form.rememberPassword} />
+      Remember password on this device
+    </label>
+  </div>
+
+  {#if form.rememberPassword && !hasCachedMasterPassword}
+    <div class="form-group">
+      <label for="masterPasswordInput">Create Master Password</label>
+      <input type="password" id="masterPasswordInput" placeholder="Minimum 8 characters" bind:value={masterPasswordInput} required />
+    </div>
+    <div class="form-group">
+      <label for="confirmMasterPasswordInput">Confirm Master Password</label>
+      <input type="password" id="confirmMasterPasswordInput" placeholder="Repeat master password" bind:value={confirmMasterPasswordInput} required />
+    </div>
+  {:else if form.rememberPassword && hasCachedMasterPassword}
+    <div class="form-group form-inline-text">
+      <span class="text-muted">Master password is active.</span>
+      <button type="button" class="btn-link-small" onclick={triggerChangeMasterPassword}>
+        Change Master Password
+      </button>
+    </div>
+  {/if}
 
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
@@ -113,3 +184,31 @@
   <button type="button" id="save-btn" class="btn btn-primary" onclick={save}>Save Settings</button>
   <button type="button" id="test-btn" class="btn btn-secondary" onclick={testConnection}>Test Connection</button>
 </section>
+
+<style>
+  .btn-link-small {
+    background: none;
+    border: none;
+    color: var(--accent-color, #1a73e8);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    margin-left: 8px;
+    display: inline;
+  }
+  .btn-link-small:hover {
+    color: var(--accent-hover-color, #1557b0);
+  }
+  .text-muted {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .form-inline-text {
+    display: flex;
+    align-items: center;
+    margin-top: -8px;
+    margin-bottom: 12px;
+  }
+</style>
+

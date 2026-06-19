@@ -3,6 +3,7 @@ import { vi } from "vitest";
 type StorageState = Record<string, unknown>;
 
 let storageState: StorageState = {};
+let sessionStorageState: StorageState = {};
 
 const storageGet = vi.fn((keys: unknown, callback: (items: StorageState) => void) => {
   if (keys == null) {
@@ -30,8 +31,61 @@ const storageSet = vi.fn((items: StorageState, callback?: () => void) => {
   callback?.();
 });
 
+const storageRemove = vi.fn((keys: string | string[], callback?: () => void) => {
+  if (typeof keys === "string") {
+    delete storageState[keys];
+  } else if (Array.isArray(keys)) {
+    for (const key of keys) {
+      delete storageState[key];
+    }
+  }
+  callback?.();
+});
+
 const storageClear = vi.fn((callback?: () => void) => {
   storageState = {};
+  callback?.();
+});
+
+const sessionStorageGet = vi.fn((keys: unknown, callback: (items: StorageState) => void) => {
+  if (keys == null) {
+    callback({ ...sessionStorageState });
+    return;
+  }
+
+  if (typeof keys === "string") {
+    callback({ [keys]: sessionStorageState[keys] });
+    return;
+  }
+
+  if (Array.isArray(keys)) {
+    const result = Object.fromEntries(keys.map((key) => [key, sessionStorageState[key]]));
+    callback(result);
+    return;
+  }
+
+  const defaults = typeof keys === "object" && keys !== null ? (keys as StorageState) : {};
+  callback({ ...defaults, ...sessionStorageState });
+});
+
+const sessionStorageSet = vi.fn((items: StorageState, callback?: () => void) => {
+  sessionStorageState = { ...sessionStorageState, ...items };
+  callback?.();
+});
+
+const sessionStorageRemove = vi.fn((keys: string | string[], callback?: () => void) => {
+  if (typeof keys === "string") {
+    delete sessionStorageState[keys];
+  } else if (Array.isArray(keys)) {
+    for (const key of keys) {
+      delete sessionStorageState[key];
+    }
+  }
+  callback?.();
+});
+
+const sessionStorageClear = vi.fn((callback?: () => void) => {
+  sessionStorageState = {};
   callback?.();
 });
 
@@ -51,12 +105,27 @@ export function getChromeStorageSnapshot(): StorageState {
   return { ...storageState };
 }
 
+export function seedChromeSessionStorage(items: StorageState): void {
+  sessionStorageState = { ...items };
+}
+
+export function getChromeSessionStorageSnapshot(): StorageState {
+  return { ...sessionStorageState };
+}
+
 export function resetChromeMockState(): void {
   storageState = {};
+  sessionStorageState = {};
 
   storageGet.mockClear();
   storageSet.mockClear();
+  storageRemove.mockClear();
   storageClear.mockClear();
+
+  sessionStorageGet.mockClear();
+  sessionStorageSet.mockClear();
+  sessionStorageRemove.mockClear();
+  sessionStorageClear.mockClear();
 
   actionSetBadgeText.mockClear();
   actionSetBadgeBackgroundColor.mockClear();
@@ -74,7 +143,14 @@ export function installChromeMock(): typeof chrome {
       local: {
         get: storageGet,
         set: storageSet,
+        remove: storageRemove,
         clear: storageClear,
+      },
+      session: {
+        get: sessionStorageGet,
+        set: sessionStorageSet,
+        remove: sessionStorageRemove,
+        clear: sessionStorageClear,
       },
     },
     action: {
