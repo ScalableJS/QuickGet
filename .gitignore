@@ -25,3 +25,6 @@ test-results/
 !docs/svelte-migration-plan.md
 
 storybook-static/
+
+# repomix code dumps
+repomix-output.xml
