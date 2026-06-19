@@ -63,7 +63,6 @@ export function createLogger(namespace: string, options: LoggerOptions = {}): Lo
   ): void => {
     if (!shouldEmit(level)) return;
     const prefix = `[${namespace}]`;
-    // eslint-disable-next-line no-console -- intentional logger output
     // biome-ignore lint/suspicious/noConsole: intentional logger implementation
     (console[method] ?? console.log).call(console, `${prefix} ${message}`, ...details);
     emit(level, message, details);

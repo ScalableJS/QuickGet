@@ -109,7 +109,7 @@
 
 <svelte:window onclick={(e) => {
   // Close when clicking outside this control.
-  if (!(e.target instanceof Element) || !e.target.closest(`.folder-select`)) open = false;
+  if (!(e.target instanceof Element) || !e.target.closest(".folder-select")) open = false;
 }} />
 
 <style>

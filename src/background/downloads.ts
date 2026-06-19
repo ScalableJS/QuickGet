@@ -1,5 +1,5 @@
 /**
- * Download interception (Chrome only — prototype)
+ * Download interception (Chrome only)
  *
  * Watches for .torrent downloads and routes them to QNAP Download Station.
  * Behaviour is driven by settings.torrentInterceptMode:

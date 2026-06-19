@@ -101,7 +101,7 @@ const synologyNumericStates: Record<number, TaskStatus> = {
 
 const qnapNumericStates: Record<number, TaskStatus> = {
   0: "queued",
-  1: "queued", // Может быть paused - определяется по прогрессу
+  1: "queued", // may be overridden to "paused" later based on progress
   2: "downloading",
   3: "paused",
   4: "error",

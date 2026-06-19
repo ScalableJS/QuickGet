@@ -10,7 +10,7 @@ export type Settings = {
   NASaddress: string; // e.g. "192.168.88.185" or hostname
   NASport: string; // e.g. "8080"
   NASlogin: string;
-  NASpassword: string; // stored locally only
+  NASpassword: string; // kept in session storage; encrypted at rest when "remember" is on
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
@@ -53,5 +53,3 @@ export const DEFAULTS: Settings = {
   torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
   rememberPassword: false,
 };
-
-export const DEBUG_ENABLED = false; // set to true for verbose logging

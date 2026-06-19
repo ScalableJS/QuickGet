@@ -5,11 +5,8 @@ import { requestMonitoring } from "../../shared/monitor.js";
 
 interface BatchOptions {
   targetFolder?: string;
-  log?: (message: string) => void;
   onSuccess?: () => void;
 }
-
-function defaultLog(_message: string): void {}
 
 const MAX_URLS = 50;
 
@@ -22,8 +19,6 @@ export function parseUrlLines(raw: string): string[] {
 }
 
 export async function uploadUrls(urls: string[], options: BatchOptions = {}): Promise<void> {
-  const log = options.log ?? defaultLog;
-
   if (urls.length === 0) {
     showStatus("Enter at least one URL", "error");
     return;
@@ -33,7 +28,6 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     return;
   }
 
-  log(`Adding ${urls.length} URL(s)`);
   showStatus(`Adding ${urls.length} URL(s)…`, "info");
 
   try {
@@ -59,13 +53,8 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     } else {
       showStatus(`Failed to add ${failed} URL(s)`, "error");
     }
-
-    for (const r of results.filter((r) => !r.ok)) {
-      log(`Failed: ${r.url} — ${r.error}`);
-    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     showStatus(`Error: ${message}`, "error");
-    log(`Batch add error: ${message}`);
   }
 }

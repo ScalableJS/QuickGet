@@ -1,11 +1,8 @@
-import type { Task } from "@lib/tasks.js";
-
 import { showStatus } from "@/popup/components";
 
 import {
   configureAutoRefresh,
   stopAutoRefresh as haltAutoRefresh,
-  isAutoRefreshRunning,
   startAutoRefresh as runAutoRefresh,
 } from "./autoRefresh.js";
 import {
@@ -16,14 +13,8 @@ import {
   startTorrent as startTask,
   stopTorrent as stopTask,
 } from "./downloadsManager.js";
-import { clearSelection, getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
+import { clearSelection, getSelectedHash, onSelectionChange } from "./downloadsState.js";
 import { hideDownloads, renderDownloads, setupDownloadsUI } from "./downloadsUI.js";
-
-interface InitializeDownloadsOptions {
-  onSelectionChange?: (hash: string | null) => void;
-  onSnapshotUpdated?: (tasks: Task[]) => void;
-  onRefresh?: (tasks: Task[]) => void;
-}
 
 export interface DownloadsFeature {
   refreshNow: () => Promise<void>;
@@ -32,21 +23,13 @@ export interface DownloadsFeature {
   stop: (hash: string) => Promise<void>;
   pause: (hash: string) => Promise<void>;
   getSelected: () => string | null;
-  setSelected: (hash: string | null) => void;
   clearSelection: () => void;
-  startAutoRefresh: () => void;
-  stopAutoRefresh: () => void;
-  isAutoRefreshRunning: () => boolean;
   hideDownloads: () => void;
   onSelectionChange: (listener: (hash: string | null) => void) => () => void;
 }
 
-export async function initializeDownloads(options: InitializeDownloadsOptions = {}): Promise<DownloadsFeature> {
-  setupDownloadsUI({
-    onSelectionChange: (hash) => {
-      options.onSelectionChange?.(hash);
-    },
-  });
+export async function initializeDownloads(): Promise<DownloadsFeature> {
+  setupDownloadsUI();
 
   async function refreshNow(): Promise<void> {
     try {
@@ -54,10 +37,7 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
       if (result.skipped) {
         return;
       }
-
       renderDownloads(result.tasks);
-      options.onRefresh?.(result.tasks);
-      options.onSnapshotUpdated?.(result.tasks);
     } catch (error) {
       showStatus(`Failed to list downloads: ${error}`, "error");
     }
@@ -100,11 +80,7 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
       showStatus("Torrent paused", "info", { autoHideMs: 2000 });
     },
     getSelected: () => getSelectedHash(),
-    setSelected: (hash: string | null) => setSelectedHash(hash),
     clearSelection: () => clearSelection(),
-    startAutoRefresh: () => runAutoRefresh(),
-    stopAutoRefresh: () => haltAutoRefresh(),
-    isAutoRefreshRunning: () => isAutoRefreshRunning(),
     hideDownloads: () => hideDownloads(),
     onSelectionChange: (listener: (hash: string | null) => void) => onSelectionChange(listener),
   };

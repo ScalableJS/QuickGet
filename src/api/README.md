@@ -11,7 +11,6 @@ src/api/
 ├── utils.ts           # Data processing utilities
 ├── schema.d.ts        # TypeScript API schema
 ├── type.ts            # Type exports
-├── API.md             # QNAP API documentation
 └── README.md          # This file
 ```
 
@@ -193,6 +192,4 @@ try {
 
 ## 📖 See Also
 
-- **API.md** - Complete QNAP Download Station API documentation
-- **API_ANALYSIS_REPORT.md** - Detailed analysis and improvement suggestions
 - **schema.d.ts** - Full TypeScript API schema

@@ -70,14 +70,6 @@ export function createApiError(prefix: string, result: unknown): Error {
 }
 
 /**
- * Simple promise-based delay utility
- */
-export function delay(ms: number): Promise<void> {
-  if (ms <= 0) return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
  * Check if API response indicates success
  */
 export function isSuccessResponse(data: unknown): data is BaseResponse {

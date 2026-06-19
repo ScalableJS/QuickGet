@@ -17,11 +17,11 @@ const STATUS_LABELS: Record<string, string> = {
   error: "Error",
 };
 
-export function formatSpeed(bytes: number): string {
+function formatSpeed(bytes: number): string {
   return scaleUnit(bytes, SPEED_UNITS);
 }
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
   return scaleUnit(bytes, SIZE_UNITS);
 }
 
@@ -37,7 +37,7 @@ function scaleUnit(bytes: number, units: readonly string[]): string {
   return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
 
-export function formatETA(seconds: number | undefined): string {
+function formatETA(seconds: number | undefined): string {
   if (!seconds || seconds <= 0) return "";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -48,14 +48,14 @@ export function formatETA(seconds: number | undefined): string {
   return `${secs}s`;
 }
 
-export function formatAddedDate(value?: number): string {
+function formatAddedDate(value?: number): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleString(undefined, { hour12: false });
 }
 
-export function formatStatus(status: string): string {
+function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 

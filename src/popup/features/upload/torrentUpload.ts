@@ -8,22 +8,16 @@ import { getSnapshot } from "../downloads/downloadsState.js";
 import { checkDuplicate, normalizeFileName } from "./duplicateCheck.js";
 
 interface UploadOptions {
-  log?: (message: string) => void;
   onDuplicate?: (fileName: string) => void;
   onSuccess?: () => void;
 }
 
-function defaultLog(_message: string): void {}
-
 export async function uploadTorrent(file: File, options: UploadOptions = {}): Promise<void> {
-  const log = options.log ?? defaultLog;
-
   if (!file.name.toLowerCase().endsWith(".torrent")) {
     showStatus("Please select a valid .torrent file", "error");
     return;
   }
 
-  log(`Uploading torrent file: ${file.name}`);
   showStatus(`Uploading torrent: ${file.name}...`, "info");
 
   let snapshot = getSnapshot();
@@ -60,6 +54,5 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     showStatus(`Error: ${message}`, "error");
-    log(`Upload error: ${message}`);
   }
 }

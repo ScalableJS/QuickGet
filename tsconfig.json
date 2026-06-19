@@ -26,9 +26,7 @@
     "paths": {
       "@/*": ["src/*"],
       "@api/*": ["src/api/*"],
-      "@lib/*": ["src/lib/*"],
-      "@ui/*": ["src/ui/*"],
-      "@types/*": ["src/types/*"]
+      "@lib/*": ["src/lib/*"]
     }
   },
   "include": ["src", "tests"],

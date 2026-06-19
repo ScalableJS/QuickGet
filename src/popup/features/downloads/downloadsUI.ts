@@ -8,10 +8,6 @@ import DownloadsList from "./DownloadsList.svelte";
 import { getSelectedHash, onSelectionChange, setSelectedHash } from "./downloadsState.js";
 import { downloadsView } from "./downloadsView.svelte.js";
 
-type DownloadsUIOptions = {
-  onSelectionChange?: (hash: string | null) => void;
-};
-
 let downloadsSection: HTMLElement | null = null;
 let downloadsList: HTMLElement | null = null;
 let mounted = false;
@@ -36,7 +32,7 @@ function ensureElements(): void {
   }
 }
 
-export function setupDownloadsUI(options: DownloadsUIOptions = {}): void {
+export function setupDownloadsUI(): void {
   ensureElements();
 
   if (downloadsList && !mounted) {
@@ -51,7 +47,6 @@ export function setupDownloadsUI(options: DownloadsUIOptions = {}): void {
 
   onSelectionChange((hash) => {
     downloadsView.selectedHash = hash;
-    options.onSelectionChange?.(hash);
   });
 }
 
