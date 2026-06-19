@@ -81,12 +81,6 @@ export class ApiClient {
     return buildNASBaseUrl(this.settings);
   }
 
-  setLoggerEnabled(value: boolean): void {
-    if ("setEnabled" in this.logger) {
-      this.logger.setEnabled(value);
-    }
-  }
-
   async queryTasks(options: QueryTasksOptions = {}): Promise<QueryTasksResult> {
     const raw = await this.queryTasksRaw(options);
     const tasks = normalizeTasks("qnap", raw);

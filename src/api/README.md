@@ -38,9 +38,8 @@ console.log(`Found ${tasks.length} downloads`);
 ```typescript
 import { createLogger } from './lib/logger.js';
 
-const logger = createLogger('API');
+const logger = createLogger('API', { enabled: true });
 const client = createApiClient({ settings, logger });
-client.setLoggerEnabled(true);
 ```
 
 ---

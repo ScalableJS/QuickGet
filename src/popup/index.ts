@@ -1,24 +1,17 @@
 import { getErrorMessage } from "@lib/errors.js";
 import { showStatus } from "@/popup/components";
 import { isLocked } from "@lib/settings.js";
-import { initializeDebug } from "./features/debug";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
 import { initializeUpload } from "./features/upload";
 import { initializeUnlock } from "./features/unlock";
-import { setDefaultClientLogger } from "./shared/api";
 
 function handleInitializationError(error: unknown): void {
   showStatus(`Popup initialization failed: ${getErrorMessage(error)}`, "error");
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const debug = initializeDebug();
-  debug.log("Popup loaded");
-
-  setDefaultClientLogger(debug.getApiLogger());
-
   try {
     const locked = await isLocked();
     if (locked) {
@@ -33,62 +26,46 @@ document.addEventListener("DOMContentLoaded", async () => {
           unlockFeature.hidePanel();
           toolbarEl?.classList.remove("hidden");
           downloadsEl?.classList.remove("hidden");
-          void runMainInit(debug);
+          void runMainInit();
         },
       });
       unlockFeature.showPanel();
-      debug.log("Popup is locked, displaying unlock panel");
     } else {
-      void runMainInit(debug);
+      void runMainInit();
     }
   } catch (error) {
     handleInitializationError(error);
-    debug.log(`Initialization error: ${error}`);
   }
 });
 
-async function runMainInit(debug: ReturnType<typeof initializeDebug>): Promise<void> {
+async function runMainInit(): Promise<void> {
   let downloadsFeature: DownloadsFeature | null = null;
 
   try {
     const settings = await initializeSettings({
-      onDebugToggle: (enabled) => {
-        debug.setEnabled(enabled);
-      },
       onVisibilityChange: (visible) => {
         if (visible) {
           downloadsFeature?.hideDownloads();
         } else {
-          void downloadsFeature?.refreshNow({ silent: true }).catch((error) => {
-            debug.log(`Refresh after settings close failed: ${error}`);
-          });
+          void downloadsFeature?.refreshNow();
         }
       },
     });
 
     const upload = initializeUpload({
-      onLog: debug.log,
       onUploadSuccess: () => {
-        void downloadsFeature?.refreshNow({ silent: true }).catch((error) => {
-          debug.log(`Auto refresh after upload failed: ${error}`);
-        });
+        void downloadsFeature?.refreshNow();
       },
     });
 
-    downloadsFeature = await initializeDownloads({
-      onLog: debug.log,
-    });
+    downloadsFeature = await initializeDownloads();
 
     initializeToolbar({
       downloads: downloadsFeature,
       settings,
       upload,
-      onLog: debug.log,
     });
-
-    debug.log("Popup initialized");
   } catch (error) {
     handleInitializationError(error);
-    debug.log(`Initialization error: ${error}`);
   }
 }

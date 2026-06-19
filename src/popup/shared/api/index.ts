@@ -1,1 +1,1 @@
-export { getApiClient, invalidateClientCache, setDefaultClientLogger } from "./clientCache.js";
+export { getApiClient, invalidateClientCache } from "./clientCache.js";

@@ -21,17 +21,12 @@ import { hideDownloads, renderDownloads, setupDownloadsUI } from "./downloadsUI.
 
 interface InitializeDownloadsOptions {
   onSelectionChange?: (hash: string | null) => void;
-  onLog?: (message: string) => void;
   onSnapshotUpdated?: (tasks: Task[]) => void;
   onRefresh?: (tasks: Task[]) => void;
 }
 
-interface RefreshOptions {
-  silent?: boolean;
-}
-
 export interface DownloadsFeature {
-  refreshNow: (options?: RefreshOptions) => Promise<void>;
+  refreshNow: () => Promise<void>;
   remove: (hash: string) => Promise<void>;
   start: (hash: string) => Promise<void>;
   stop: (hash: string) => Promise<void>;
@@ -46,47 +41,33 @@ export interface DownloadsFeature {
   onSelectionChange: (listener: (hash: string | null) => void) => () => void;
 }
 
-function defaultLog(_message: string): void {}
-
 export async function initializeDownloads(options: InitializeDownloadsOptions = {}): Promise<DownloadsFeature> {
-  const log = options.onLog ?? defaultLog;
-
   setupDownloadsUI({
     onSelectionChange: (hash) => {
-      log(hash ? `[Selection] ${hash}` : "[Selection] none");
       options.onSelectionChange?.(hash);
     },
   });
 
-  async function refreshNow(refreshOptions: RefreshOptions = {}): Promise<void> {
+  async function refreshNow(): Promise<void> {
     try {
       const result = await queryDownloads();
       if (result.skipped) {
-        log("Download list request already in progress, skipping...");
         return;
       }
 
       renderDownloads(result.tasks);
       options.onRefresh?.(result.tasks);
       options.onSnapshotUpdated?.(result.tasks);
-
-      const message = result.tasks.length === 0 ? "No active downloads" : `Found ${result.tasks.length} download(s)`;
-      if (!refreshOptions.silent) {
-        log(message);
-      }
     } catch (error) {
       showStatus(`Failed to list downloads: ${error}`, "error");
-      log(`Download list error: ${error}`);
     }
   }
 
   configureAutoRefresh({
-    onRefresh: () => refreshNow({ silent: true }),
-    onLog: log,
+    onRefresh: () => refreshNow(),
   });
 
   await refreshNow();
-  log("Starting auto-refresh...");
   runAutoRefresh();
 
   window.addEventListener("beforeunload", () => {
@@ -100,12 +81,11 @@ export async function initializeDownloads(options: InitializeDownloadsOptions = 
       const normalizedHash = hash?.trim();
       if (!normalizedHash) {
         showStatus("Cannot remove download: missing identifier", "error");
-        log("remove aborted: empty hash");
         return;
       }
       await deleteDownload(normalizedHash);
       showStatus("Download removed", "success", { autoHideMs: 2000 });
-      await refreshNow({ silent: true });
+      await refreshNow();
     },
     start: async (hash: string) => {
       await startTask(hash);

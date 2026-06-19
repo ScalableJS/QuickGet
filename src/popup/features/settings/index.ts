@@ -4,7 +4,6 @@ import SettingsPanel from "./Settings.svelte";
 import { getSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
 
 type InitializeSettingsOptions = {
-  onDebugToggle?: (enabled: boolean) => void;
   onVisibilityChange?: (visible: boolean) => void;
 };
 
@@ -20,7 +19,6 @@ export function initializeSettings(options: InitializeSettingsOptions = {}): Set
     // Settings.svelte loads on mount and saves via its own buttons — no parent-driven lifecycle.
     mount(SettingsPanel, {
       target: panel,
-      props: { onDebugToggle: options.onDebugToggle },
     });
   }
 

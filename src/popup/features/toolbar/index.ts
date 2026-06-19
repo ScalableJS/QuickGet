@@ -12,12 +12,10 @@ type InitializeToolbarOptions = {
   downloads: DownloadsFeature;
   settings: SettingsFeature;
   upload: UploadFeature;
-  onLog?: (message: string) => void;
 };
 
 export function initializeToolbar(options: InitializeToolbarOptions): void {
   const { downloads, settings, upload } = options;
-  const log = options.onLog ?? ((_message: string) => {});
 
   const requireSelection = (verb: string): string | null => {
     const selected = downloads.getSelected();
@@ -65,6 +63,4 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
   downloads.onSelectionChange((hash) => {
     toolbarView.hasSelection = Boolean(hash);
   });
-
-  log("Toolbar initialized");
 }

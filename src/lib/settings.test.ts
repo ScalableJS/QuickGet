@@ -16,7 +16,6 @@ describe("settings", () => {
       NASaddress: "files.local",
       NASport: 9090,
       NASsecure: "1",
-      enableDebugLogging: "false",
     });
 
     const settings = await loadSettings();
@@ -26,7 +25,6 @@ describe("settings", () => {
       NASaddress: "files.local",
       NASport: "9090",
       NASsecure: true,
-      enableDebugLogging: false,
       NASlogin: DEFAULTS.NASlogin,
       NAStempdir: DEFAULTS.NAStempdir,
       NASdir: DEFAULTS.NASdir,

@@ -802,56 +802,6 @@ textarea:focus {
   background: var(--progress-fill-error);
 }
 
-/* Debug Section */
-
-.debug-section {
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--spacing-md);
-  margin-top: var(--spacing-md);
-}
-
-.debug-section summary {
-  cursor: pointer;
-  font-weight: 500;
-  padding: var(--spacing-sm);
-  margin: calc(-1 * var(--spacing-sm));
-  user-select: none;
-}
-
-.debug-section summary:hover {
-  background: var(--color-bg);
-}
-
-#debug-logs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: var(--bg-textbox);
-  color: var(--text-light);
-  font-family: "Consolas", "Monaco", monospace;
-  font-size: 11px;
-  line-height: 1.4;
-  padding: var(--spacing-md);
-  border-radius: var(--radius);
-  max-height: 200px;
-  overflow-y: auto;
-  margin-top: var(--spacing-md);
-  word-break: break-word;
-  border: 1px solid var(--color-border);
-}
-
-.debug-section > div:last-child {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-}
-
-.debug-log-line {
-  white-space: pre-wrap;
-}
-
 /* Responsive */
 
 @media (max-width: 600px) {

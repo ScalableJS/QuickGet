@@ -8,8 +8,6 @@
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
 
-  let { onDebugToggle }: { onDebugToggle?: (enabled: boolean) => void } = $props();
-
   let form = $state<Settings>({ ...DEFAULTS });
 
   // Single "Server address" field, kept only in the form. On load we compose it
@@ -23,11 +21,6 @@
   function applyServerUrl(raw: string): void {
     Object.assign(form, parseServerUrl(raw));
   }
-
-  // Keep the debug logger in sync with the toggle (load + user changes).
-  $effect(() => {
-    onDebugToggle?.(form.enableDebugLogging);
-  });
 
   export async function load(): Promise<void> {
     try {
@@ -170,13 +163,6 @@
       <option value="ask">Ask — offer to send to NAS</option>
       <option value="always">Always send to NAS</option>
     </select>
-  </div>
-
-  <div class="form-group form-inline">
-    <label for="enableDebug">
-      <input type="checkbox" id="enableDebug" bind:checked={form.enableDebugLogging} />
-      Enable debug logs
-    </label>
   </div>
 </section>
 

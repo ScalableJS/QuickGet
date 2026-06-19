@@ -6,7 +6,6 @@ import { uploadTorrent } from "./torrentUpload.js";
 interface InitializeUploadOptions {
   onUploadSuccess?: () => void;
   onDuplicate?: (fileName: string) => void;
-  onLog?: (message: string) => void;
 }
 
 export interface UploadFeature {
@@ -24,7 +23,6 @@ function getUrlPanel(): HTMLElement | null {
 }
 
 export function initializeUpload(options: InitializeUploadOptions = {}): UploadFeature {
-  const log = options.onLog ?? ((_message: string) => {});
   const fileInput = getFileInput();
 
   const urlPanel = getUrlPanel();
@@ -33,7 +31,6 @@ export function initializeUpload(options: InitializeUploadOptions = {}): UploadF
     mount(CreateUrls, {
       target: urlPanel,
       props: {
-        onLog: log,
         onSuccess: () => {
           urlPanel.classList.add("hidden");
           options.onUploadSuccess?.();
@@ -46,7 +43,6 @@ export function initializeUpload(options: InitializeUploadOptions = {}): UploadF
     const file = fileInput.files?.[0];
     if (!file) return;
     const upload = uploadTorrent(file, {
-      log,
       onSuccess: () => {
         options.onUploadSuccess?.();
       },

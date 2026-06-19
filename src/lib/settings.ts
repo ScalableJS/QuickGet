@@ -91,7 +91,6 @@ export async function loadSettings(): Promise<Settings> {
           NASpassword,
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
-          enableDebugLogging: booleanWithDefault("enableDebugLogging", DEFAULTS.enableDebugLogging),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
           rememberPassword,
         };

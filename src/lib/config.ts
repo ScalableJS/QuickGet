@@ -13,7 +13,6 @@ export type Settings = {
   NASpassword: string; // stored locally only
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
-  enableDebugLogging: boolean;
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
   rememberPassword: boolean;
 };
@@ -26,7 +25,6 @@ const FALLBACK_DEFAULTS: Settings = {
   NASpassword: "",
   NAStempdir: "/share/Download",
   NASdir: "/share/Multimedia/Movies",
-  enableDebugLogging: false,
   torrentInterceptMode: "ask",
   rememberPassword: false,
 };
@@ -52,7 +50,6 @@ export const DEFAULTS: Settings = {
   NASpassword: envString(import.meta.env.VITE_QNAP_PASSWORD, FALLBACK_DEFAULTS.NASpassword),
   NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR, FALLBACK_DEFAULTS.NAStempdir),
   NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
-  enableDebugLogging: FALLBACK_DEFAULTS.enableDebugLogging,
   torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
   rememberPassword: false,
 };

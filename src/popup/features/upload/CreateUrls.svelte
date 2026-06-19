@@ -6,13 +6,7 @@
 
   import { parseUrlLines, uploadUrls } from "./batchUpload.js";
 
-  let {
-    onLog,
-    onSuccess,
-  }: {
-    onLog?: (message: string) => void;
-    onSuccess?: () => void;
-  } = $props();
+  let { onSuccess }: { onSuccess?: () => void } = $props();
 
   let raw = $state("");
   let targetFolder = $state(DEFAULTS.NASdir);
@@ -30,7 +24,6 @@
     try {
       await uploadUrls(urls, {
         targetFolder: targetFolder.trim() || undefined,
-        log: onLog,
         onSuccess: () => {
           raw = "";
           onSuccess?.();
