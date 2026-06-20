@@ -27,6 +27,7 @@ test-results/
 
 !docs/svelte-migration-plan.md
 !docs/privacy-policy.md
+!docs/firefox-release-guide.md
 
 storybook-static/
 
