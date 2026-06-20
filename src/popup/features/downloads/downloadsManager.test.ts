@@ -114,13 +114,25 @@ describe("downloadsManager", () => {
     expect(nextQuery).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to stopTask when pauseTask is unavailable", async () => {
+  it("falls back to stopTask when the NAS lacks Task/Pause (apiUnsupported)", async () => {
     const stopTask = vi.fn().mockResolvedValue(true);
+    const pauseTask = vi.fn().mockRejectedValue(Object.assign(new Error("no such api"), { apiUnsupported: true }));
 
-    sharedApiMock.getApiClient.mockResolvedValue({ stopTask } as never);
+    sharedApiMock.getApiClient.mockResolvedValue({ pauseTask, stopTask } as never);
 
     await pauseTorrent("hash-123");
 
+    expect(pauseTask).toHaveBeenCalledWith("hash-123");
     expect(stopTask).toHaveBeenCalledWith("hash-123");
+  });
+
+  it("surfaces a pauseTask failure that is not apiUnsupported", async () => {
+    const stopTask = vi.fn().mockResolvedValue(true);
+    const pauseTask = vi.fn().mockRejectedValue(new Error("network down"));
+
+    sharedApiMock.getApiClient.mockResolvedValue({ pauseTask, stopTask } as never);
+
+    await expect(pauseTorrent("hash-123")).rejects.toThrow(/network down/);
+    expect(stopTask).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,7 @@
  */
 
 import { type ApiClient, createApiClient } from "@api/client.js";
+import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
 
 import { clearBadge, startIconAnimation, stopIconAnimation, updateStatsBadge } from "./actions.js";
@@ -22,21 +23,9 @@ const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
 
 let clientCache: { signature: string; client: ApiClient } | null = null;
 
-function serializeSettings(settings: Awaited<ReturnType<typeof loadSettings>>): string {
-  return JSON.stringify([
-    settings.NASsecure,
-    settings.NASaddress,
-    settings.NASport,
-    settings.NASlogin,
-    settings.NASpassword,
-    settings.NAStempdir,
-    settings.NASdir,
-  ]);
-}
-
 async function getClient(): Promise<ApiClient> {
   const settings = await loadSettings();
-  const signature = serializeSettings(settings);
+  const signature = clientSignature(settings);
 
   if (!clientCache || clientCache.signature !== signature) {
     clientCache = { signature, client: createApiClient({ settings }) };

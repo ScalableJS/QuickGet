@@ -25,8 +25,8 @@ describe("updateStatsBadge", () => {
 
     const calls = vi.mocked(chrome.action.setTitle).mock.calls;
     const title = calls[calls.length - 1]?.[0].title;
-    expect(title).toContain("Активных: 1");
-    expect(title).toContain("Всего: 6");
+    expect(title).toContain("Active: 1");
+    expect(title).toContain("Total: 6");
     expect(title).toContain("↓ 1.2 MB/s");
     expect(title).toContain("↑ 409.6 KB/s");
   });

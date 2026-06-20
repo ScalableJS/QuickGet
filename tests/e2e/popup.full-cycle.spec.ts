@@ -24,8 +24,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
-    await page.fill("#NAStempdir", "/share/Download");
-    await page.fill("#NASdir", "/share/Multimedia/Movies");
+    // Relative to the share root — DS rejects absolute /share/... paths (error 4096).
+    await page.fill("#NAStempdir", "Download");
+    await page.fill("#NASdir", "Multimedia/Movies");
 
     await page.click("#test-btn");
     await expect(page.locator("#status-message")).toContainText("Connection successful", { timeout: 15_000 });

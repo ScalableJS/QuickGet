@@ -1,4 +1,5 @@
 import type { Settings } from "@lib/config.js";
+import { normalizeFolderPath } from "@lib/folderPath.js";
 import { createLogger, type Logger } from "@lib/logger.js";
 import { normalizeTasks, type Task } from "@lib/tasks.js";
 import type { ApiFetchClient, ClientSetupOptions } from ".";
@@ -6,9 +7,9 @@ import { buildNASBaseUrl, createOpenApiFetchClient, performLogin } from ".";
 import type { ApiResponse, components } from "./type.js";
 import { createApiError, getErrorMessage, isSuccessResponse } from "./utils.js";
 
-export interface ApiClientOptions extends ClientSetupOptions {
+export type ApiClientOptions = ClientSetupOptions & {
   logger?: Logger;
-}
+};
 
 type TaskQueryResponse = ApiResponse<"queryTasks">;
 type TaskQueryRequest = components["schemas"]["TaskQueryRequest"];
@@ -23,29 +24,29 @@ type GetFileRequest = components["schemas"]["GetFileRequest"];
 type SetFileRequest = components["schemas"]["SetFileRequest"];
 export type TorrentFile = components["schemas"]["TorrentFile"];
 
-export interface QueryTasksResult {
+export type QueryTasksResult = {
   raw: TaskQueryResponse;
   tasks: Task[];
-}
+};
 
-export interface QueryTasksParams {
+export type QueryTasksParams = {
   limit?: number;
   from?: number;
   field?: string;
   direction?: "ASC" | "DESC";
   status?: string;
   type?: string;
-}
+};
 
-export interface QueryTasksOptions {
+export type QueryTasksOptions = {
   params?: QueryTasksParams;
   signal?: AbortSignal;
-}
+};
 
-export interface AddTorrentResult {
+export type AddTorrentResult = {
   added: boolean;
   duplicate?: boolean;
-}
+};
 
 /**
  * Simplified API client using openapi-fetch with SID middleware
@@ -127,10 +128,12 @@ export class ApiClient {
     // QNAP DS V4 AddUrl requires BOTH `temp` and `move`; omitting either is rejected
     // (`{"error":1,"reason":"temp"}` / `"move"`). The `savepath` field does not exist
     // in the API and is silently ignored, so we always send temp/move from settings.
+    // Paths are normalized to the relative form DS expects — an absolute `/share/...`
+    // is rejected with error 4096 (see normalizeFolderPath).
     const requestBody = withEmptySid<AddUrlRequest>({
       url,
-      temp: options.tempFolder ?? this.settings.NAStempdir,
-      move: options.targetFolder ?? this.settings.NASdir,
+      temp: normalizeFolderPath(options.tempFolder ?? this.settings.NAStempdir),
+      move: normalizeFolderPath(options.targetFolder ?? this.settings.NASdir),
     });
 
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/AddUrl", {
@@ -155,15 +158,19 @@ export class ApiClient {
   async addTorrent(file: File): Promise<AddTorrentResult> {
     const loginResult = await performLogin(this.settings);
 
+    // Normalize to the relative path DS expects (absolute `/share/...` → error 4096).
+    const temp = normalizeFolderPath(this.settings.NAStempdir);
+    const move = normalizeFolderPath(this.settings.NASdir);
+
     const formData = new FormData();
     formData.append("sid", loginResult.sid);
     formData.append("bt", file);
     formData.append("bt_task", file);
-    formData.append("temp", this.settings.NAStempdir);
+    formData.append("temp", temp);
 
-    if (this.settings.NASdir) {
-      formData.append("move", this.settings.NASdir);
-      formData.append("dest_path", this.settings.NASdir);
+    if (move) {
+      formData.append("move", move);
+      formData.append("dest_path", move);
     }
 
     const response = await this.fetchFn(`${this.baseUrl}/downloadstation/V4/Task/AddTorrent`, {
@@ -246,7 +253,9 @@ export class ApiClient {
       return true;
     }
 
-    throw new Error(`Pause task failed: ${getErrorMessage(payload)}`);
+    // Enriched error so callers can detect `apiUnsupported` (older DS builds lack
+    // Task/Pause: error 2 / "no such api") and fall back to Stop.
+    throw createApiError("Pause task failed", payload);
   }
 
   async removeTask(hash: string, options: { clean?: boolean } = {}): Promise<boolean> {
@@ -306,6 +315,12 @@ export class ApiClient {
     const payload = data ?? error;
     if (!data || !isSuccessResponse(payload)) {
       throw new Error(`Get status failed: ${getErrorMessage(payload)}`);
+    }
+
+    if (!data.data) {
+      // Some DS builds answer {error:0} without a status block — treat as "no activity"
+      // rather than letting the badge poll throw on undefined.
+      throw new Error("Get status failed: no status data in response");
     }
 
     return data.data;

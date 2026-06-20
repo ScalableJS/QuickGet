@@ -49,6 +49,11 @@ describe("parseImportedSettings", () => {
     expect(result.routingRules).toEqual([{ destination: "Movies", type: "url" }]);
   });
 
+  it("omits routingRules entirely when the import has none (won't clobber existing rules)", () => {
+    const result = parseImportedSettings(JSON.stringify({ NASlogin: "admin" }));
+    expect(result).not.toHaveProperty("routingRules");
+  });
+
   it("throws on invalid JSON", () => {
     expect(() => parseImportedSettings("{not json")).toThrow(/valid JSON/);
   });

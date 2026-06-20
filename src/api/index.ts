@@ -6,11 +6,11 @@ import type { paths } from "./type.js";
 
 export type ApiFetchClient = ReturnType<typeof createClient<paths>>;
 
-export interface ClientSetupOptions {
+export type ClientSetupOptions = {
   settings: Settings;
   fetchFn?: typeof fetch;
   logger?: LoggerAdapter;
-}
+};
 
 export function buildNASBaseUrl(settings: Settings): string {
   const protocol = settings.NASsecure ? "https" : "http";
@@ -189,15 +189,15 @@ function createSidMiddleware(options: {
 /**
  * Performs login and returns SID
  */
-export interface LoginResult {
+export type LoginResult = {
   sid: string;
   user: string;
-}
+};
 
-export interface LoggerAdapter {
+export type LoggerAdapter = {
   error: (msg: string, err?: unknown) => void;
   debug: (msg: string, data?: unknown) => void;
-}
+};
 
 export async function performLogin(settings: Settings): Promise<LoginResult> {
   const baseUrl = buildNASBaseUrl(settings);
@@ -217,11 +217,11 @@ export async function performLogin(settings: Settings): Promise<LoginResult> {
   throw buildLoginError(encodedAttempt.payload);
 }
 
-interface LoginAttemptResult {
+type LoginAttemptResult = {
   sid: string | null;
   user: string;
   payload: Record<string, unknown>;
-}
+};
 
 async function requestLogin(baseUrl: string, username: string, passwordValue: string): Promise<LoginAttemptResult> {
   const formData = new URLSearchParams();

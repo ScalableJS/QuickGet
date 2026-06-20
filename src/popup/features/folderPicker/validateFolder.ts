@@ -1,5 +1,8 @@
 import type { DirEntry } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
+import { normalizeFolderPath } from "@lib/folderPath.js";
+
+export { normalizeFolderPath };
 
 /**
  * Result of validating a NAS folder path.
@@ -57,25 +60,6 @@ export async function validateFolder(raw: string, listDir: FolderLister): Promis
     }
     return { status: "error", reason: getErrorMessage(error) };
   }
-}
-
-/**
- * Normalize a user-entered folder path to the relative form QNAP DS expects.
- *
- * Verified on a live NAS: DS paths are relative to the share root with NO leading
- * slash (`Download`, `Multimedia/Books`); an absolute `/share/Download` is rejected
- * with `error 4096`. So we strip leading/trailing slashes and an optional `share/`
- * prefix, mapping `/share/Download` → `Download`.
- */
-export function normalizeFolderPath(raw: string): string {
-  let path = (raw ?? "").trim().replace(/\\/g, "/");
-  path = path
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "")
-    .replace(/\/{2,}/g, "/");
-  if (/^share$/i.test(path)) return "";
-  if (/^share\//i.test(path)) path = path.slice("share/".length);
-  return path;
 }
 
 // QNAP DS `Misc/Dir` returns {error:4096, reason:"path"} for a path that does not

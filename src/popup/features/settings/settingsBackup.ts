@@ -1,5 +1,6 @@
 import type { Settings } from "@lib/config.js";
-import type { RoutingMatchType, RoutingRule } from "@lib/routingRules.js";
+import { INTERCEPT_MODES } from "@lib/config.js";
+import { sanitizeRoutingRules } from "@lib/routingRules.js";
 
 const BACKUP_APP = "quickget-remote";
 const BACKUP_VERSION = 1;
@@ -68,34 +69,17 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.NASlogin === "string") result.NASlogin = source.NASlogin;
   if (typeof source.NAStempdir === "string") result.NAStempdir = source.NAStempdir;
   if (typeof source.NASdir === "string") result.NASdir = source.NASdir;
-  if (source.torrentInterceptMode === "off" || source.torrentInterceptMode === "ask" || source.torrentInterceptMode === "always") {
-    result.torrentInterceptMode = source.torrentInterceptMode;
+  if (typeof source.torrentInterceptMode === "string" && (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)) {
+    result.torrentInterceptMode = source.torrentInterceptMode as Settings["torrentInterceptMode"];
   }
-  const rules = sanitizeRules(source.routingRules);
-  if (rules) result.routingRules = rules;
+  // Only carry routingRules when the key was actually present as an array, so an
+  // import that omits it doesn't overwrite existing rules with an empty list.
+  if (Array.isArray(source.routingRules)) {
+    result.routingRules = sanitizeRoutingRules(source.routingRules);
+  }
 
   if (Object.keys(result).length === 0) {
     throw new Error("No recognizable settings in the file");
   }
   return result;
-}
-
-const MATCH_TYPES: readonly RoutingMatchType[] = ["url", "magnet", "torrent"];
-
-function sanitizeRules(raw: unknown): RoutingRule[] | undefined {
-  if (!Array.isArray(raw)) return undefined;
-  const rules: RoutingRule[] = [];
-  for (const item of raw) {
-    if (typeof item !== "object" || item === null) continue;
-    const candidate = item as Record<string, unknown>;
-    if (typeof candidate.destination !== "string") continue;
-    const rule: RoutingRule = { destination: candidate.destination };
-    if (typeof candidate.type === "string" && (MATCH_TYPES as string[]).includes(candidate.type)) {
-      rule.type = candidate.type as RoutingMatchType;
-    }
-    if (typeof candidate.namePattern === "string") rule.namePattern = candidate.namePattern;
-    if (typeof candidate.domain === "string") rule.domain = candidate.domain;
-    rules.push(rule);
-  }
-  return rules;
 }

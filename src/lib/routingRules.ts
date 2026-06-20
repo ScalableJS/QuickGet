@@ -12,12 +12,41 @@ export type RoutingInput = {
   kind: RoutingMatchType;
 };
 
+const MATCH_TYPES: readonly RoutingMatchType[] = ["url", "magnet", "torrent"];
+
+/**
+ * Validate untrusted routing-rule data (from storage or an imported backup),
+ * dropping any malformed entry. A rule must have a string `destination`; `type`,
+ * `namePattern` and `domain` are kept only when present and well-typed.
+ */
+export function sanitizeRoutingRules(raw: unknown): RoutingRule[] {
+  if (!Array.isArray(raw)) return [];
+  const rules: RoutingRule[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const candidate = item as Record<string, unknown>;
+    if (typeof candidate.destination !== "string") continue;
+    const rule: RoutingRule = { destination: candidate.destination };
+    if (typeof candidate.type === "string" && (MATCH_TYPES as string[]).includes(candidate.type)) {
+      rule.type = candidate.type as RoutingMatchType;
+    }
+    if (typeof candidate.namePattern === "string") rule.namePattern = candidate.namePattern;
+    if (typeof candidate.domain === "string") rule.domain = candidate.domain;
+    rules.push(rule);
+  }
+  return rules;
+}
+
+/** Drop the query string and fragment, leaving just scheme + host + path. */
+function stripQueryAndHash(url: string): string {
+  return url.split("?")[0].split("#")[0];
+}
+
 export function classifyUrl(url: string): RoutingMatchType {
   if (url.startsWith("magnet:")) {
     return "magnet";
   }
-  const cleanUrl = url.split("?")[0].split("#")[0];
-  if (cleanUrl.endsWith(".torrent")) {
+  if (stripQueryAndHash(url).endsWith(".torrent")) {
     return "torrent";
   }
   return "url";
@@ -31,30 +60,16 @@ export function resolveDestination(input: RoutingInput, rules: RoutingRule[], fa
     if (!rule.destination || rule.destination.trim() === "") {
       continue;
     }
-
-    let matches = true;
-
-    if (rule.type !== undefined) {
-      if (rule.type !== input.kind) {
-        matches = false;
-      }
+    if (rule.type !== undefined && rule.type !== input.kind) {
+      continue;
     }
-
-    if (matches && rule.domain !== undefined) {
-      if (!host || !matchDomain(host, rule.domain)) {
-        matches = false;
-      }
+    if (rule.domain !== undefined && (!host || !matchDomain(host, rule.domain))) {
+      continue;
     }
-
-    if (matches && rule.namePattern !== undefined) {
-      if (!matchGlob(filename, rule.namePattern)) {
-        matches = false;
-      }
+    if (rule.namePattern !== undefined && !matchGlob(filename, rule.namePattern)) {
+      continue;
     }
-
-    if (matches) {
-      return rule.destination;
-    }
+    return rule.destination;
   }
 
   return fallback;
@@ -81,14 +96,12 @@ function getFilename(input: RoutingInput): string {
     }
   }
 
+  const cleanUrl = stripQueryAndHash(input.url);
   try {
-    const cleanUrl = input.url.split("?")[0].split("#")[0];
-    const urlObj = new URL(cleanUrl);
-    const pathname = urlObj.pathname;
+    const pathname = new URL(cleanUrl).pathname;
     const lastSegment = pathname.substring(pathname.lastIndexOf("/") + 1);
     return decodeURIComponent(lastSegment);
   } catch {
-    const cleanUrl = input.url.split("?")[0].split("#")[0];
     const lastSegment = cleanUrl.substring(cleanUrl.lastIndexOf("/") + 1);
     return decodeURIComponent(lastSegment);
   }

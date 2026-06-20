@@ -4,31 +4,12 @@
  */
 
 import type { Settings, TorrentInterceptMode } from "./config.js";
-import { DEFAULTS } from "./config.js";
+import { DEFAULTS, INTERCEPT_MODES } from "./config.js";
 import { decryptPassword, encryptPassword, type EncryptedDataBlob } from "./credentials.js";
-import type { RoutingMatchType, RoutingRule } from "./routingRules.js";
+import { createLogger } from "./logger.js";
+import { sanitizeRoutingRules } from "./routingRules.js";
 
-const INTERCEPT_MODES: readonly TorrentInterceptMode[] = ["off", "ask", "always"];
-const ROUTING_MATCH_TYPES: readonly RoutingMatchType[] = ["url", "magnet", "torrent"];
-
-/** Validate persisted routing rules, dropping any malformed entries. */
-function sanitizeRoutingRules(raw: unknown): RoutingRule[] {
-  if (!Array.isArray(raw)) return [];
-  const rules: RoutingRule[] = [];
-  for (const item of raw) {
-    if (typeof item !== "object" || item === null) continue;
-    const candidate = item as Record<string, unknown>;
-    if (typeof candidate.destination !== "string") continue;
-    const rule: RoutingRule = { destination: candidate.destination };
-    if (typeof candidate.type === "string" && (ROUTING_MATCH_TYPES as string[]).includes(candidate.type)) {
-      rule.type = candidate.type as RoutingMatchType;
-    }
-    if (typeof candidate.namePattern === "string") rule.namePattern = candidate.namePattern;
-    if (typeof candidate.domain === "string") rule.domain = candidate.domain;
-    rules.push(rule);
-  }
-  return rules;
-}
+const logger = createLogger("Settings", { enabled: true });
 
 /**
  * Load settings from chrome.storage.local/session with fallback to defaults
@@ -71,7 +52,7 @@ export async function loadSettings(): Promise<Settings> {
 
         const modeWithDefault = (key: keyof Settings, fallback: TorrentInterceptMode): TorrentInterceptMode => {
           const raw = localItems[key];
-          if (typeof raw === "string" && (INTERCEPT_MODES as string[]).includes(raw)) {
+          if (typeof raw === "string" && (INTERCEPT_MODES as readonly string[]).includes(raw)) {
             return raw as TorrentInterceptMode;
           }
           (missing as Record<string, unknown>)[key] = fallback;
@@ -248,8 +229,9 @@ export async function unlock(masterPassword: string): Promise<boolean> {
           resolve(true);
         });
       } catch (error) {
-        // biome-ignore lint/suspicious/noConsole: log unlock failure for debugging
-        console.error("Unlock failed:", error);
+        // A decrypt failure usually means a wrong master password, but can also be a
+        // corrupt blob — log it so the difference is debuggable, then report "locked".
+        logger.error("Unlock failed:", error);
         resolve(false);
       }
     });

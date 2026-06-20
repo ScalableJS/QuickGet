@@ -68,12 +68,17 @@ export async function stopTorrent(hash: string): Promise<void> {
 
 export async function pauseTorrent(hash: string): Promise<void> {
   const client = await getApiClient();
-  // Older Download Station builds lack Task/Pause; fall back to Stop (covered by tests).
-  if (typeof client.pauseTask === "function") {
+  try {
     await client.pauseTask(hash);
-    return;
+  } catch (error) {
+    // Older Download Station builds lack Task/Pause (error 2 / "no such api").
+    // Only then fall back to Stop; other failures should surface.
+    if ((error as { apiUnsupported?: boolean })?.apiUnsupported) {
+      await client.stopTask(hash);
+      return;
+    }
+    throw error;
   }
-  await client.stopTask(hash);
 }
 
 export async function getTorrentFiles(hash: string): Promise<TorrentFile[]> {

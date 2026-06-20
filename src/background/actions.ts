@@ -37,7 +37,7 @@ export function updateStatsBadge(stats: BadgeStats): void {
   }
 
   setActionTitle(
-    `Активных: ${stats.active}\nВсего: ${stats.all}\n↓ ${formatRate(stats.downRate)}  ↑ ${formatRate(stats.upRate)}`,
+    `Active: ${stats.active}\nTotal: ${stats.all}\n↓ ${formatRate(stats.downRate)}  ↑ ${formatRate(stats.upRate)}`,
   );
 }
 

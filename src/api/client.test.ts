@@ -114,12 +114,14 @@ describe("ApiClient", () => {
     expect(torrentBody).toContain('name="sid"');
     expect(torrentBody).toContain("SID-QNAP");
     expect(torrentBody).toContain('name="temp"');
-    expect(torrentBody).toContain("/share/Download");
+    expect(torrentBody).toContain("Download");
     expect(torrentBody).toContain('name="move"');
-    expect(torrentBody).toContain("/share/Multimedia/Movies");
+    expect(torrentBody).toContain("Multimedia/Movies");
     expect(torrentBody).toContain('name="dest_path"');
     expect(torrentBody).toContain('name="bt"');
     expect(torrentBody).toContain('name="bt_task"');
+    // Paths must be relative — an absolute /share/... is rejected by DS (error 4096).
+    expect(torrentBody).not.toContain("/share/");
   });
 
   it("sends temp and move (not savepath) when adding a URL", async () => {
@@ -142,8 +144,8 @@ describe("ApiClient", () => {
 
     const params = new URLSearchParams(addBody);
     expect(params.get("url")).toBe("http://example.com/file.zip");
-    expect(params.get("temp")).toBe("/share/Download");
-    expect(params.get("move")).toBe("/share/Multimedia/Movies");
+    expect(params.get("temp")).toBe("Download");
+    expect(params.get("move")).toBe("Multimedia/Movies");
     expect(params.has("savepath")).toBe(false);
   });
 
@@ -173,8 +175,8 @@ describe("ApiClient", () => {
     expect(bodies).toHaveLength(2);
     for (const body of bodies) {
       const params = new URLSearchParams(body);
-      expect(params.get("temp")).toBe("/share/Download");
-      expect(params.get("move")).toBe("/share/Multimedia/Movies");
+      expect(params.get("temp")).toBe("Download");
+      expect(params.get("move")).toBe("Multimedia/Movies");
     }
     expect(results[0]).toEqual({ url: "http://a.example/1.zip", ok: true });
     expect(results[1].ok).toBe(false);
@@ -213,6 +215,21 @@ describe("ApiClient", () => {
     const status = await client.getStatus();
 
     expect(status).toMatchObject({ active: 2, all: 6, down_rate: 1234, up_rate: 56, downloading: 2 });
+  });
+
+  it("throws on a success status response that omits the data block", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      // Some DS builds answer {error:0} with no status block — must not return undefined.
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Status", () => HttpResponse.json({ error: 0 })),
+    );
+
+    await expect(client.getStatus()).rejects.toThrow(/no status data/i);
   });
 
   it("gets the file list of a multi-file torrent", async () => {
@@ -351,11 +368,13 @@ describe("ApiClient", () => {
     expect(torrentBody).toContain('name="sid"');
     expect(torrentBody).toContain("SID-QNAP");
     expect(torrentBody).toContain('name="temp"');
-    expect(torrentBody).toContain("/share/Download");
+    expect(torrentBody).toContain("Download");
     expect(torrentBody).toContain('name="move"');
-    expect(torrentBody).toContain("/share/Multimedia/Movies");
+    expect(torrentBody).toContain("Multimedia/Movies");
     expect(torrentBody).toContain('name="dest_path"');
     expect(torrentBody).toContain('name="bt"');
     expect(torrentBody).toContain('name="bt_task"');
+    // Paths must be relative — an absolute /share/... is rejected by DS (error 4096).
+    expect(torrentBody).not.toContain("/share/");
   });
 });
