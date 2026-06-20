@@ -1,5 +1,5 @@
 import type { Settings } from "@lib/config.js";
-import { INTERCEPT_MODES } from "@lib/config.js";
+import { INTERCEPT_MODES, THEME_MODES } from "@lib/config.js";
 import { sanitizeRoutingRules } from "@lib/routingRules.js";
 
 const BACKUP_APP = "quickget-remote";
@@ -16,6 +16,7 @@ const PORTABLE_KEYS = [
   "NASdir",
   "torrentInterceptMode",
   "routingRules",
+  "theme",
 ] as const;
 
 export type SettingsBackup = {
@@ -71,6 +72,9 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.NASdir === "string") result.NASdir = source.NASdir;
   if (typeof source.torrentInterceptMode === "string" && (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)) {
     result.torrentInterceptMode = source.torrentInterceptMode as Settings["torrentInterceptMode"];
+  }
+  if (typeof source.theme === "string" && (THEME_MODES as readonly string[]).includes(source.theme)) {
+    result.theme = source.theme as Settings["theme"];
   }
   // Only carry routingRules when the key was actually present as an array, so an
   // import that omits it doesn't overwrite existing rules with an empty list.

@@ -22,6 +22,7 @@ export function toRealNasSettings(env: RealNasEnv): Settings {
     torrentInterceptMode: "ask",
     routingRules: [],
     rememberPassword: false,
+    theme: "auto",
   };
 }
 

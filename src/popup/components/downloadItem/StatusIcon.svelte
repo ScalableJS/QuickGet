@@ -17,7 +17,7 @@
   let { status }: { status: TaskStatus } = $props();
 
   // Icon convention follows torrent clients (qBittorrent/Transmission):
-  // download = ↓, seed = ↑, error = alert, etc.
+  // Arrow-down denotes download, arrow-up denotes seed, and alert denotes error.
   const ICONS = {
     downloading: ArrowDown,
     seeding: ArrowUp,

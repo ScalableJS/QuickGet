@@ -1,10 +1,15 @@
 <script lang="ts">
+  import Plus from "~icons/lucide/plus";
+  import X from "~icons/lucide/x";
+
   import { showStatus } from "@/popup/components";
+  import { applyTheme } from "@lib/applyTheme.js";
   import { DEFAULTS, type Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
+  import { Alert, Button, Card, Checkbox, Field, Link, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -172,44 +177,37 @@
   void load();
 </script>
 
-<section class="form-section">
+<div class="settings-stack">
+<Card variant="plain">
   <div class="form-group">
-    <label for="serverUrl">Server address</label>
-    <input type="text" id="serverUrl" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
+    <Field id="serverUrl" label="Server address" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
   </div>
 
   <div class="form-group">
-    <label for="NASlogin">Username</label>
-    <input type="text" id="NASlogin" placeholder="download" required bind:value={form.NASlogin} />
+    <Field id="NASlogin" label="Username" placeholder="download" required bind:value={form.NASlogin} />
   </div>
 
   <div class="form-group">
-    <label for="NASpassword">Password</label>
-    <input type="password" id="NASpassword" placeholder="App-specific password" required bind:value={form.NASpassword} />
+    <Field id="NASpassword" label="Password" type="password" placeholder="App-specific password" required bind:value={form.NASpassword} />
   </div>
 
   <div class="form-group form-inline">
-    <label for="rememberPassword">
-      <input type="checkbox" id="rememberPassword" bind:checked={form.rememberPassword} />
+    <Checkbox id="rememberPassword" bind:checked={form.rememberPassword}>
       Remember password on this device
-    </label>
+    </Checkbox>
   </div>
 
   {#if form.rememberPassword && !hasCachedMasterPassword}
     <div class="form-group">
-      <label for="masterPasswordInput">Create Master Password</label>
-      <input type="password" id="masterPasswordInput" placeholder="Minimum 8 characters" bind:value={masterPasswordInput} required />
+      <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="Minimum 8 characters" bind:value={masterPasswordInput} required />
     </div>
     <div class="form-group">
-      <label for="confirmMasterPasswordInput">Confirm Master Password</label>
-      <input type="password" id="confirmMasterPasswordInput" placeholder="Repeat master password" bind:value={confirmMasterPasswordInput} required />
+      <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat master password" bind:value={confirmMasterPasswordInput} required />
     </div>
   {:else if form.rememberPassword && hasCachedMasterPassword}
     <div class="form-group form-inline-text">
       <span class="text-muted">Master password is active.</span>
-      <button type="button" class="btn-link-small" onclick={triggerChangeMasterPassword}>
-        Change Master Password
-      </button>
+      <Link size="small" onclick={triggerChangeMasterPassword}>Change Master Password</Link>
     </div>
   {/if}
 
@@ -224,24 +222,36 @@
   </div>
 
   <div class="form-group">
-    <label for="torrentInterceptMode">Intercept .torrent downloads</label>
-    <select id="torrentInterceptMode" bind:value={form.torrentInterceptMode}>
+    <Select id="torrentInterceptMode" label="Intercept .torrent downloads" bind:value={form.torrentInterceptMode}>
       <option value="off">Off — download normally</option>
       <option value="ask">Ask — offer to send to NAS</option>
       <option value="always">Always send to NAS</option>
-    </select>
+    </Select>
   </div>
-</section>
 
-<section class="form-section">
+  <div class="form-group">
+    <Select
+      id="theme"
+      label="Theme"
+      bind:value={form.theme}
+      onchange={() => applyTheme(form.theme)}
+    >
+      <option value="auto">Auto — follow system</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </Select>
+  </div>
+</Card>
+
+<Card variant="plain">
   <div class="routing-header">
     <span class="routing-title">Routing rules</span>
-    <button type="button" class="btn-link-small" onclick={addRule}>+ Add rule</button>
+    <Link class="add-rule" size="small" onclick={addRule}><Plus aria-hidden="true" />Add rule</Link>
   </div>
-  <p class="routing-hint">
+  <Alert tone="hint">
     Auto-route matching downloads to a folder. Rules are checked top-to-bottom — the first match
     wins; otherwise the Target Folder above is used.
-  </p>
+  </Alert>
 
   {#if form.routingRules.length === 0}
     <p class="routing-empty text-muted">No rules — every download uses the Target Folder.</p>
@@ -249,68 +259,75 @@
     {#each form.routingRules as rule, i (rule)}
       <div class="routing-rule">
         <div class="routing-conditions">
-          <select aria-label="Match type" value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
-            <option value="">Any type</option>
-            <option value="url">URL</option>
-            <option value="magnet">Magnet</option>
-            <option value="torrent">.torrent</option>
-          </select>
-          <input type="text" placeholder="Name e.g. *.mkv" aria-label="Filename pattern" bind:value={rule.namePattern} />
-          <input type="text" placeholder="Domain e.g. *.site.com" aria-label="Domain" bind:value={rule.domain} />
+          <div class="routing-match-type">
+            <Select aria-label="Match type" value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
+              <option value="">Any type</option>
+              <option value="url">URL</option>
+              <option value="magnet">Magnet</option>
+              <option value="torrent">.torrent</option>
+            </Select>
+          </div>
+          <div class="routing-text-field">
+            <Field placeholder="Name e.g. *.mkv" aria-label="Filename pattern" bind:value={rule.namePattern} />
+          </div>
+          <div class="routing-text-field">
+            <Field placeholder="Domain e.g. *.site.com" aria-label="Domain" bind:value={rule.domain} />
+          </div>
           <button type="button" class="rule-remove" aria-label="Remove rule" title="Remove rule" onclick={() => removeRule(i)}>
-            ✕
+            <X aria-hidden="true" />
           </button>
         </div>
-        <FolderSelect placeholder="Destination folder" settings={$state.snapshot(form)} bind:value={rule.destination} />
+        <FolderSelect id={`routing-${i}-destination`} placeholder="Destination folder" settings={$state.snapshot(form)} bind:value={rule.destination} />
       </div>
     {/each}
   {/if}
-</section>
+</Card>
 
-<section class="form-section">
+<Card variant="plain">
   <div class="routing-header">
     <span class="routing-title">Backup</span>
   </div>
-  <p class="routing-hint">Export or restore settings. Credentials are never included.</p>
+  <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
   <div class="backup-actions">
-    <button type="button" class="btn btn-secondary" onclick={exportBackup}>Export settings</button>
-    <button type="button" class="btn btn-secondary" onclick={() => importInput?.click()}>Import settings</button>
+    <Button variant="secondary" onclick={exportBackup}>Export settings</Button>
+    <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
     <input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
   </div>
-</section>
+</Card>
 
-<section class="button-group">
-  <button type="button" id="save-btn" class="btn btn-primary" onclick={save}>Save Settings</button>
-  <button type="button" id="test-btn" class="btn btn-secondary" onclick={testConnection}>Test Connection</button>
+<section class="button-group settings-actions">
+  <Button id="save-btn" onclick={save}>Save Settings</Button>
+  <Button id="test-btn" variant="secondary" onclick={testConnection}>Test Connection</Button>
 </section>
+</div>
 
 <style>
-  .btn-link-small {
-    background: none;
-    border: none;
-    color: var(--accent-color, #1a73e8);
-    font-size: 0.85rem;
-    cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
-    margin-left: 8px;
-    display: inline;
+  .settings-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .settings-actions {
+    margin: 0;
   }
 
   .routing-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: var(--space-2);
   }
 
   .routing-title {
     font-weight: 600;
   }
 
-  .routing-hint {
-    margin: 4px 0 8px;
-    font-size: 12px;
-    color: #777;
+  :global(.link.add-rule) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    text-decoration: none;
   }
 
   .routing-empty {
@@ -320,45 +337,47 @@
   .routing-rule {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 0;
-    border-top: 1px solid #eee;
+    gap: var(--space-1);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--color-border);
   }
 
   .routing-conditions {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
     align-items: center;
   }
 
-  .routing-conditions select,
-  .routing-conditions input {
+  .routing-match-type,
+  .routing-text-field {
     flex: 1;
     min-width: 0;
   }
 
   .rule-remove {
     flex-shrink: 0;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    border-radius: 4px;
+    min-height: var(--control-height);
+    border: 1px solid var(--color-control-border);
+    background: var(--color-bg-alt);
+    border-radius: var(--radius);
     cursor: pointer;
-    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--space-2);
     font-size: 13px;
     line-height: 1;
-    color: #d32f2f;
+    color: var(--color-error);
   }
 
   .rule-remove:hover {
-    background: #fdecea;
+    background: color-mix(in srgb, var(--color-error) 12%, var(--color-bg-alt));
   }
 
   .backup-actions {
     display: flex;
-    gap: 8px;
-  }
-  .btn-link-small:hover {
-    color: var(--accent-hover-color, #1557b0);
+    gap: var(--space-2);
+    margin-top: var(--space-3);
   }
   .text-muted {
     font-size: 0.85rem;
@@ -367,8 +386,8 @@
   .form-inline-text {
     display: flex;
     align-items: center;
-    margin-top: -8px;
-    margin-bottom: 12px;
+    gap: var(--space-2);
+    margin-top: 0;
+    margin-bottom: 0;
   }
 </style>
-

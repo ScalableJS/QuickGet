@@ -10,7 +10,8 @@
   $effect(() => {
     toolbarView.hasSelection = hasSelection;
     toolbarView.settingsExpanded = settingsExpanded;
-    toolbarView.statusSpeed = "↓ 12.0 MB/s ↑ 0.8 MB/s";
+    toolbarView.statusDownloadSpeed = "12.0 MB/s";
+    toolbarView.statusUploadSpeed = "0.8 MB/s";
   });
 
   const noop = (): void => {};

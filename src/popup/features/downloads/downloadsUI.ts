@@ -19,7 +19,8 @@ function toggleSelection(hash: string): void {
 function updateStatusSpeed(tasks: Task[]): void {
   const totalDown = tasks.reduce((sum, task) => sum + (task.downSpeedBps || 0), 0);
   const totalUp = tasks.reduce((sum, task) => sum + (task.upSpeedBps || 0), 0);
-  toolbarView.statusSpeed = `↓ ${formatRate(totalDown)} ↑ ${formatRate(totalUp)}`;
+  toolbarView.statusDownloadSpeed = formatRate(totalDown);
+  toolbarView.statusUploadSpeed = formatRate(totalUp);
 }
 
 function ensureElements(): void {

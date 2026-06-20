@@ -23,7 +23,7 @@ const config: StorybookConfig = {
           "@": resolve(projectRoot, "src"),
           "@api": resolve(projectRoot, "src/api"),
           "@lib": resolve(projectRoot, "src/lib"),
-          "@ui": resolve(projectRoot, "src/ui"),
+          "@ui": resolve(projectRoot, "src/popup/ui"),
           "@types": resolve(projectRoot, "src/types"),
         },
       },

@@ -4,7 +4,7 @@ import IconGallery from "./IconGallery.svelte";
 
 /**
  * The project icon set (lucide, bundled build-time via unplugin-icons — CSP-safe).
- * Status icons follow torrent-client convention (↓ download, ↑ seed, alert = error);
+ * Status icons follow torrent-client convention (arrow-down = download, arrow-up = seed, alert = error);
  * colour is the second recognition cue (blue = active, green = seed/done, red = error).
  */
 const meta = {

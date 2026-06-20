@@ -9,6 +9,10 @@ import type { RoutingRule } from "./routingRules.js";
 export const INTERCEPT_MODES = ["off", "ask", "always"] as const;
 export type TorrentInterceptMode = (typeof INTERCEPT_MODES)[number];
 
+/** Valid theme preferences — "auto" follows the OS color-scheme. */
+export const THEME_MODES = ["auto", "light", "dark"] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+
 export type Settings = {
   NASsecure: boolean;
   NASaddress: string; // e.g. "192.168.88.185" or hostname
@@ -20,6 +24,7 @@ export type Settings = {
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   rememberPassword: boolean;
+  theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
 
 const FALLBACK_DEFAULTS: Settings = {
@@ -33,6 +38,7 @@ const FALLBACK_DEFAULTS: Settings = {
   torrentInterceptMode: "ask",
   routingRules: [],
   rememberPassword: false,
+  theme: "auto",
 };
 
 const envString = (value: string | undefined, fallback: string): string => {
@@ -59,4 +65,5 @@ export const DEFAULTS: Settings = {
   torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
   routingRules: [],
   rememberPassword: false,
+  theme: FALLBACK_DEFAULTS.theme,
 };

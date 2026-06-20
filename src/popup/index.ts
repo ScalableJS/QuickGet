@@ -1,6 +1,7 @@
+import { applyTheme } from "@lib/applyTheme.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { showStatus } from "@/popup/components";
-import { isLocked } from "@lib/settings.js";
+import { isLocked, loadSettings } from "@lib/settings.js";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
@@ -13,6 +14,14 @@ function handleInitializationError(error: unknown): void {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    // Apply the saved theme as early as possible to avoid a flash of the default.
+    try {
+      const { theme } = await loadSettings();
+      applyTheme(theme);
+    } catch {
+      // Non-fatal — fall back to the default :root (dark) theme.
+    }
+
     const locked = await isLocked();
     if (locked) {
       // Hide toolbar and downloads list on startup

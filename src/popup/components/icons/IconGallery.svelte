@@ -18,8 +18,8 @@
 
   // Project icon set — lucide, bundled at build time (CSP-safe, no runtime API).
   const statuses = [
-    { label: "downloading", name: "arrow-down", tone: "blue", Icon: ArrowDown, why: "↓ = download (qBittorrent/Transmission convention)" },
-    { label: "seeding", name: "arrow-up", tone: "green", Icon: ArrowUp, why: "↑ = upload/seed" },
+    { label: "downloading", name: "arrow-down", tone: "blue", Icon: ArrowDown, why: "download direction" },
+    { label: "seeding", name: "arrow-up", tone: "green", Icon: ArrowUp, why: "upload or seed direction" },
     { label: "queued", name: "clock", tone: "muted", Icon: Clock, why: "waiting in queue" },
     { label: "paused", name: "pause", tone: "muted", Icon: Pause, why: "user-paused" },
     { label: "stopped", name: "circle-stop", tone: "muted", Icon: CircleStop, why: "stopped" },

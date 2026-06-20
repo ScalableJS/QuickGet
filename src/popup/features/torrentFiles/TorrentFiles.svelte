@@ -2,6 +2,7 @@
   import type { TorrentFile } from "@api/client.js";
   import { showStatus } from "@/popup/components";
   import { getErrorMessage } from "@lib/errors.js";
+  import { Button, Checkbox } from "@ui";
 
   import { getTorrentFiles, setTorrentFiles } from "../downloads/downloadsManager.js";
 
@@ -88,11 +89,10 @@
     <ul class="tf-list">
       {#each shown as file (file.no)}
         <li>
-          <label>
-            <input type="checkbox" bind:checked={wanted[file.no]} />
+          <Checkbox bind:checked={wanted[file.no]}>
             <span class="tf-name" title={file.filename}>{file.filename}</span>
             <span class="tf-size">{formatSize(file.size)}</span>
-          </label>
+          </Checkbox>
         </li>
       {/each}
     </ul>
@@ -105,9 +105,9 @@
 
     <div class="tf-actions">
       <span class="tf-count">{selectedCount} selected</span>
-      <button type="button" class="btn btn-primary" disabled={saving} onclick={save}>
+      <Button disabled={saving} onclick={save}>
         {saving ? "Saving…" : "Save"}
-      </button>
+      </Button>
     </div>
   {/if}
 </div>
@@ -116,9 +116,9 @@
   .torrent-files {
     margin-top: 6px;
     padding: 8px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    background: #fafafa;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg-alt);
   }
 
   .tf-list {
@@ -129,13 +129,9 @@
     overflow-y: auto;
   }
 
-  .tf-list li label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .tf-list li {
     padding: 3px 0;
     font-size: 12px;
-    cursor: pointer;
   }
 
   .tf-name {
@@ -146,7 +142,7 @@
   }
 
   .tf-size {
-    color: #777;
+    color: var(--color-text-secondary);
     flex-shrink: 0;
   }
 
@@ -159,18 +155,18 @@
 
   .tf-count {
     font-size: 12px;
-    color: #555;
+    color: var(--color-text);
   }
 
   .tf-note {
     margin: 4px 0;
     font-size: 12px;
-    color: #777;
+    color: var(--color-text-secondary);
   }
 
   .tf-error {
     margin: 4px 0;
     font-size: 12px;
-    color: #d32f2f;
+    color: var(--color-error);
   }
 </style>

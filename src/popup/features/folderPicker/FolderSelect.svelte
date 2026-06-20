@@ -1,5 +1,7 @@
 <script lang="ts">
   import IconFolder from "~icons/lucide/folder";
+  import RefreshCw from "~icons/lucide/refresh-cw";
+  import { onDestroy } from "svelte";
 
   import type { DirEntry } from "@api/client.js";
   import type { Settings } from "@lib/config.js";
@@ -30,7 +32,15 @@
   let loading = $state(false);
   let error = $state("");
 
+  // Index of the keyboard-highlighted option in `filtered` (-1 = none).
+  let activeIndex = $state(-1);
+  const listboxId = $derived(id ? `${id}-listbox` : "folder-listbox");
+  const messageId = $derived(id ? `${id}-message` : undefined);
+  const optionId = (i: number): string => `${listboxId}-opt-${i}`;
+
   let statusReason = $state("");
+  let successFlash = $state(false);
+  let successTimer: ReturnType<typeof setTimeout> | undefined;
   // Monotonic token so a slow validate() can't overwrite a newer one (race guard).
   let validateToken = 0;
 
@@ -50,11 +60,31 @@
     const token = ++validateToken;
     status = "validating";
     statusReason = "";
+    clearSuccess();
     const result = await validateFolder(value, listDirFor);
     if (token !== validateToken) return; // a newer validate() superseded this one
     status = result.status;
     statusReason = result.reason ?? "";
+    if (result.status === "valid") showSuccess();
+    else clearSuccess();
   }
+
+  function showSuccess(): void {
+    if (successTimer) clearTimeout(successTimer);
+    successFlash = true;
+    successTimer = setTimeout(() => {
+      successFlash = false;
+      successTimer = undefined;
+    }, 1800);
+  }
+
+  function clearSuccess(): void {
+    if (successTimer) clearTimeout(successTimer);
+    successTimer = undefined;
+    successFlash = false;
+  }
+
+  onDestroy(clearSuccess);
 
   // Filter the cached top-level folders by what the user has typed.
   const filtered = $derived(
@@ -83,43 +113,86 @@
     if (!entry.writtable) return;
     value = entry.path;
     open = false;
+    activeIndex = -1;
     // It came from the writable listing — known-good, no need to re-query.
     validateToken++;
     status = "valid";
     statusReason = "";
+    showSuccess();
   }
 
   function onInput(): void {
     open = true;
+    // The filtered list just changed under us — drop the stale highlight.
+    activeIndex = -1;
     // Clear any stale verdict while the user is editing.
     validateToken++;
     status = "idle";
     statusReason = "";
+    clearSuccess();
+  }
+
+  // Skip read-only entries when moving the highlight with the keyboard.
+  function nextSelectable(from: number, step: 1 | -1): number {
+    for (let i = from; i >= 0 && i < filtered.length; i += step) {
+      if (filtered[i].writtable) return i;
+    }
+    return -1;
+  }
+
+  function onKeydown(e: KeyboardEvent): void {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) {
+        open = true;
+        if (!loaded && !loading) void load();
+        return;
+      }
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      const start = activeIndex < 0 ? (step === 1 ? 0 : filtered.length - 1) : activeIndex + step;
+      const next = nextSelectable(start, step);
+      if (next !== -1) activeIndex = next;
+    } else if (e.key === "Enter") {
+      if (open && activeIndex >= 0 && filtered[activeIndex]) {
+        e.preventDefault();
+        choose(filtered[activeIndex]);
+      }
+    } else if (e.key === "Escape") {
+      if (open) {
+        e.preventDefault();
+        open = false;
+        activeIndex = -1;
+      }
+    }
   }
 </script>
 
 <div class="folder-select">
-  <input
-    {id}
-    type="text"
-    class:is-invalid={status === "invalid"}
-    aria-invalid={status === "invalid"}
-    {placeholder}
-    autocomplete="off"
-    bind:value
-    onfocus={focus}
-    oninput={onInput}
-    onblur={() => void validate()}
-  />
-  {#if status === "validating"}
-    <span class="status-icon validating" title="Checking folder…" aria-hidden="true">⟳</span>
-  {:else if status === "valid"}
-    <span class="status-icon valid" title="Folder exists and is writable" aria-hidden="true">✓</span>
-  {:else if status === "invalid"}
-    <span class="status-icon invalid" title={statusReason} aria-hidden="true">✕</span>
-  {:else if status === "error"}
-    <span class="status-icon unverified" title={statusReason} aria-hidden="true">⚠</span>
-  {/if}
+  <div class="folder-input" class:is-invalid={status === "invalid"} class:success-flash={successFlash}>
+    <input
+      {id}
+      type="text"
+      role="combobox"
+      aria-expanded={open}
+      aria-controls={listboxId}
+      aria-autocomplete="list"
+      aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+      aria-describedby={status === "invalid" || status === "error" ? messageId : undefined}
+      aria-invalid={status === "invalid"}
+      aria-busy={status === "validating"}
+      class:has-spinner={status === "validating"}
+      {placeholder}
+      autocomplete="off"
+      bind:value
+      onfocus={focus}
+      oninput={onInput}
+      onkeydown={onKeydown}
+      onblur={() => void validate()}
+    />
+    {#if status === "validating"}
+      <span class="status-icon validating" title="Checking folder…" aria-hidden="true"><RefreshCw /></span>
+    {/if}
+  </div>
   <button
     type="button"
     class="refresh"
@@ -130,11 +203,11 @@
       void load(true);
     }}
   >
-    ⟳
+    <RefreshCw aria-hidden="true" />
   </button>
 
   {#if open}
-    <div class="dropdown" role="listbox" tabindex="-1">
+    <div class="dropdown" role="listbox" id={listboxId} tabindex="-1">
       {#if loading}
         <p class="ds-note">Loading…</p>
       {:else if error}
@@ -142,15 +215,19 @@
       {:else if filtered.length === 0}
         <p class="ds-note">No matching folders — type a path manually.</p>
       {:else}
-        {#each filtered as entry (entry.path)}
+        {#each filtered as entry, i (entry.path)}
           <button
             type="button"
+            id={optionId(i)}
             role="option"
             aria-selected={value === entry.path}
             class="ds-option"
             class:readonly={!entry.writtable}
+            class:active={i === activeIndex}
             disabled={!entry.writtable}
             title={entry.writtable ? entry.path : `${entry.path} (read-only)`}
+            onmouseover={() => (activeIndex = i)}
+            onfocus={() => (activeIndex = i)}
             onclick={() => choose(entry)}
           >
             <IconFolder class="ds-folder-icon" />
@@ -163,9 +240,9 @@
 </div>
 
 {#if status === "invalid"}
-  <p class="field-msg error" aria-live="polite">{statusReason}</p>
+  <p id={messageId} class="field-msg error" aria-live="polite">{statusReason}</p>
 {:else if status === "error"}
-  <p class="field-msg unverified" aria-live="polite">Couldn't verify ({statusReason})</p>
+  <p id={messageId} class="field-msg unverified" aria-live="polite">Couldn't verify folder ({statusReason})</p>
 {/if}
 
 <svelte:window onclick={(e) => {
@@ -177,42 +254,55 @@
   .folder-select {
     position: relative;
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
     align-items: stretch;
   }
 
-  .folder-select input {
+  .folder-input {
     flex: 1;
+    min-width: 0;
+    position: relative;
   }
 
-  .folder-select input.is-invalid {
-    border-color: #d32f2f;
-    box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.25);
+  .folder-input input {
+    width: 100%;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .folder-input input.has-spinner {
+    padding-right: var(--space-5);
+  }
+
+  .folder-input.is-invalid input {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 25%, transparent);
+  }
+
+  .folder-input.success-flash input {
+    border-color: var(--color-success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 20%, transparent);
   }
 
   .status-icon {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    padding: 0 2px;
-    font-size: 14px;
-    line-height: 1;
+    position: absolute;
+    top: 50%;
+    right: var(--space-2);
+    display: grid;
+    place-content: center;
+    transform: translateY(-50%);
+    pointer-events: none;
   }
 
-  .status-icon.valid {
-    color: #2e7d32;
-  }
-
-  .status-icon.invalid {
-    color: #d32f2f;
-  }
-
-  .status-icon.unverified {
-    color: #b8860b;
+  .status-icon :global(svg),
+  .refresh :global(svg) {
+    width: 14px;
+    height: 14px;
   }
 
   .status-icon.validating {
-    color: #777;
+    color: var(--color-text-secondary);
     animation: folder-spin 1s linear infinite;
   }
 
@@ -229,31 +319,35 @@
   }
 
   .field-msg {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     font-size: 12px;
   }
 
   .field-msg.error {
-    color: #d32f2f;
+    color: var(--color-error);
   }
 
   .field-msg.unverified {
-    color: #b8860b;
+    color: var(--color-warning);
   }
 
   .refresh {
     flex-shrink: 0;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    border-radius: 4px;
+    border: 1px solid var(--color-control-border);
+    background: var(--color-bg-alt);
+    color: var(--color-text);
+    border-radius: var(--radius);
     cursor: pointer;
-    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--space-2);
     font-size: 14px;
     line-height: 1;
   }
 
   .refresh:hover {
-    background: #f0f0f0;
+    background: var(--color-bg);
   }
 
   .dropdown {
@@ -262,57 +356,59 @@
     left: 0;
     right: 0;
     z-index: 30;
-    margin-top: 2px;
+    margin-top: var(--space-1);
     max-height: 200px;
     overflow-y: auto;
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 4px;
+    background: var(--menu-bg);
+    border: 1px solid var(--color-control-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: var(--space-1);
   }
 
   .ds-option {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
     text-align: left;
     background: none;
     border: none;
-    padding: 5px 8px;
+    min-height: var(--control-height);
+    padding: 0 var(--space-2);
     font-size: 13px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--radius);
   }
 
   .ds-option :global(.ds-folder-icon) {
     flex-shrink: 0;
     width: 14px;
     height: 14px;
-    color: #f5b301;
+    color: var(--icon-folder);
   }
 
-  .ds-option:hover {
-    background: #f0f0f0;
+  .ds-option:hover,
+  .ds-option.active {
+    background: var(--color-bg);
   }
 
   .ds-option.readonly {
-    color: #aaa;
+    color: var(--text-muted);
     cursor: not-allowed;
   }
 
   .ds-note {
     margin: 0;
-    padding: 4px 8px;
+    padding: var(--space-1) var(--space-2);
     font-size: 12px;
-    color: #777;
+    color: var(--color-text-secondary);
   }
 
   .ds-error {
     margin: 0;
-    padding: 4px 8px;
+    padding: var(--space-1) var(--space-2);
     font-size: 12px;
-    color: #d32f2f;
+    color: var(--color-error);
   }
 </style>

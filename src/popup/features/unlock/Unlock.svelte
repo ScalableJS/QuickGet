@@ -2,6 +2,7 @@
   import { showStatus } from "@/popup/components";
   import { getErrorMessage } from "@lib/errors.js";
   import { resetSettings, unlock } from "@lib/settings.js";
+  import { Button, Link } from "@ui";
 
   let { onUnlock }: { onUnlock: () => void } = $props();
 
@@ -76,15 +77,13 @@
       />
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block" disabled={isUnlocking}>
+    <Button type="submit" block disabled={isUnlocking}>
       {isUnlocking ? "Unlocking..." : "Unlock"}
-    </button>
+    </Button>
   </form>
 
   <div class="unlock-footer">
-    <button type="button" class="btn-link" onclick={handleReset}>
-      Forgot master password? Reset settings
-    </button>
+    <Link size="small" onclick={handleReset}>Forgot master password? Reset settings</Link>
   </div>
 </div>
 
@@ -103,7 +102,7 @@
 
   .unlock-icon {
     margin: 0 auto 16px;
-    color: var(--accent-color, #1a73e8);
+    color: var(--color-primary);
     display: flex;
     justify-content: center;
   }
@@ -128,10 +127,10 @@
   input[type="password"] {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid var(--border-color, #dadce0);
-    border-radius: 4px;
-    background-color: var(--bg-secondary, #f8f9fa);
-    color: var(--text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background-color: var(--textbox-bg);
+    color: var(--textbox-text);
     font-size: 0.95rem;
     box-sizing: border-box;
     transition: border-color 0.15s ease-in-out;
@@ -139,31 +138,11 @@
 
   input[type="password"]:focus {
     outline: none;
-    border-color: var(--accent-color, #1a73e8);
-  }
-
-  .btn-block {
-    width: 100%;
-    padding: 10px;
-    font-size: 0.95rem;
-    cursor: pointer;
+    border-color: var(--color-primary);
   }
 
   .unlock-footer {
     margin-top: 24px;
   }
 
-  .btn-link {
-    background: none;
-    border: none;
-    color: var(--accent-color, #1a73e8);
-    font-size: 0.8rem;
-    cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
-  }
-
-  .btn-link:hover {
-    color: var(--accent-hover-color, #1557b0);
-  }
 </style>

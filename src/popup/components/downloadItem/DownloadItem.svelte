@@ -1,5 +1,9 @@
 <script lang="ts">
+  import ArrowDown from "~icons/lucide/arrow-down";
+  import ArrowUp from "~icons/lucide/arrow-up";
+
   import type { Task } from "@lib/tasks.js";
+  import { DisclosureButton, ProgressBar } from "@ui";
   import TorrentFiles from "../../features/torrentFiles/TorrentFiles.svelte";
   import { getDownloadItemView } from "./format.js";
   import StatusIcon from "./StatusIcon.svelte";
@@ -62,23 +66,37 @@
     {/if}
     <div class="progress-container">
       <span class="progress-icon" aria-label={view.statusLabel}><StatusIcon status={task.status} /></span>
-      <div class="progress-bar">
-        <div class="progress-fill {view.progressModifier}" style="width: {view.progress}%"></div>
-      </div>
-      <span class="download-speed">{view.metaText}{view.etaSuffix}</span>
+      <ProgressBar value={view.progress} variant={view.progressVariant} {selected} />
+      <span class="download-speed" aria-label={view.speedLabel}>
+        {#if view.isDownloadComplete}
+          <ArrowUp aria-hidden="true" />
+          <span>{view.uploadedText}</span>
+          {#if view.ratioText}
+            <span>• ratio {view.ratioText}</span>
+          {/if}
+          <ArrowUp aria-hidden="true" />
+          <span>{view.uploadSpeedText}</span>
+        {:else}
+          <ArrowDown aria-hidden="true" />
+          <span>{view.downloadSpeedText}</span>
+          <ArrowUp aria-hidden="true" />
+          <span>{view.uploadSpeedText}</span>
+          {#if view.etaText}
+            <span>• ETA: {view.etaText}</span>
+          {/if}
+        {/if}
+      </span>
     </div>
     {#if canChooseFiles}
-      <button
-        type="button"
-        class="files-toggle"
-        aria-expanded={filesOpen}
+      <DisclosureButton
+        expanded={filesOpen}
         onclick={(e) => {
           e.stopPropagation();
           filesOpen = !filesOpen;
         }}
       >
         {filesOpen ? "Hide files" : `Files (${task.totalFiles})`}
-      </button>
+      </DisclosureButton>
       {#if filesOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
@@ -88,20 +106,3 @@
     {/if}
   </div>
 </article>
-
-<style>
-  .files-toggle {
-    margin-top: 6px;
-    background: none;
-    border: 1px solid #d0d0d0;
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 12px;
-    cursor: pointer;
-    color: #2196f3;
-  }
-
-  .files-toggle:hover {
-    background: #f0f0f0;
-  }
-</style>

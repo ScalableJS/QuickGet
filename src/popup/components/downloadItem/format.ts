@@ -62,11 +62,16 @@ function formatStatus(status: string): string {
 export type DownloadItemView = {
   hash: string;
   statusLabel: string;
-  metaText: string;
-  etaSuffix: string;
+  isDownloadComplete: boolean;
+  downloadSpeedText: string;
+  uploadSpeedText: string;
+  uploadedText: string;
+  ratioText: string;
+  etaText: string;
+  speedLabel: string;
   addedText: string;
   progress: number;
-  progressModifier: string;
+  progressVariant: "active" | "complete" | "error";
 };
 
 /**
@@ -89,24 +94,31 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const isDownloadComplete = task.status === "seeding" || task.status === "finished";
   const ratioText = task.shareRatio !== undefined && Number.isFinite(task.shareRatio) ? task.shareRatio.toFixed(2) : "";
 
-  const metaText = isDownloadComplete
-    ? `↑ ${formatBytes(task.uploadedBytes)}${ratioText ? ` • ratio ${ratioText}` : ""} • ${formatSpeed(task.upSpeedBps)} ↑`
-    : `${formatSpeed(task.downSpeedBps)} ↓ ${formatSpeed(task.upSpeedBps)} ↑`;
-
   const etaText = isDownloadComplete ? "" : formatETA(task.etaSec);
+  const downloadSpeedText = formatSpeed(task.downSpeedBps);
+  const uploadSpeedText = formatSpeed(task.upSpeedBps);
+  const uploadedText = formatBytes(task.uploadedBytes);
+  const speedLabel = isDownloadComplete
+    ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}`
+    : `Download speed ${downloadSpeedText}; upload speed ${uploadSpeedText}${etaText ? `; ETA ${etaText}` : ""}`;
 
-  let progressModifier = "";
-  if (isError) progressModifier = "progress-error";
-  else if (isComplete) progressModifier = "progress-complete";
-  else if (isActive) progressModifier = "progress-active";
+  let progressVariant: "active" | "complete" | "error" = "active";
+  if (isError) progressVariant = "error";
+  else if (isComplete) progressVariant = "complete";
+  else if (isActive) progressVariant = "active";
 
   return {
     hash: task.hash ?? task.id,
     statusLabel: formatStatus(task.status),
-    metaText,
-    etaSuffix: etaText ? ` • ETA: ${etaText}` : "",
+    isDownloadComplete,
+    downloadSpeedText,
+    uploadSpeedText,
+    uploadedText,
+    ratioText,
+    etaText,
+    speedLabel,
     addedText: formatAddedDate(task.addedAt),
     progress: isComplete ? 100 : progress,
-    progressModifier,
+    progressVariant,
   };
 }

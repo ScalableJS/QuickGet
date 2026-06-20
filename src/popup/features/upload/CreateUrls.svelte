@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DEFAULTS } from "@lib/config.js";
   import { loadSettings } from "@lib/settings.js";
+  import { Alert, Badge, Button } from "@ui";
 
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
 
@@ -40,7 +41,7 @@
     <label for="batch-urls">
       URLs
       {#if urls.length > 0}
-        <span class="chip" title={urls.join("\n")}>{urls.length}</span>
+        <Badge variant="accent" title={urls.join("\n")}>{urls.length}</Badge>
       {/if}
     </label>
     <textarea
@@ -49,7 +50,7 @@
       placeholder={"https://example.com/a.zip\nmagnet:?xt=...\nEach line becomes one task"}
       bind:value={raw}
     ></textarea>
-    <p class="hint">Each line is treated as an individual URL and creates a task.</p>
+    <Alert tone="hint">Each line is treated as an individual URL and creates a task.</Alert>
   </div>
 
   <div class="field">
@@ -57,45 +58,28 @@
     <FolderSelect id="batch-folder" placeholder="/share/Multimedia/Movies" bind:value={targetFolder} />
   </div>
 
-  <button type="button" class="btn btn-primary" disabled={submitting || urls.length === 0} onclick={create}>
+  <Button disabled={submitting || urls.length === 0} onclick={create}>
     {submitting ? "Adding…" : `Create ${urls.length || ""} task(s)`}
-  </button>
+  </Button>
 </div>
 
 <style>
   .create-urls {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--space-3);
+    padding: var(--space-3);
   }
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
   }
 
   .field label {
     font-size: 13px;
     font-weight: 600;
-  }
-
-  .chip {
-    display: inline-block;
-    margin-left: 4px;
-    padding: 0 6px;
-    border-radius: 10px;
-    background: #2196f3;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .hint {
-    margin: 0;
-    font-size: 11px;
-    color: #777;
   }
 
   textarea {

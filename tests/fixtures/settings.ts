@@ -12,6 +12,7 @@ export function createTestSettings(overrides: Partial<Settings> = {}): Settings 
     torrentInterceptMode: "ask",
     routingRules: [],
     rememberPassword: false,
+    theme: "auto",
     ...overrides,
   };
 }

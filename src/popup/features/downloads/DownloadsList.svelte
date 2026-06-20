@@ -1,5 +1,6 @@
 <script lang="ts">
   import Search from "~icons/lucide/search";
+  import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
   import { filterDownloads, isInProgress, type DownloadFilter } from "./downloadFilters.js";
   import type { downloadsView } from "./downloadsView.svelte.js";
@@ -31,37 +32,18 @@
 </script>
 
 <div class="download-controls">
-  <div class="download-filters" role="group" aria-label="Filter downloads">
-    <button
-      type="button"
-      class="filter-btn"
-      class:active={filter === "in-progress"}
-      aria-pressed={filter === "in-progress"}
-      onclick={() => (filter = "in-progress")}
-    >
-      In progress{#if inProgressCount > 0}<span class="filter-count">{inProgressCount}</span>{/if}
-    </button>
-    <button
-      type="button"
-      class="filter-btn"
-      class:active={filter === "completed"}
-      aria-pressed={filter === "completed"}
-      onclick={() => (filter = "completed")}
-    >
-      Completed
-    </button>
-    <button
-      type="button"
-      class="filter-btn"
-      class:active={filter === "all"}
-      aria-pressed={filter === "all"}
-      onclick={() => (filter = "all")}
-    >
-      All
-    </button>
-  </div>
-  <button
-    type="button"
+  <SegmentedControl
+    size="sm"
+    bind:value={filter}
+    label="Filter downloads"
+    items={[
+      { value: "in-progress", label: "In progress", badge: inProgressCount },
+      { value: "completed", label: "Completed" },
+      { value: "all", label: "All" },
+    ]}
+  />
+  <IconButton
+    size="sm"
     class="search-toggle"
     aria-label="Search downloads"
     aria-expanded={searchOpen}
@@ -72,19 +54,27 @@
     }}
   >
     <Search aria-hidden="true" />
-  </button>
+  </IconButton>
 </div>
 
 {#if searchOpen}
-  <input class="download-search" type="search" placeholder="Search downloads" aria-label="Search downloads" bind:value={query} />
+  <div class="download-search-wrap">
+    <SearchField size="sm" placeholder="Search downloads" aria-label="Search downloads" bind:value={query} />
+  </div>
 {/if}
 
 <div id="downloads-list" role="listbox" aria-label="Download tasks" aria-multiselectable="false">
   {#if visibleTasks.length === 0}
-    <div class="download-empty" role="note">{emptyMessage}</div>
+    <EmptyState>{emptyMessage}</EmptyState>
   {:else}
     {#each visibleTasks as task (task.id)}
       <DownloadItem {task} selectedHash={view.selectedHash} {onToggle} />
     {/each}
   {/if}
 </div>
+
+<style>
+  .download-search-wrap {
+    margin: calc(var(--spacing-sm) * -1) 0 var(--spacing-sm);
+  }
+</style>

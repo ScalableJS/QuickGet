@@ -3,8 +3,8 @@
  * Consolidated storage I/O for application configuration
  */
 
-import type { Settings, TorrentInterceptMode } from "./config.js";
-import { DEFAULTS, INTERCEPT_MODES } from "./config.js";
+import type { Settings, ThemeMode, TorrentInterceptMode } from "./config.js";
+import { DEFAULTS, INTERCEPT_MODES, THEME_MODES } from "./config.js";
 import { decryptPassword, encryptPassword, type EncryptedDataBlob } from "./credentials.js";
 import { createLogger } from "./logger.js";
 import { sanitizeRoutingRules } from "./routingRules.js";
@@ -59,6 +59,15 @@ export async function loadSettings(): Promise<Settings> {
           return fallback;
         };
 
+        const themeWithDefault = (key: keyof Settings, fallback: ThemeMode): ThemeMode => {
+          const raw = localItems[key];
+          if (typeof raw === "string" && (THEME_MODES as readonly string[]).includes(raw)) {
+            return raw as ThemeMode;
+          }
+          (missing as Record<string, unknown>)[key] = fallback;
+          return fallback;
+        };
+
         const rememberPassword = booleanWithDefault("rememberPassword", DEFAULTS.rememberPassword);
         let NASpassword = "";
 
@@ -96,6 +105,7 @@ export async function loadSettings(): Promise<Settings> {
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           rememberPassword,
+          theme: themeWithDefault("theme", DEFAULTS.theme),
         };
 
         const finish = (): void => resolve(settings);

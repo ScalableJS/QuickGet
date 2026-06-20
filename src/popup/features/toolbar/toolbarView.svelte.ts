@@ -5,9 +5,11 @@
 export const toolbarView = $state<{
   hasSelection: boolean;
   settingsExpanded: boolean;
-  statusSpeed: string;
+  statusDownloadSpeed: string;
+  statusUploadSpeed: string;
 }>({
   hasSelection: false,
   settingsExpanded: false,
-  statusSpeed: "↓ 0 B/s ↑ 0 B/s",
+  statusDownloadSpeed: "0 B/s",
+  statusUploadSpeed: "0 B/s",
 });

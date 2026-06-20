@@ -29,6 +29,7 @@ export default defineConfig({
       "@": resolve(__dirname, "./src"),
       "@api": resolve(__dirname, "./src/api"),
       "@lib": resolve(__dirname, "./src/lib"),
+      "@ui": resolve(__dirname, "./src/popup/ui"),
     },
   },
   plugins,
