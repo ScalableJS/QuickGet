@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "QuickGet Remote",
+  "version": "2.9.0",
+  "description": "QuickGet Remote: QNAP Download Station 5 companion client",
+  "default_locale": "en",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{708b365a-e88a-4d47-96e9-195082468c9d}",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["authenticationInfo", "browsingActivity", "websiteContent", "websiteActivity"]
+      }
+    }
+  },
+  "icons": {
+    "32": "icons/32_download.png",
+    "48": "icons/48_download.png",
+    "96": "icons/96_download.png",
+    "128": "icons/128_download.png"
+  },
+  "permissions": ["contextMenus", "storage", "alarms", "notifications", "downloads"],
+  "host_permissions": ["http://*/", "https://*/"],
+  "action": {
+    "default_icon": {
+      "32": "icons/32_download.png"
+    },
+    "default_title": "QuickGet Remote - QNAP Download Station 5 client",
+    "default_popup": "src/popup/index.html"
+  },
+  "background": {
+    "scripts": ["src/background/index.ts"],
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "src/popup/index.html",
+    "open_in_tab": false
+  }
+}

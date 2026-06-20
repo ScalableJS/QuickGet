@@ -35,7 +35,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
 4. Close Settings to return to the downloads list; add torrents or manage existing tasks from the toolbar.
 
-All configuration values are stored in `chrome.storage.local` and remain on the local browser profile. No data is transmitted to external services.
+All configuration values are stored in `chrome.storage.local` and remain on the local browser profile. The extension sends connection credentials, torrent URLs, magnet links, and selected `.torrent` files only to the NAS address configured by the user; it does not use analytics, telemetry, or third-party services. See the [privacy policy](./docs/privacy-policy.md).
 
 ## Development
 
@@ -55,7 +55,9 @@ npm install
 
 ```bash
 npm run dev              # Start Vite in watch mode
-npm run build            # Create production bundle
+npm run build            # Create Chromium production bundle
+npm run build:firefox    # Create Firefox production bundle in dist-firefox/
+npm run package:firefox  # Create unsigned AMO upload package
 npm run typecheck        # Run TypeScript without emitting files
 npm run test             # Run unit/integration tests with Vitest
 npm run test:e2e:mock    # Run safe mock-only Playwright E2E tests
@@ -106,11 +108,12 @@ For the complete testing map, runbook, and capture refresh workflow, see [`tests
 - HTTPS connections are supported when the NAS is configured with TLS.
 - The extension requests only the permissions required for context menus, storage, alarms, notifications, and — for torrent download interception — downloads.
 - No analytics, telemetry, or third-party network calls are embedded in the build.
+- Firefox listing disclosure: connection credentials and torrent data are sent only to the user-configured NAS. See the [privacy policy](./docs/privacy-policy.md).
 
 ## Troubleshooting Checklist
 
 **Extension fails to load**
-- Verify browser version (Chrome/Edge ≥ 120, Firefox ≥ 121).
+- Verify browser version (Chrome/Edge ≥ 120, Firefox ≥ 142).
 - Confirm the extension was loaded from the `dist` directory.
 
 **Connection errors**
@@ -127,7 +130,7 @@ For the complete testing map, runbook, and capture refresh workflow, see [`tests
 |---------|-----------------|------------------|
 | Chrome  | 120             | Manifest V3 build |
 | Edge    | 120             | Same as Chrome    |
-| Firefox | 121             | Temporary add-on loading |
+| Firefox | 142             | AMO-compatible Manifest V3 build |
 
 ## Architecture
 

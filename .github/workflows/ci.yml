@@ -2,9 +2,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - master
   pull_request:
 
 permissions:
@@ -16,7 +13,7 @@ concurrency:
 
 jobs:
   test:
-    name: Typecheck, unit, build, and mock E2E
+    name: Lint, typecheck, unit, builds, and mock E2E
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -37,6 +34,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Run unit tests
         run: npm test
 
@@ -49,6 +49,23 @@ jobs:
       - name: Run mock E2E tests
         run: npm run test:e2e:mock
 
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Validate Firefox package
+        run: npm run lint:firefox
+
+      - name: Package Firefox extension
+        run: npm run package:firefox
+
+      - name: Upload Firefox package
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickget-remote-firefox
+          path: web-ext-artifacts/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
@@ -59,4 +76,3 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 14
-

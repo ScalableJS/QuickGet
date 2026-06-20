@@ -601,10 +601,16 @@ textarea:focus {
   display: none;
 }
 
-.download-filters {
+.download-controls {
   display: flex;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-sm);
+}
+
+.download-filters {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing-xs);
 }
 
 .filter-btn {
@@ -646,6 +652,41 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
   line-height: 16px;
   text-align: center;
+}
+
+.search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.search-toggle:hover,
+.search-toggle[aria-expanded="true"] {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.search-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.download-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: calc(var(--spacing-sm) * -1) 0 var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--torrent-bg);
+  color: var(--color-text);
 }
 
 #downloads-list {

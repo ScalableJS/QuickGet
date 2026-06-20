@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:firefox": "BROWSER_TARGET=firefox vite build",
+    "lint:firefox": "web-ext lint --source-dir dist-firefox",
+    "package:firefox": "npm run build:firefox && web-ext build --source-dir dist-firefox --artifacts-dir web-ext-artifacts --filename quickget-remote-$npm_package_version-firefox.zip --overwrite-dest",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -58,7 +61,8 @@
     "typescript": "^5.9.3",
     "unplugin-icons": "^23.0.1",
     "vite": "^8.0.16",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "web-ext": "10.4.0"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"

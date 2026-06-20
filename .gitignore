@@ -10,6 +10,7 @@ node_modules/
 .env.local
 .env.*.local
 dist/
+dist-firefox/
 build/
 *.zip
 web-ext-artifacts/
@@ -25,6 +26,7 @@ test-results/
 !docs/toolbar-actions.md
 
 !docs/svelte-migration-plan.md
+!docs/privacy-policy.md
 
 storybook-static/
 

@@ -21,8 +21,7 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await waitForPopupReady(page);
     await openSettingsPanel(page);
 
-    await page.fill("#NASaddress", "127.0.0.1");
-    await page.fill("#NASport", String(mockNas.port));
+    await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
     await page.fill("#NAStempdir", "/share/Download");
@@ -55,6 +54,7 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
       timeout: 15_000,
     });
 
+    await page.getByRole("button", { name: "All" }).click();
     await expect(page.locator("#downloads-list .download-item .download-name")).toContainText(["Ubuntu ISO", "sample"]);
 
     await page.locator("#downloads-list .download-item").filter({ hasText: "sample" }).click();
