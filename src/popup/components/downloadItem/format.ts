@@ -61,7 +61,6 @@ function formatStatus(status: string): string {
 
 export type DownloadItemView = {
   hash: string;
-  statusText: string;
   statusLabel: string;
   metaText: string;
   etaSuffix: string;
@@ -103,7 +102,6 @@ export function getDownloadItemView(task: Task): DownloadItemView {
 
   return {
     hash: task.hash ?? task.id,
-    statusText: isDownloadComplete ? formatStatus(task.status) : `${formatStatus(task.status)} — ${progress}%`,
     statusLabel: formatStatus(task.status),
     metaText,
     etaSuffix: etaText ? ` • ETA: ${etaText}` : "",

@@ -56,11 +56,7 @@
   onkeydown={handleKey}
 >
   <div class="download-info">
-    <p class="download-name">{task.name}</p>
-    <div class="download-meta">
-      <span class="download-status">{view.statusText}</span>
-      <span class="download-speed">{view.metaText}{view.etaSuffix}</span>
-    </div>
+    <p class="download-name" title={task.name}>{task.name}</p>
     {#if view.addedText}
       <p class="download-added">Added {view.addedText}</p>
     {/if}
@@ -69,6 +65,7 @@
       <div class="progress-bar">
         <div class="progress-fill {view.progressModifier}" style="width: {view.progress}%"></div>
       </div>
+      <span class="download-speed">{view.metaText}{view.etaSuffix}</span>
     </div>
     {#if canChooseFiles}
       <button
