@@ -149,22 +149,21 @@ Add `reason` string for the message.
 single-flight login (`:71`) and already retries a URL-encoded request once on session expiry
 (`:149`). So the original "withSession wrapper" and "re-auth on code 5" items are **done**.
 
-Genuine remaining gaps:
+**Audited 2026-06-20 — F2 is effectively complete; remaining items are intentionally not done:**
 
 ### TODO
 
-- [ ] **SID persistence across SW restarts** via `storage.session` + a `stateReady` promise
-      every entry point awaits, so a woken service worker restores the SID instead of
-      re-logging-in and racing the first event. (This is the real MV3 gap our in-memory SID
-      doesn't cover.)
-- [ ] **Confirm the retry path covers `AddTorrent`** (multipart) too, not just the
-      URL-encoded calls — `AddTorrent` uses a raw `fetch` in `client.ts`, verify it inherits
-      the single-retry-on-expiry behavior.
-- [ ] Verify the badge is preserved on transient network errors (don't zero it on one failed
-      poll).
-- [ ] **Keepalive alarm — NOT default.** MV3 alarms are coarse and we already self-disarm
-      polling at idle; a persistent NAS ping has battery/privacy cost. Only add it if a live
-      QNAP idle-TTL/login-latency measurement proves the popup feels slow without it.
+- [x] Single-flight login + re-login-and-replay on session expiry — already in
+      `src/api/index.ts` (`createSidMiddleware`).
+- [x] Badge preserved on transient poll errors — `alarms.ts:96-99` catches and continues
+      without clearing the badge. Verified, no change needed.
+- [x] `AddTorrent` retry — N/A: `addTorrent` calls `performLogin` for a **fresh** sid on
+      every upload, so it never carries a stale sid; no retry path required.
+- [ ] ~~SID persistence in `storage.session`~~ — **consciously skipped.** Benefit is marginal
+      (saves one ~100-300ms login after a service-worker wake; the existing expiry-retry
+      already covers correctness) and it adds an async storage read to every request. Not
+      worth the complexity.
+- [ ] **Keepalive alarm — deliberately NOT added** (battery/privacy; we self-disarm at idle).
 
 ---
 
@@ -235,10 +234,13 @@ Small, independent, high-delight. Quick-add already exists (see above) — dropp
       `autoCaptureMagnets` setting with live `storage.onChanged` update. Complements — does
       not duplicate — the existing torrent interception. Review the `<all_urls>` content-script
       permission + AMO data-disclosure impact vs. the current manifest.
-- [ ] **Undo on remove**: soft-delete with a ~5 s grace + "Undo" affordance before calling
-      `Task/Remove` (see `++` `ListDownload.js`). Touches `DownloadsList.svelte`.
-- [ ] **Settings backup/restore**: export settings to timestamped JSON (password opt-in),
-      import with format detection. Lives in `options_ui`.
+- [ ] **Undo on remove** — *deferred (needs new UI infra).* Removal is an immediate NAS API
+      call (`removeDownload` → `client.removeTask`); a true undo means delaying the call + a
+      toast-with-action affordance, which our transient `showStatus` banner doesn't support.
+      More than a small change — revisit when we add an action-capable toast.
+- [x] **Settings backup/restore** — `settingsBackup.ts` (`exportSettings`/`parseImportedSettings`,
+      7 tests) + Export/Import buttons in `Settings.svelte`. Credentials are never exported;
+      import validates + drops bad keys and loads into the form for review before Save.
 
 ---
 
@@ -263,16 +265,15 @@ Permissive licenses do **not** force publishing our TS source — only that the 
 travels with whatever we distribute (the built JS). This matches "we don't give sources" while
 keeping clean OSS optics like the competitors.
 
-### Repo changes needed (what to update)
+### Repo changes — DONE (MIT, 2026-06-20)
 
-- [ ] Choose **MIT** (default) vs Apache-2.0 — single product decision.
-- [ ] `package.json` → set `"license": "MIT"` (or `"Apache-2.0"`), drop `CC-BY-NC-SA-4.0`.
-- [ ] Add a top-level **`LICENSE`** file with the chosen text + correct copyright holder/year
-      (Apache-2.0 also needs a `NOTICE` file if we add attributions).
-- [ ] `README.md` — update the License section/badge to MIT/Apache-2.0.
-- [ ] `manifest.json` + `manifest.firefox.json` — no SPDX field there, but ensure description/
-      author are consistent; AMO listing license dropdown → set to the same.
-- [ ] Check `docs/privacy-policy.md` and `firefox-release-guide.md` for any license mention.
+- [x] Chose **MIT**.
+- [x] `package.json` + `package-lock.json` → `"license": "MIT"`.
+- [x] `LICENSE.md` rewritten to MIT (2026, QuickGet Remote Contributors); un-ignored in
+      `.gitignore`.
+- [x] `README.md` License section updated.
+- [ ] *(at submit time)* AMO listing license dropdown → MIT; check `privacy-policy.md` /
+      `firefox-release-guide.md` mentions.
 - [ ] AMO submission: select the matching license; compiled bundle still needs the
       **reviewer source package** (already covered in `firefox-release-guide.md`).
 
@@ -284,16 +285,15 @@ Badge + animated icon already exist (see "Already shipped"). Only these are gaps
 
 ### TODO
 
-- [ ] **Completion notification with dedup** (from `++`) — *real gap*. We have intercept/
-      resume notifications but no "task finished" one. ⚠️ The current poll uses `Task/Status`
-      (`alarms.ts`), which returns only **aggregate counts** — no per-task hash/state to dedup
-      on. So this needs a `Task/Query` (per-task) call when the active count drops (or on each
-      poll), detection of the downloading→completed transition per hash, and a **persisted**
-      "already announced" set (capped FIFO) in `storage.session`/`local`. Gate behind a
-      `notifyOnComplete` setting.
-- [ ] **Add-failure notification** — partly shipped already for the menu (`menus.ts:43`) and
-      download-interception (`downloads.ts:140`) paths. Re-scope to the **popup / multi-add**
-      path: map QNAP error codes to a human-readable reason there if it's missing.
+- [x] **Add-failure notification** — already covered. The popup add paths
+      (`batchUpload.ts`, `torrentUpload.ts`) already catch errors and surface the reason via
+      `showStatus` (`Error: <message>`, `Added X, failed Y`, duplicate handling); menu +
+      interception paths notify too. No gap.
+- [ ] **Completion notification with dedup** — *deferred (conflicts with a deliberate design).*
+      The poll deliberately uses the **cheap aggregate** `Task/Status` (`alarms.ts` doc comment).
+      Detecting a per-hash downloading→completed transition would force a per-task `Task/Query`
+      on every 30s tick plus a persisted "announced" set — heavier polling against an explicit
+      perf choice. Revisit only if we decide the notification is worth that cost.
 
 ### Deferred — large-download hijack (`++`)
 

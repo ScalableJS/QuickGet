@@ -9,6 +9,7 @@
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
   import type { FolderFieldStatus } from "../folderPicker/validateFolder.js";
+  import { exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   let form = $state<Settings>({ ...DEFAULTS });
 
@@ -37,6 +38,36 @@
 
   function setRuleType(index: number, raw: string): void {
     form.routingRules[index].type = raw === "" ? undefined : (raw as RoutingMatchType);
+  }
+
+  let importInput = $state<HTMLInputElement | null>(null);
+
+  function exportBackup(): void {
+    const json = exportSettings($state.snapshot(form));
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `quickget-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showStatus("Settings exported", "success", { autoHideMs: 1500 });
+  }
+
+  async function importBackup(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const patch = parseImportedSettings(await file.text());
+      Object.assign(form, patch);
+      serverUrl = composeServerUrl(form);
+      showStatus("Settings imported — review and Save", "success", { autoHideMs: 2500 });
+    } catch (error) {
+      showStatus(`Import failed: ${getErrorMessage(error)}`, "error");
+    } finally {
+      input.value = ""; // let the same file be re-selected later
+    }
   }
 
   // Drop incomplete rules and normalise blank conditions to "no condition".
@@ -236,6 +267,18 @@
   {/if}
 </section>
 
+<section class="form-section">
+  <div class="routing-header">
+    <span class="routing-title">Backup</span>
+  </div>
+  <p class="routing-hint">Export or restore settings. Credentials are never included.</p>
+  <div class="backup-actions">
+    <button type="button" class="btn btn-secondary" onclick={exportBackup}>Export settings</button>
+    <button type="button" class="btn btn-secondary" onclick={() => importInput?.click()}>Import settings</button>
+    <input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
+  </div>
+</section>
+
 <section class="button-group">
   <button type="button" id="save-btn" class="btn btn-primary" onclick={save}>Save Settings</button>
   <button type="button" id="test-btn" class="btn btn-secondary" onclick={testConnection}>Test Connection</button>
@@ -308,6 +351,11 @@
 
   .rule-remove:hover {
     background: #fdecea;
+  }
+
+  .backup-actions {
+    display: flex;
+    gap: 8px;
   }
   .btn-link-small:hover {
     color: var(--accent-hover-color, #1557b0);
