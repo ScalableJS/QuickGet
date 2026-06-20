@@ -159,15 +159,5 @@ Pull requests are preferred to long-lived forks so improvements remain consolida
 
 ## License
 
-QuickGet Remote is distributed under the **Creative Commons Attribution–NonCommercial–ShareAlike 4.0 International (CC BY-NC-SA 4.0)** license.  
-- Non-commercial use only.  
-- Derivative work must use the same license.  
-- Provide attribution with a link to this repository and the license text.  
+QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE.md).
 
-Full text: <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode>
-
----
-
-Version 2.9.0 (October 2025)  
-Status: Production ready (core); torrent download interception is experimental and Chrome-only  
-License: CC BY-NC-SA 4.0

@@ -20,6 +20,7 @@ test-results/
 
 # Ignore all markdown files except README, project instructions, and tracked docs
 *.md
+!LICENSE.md
 !README.md
 !CLAUDE.md
 !.github/**/*.md
@@ -28,6 +29,8 @@ test-results/
 !docs/svelte-migration-plan.md
 !docs/privacy-policy.md
 !docs/firefox-release-guide.md
+!docs/competitor-analysis.md
+!docs/feature-roadmap.md
 
 storybook-static/
 

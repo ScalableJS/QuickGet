@@ -37,7 +37,7 @@
     "firefox-addon"
   ],
   "author": "QuickGet Remote Contributors",
-  "license": "CC-BY-NC-SA-4.0",
+  "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@crxjs/vite-plugin": "^2.7.0",
