@@ -371,6 +371,14 @@ header.toolbar {
   display: none;
 }
 
+#settings-panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+}
+
 .container {
   display: flex;
   flex-direction: column;

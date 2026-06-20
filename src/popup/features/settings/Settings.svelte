@@ -28,6 +28,23 @@
   let masterPasswordInput = $state("");
   let confirmMasterPasswordInput = $state("");
   let hasCachedMasterPassword = $state(false);
+  let savedSignature = $state("");
+
+  const isDirty = $derived(savedSignature !== "" && savedSignature !== settingsSignature());
+
+  function settingsSignature(): string {
+    return JSON.stringify({
+      form,
+      serverUrl,
+      masterPasswordInput,
+      confirmMasterPasswordInput,
+      hasCachedMasterPassword,
+    });
+  }
+
+  function markClean(): void {
+    savedSignature = settingsSignature();
+  }
 
   function applyServerUrl(raw: string): void {
     Object.assign(form, parseServerUrl(raw));
@@ -94,8 +111,10 @@
 
       const session = await chrome.storage.session.get("cachedMasterPassword");
       hasCachedMasterPassword = Boolean(session.cachedMasterPassword);
+      markClean();
     } catch (error) {
       showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
+      markClean();
     }
   }
 
@@ -145,6 +164,7 @@
       }
 
       invalidateClientCache();
+      markClean();
       showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
     } catch (error) {
       showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
@@ -179,6 +199,7 @@
 
 <div class="settings-stack">
 <Card variant="plain">
+  <h2 class="section-heading">Connection</h2>
   <div class="form-group">
     <Field id="serverUrl" label="Server address" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
   </div>
@@ -210,7 +231,10 @@
       <Link size="small" onclick={triggerChangeMasterPassword}>Change Master Password</Link>
     </div>
   {/if}
+</Card>
 
+<Card variant="plain">
+  <h2 class="section-heading">Download defaults</h2>
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
     <FolderSelect id="NAStempdir" placeholder="Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} />
@@ -245,7 +269,7 @@
 
 <Card variant="plain">
   <div class="routing-header">
-    <span class="routing-title">Routing rules</span>
+    <h2 class="section-heading routing-title">Routing rules</h2>
     <Link class="add-rule" size="small" onclick={addRule}><Plus aria-hidden="true" />Add rule</Link>
   </div>
   <Alert tone="hint">
@@ -285,7 +309,7 @@
 
 <Card variant="plain">
   <div class="routing-header">
-    <span class="routing-title">Backup</span>
+    <h2 class="section-heading routing-title">Backup</h2>
   </div>
   <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
   <div class="backup-actions">
@@ -295,10 +319,15 @@
   </div>
 </Card>
 
-<section class="button-group settings-actions">
-  <Button id="save-btn" onclick={save}>Save Settings</Button>
-  <Button id="test-btn" variant="secondary" onclick={testConnection}>Test Connection</Button>
-</section>
+<footer class="settings-actions">
+  {#if isDirty}
+    <p class="dirty-state" aria-live="polite">Unsaved changes</p>
+  {/if}
+  <div class="settings-action-buttons">
+    <Button id="save-btn" disabled={!isDirty} onclick={save}>Save Settings</Button>
+    <Button id="test-btn" variant="secondary" onclick={testConnection}>Test configuration</Button>
+  </div>
+</footer>
 </div>
 
 <style>
@@ -306,10 +335,44 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+    padding-bottom: var(--space-5);
   }
 
   .settings-actions {
-    margin: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .settings-action-buttons {
+    display: flex;
+    flex: 1;
+    gap: var(--space-2);
+  }
+
+  .settings-action-buttons :global(.btn) {
+    flex: 1;
+  }
+
+  .dirty-state {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .section-heading {
+    margin: 0 0 var(--space-3);
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
   }
 
   .routing-header {
@@ -320,7 +383,7 @@
   }
 
   .routing-title {
-    font-weight: 600;
+    margin-bottom: 0;
   }
 
   :global(.link.add-rule) {
