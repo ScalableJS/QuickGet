@@ -394,6 +394,42 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       return;
     }
 
+    if (path === "/downloadstation/V4/Misc/Dir" && method === "POST") {
+      // Minimal folder tree mirroring live QNAP semantics: relative paths, nested
+      // listing supported, and a missing/absolute path → {error:4096, reason:"path"}.
+      const dirTree: Record<string, Array<{ dir: string; writtable: boolean }>> = {
+        "": [
+          { dir: "Download", writtable: true },
+          { dir: "Movies", writtable: true },
+          { dir: "Multimedia", writtable: true },
+          { dir: "ReadOnly", writtable: false },
+        ],
+        Multimedia: [
+          { dir: "Books", writtable: true },
+          { dir: "Movies", writtable: true },
+        ],
+        Download: [{ dir: "@Recycle", writtable: true }],
+      };
+      const requested = readFormValue(body, "path") ?? "";
+      const children = dirTree[requested];
+      if (!children) {
+        reply(200, { error: 4096, reason: "path" });
+        return;
+      }
+      reply(200, {
+        base_path: requested,
+        error: 0,
+        total: children.length,
+        data: children.map((child) => ({
+          dir: child.dir,
+          path: requested ? `${requested}/${child.dir}` : child.dir,
+          temporary: true,
+          writtable: child.writtable,
+        })),
+      });
+      return;
+    }
+
     reply(404, { error: 404, reason: `Unhandled route: ${method} ${path}` });
   });
 

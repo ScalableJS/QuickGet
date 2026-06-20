@@ -382,7 +382,9 @@ export class ApiClient {
 
     const payload = data ?? error;
     if (!data || !isSuccessResponse(payload)) {
-      throw new Error(`List dir failed: ${getErrorMessage(payload)}`);
+      // Use createApiError so callers (e.g. folder validation) can read `.code`
+      // — QNAP returns {error:4096, reason:"path"} for a missing/absolute path.
+      throw createApiError("List dir failed", payload);
     }
 
     return data.data;

@@ -5,6 +5,7 @@
 
 import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
+import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
 
 import { ensureMonitoring } from "./alarms.js";
@@ -71,7 +72,8 @@ export async function handleContextMenuClick(
 async function sendDownloadToStation(url: string): Promise<void> {
   const settings = await loadSettings();
   const client = createApiClient({ settings });
-  await client.addUrl(url);
+  const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
+  await client.addUrl(url, { targetFolder });
   void ensureMonitoring();
   showNotification("Success", `Download sent to Download Station: ${url}`);
 }

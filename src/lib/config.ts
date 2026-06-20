@@ -3,6 +3,8 @@
  * Single source of truth for all configuration values
  */
 
+import type { RoutingRule } from "./routingRules.js";
+
 export type TorrentInterceptMode = "off" | "ask" | "always";
 
 export type Settings = {
@@ -14,6 +16,7 @@ export type Settings = {
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
+  routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   rememberPassword: boolean;
 };
 
@@ -26,6 +29,7 @@ const FALLBACK_DEFAULTS: Settings = {
   NAStempdir: "/share/Download",
   NASdir: "/share/Multimedia/Movies",
   torrentInterceptMode: "ask",
+  routingRules: [],
   rememberPassword: false,
 };
 
@@ -51,5 +55,6 @@ export const DEFAULTS: Settings = {
   NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR, FALLBACK_DEFAULTS.NAStempdir),
   NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
   torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
+  routingRules: [],
   rememberPassword: false,
 };

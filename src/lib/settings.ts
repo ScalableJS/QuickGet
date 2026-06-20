@@ -6,8 +6,29 @@
 import type { Settings, TorrentInterceptMode } from "./config.js";
 import { DEFAULTS } from "./config.js";
 import { decryptPassword, encryptPassword, type EncryptedDataBlob } from "./credentials.js";
+import type { RoutingMatchType, RoutingRule } from "./routingRules.js";
 
 const INTERCEPT_MODES: readonly TorrentInterceptMode[] = ["off", "ask", "always"];
+const ROUTING_MATCH_TYPES: readonly RoutingMatchType[] = ["url", "magnet", "torrent"];
+
+/** Validate persisted routing rules, dropping any malformed entries. */
+function sanitizeRoutingRules(raw: unknown): RoutingRule[] {
+  if (!Array.isArray(raw)) return [];
+  const rules: RoutingRule[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const candidate = item as Record<string, unknown>;
+    if (typeof candidate.destination !== "string") continue;
+    const rule: RoutingRule = { destination: candidate.destination };
+    if (typeof candidate.type === "string" && (ROUTING_MATCH_TYPES as string[]).includes(candidate.type)) {
+      rule.type = candidate.type as RoutingMatchType;
+    }
+    if (typeof candidate.namePattern === "string") rule.namePattern = candidate.namePattern;
+    if (typeof candidate.domain === "string") rule.domain = candidate.domain;
+    rules.push(rule);
+  }
+  return rules;
+}
 
 /**
  * Load settings from chrome.storage.local/session with fallback to defaults
@@ -92,6 +113,7 @@ export async function loadSettings(): Promise<Settings> {
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
+          routingRules: sanitizeRoutingRules(localItems.routingRules),
           rememberPassword,
         };
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
+  import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
   import { loadSettings } from "@lib/settings.js";
   import {
     findExistingTask,
@@ -37,6 +38,12 @@
       return;
     }
     name = pending.filename;
+    // Pre-fill with the routing-rule destination; the user can still override it.
+    folder = resolveDestination(
+      { url: pending.url, kind: classifyUrl(pending.url) },
+      settings.routingRules,
+      settings.NASdir,
+    );
   }
 
   async function handleAdd(): Promise<void> {

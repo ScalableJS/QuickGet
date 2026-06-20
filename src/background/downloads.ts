@@ -10,6 +10,7 @@
 
 import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
+import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
@@ -130,7 +131,8 @@ async function openFolderChooser(id: number): Promise<void> {
 
 async function sendAndNotify(settings: Settings, url: string): Promise<void> {
   try {
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url);
+    const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
+    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder);
     void ensureMonitoring();
     if (duplicate) {
       await notifyDuplicate(settings, name);
