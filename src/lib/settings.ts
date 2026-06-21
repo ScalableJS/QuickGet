@@ -262,4 +262,3 @@ export async function resetSettings(): Promise<void> {
     });
   });
 }
-

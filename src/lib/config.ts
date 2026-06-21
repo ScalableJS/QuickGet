@@ -35,7 +35,7 @@ const FALLBACK_DEFAULTS: Settings = {
   NASpassword: "",
   NAStempdir: "Download", // relative to the share root — DS rejects absolute /share/... paths
   NASdir: "Multimedia/Movies",
-  torrentInterceptMode: "off",
+  torrentInterceptMode: "always",
   routingRules: [],
   rememberPassword: false,
   theme: "auto",

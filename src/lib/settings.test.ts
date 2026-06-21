@@ -33,6 +33,7 @@ describe("settings", () => {
     expect(snapshot.NASaddress).toBe("files.local");
     expect(snapshot.NASlogin).toBe(DEFAULTS.NASlogin);
     expect(snapshot.NAStempdir).toBe(DEFAULTS.NAStempdir);
+    expect(snapshot.torrentInterceptMode).toBe("always");
   });
 
   it("saves partial settings into chrome.storage.local", async () => {
@@ -185,4 +186,3 @@ describe("settings", () => {
     });
   });
 });
-
