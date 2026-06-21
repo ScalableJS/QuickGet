@@ -15,6 +15,7 @@
 import { type ApiClient, createApiClient } from "@api/client.js";
 import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
+import { isInProgress } from "@lib/tasks.js";
 
 import { clearBadge, setActiveIcon, setIdleIcon, updateStatsBadge } from "./actions.js";
 
@@ -80,19 +81,28 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
 async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
   try {
     const client = await getClient();
-    const status = await client.getStatus();
+    // Use the task list (not the cheap Task/Status aggregate) so "active" means
+    // exactly what the popup's In-progress tab means. The aggregate has no
+    // finishing/checking/queued counters, so a task in "finishing" (download
+    // done, still post-processing) would drop the badge while the popup still
+    // shows it working. Once per 30s, pulling the list is cheap enough.
+    const { tasks } = await client.queryTasks();
+
+    const inProgress = tasks.filter((task) => isInProgress(task.status));
+    const downRate = tasks.reduce((sum, task) => sum + task.downSpeedBps, 0);
+    const upRate = tasks.reduce((sum, task) => sum + task.upSpeedBps, 0);
 
     updateStatsBadge({
-      active: status.active,
-      all: status.all,
-      downRate: status.down_rate,
-      upRate: status.up_rate,
+      active: inProgress.length,
+      all: tasks.length,
+      downRate,
+      upRate,
     });
 
-    if (status.active > 0) {
+    if (inProgress.length > 0) {
       setActiveIcon();
     } else if (stopWhenIdle) {
-      // Nothing downloading — clear the badge/icon and stop polling.
+      // Nothing in progress — clear the badge/icon and stop polling.
       stopMonitoring();
     } else {
       setIdleIcon();

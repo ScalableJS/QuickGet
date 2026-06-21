@@ -34,6 +34,29 @@ export interface Task {
   source?: Vendor;
 }
 
+/**
+ * Statuses that count as "in progress" — work the NAS is still doing. Mirrors
+ * the popup's In-progress tab and is the single source of truth for both the
+ * popup filter and the background toolbar badge, so they never disagree.
+ */
+export const IN_PROGRESS_STATUSES: readonly TaskStatus[] = [
+  "queued",
+  "downloading",
+  "paused",
+  "checking",
+  "repairing",
+  "extracting",
+  "finishing",
+];
+
+export function isInProgress(status: TaskStatus): boolean {
+  return IN_PROGRESS_STATUSES.includes(status);
+}
+
+export function isCompleted(status: TaskStatus): boolean {
+  return status === "finished" || status === "seeding";
+}
+
 const synologyToUnified: Record<string, TaskStatus> = {
   waiting: "queued",
   downloading: "downloading",

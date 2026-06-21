@@ -1,16 +1,9 @@
-import type { Task, TaskStatus } from "@lib/tasks.js";
+import { isCompleted, isInProgress, type Task } from "@lib/tasks.js";
+
+// Re-exported so existing popup imports keep their familiar source.
+export { isCompleted, isInProgress } from "@lib/tasks.js";
 
 export type DownloadFilter = "in-progress" | "completed" | "all";
-
-const IN_PROGRESS_STATUSES: readonly TaskStatus[] = [
-  "queued",
-  "downloading",
-  "paused",
-  "checking",
-  "repairing",
-  "extracting",
-  "finishing",
-];
 
 export function filterDownloads(tasks: Task[], filter: DownloadFilter, query: string): Task[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -20,12 +13,4 @@ export function filterDownloads(tasks: Task[], filter: DownloadFilter, query: st
     if (filter === "in-progress" && !isInProgress(task.status)) return false;
     return !normalizedQuery || task.name.toLowerCase().includes(normalizedQuery);
   });
-}
-
-export function isCompleted(status: TaskStatus): boolean {
-  return status === "finished" || status === "seeding";
-}
-
-export function isInProgress(status: TaskStatus): boolean {
-  return IN_PROGRESS_STATUSES.includes(status);
 }
