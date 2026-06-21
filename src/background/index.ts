@@ -26,6 +26,16 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
+  // Reflect any already-running downloads right away after an install/update.
+  void ensureMonitoring();
+});
+
+// Cold browser start: nothing has opened the popup or mutated a task yet, so
+// without this the toolbar would sit at its stale value until the user clicks.
+// Poll once now (and arm the alarm) so an already-active download shows up.
+chrome.runtime.onStartup.addListener(() => {
+  console.log("[QuickGet] Browser startup — checking downloads");
+  void ensureMonitoring();
 });
 
 // Context menu click handler
