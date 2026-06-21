@@ -1,5 +1,6 @@
 <script lang="ts">
   import IconSettings from "~icons/lucide/settings";
+  import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconPlay from "~icons/lucide/play";
   import IconStop from "~icons/lucide/circle-stop";
   import IconPause from "~icons/lucide/pause";
@@ -37,14 +38,18 @@
   <IconButton
     size="sm"
     id="toolbar-settings"
-    title="Toggle settings"
-    aria-label="Toggle settings"
+    title={toolbarView.settingsExpanded ? "Back to downloads" : "Open settings"}
+    aria-label={toolbarView.settingsExpanded ? "Back to downloads" : "Open settings"}
     aria-controls="settings-panel"
     aria-expanded={toolbarView.settingsExpanded}
     aria-pressed={toolbarView.settingsExpanded}
     onclick={actions.toggleSettings}
   >
-    <IconSettings />
+    {#if toolbarView.settingsExpanded}
+      <IconArrowLeft />
+    {:else}
+      <IconSettings />
+    {/if}
   </IconButton>
   <span
     id="status-speed"

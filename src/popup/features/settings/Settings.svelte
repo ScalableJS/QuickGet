@@ -9,7 +9,7 @@
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
-  import { Alert, Button, Card, Checkbox, Field, Link, Select } from "@ui";
+  import { Alert, Button, Checkbox, Field, Link, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -29,6 +29,8 @@
   let confirmMasterPasswordInput = $state("");
   let hasCachedMasterPassword = $state(false);
   let savedSignature = $state("");
+  let savedConnectionSignature = $state("");
+  let isSaving = $state(false);
 
   const isDirty = $derived(savedSignature !== "" && savedSignature !== settingsSignature());
 
@@ -44,6 +46,17 @@
 
   function markClean(): void {
     savedSignature = settingsSignature();
+    savedConnectionSignature = connectionSignature(form);
+  }
+
+  function connectionSignature(settings: Settings): string {
+    return JSON.stringify({
+      NASsecure: settings.NASsecure,
+      NASaddress: settings.NASaddress,
+      NASport: settings.NASport,
+      NASlogin: settings.NASlogin,
+      NASpassword: settings.NASpassword,
+    });
   }
 
   function applyServerUrl(raw: string): void {
@@ -51,7 +64,10 @@
   }
 
   function addRule(): void {
-    form.routingRules.push({ destination: "" });
+    form = {
+      ...form,
+      routingRules: [...form.routingRules, { namePattern: "", domain: "", destination: "" }],
+    };
   }
 
   function removeRule(index: number): void {
@@ -119,8 +135,12 @@
   }
 
   export async function save(): Promise<void> {
+    if (isSaving || !isDirty) return;
+
     try {
+      isSaving = true;
       applyServerUrl(serverUrl);
+      const shouldVerifyConnection = connectionSignature(form) !== savedConnectionSignature;
 
       // Block save on a folder we positively know is wrong. "error" (unverifiable,
       // e.g. NAS offline) is allowed through — we don't punish offline users.
@@ -164,26 +184,29 @@
       }
 
       invalidateClientCache();
+      applyTheme(form.theme);
       markClean();
-      showStatus("Settings saved successfully", "success", { autoHideMs: 1500 });
+
+      if (shouldVerifyConnection) {
+        const settings = $state.snapshot(form);
+        void verifySavedConnection(settings);
+      }
     } catch (error) {
       showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
+    } finally {
+      isSaving = false;
     }
   }
 
-  async function testConnection(): Promise<void> {
+  async function verifySavedConnection(settings: Settings): Promise<void> {
     try {
-      applyServerUrl(serverUrl);
-      showStatus("Testing connection...", "info");
-      const client = await getApiClient({ settings: $state.snapshot(form) });
+      const client = await getApiClient({ settings });
       const { tasks } = await client.queryTasks({ params: { limit: 1 } });
-      if (Array.isArray(tasks)) {
-        showStatus("Connection successful!", "success", { autoHideMs: 2000 });
-      } else {
-        showStatus("Connection failed. Check settings and try again.", "error");
+      if (!Array.isArray(tasks)) {
+        showStatus("Settings saved; connection could not be verified", "info", { autoHideMs: 4000 });
       }
     } catch (error) {
-      showStatus(`Connection error: ${getErrorMessage(error)}`, "error");
+      showStatus(`Settings saved; connection could not be verified: ${getErrorMessage(error)}`, "info", { autoHideMs: 4000 });
     }
   }
 
@@ -198,7 +221,7 @@
 </script>
 
 <div class="settings-stack">
-<Card variant="plain">
+<section class="settings-section">
   <h2 class="section-heading">Connection</h2>
   <div class="form-group">
     <Field id="serverUrl" label="Server address" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
@@ -231,9 +254,9 @@
       <Link size="small" onclick={triggerChangeMasterPassword}>Change Master Password</Link>
     </div>
   {/if}
-</Card>
+</section>
 
-<Card variant="plain">
+<section class="settings-section">
   <h2 class="section-heading">Download defaults</h2>
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
@@ -254,23 +277,18 @@
   </div>
 
   <div class="form-group">
-    <Select
-      id="theme"
-      label="Theme"
-      bind:value={form.theme}
-      onchange={() => applyTheme(form.theme)}
-    >
+    <Select id="theme" label="Theme" bind:value={form.theme}>
       <option value="auto">Auto — follow system</option>
       <option value="light">Light</option>
       <option value="dark">Dark</option>
     </Select>
   </div>
-</Card>
+</section>
 
-<Card variant="plain">
+<section class="settings-section">
   <div class="routing-header">
     <h2 class="section-heading routing-title">Routing rules</h2>
-    <Link class="add-rule" size="small" onclick={addRule}><Plus aria-hidden="true" />Add rule</Link>
+    <button type="button" class="add-rule" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <Alert tone="hint">
     Auto-route matching downloads to a folder. Rules are checked top-to-bottom — the first match
@@ -305,9 +323,9 @@
       </div>
     {/each}
   {/if}
-</Card>
+</section>
 
-<Card variant="plain">
+<section class="settings-section">
   <div class="routing-header">
     <h2 class="section-heading routing-title">Backup</h2>
   </div>
@@ -317,15 +335,13 @@
     <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
     <input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
   </div>
-</Card>
+</section>
 
 <footer class="settings-actions">
-  {#if isDirty}
-    <p class="dirty-state" aria-live="polite">Unsaved changes</p>
-  {/if}
   <div class="settings-action-buttons">
-    <Button id="save-btn" disabled={!isDirty} onclick={save}>Save Settings</Button>
-    <Button id="test-btn" variant="secondary" onclick={testConnection}>Test configuration</Button>
+    <Button id="save-btn" disabled={!isDirty || isSaving} onclick={save}>
+      {isSaving ? "Saving…" : "Save Settings"}
+    </Button>
   </div>
 </footer>
 </div>
@@ -334,8 +350,13 @@
   .settings-stack {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
     padding-bottom: var(--space-5);
+  }
+
+  .settings-section + .settings-section {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-divider);
   }
 
   .settings-actions {
@@ -360,13 +381,6 @@
     flex: 1;
   }
 
-  .dirty-state {
-    flex-shrink: 0;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-  }
-
   .section-heading {
     margin: 0 0 var(--space-3);
     color: var(--color-text);
@@ -386,11 +400,21 @@
     margin-bottom: 0;
   }
 
-  :global(.link.add-rule) {
+  .add-rule {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    font-size: 0.8rem;
+    cursor: pointer;
     text-decoration: none;
+  }
+
+  .add-rule:hover {
+    color: color-mix(in srgb, var(--color-primary) 75%, black);
   }
 
   .routing-empty {
@@ -402,7 +426,6 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-2) 0;
-    border-top: 1px solid var(--color-border);
   }
 
   .routing-conditions {
@@ -439,8 +462,14 @@
 
   .backup-actions {
     display: flex;
+    flex-direction: column;
     gap: var(--space-2);
     margin-top: var(--space-3);
+  }
+
+  .backup-actions :global(.btn) {
+    flex: none;
+    width: 100%;
   }
   .text-muted {
     font-size: 0.85rem;

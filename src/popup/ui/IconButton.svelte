@@ -52,6 +52,16 @@
     border-color: var(--color-primary-visual);
   }
 
+  .icon-button[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg-alt));
+    border-color: var(--color-primary-visual);
+    color: var(--color-primary-visual);
+  }
+
+  .icon-button[aria-pressed="true"]:hover {
+    background: color-mix(in srgb, var(--color-primary) 24%, var(--color-bg-alt));
+  }
+
   .icon-button:active {
     background: var(--color-primary);
     color: var(--color-text-inverse);

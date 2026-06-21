@@ -20,6 +20,11 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
   try {
     await waitForPopupReady(page);
     await openSettingsPanel(page);
+    await expect(page.locator("#toolbar-settings")).toHaveAttribute("aria-label", "Back to downloads");
+
+    await page.getByRole("button", { name: "Add rule" }).click();
+    await expect(page.locator(".routing-rule")).toHaveCount(1);
+    await expect(page.locator("#routing-0-destination")).toBeVisible();
 
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
@@ -28,11 +33,14 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.fill("#NAStempdir", "Download");
     await page.fill("#NASdir", "Multimedia/Movies");
 
-    await page.click("#test-btn");
-    await expect(page.locator("#status-message")).toContainText("Connection successful", { timeout: 15_000 });
-
+    const queryCountBeforeSave = mockNas.requestLog
+      .toJSON()
+      .filter((entry) => entry.path.includes("/downloadstation/V4/Task/Query")).length;
     await page.click("#save-btn");
-    await expect(page.locator("#status-message")).toContainText("Settings saved successfully");
+    await expect(page.locator("#save-btn")).toBeDisabled();
+    await expect
+      .poll(() => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/downloadstation/V4/Task/Query")).length)
+      .toBeGreaterThan(queryCountBeforeSave);
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO", {
