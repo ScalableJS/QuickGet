@@ -291,12 +291,12 @@
     <button type="button" class="add-rule" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <Alert tone="hint">
-    Auto-route matching downloads to a folder. Rules are checked top-to-bottom — the first match
-    wins; otherwise the Target Folder above is used.
+    Send matching downloads to a folder automatically. Rules run top to bottom; the first match wins.
+    Everything else uses the Target Folder.
   </Alert>
 
   {#if form.routingRules.length === 0}
-    <p class="routing-empty text-muted">No rules — every download uses the Target Folder.</p>
+    <p class="routing-empty text-muted">No rules yet. All downloads use the Target Folder.</p>
   {:else}
     {#each form.routingRules as rule, i (rule)}
       <div class="routing-rule">
