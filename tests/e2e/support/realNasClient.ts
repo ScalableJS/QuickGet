@@ -19,7 +19,7 @@ export function toRealNasSettings(env: RealNasEnv): Settings {
     NASpassword: env.password,
     NAStempdir: env.tempDir,
     NASdir: env.destDir,
-    torrentInterceptMode: "ask",
+    torrentInterceptMode: "always",
     routingRules: [],
     rememberPassword: false,
     theme: "auto",

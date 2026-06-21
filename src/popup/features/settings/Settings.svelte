@@ -271,7 +271,6 @@
   <div class="form-group">
     <Select id="torrentInterceptMode" label="Intercept .torrent downloads" bind:value={form.torrentInterceptMode}>
       <option value="off">Off — download normally</option>
-      <option value="ask">Ask — offer to send to NAS</option>
       <option value="always">Always send to NAS</option>
     </Select>
   </div>
@@ -361,7 +360,6 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3) 0;
-    border-top: 1px solid var(--color-border);
     background: var(--color-bg);
   }
 

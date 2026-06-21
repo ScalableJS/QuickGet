@@ -6,7 +6,7 @@
 import type { RoutingRule } from "./routingRules.js";
 
 /** Valid torrent-intercept modes — the single source of truth for runtime validation. */
-export const INTERCEPT_MODES = ["off", "ask", "always"] as const;
+export const INTERCEPT_MODES = ["off", "always"] as const;
 export type TorrentInterceptMode = (typeof INTERCEPT_MODES)[number];
 
 /** Valid theme preferences — "auto" follows the OS color-scheme. */
@@ -35,7 +35,7 @@ const FALLBACK_DEFAULTS: Settings = {
   NASpassword: "",
   NAStempdir: "Download", // relative to the share root — DS rejects absolute /share/... paths
   NASdir: "Multimedia/Movies",
-  torrentInterceptMode: "ask",
+  torrentInterceptMode: "off",
   routingRules: [],
   rememberPassword: false,
   theme: "auto",

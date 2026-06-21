@@ -46,6 +46,10 @@ export const Selected: Story = {
   args: { task: task(), selectedHash: "abc" },
 };
 
+export const Removing: Story = {
+  args: { task: task(), removing: true },
+};
+
 /** All statuses at once — visual regression surface for icons + colours. */
 export const AllStatuses: StoryObj = {
   render: () => ({ Component: DownloadItemGallery }),

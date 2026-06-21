@@ -15,14 +15,6 @@ export type SendTorrentResult = {
   duplicate: boolean;
 };
 
-/** A .torrent download that was intercepted and is waiting to be sent to the NAS. */
-export type PendingTorrent = {
-  url: string;
-  filename: string;
-  /** Epoch ms when the interception happened — used to expire stale records. */
-  createdAt: number;
-};
-
 /** Statuses where a re-clicked torrent can be resumed instead of re-added. */
 const RESTARTABLE_STATUSES: readonly TaskStatus[] = ["error", "stopped", "paused"];
 

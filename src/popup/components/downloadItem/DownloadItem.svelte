@@ -66,15 +66,11 @@
 >
   <div class="download-info">
     <p class="download-name" title={task.name}>{task.name}</p>
-    {#if removing}
-      <p class="download-pending" aria-live="polite">Removing…</p>
-    {/if}
     {#if view.addedText}
       <p class="download-added">Added {view.addedText}</p>
     {/if}
-    <div class="progress-container">
-      <span class="progress-icon" aria-label={view.statusLabel}><StatusIcon status={task.status} /></span>
-      <ProgressBar value={view.progress} variant={view.progressVariant} {selected} />
+    <div class="download-meta">
+      <span class="download-status">{view.statusLabel}:</span>
       <span class="download-speed" aria-label={view.speedLabel}>
         {#if view.isDownloadComplete}
           <ArrowUp aria-hidden="true" />
@@ -94,6 +90,10 @@
           {/if}
         {/if}
       </span>
+    </div>
+    <div class="progress-container">
+      <span class="progress-icon" aria-label={view.statusLabel}><StatusIcon status={task.status} /></span>
+      <ProgressBar value={view.progress} variant={view.progressVariant} inline />
     </div>
     {#if canChooseFiles}
       <DisclosureButton
@@ -121,9 +121,4 @@
     pointer-events: none;
   }
 
-  .download-pending {
-    margin: 0;
-    color: var(--color-text-secondary);
-    font-size: 12px;
-  }
 </style>

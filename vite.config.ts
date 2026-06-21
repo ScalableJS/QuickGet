@@ -20,7 +20,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, "src/popup/index.html"),
-        chooser: resolve(__dirname, "src/chooser/index.html"),
       },
     },
   },

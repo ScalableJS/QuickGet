@@ -9,7 +9,7 @@ export function createTestSettings(overrides: Partial<Settings> = {}): Settings 
     NASpassword: "secret",
     NAStempdir: "/share/Download",
     NASdir: "/share/Multimedia/Movies",
-    torrentInterceptMode: "ask",
+    torrentInterceptMode: "always",
     routingRules: [],
     rememberPassword: false,
     theme: "auto",

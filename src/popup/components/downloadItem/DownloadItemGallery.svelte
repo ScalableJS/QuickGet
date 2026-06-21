@@ -42,6 +42,8 @@
   {#each STATUSES as status (status)}
     <DownloadItem task={sample(status)} onToggle={() => {}} />
   {/each}
+  <DownloadItem task={sample("downloading")} selectedHash="downloading" onToggle={() => {}} />
+  <DownloadItem task={sample("downloading")} removing onToggle={() => {}} />
 </div>
 
 <style>

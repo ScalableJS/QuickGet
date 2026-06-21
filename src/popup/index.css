@@ -61,11 +61,8 @@
   --torrent-bg-error: var(--color-red);
   --torrent-text-error: #fbe8ec;
 
-  --progress-fill-active: var(--color-blue);
   --progress-track-active: #1976d233;
   --progress-fill-complete: var(--color-green);
-  --progress-fill-selected: var(--color-white);
-  --progress-track-selected: #258de533;
   --progress-fill-error: var(--color-red);
   --progress-track-error: #e9577926;
 
@@ -249,7 +246,6 @@
   --torrent-text-error: var(--color-red);
 
   --progress-track-active: #1976d226;
-  --progress-track-selected: #1976d21f;
   --download-hover-bg: var(--bg-light-secondary);
   --download-hover-border: #258de54d;
   --download-selected-bg: #258de51a;
@@ -688,6 +684,23 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
+.download-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.download-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--torrent-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .download-speed svg {
   width: 12px;
   height: 12px;
@@ -776,12 +789,6 @@ textarea:focus {
   .download-item {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .download-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-xs);
   }
 
   .download-speed {
