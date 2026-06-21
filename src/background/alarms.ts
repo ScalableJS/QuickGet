@@ -16,7 +16,7 @@ import { type ApiClient, createApiClient } from "@api/client.js";
 import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
 
-import { clearBadge, startIconAnimation, stopIconAnimation, updateStatsBadge } from "./actions.js";
+import { clearBadge, setActiveIcon, setIdleIcon, updateStatsBadge } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -42,11 +42,17 @@ async function getClient(): Promise<ApiClient> {
  */
 export async function ensureMonitoring(): Promise<void> {
   const existing = await chrome.alarms.get(ALARM_NAME);
-  if (existing) return;
-  chrome.alarms.create(ALARM_NAME, {
-    delayInMinutes: CHECK_INTERVAL_MINUTES,
-    periodInMinutes: CHECK_INTERVAL_MINUTES,
-  });
+  if (!existing) {
+    chrome.alarms.create(ALARM_NAME, {
+      delayInMinutes: CHECK_INTERVAL_MINUTES,
+      periodInMinutes: CHECK_INTERVAL_MINUTES,
+    });
+  }
+
+  // Instant feedback: the alarm's first tick is up to 30s away, so reflect
+  // status now. Don't tear monitoring down here — a just-added task may not be
+  // counted as active yet; the next periodic tick handles the idle case.
+  await pollStatus({ stopWhenIdle: false });
 }
 
 /**
@@ -54,7 +60,7 @@ export async function ensureMonitoring(): Promise<void> {
  */
 export function stopMonitoring(): void {
   void chrome.alarms.clear(ALARM_NAME);
-  stopIconAnimation();
+  setIdleIcon();
   clearBadge();
 }
 
@@ -64,7 +70,14 @@ export function stopMonitoring(): void {
  */
 export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
   if (alarm.name !== ALARM_NAME) return;
+  await pollStatus({ stopWhenIdle: true });
+}
 
+/**
+ * Fetch aggregated status, reflect it on the badge and toolbar icon. When
+ * `stopWhenIdle` is set, an idle result also clears the badge and stops polling.
+ */
+async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
   try {
     const client = await getClient();
     const status = await client.getStatus();
@@ -77,10 +90,12 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
     });
 
     if (status.active > 0) {
-      await startIconAnimation();
-    } else {
-      // Nothing downloading — clear the badge/animation and stop polling.
+      setActiveIcon();
+    } else if (stopWhenIdle) {
+      // Nothing downloading — clear the badge/icon and stop polling.
       stopMonitoring();
+    } else {
+      setIdleIcon();
     }
   } catch (error) {
     console.error("Monitoring error:", error);

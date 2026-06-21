@@ -55,10 +55,12 @@ describe("background alarms", () => {
   });
 
   afterEach(() => {
-    stopMonitoring(); // clear any running icon-animation timer
+    stopMonitoring(); // reset icon/badge state between tests
   });
 
   it("ensureMonitoring arms the alarm once and is idempotent", async () => {
+    server.use(loginHandler(), statusHandler(fullStatus(1)));
+
     await ensureMonitoring();
     await ensureMonitoring();
 
@@ -89,6 +91,9 @@ describe("background alarms", () => {
     expect(statusHits).toBe(1);
     expect(queryHit).toBe(false); // #7: must not pull the whole task array
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "2" });
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
+    });
   });
 
   it("stops monitoring when nothing is active", async () => {
@@ -98,6 +103,22 @@ describe("background alarms", () => {
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
 
     expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "" });
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_download.png", 128: "icons/128_download.png" },
+    });
     expect(alarms["download-monitor"]).toBeUndefined(); // alarm cleared
+  });
+
+  it("ensureMonitoring reflects active status immediately, before the first tick", async () => {
+    server.use(loginHandler(), statusHandler(fullStatus(3)));
+
+    await ensureMonitoring();
+
+    // Feedback appears without waiting for the 30s alarm tick.
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "3" });
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
+    });
+    expect(alarms["download-monitor"]).toBeDefined(); // alarm still armed
   });
 });
