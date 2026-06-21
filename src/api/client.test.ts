@@ -149,6 +149,33 @@ describe("ApiClient", () => {
     expect(params.has("savepath")).toBe(false);
   });
 
+  it("removes only the task by default and removes its files when clean is requested", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    const bodies: string[] = [];
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Remove", async ({ request }) => {
+        bodies.push(await request.text());
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await expect(client.removeTask("task-only")).resolves.toBe(true);
+    await expect(client.removeTask("task-and-files", { clean: true })).resolves.toBe(true);
+
+    const taskOnly = new URLSearchParams(bodies[0]);
+    const taskAndFiles = new URLSearchParams(bodies[1]);
+    expect(taskOnly.get("hash")).toBe("task-only");
+    expect(taskOnly.has("clean")).toBe(false);
+    expect(taskAndFiles.get("hash")).toBe("task-and-files");
+    expect(taskAndFiles.get("clean")).toBe("1");
+  });
+
   it("adds multiple URLs as separate tasks with temp/move and per-URL results", async () => {
     const settings = createTestSettings();
     const client = createApiClient({ settings, fetchFn: fetch });

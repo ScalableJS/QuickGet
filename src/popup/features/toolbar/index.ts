@@ -44,6 +44,12 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
       if (!hash) return;
       void downloads.remove(hash);
     },
+    removeWithFiles: () => {
+      const hash = requireSelection("remove");
+      if (!hash) return;
+      if (!confirm("Remove this download task and its downloaded files from the NAS? This cannot be undone.")) return;
+      void downloads.remove(hash, true);
+    },
     add: () => upload.triggerFilePicker(),
     addUrls: () => upload.toggleUrlPanel(),
     toggleSettings: () => {

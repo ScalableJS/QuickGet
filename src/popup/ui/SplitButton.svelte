@@ -17,9 +17,19 @@
     menuLabel?: string;
     id?: string;
     size?: ControlSize;
+    disabled?: boolean;
   };
 
-  let { primaryLabel, primaryIcon, onPrimary, items, menuLabel = "More options", id, size = "sm" }: Props = $props();
+  let {
+    primaryLabel,
+    primaryIcon,
+    onPrimary,
+    items,
+    menuLabel = "More options",
+    id,
+    size = "sm",
+    disabled = false,
+  }: Props = $props();
 
   let open = $state(false);
   let caretEl = $state<HTMLButtonElement>();
@@ -72,7 +82,7 @@
 />
 
 <div class="split-btn" role="group" aria-label={primaryLabel}>
-  <IconButton {id} {size} class="split-primary" title={primaryLabel} aria-label={primaryLabel} onclick={onPrimary}>
+  <IconButton {id} {size} class="split-primary" title={primaryLabel} aria-label={primaryLabel} {disabled} onclick={onPrimary}>
     {@render primaryIcon()}
   </IconButton>
   <IconButton
@@ -82,6 +92,7 @@
     aria-label={menuLabel}
     aria-haspopup="menu"
     aria-expanded={open}
+    {disabled}
     bind:el={caretEl}
     onclick={(e) => {
       e.stopPropagation();

@@ -71,13 +71,28 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
 
     await page.locator("#downloads-list .download-item").filter({ hasText: "sample" }).click();
     await page.click("#toolbar-remove");
-    await expect(page.locator("#downloads-list .download-item").filter({ hasText: "sample" })).toContainText(
-      "Removing…",
+    await expect(page.locator("#downloads-list .download-item").filter({ hasText: "sample" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
     );
     await expect(page.locator("#downloads-list .download-item .download-name")).toHaveCount(1, {
       timeout: 15_000,
     });
     await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO");
+
+    await page.locator("#downloads-list .download-item").filter({ hasText: "Ubuntu ISO" }).click();
+    await page.getByRole("button", { name: "More remove options" }).click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("menuitem", { name: "Remove task and files…" }).click();
+    await expect(page.locator("#downloads-list .download-item")).toHaveCount(0, { timeout: 15_000 });
+    await expect
+      .poll(() =>
+        mockNas.requestLog
+          .toJSON()
+          .filter((entry) => entry.path.includes("/downloadstation/V4/Task/Remove"))
+          .some((entry) => new URLSearchParams(entry.requestBody).get("clean") === "1"),
+      )
+      .toBe(true);
 
     expect(mockNas.requestLog.includesPath("/downloadstation/V4/Misc/Login")).toBe(true);
     expect(mockNas.requestLog.includesPath("/downloadstation/V4/Task/Query")).toBe(true);

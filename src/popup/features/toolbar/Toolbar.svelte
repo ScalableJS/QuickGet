@@ -20,6 +20,7 @@
     stop: () => void;
     pause: () => void;
     remove: () => void;
+    removeWithFiles: () => void;
     add: () => void;
     addUrls: () => void;
     toggleSettings: () => void;
@@ -33,6 +34,7 @@
 {#snippet plusIcon()}<IconPlus />{/snippet}
 {#snippet fileIcon()}<IconFile />{/snippet}
 {#snippet linkIcon()}<IconLink />{/snippet}
+{#snippet trashIcon()}<IconTrash />{/snippet}
 
 <div class="toolbar-left">
   <IconButton
@@ -110,15 +112,14 @@
       { label: "Add URLs…", icon: linkIcon, onSelect: actions.addUrls },
     ]}
   />
-  <IconButton
+  <SplitButton
     size="sm"
     id="toolbar-remove"
-    title="Remove selected download"
-    aria-label="Remove selected download"
+    primaryLabel="Remove selected download"
+    primaryIcon={trashIcon}
+    onPrimary={actions.remove}
+    menuLabel="More remove options"
+    items={[{ label: "Remove task and files…", icon: trashIcon, onSelect: actions.removeWithFiles }]}
     {disabled}
-    aria-disabled={disabled}
-    onclick={actions.remove}
-  >
-    <IconTrash />
-  </IconButton>
+  />
 </div>

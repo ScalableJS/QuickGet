@@ -20,6 +20,7 @@
     stop: noop,
     pause: noop,
     remove: noop,
+    removeWithFiles: noop,
     add: noop,
     addUrls: noop,
     toggleSettings: () => {

@@ -19,9 +19,9 @@ import {
 import { clearSelection, getSelectedHash, onSelectionChange } from "./downloadsState.js";
 import { hideDownloads, renderDownloads, setRemovingDownload, setupDownloadsUI } from "./downloadsUI.js";
 
-export interface DownloadsFeature {
+export type DownloadsFeature = {
   refreshNow: () => Promise<void>;
-  remove: (hash: string) => Promise<void>;
+  remove: (hash: string, clean?: boolean) => Promise<void>;
   start: (hash: string) => Promise<void>;
   stop: (hash: string) => Promise<void>;
   pause: (hash: string) => Promise<void>;
@@ -29,7 +29,7 @@ export interface DownloadsFeature {
   clearSelection: () => void;
   hideDownloads: () => void;
   onSelectionChange: (listener: (hash: string | null) => void) => () => void;
-}
+};
 
 export async function initializeDownloads(): Promise<DownloadsFeature> {
   setupDownloadsUI();
@@ -67,7 +67,7 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
 
   return {
     refreshNow,
-    remove: async (hash: string) => {
+    remove: async (hash: string, clean = false) => {
       const normalizedHash = hash?.trim();
       if (!normalizedHash) {
         showStatus("Cannot remove download: missing identifier", "error");
@@ -76,10 +76,11 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
       setRemovingDownload(normalizedHash);
       clearSelection();
       try {
-        await deleteDownload(normalizedHash);
+        await deleteDownload(normalizedHash, clean);
         await refreshNow();
       } catch (error) {
-        showStatus(`Failed to remove download: ${error}`, "error");
+        const target = clean ? "download and files" : "download";
+        showStatus(`Failed to remove ${target}: ${error}`, "error");
       } finally {
         setRemovingDownload(null);
       }
