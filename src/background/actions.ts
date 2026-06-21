@@ -1,15 +1,21 @@
 /**
- * Badge and action updates
- * Manages the extension toolbar badge, icon state, and title.
+ * Toolbar action (badge + icon) — single authoritative writer.
  *
- * Note: the toolbar icon is swapped between two static states (idle/active)
- * rather than animated. MV3 service workers are torn down when idle, so a
- * setInterval-driven animation freezes within seconds and cannot be kept alive
- * reliably. A status-matched icon survives worker teardown because Chrome
- * persists the action state itself.
+ * Background owns chrome.action. Every update flows through applyBadgeStats(),
+ * which holds the last-known state and writes only on a real change. Two things
+ * keep the count from flickering (uBlock-style):
+ *
+ *  - Diff guard: setBadgeText/setIcon/setTitle fire only when the value
+ *    actually changes; the green badge colour is set once.
+ *  - Idle hysteresis: a single empty/zero poll never clears the badge — it
+ *    takes ZERO_CONFIRM consecutive zeros. A transient NAS hiccup that reports
+ *    0 for one tick no longer blanks the number.
+ *
+ * Callers must invoke applyBadgeStats ONLY for a confident, successful poll —
+ * never on an error, abort, or skipped refresh (that would be a fake zero).
  */
 
-import { isInProgress, type Task } from "@lib/tasks.js";
+import type { ProgressSummary } from "@lib/tasks.js";
 
 import { formatRate } from "../popup/shared/formatters/speed.js";
 
@@ -23,76 +29,85 @@ const ACTIVE_ICON_PATH = {
   128: "icons/128_active.png",
 } as const;
 
-export interface BadgeStats {
-  active: number;
-  all: number;
-  downRate: number;
-  upRate: number;
+// Consecutive confirmed-zero polls required before the badge clears.
+const ZERO_CONFIRM = 2;
+
+type IconState = "active" | "idle";
+
+// Authoritative last-known toolbar state. Resets when the service worker is torn
+// down, which is harmless: a fresh icon=null / "" never equals a real value, so
+// the first poll after a restart always re-syncs the toolbar.
+const state: {
+  badgeText: string;
+  icon: IconState | null;
+  colorSet: boolean;
+  title: string;
+  zeroStreak: number;
+} = { badgeText: "", icon: null, colorSet: false, title: "", zeroStreak: 0 };
+
+function buildTitle(stats: ProgressSummary): string {
+  return `Active: ${stats.active}\nTotal: ${stats.all}\nDownload: ${formatRate(stats.downRate)}\nUpload: ${formatRate(stats.upRate)}`;
 }
 
-/**
- * Update badge with aggregated download-station stats: active-task count on the
- * badge, full breakdown in the icon tooltip.
- */
-export function updateStatsBadge(stats: BadgeStats): void {
-  const text = stats.active > 0 ? String(stats.active) : "";
-
+function writeBadgeText(text: string): void {
+  if (text === state.badgeText) return;
+  state.badgeText = text;
   chrome.action.setBadgeText({ text });
-  if (stats.active > 0) {
-    chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // Green
-  }
-
-  setActionTitle(
-    `Active: ${stats.active}\nTotal: ${stats.all}\nDownload: ${formatRate(stats.downRate)}\nUpload: ${formatRate(stats.upRate)}`,
-  );
 }
 
-/**
- * Clear badge
- */
-export function clearBadge(): void {
-  chrome.action.setBadgeText({ text: "" });
+function writeIcon(icon: IconState): void {
+  if (icon === state.icon) return;
+  state.icon = icon;
+  void chrome.action.setIcon({ path: icon === "active" ? ACTIVE_ICON_PATH : IDLE_ICON_PATH });
 }
 
-/**
- * Set action title
- */
-export function setActionTitle(title: string): void {
+function writeTitle(stats: ProgressSummary): void {
+  const title = buildTitle(stats);
+  if (title === state.title) return;
+  state.title = title;
   chrome.action.setTitle({ title });
 }
 
 /**
- * Show the "downloading" icon while tasks are active.
+ * Apply a confident, successful poll to the toolbar — the ONLY function that
+ * writes chrome.action. Returns whether idle is now confirmed (so the caller
+ * can stop polling). Do NOT call on a failed/aborted/skipped poll.
  */
-export function setActiveIcon(): void {
-  void chrome.action.setIcon({ path: ACTIVE_ICON_PATH });
-}
+export function applyBadgeStats(stats: ProgressSummary): { active: number; idleConfirmed: boolean } {
+  writeTitle(stats); // tooltip only — invisible, safe to refresh
 
-/**
- * Reset the toolbar icon to its default idle state.
- */
-export function setIdleIcon(): void {
-  void chrome.action.setIcon({ path: IDLE_ICON_PATH });
-}
-
-/**
- * Reflect a task list on the toolbar (badge count, rates, active/idle icon).
- * Shared by the background poll and the popup so both agree on what "active"
- * means (the same isInProgress() the In-progress tab uses). Returns the
- * in-progress count so the caller can decide whether to keep polling.
- */
-export function reflectTasksOnAction(tasks: Task[]): { activeCount: number } {
-  const activeCount = tasks.filter((task) => isInProgress(task.status)).length;
-  const downRate = tasks.reduce((sum, task) => sum + task.downSpeedBps, 0);
-  const upRate = tasks.reduce((sum, task) => sum + task.upSpeedBps, 0);
-
-  updateStatsBadge({ active: activeCount, all: tasks.length, downRate, upRate });
-
-  if (activeCount > 0) {
-    setActiveIcon();
-  } else {
-    setIdleIcon();
+  if (stats.active > 0) {
+    state.zeroStreak = 0;
+    writeBadgeText(String(stats.active));
+    if (!state.colorSet) {
+      chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // green, set once
+      state.colorSet = true;
+    }
+    writeIcon("active");
+    return { active: stats.active, idleConfirmed: false };
   }
 
-  return { activeCount };
+  // active === 0 — hold the last badge/icon until the zeros are sustained.
+  state.zeroStreak += 1;
+  if (state.zeroStreak < ZERO_CONFIRM) {
+    return { active: 0, idleConfirmed: false };
+  }
+
+  writeBadgeText("");
+  writeIcon("idle");
+  return { active: 0, idleConfirmed: true };
+}
+
+/**
+ * Force the toolbar back to idle and forget the cached state. Used on explicit
+ * stop / teardown (and to isolate tests).
+ */
+export function resetActionState(): void {
+  state.badgeText = "";
+  state.icon = "idle";
+  state.colorSet = false;
+  state.title = "";
+  state.zeroStreak = 0;
+  chrome.action.setBadgeText({ text: "" });
+  void chrome.action.setIcon({ path: IDLE_ICON_PATH });
 }

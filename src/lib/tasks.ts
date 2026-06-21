@@ -57,6 +57,30 @@ export function isCompleted(status: TaskStatus): boolean {
   return status === "finished" || status === "seeding";
 }
 
+export type ProgressSummary = {
+  active: number;
+  all: number;
+  downRate: number;
+  upRate: number;
+};
+
+/**
+ * Reduce a task list to the toolbar's view of it: in-progress count + total +
+ * combined transfer rates. Shared by the popup (which sends it to the
+ * background) and the background poll, so both agree on the numbers.
+ */
+export function summarizeProgress(tasks: Task[]): ProgressSummary {
+  let active = 0;
+  let downRate = 0;
+  let upRate = 0;
+  for (const task of tasks) {
+    if (isInProgress(task.status)) active += 1;
+    downRate += task.downSpeedBps;
+    upRate += task.upSpeedBps;
+  }
+  return { active, all: tasks.length, downRate, upRate };
+}
+
 const synologyToUnified: Record<string, TaskStatus> = {
   waiting: "queued",
   downloading: "downloading",

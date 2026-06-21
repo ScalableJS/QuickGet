@@ -3,10 +3,11 @@
  * Orchestrates background tasks and event handlers
  */
 
-import { ensureMonitoring, handleAlarm } from "./alarms.js";
-import { initDownloadInterception, sweepStalePending } from "./downloads.js";
+import { applyBadgeStats } from "./actions.js";
+import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
+import { initDownloadInterception } from "./downloads.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
-import { MONITOR_MESSAGE } from "./monitorMessage.js";
+import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./monitorMessage.js";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -36,15 +37,24 @@ chrome.alarms.onAlarm.addListener(handleAlarm);
 // Redirect browser downloads to the NAS when enabled in settings
 initDownloadInterception();
 
-// Other contexts (the popup) can't call ensureMonitoring() directly, so they
-// post a message after any task mutation and we arm the poll here.
+// The background is the single writer of the toolbar action. Other contexts
+// (the popup) talk to it by message: MONITOR_MESSAGE arms the poll after a
+// mutation; SNAPSHOT_MESSAGE hands over the popup's fresh counts so the badge
+// reflects exactly what the popup shows, and arms the poll for after it closes.
 chrome.runtime.onMessage.addListener((message: unknown) => {
-  if (typeof message === "object" && message !== null && (message as { type?: unknown }).type === MONITOR_MESSAGE) {
+  if (typeof message !== "object" || message === null) return;
+  const type = (message as { type?: unknown }).type;
+
+  if (type === MONITOR_MESSAGE) {
     void ensureMonitoring();
+    return;
+  }
+
+  if (type === SNAPSHOT_MESSAGE) {
+    const { stats } = message as BadgeSnapshotMessage;
+    const { active } = applyBadgeStats(stats);
+    if (active > 0) void armMonitoring();
   }
 });
-
-// Drop any pending-torrent records left over from a previous session.
-void sweepStalePending();
 
 console.log("[QuickGet] Service worker loaded");

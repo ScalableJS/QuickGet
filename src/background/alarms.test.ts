@@ -5,12 +5,12 @@ import { createTestSettings } from "../../tests/fixtures/settings";
 import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
+import { resetActionState } from "./actions.js";
 import { ensureMonitoring, handleAlarm, stopMonitoring } from "./alarms.js";
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
 
 const ACTIVE_ICON = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
-const IDLE_ICON = { 32: "icons/32_download.png", 128: "icons/128_download.png" };
 
 function loginHandler() {
   return http.post(`${BASE}/Misc/Login`, () => HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }));
@@ -62,10 +62,12 @@ describe("background alarms", () => {
         return true;
       }),
     };
+    resetActionState(); // clean the toolbar cache (module state persists across tests)
+    vi.clearAllMocks(); // ...then start each test with a clean call history
   });
 
   afterEach(() => {
-    stopMonitoring(); // reset icon/badge state between tests
+    stopMonitoring();
   });
 
   it("ensureMonitoring arms the alarm once and is idempotent", async () => {
@@ -116,15 +118,15 @@ describe("background alarms", () => {
     expect(alarms["download-monitor"]).toBeDefined(); // still polling
   });
 
-  it("stops monitoring when nothing is in progress", async () => {
+  it("stops monitoring only after sustained idle (hysteresis, not one zero)", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
-    server.use(loginHandler(), queryHandler([job(5)])); // finished only
+    server.use(loginHandler(), queryHandler([job(5)])); // finished only — nothing in progress
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    expect(alarms["download-monitor"]).toBeDefined(); // one zero is not trusted
 
-    expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "" });
-    expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: IDLE_ICON });
-    expect(alarms["download-monitor"]).toBeUndefined(); // alarm cleared
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    expect(alarms["download-monitor"]).toBeUndefined(); // confirmed idle → alarm cleared
   });
 
   it("ensureMonitoring reflects active status immediately, before the first tick", async () => {

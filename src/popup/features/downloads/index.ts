@@ -1,7 +1,7 @@
-import { reflectTasksOnAction } from "@/background/actions.js";
 import { showStatus } from "@/popup/components";
+import { summarizeProgress } from "@lib/tasks.js";
 
-import { requestMonitoring } from "../../shared/monitor.js";
+import { requestMonitoring, sendBadgeSnapshot } from "../../shared/monitor.js";
 
 import {
   configureAutoRefresh,
@@ -41,9 +41,9 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
         return;
       }
       renderDownloads(result.tasks);
-      // Drive the toolbar icon/badge from the exact list the In-progress tab
-      // counts, so the app icon can never disagree with what the popup shows.
-      reflectTasksOnAction(result.tasks);
+      // Hand the background (sole toolbar writer) the same counts the
+      // In-progress tab shows, so the app icon can't disagree with the popup.
+      sendBadgeSnapshot(summarizeProgress(result.tasks));
     } catch (error) {
       showStatus(`Failed to list downloads: ${error}`, "error");
     }
