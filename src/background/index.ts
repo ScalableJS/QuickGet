@@ -62,8 +62,9 @@ chrome.runtime.onMessage.addListener((message: unknown) => {
 
   if (type === SNAPSHOT_MESSAGE) {
     const { stats } = message as BadgeSnapshotMessage;
-    const { active } = applyBadgeStats(stats);
-    if (active > 0) void armMonitoring();
+    void applyBadgeStats(stats).then(({ active }) => {
+      if (active > 0) void armMonitoring();
+    });
   }
 });
 

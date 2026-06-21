@@ -17,7 +17,7 @@ import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
-import { applyBadgeStats, resetActionState } from "./actions.js";
+import { applyBadgeStats, noteMonitoringFailure, resetActionState } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -63,9 +63,9 @@ export async function ensureMonitoring(): Promise<void> {
 /**
  * Stop monitoring downloads and reset the toolbar to idle.
  */
-export function stopMonitoring(): void {
+export async function stopMonitoring(): Promise<void> {
   void chrome.alarms.clear(ALARM_NAME);
-  resetActionState();
+  await resetActionState();
 }
 
 /**
@@ -87,7 +87,7 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     const client = await getClient();
     const { tasks } = await client.queryTasks();
 
-    const { idleConfirmed } = applyBadgeStats(summarizeProgress(tasks));
+    const { idleConfirmed } = await applyBadgeStats(summarizeProgress(tasks));
 
     if (idleConfirmed && stopWhenIdle) {
       // Idle confirmed across consecutive polls — drop the alarm; a mutation re-arms it.
@@ -95,5 +95,9 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     }
   } catch (error) {
     console.error("Monitoring error:", error);
+    // Keep the last-known badge/icon. Give up only once failures are sustained,
+    // so an unreachable NAS doesn't get polled (and logged) every 30s forever.
+    const { giveUp } = await noteMonitoringFailure();
+    if (giveUp) void chrome.alarms.clear(ALARM_NAME);
   }
 }

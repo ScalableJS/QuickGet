@@ -48,7 +48,7 @@ function queryHandler(jobs: ReturnType<typeof job>[], onHit?: () => void) {
 describe("background alarms", () => {
   let alarms: Record<string, chrome.alarms.Alarm>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     seedChromeStorage({ ...createTestSettings() });
     alarms = {};
     (chrome as unknown as { alarms: Record<string, unknown> }).alarms = {
@@ -62,12 +62,12 @@ describe("background alarms", () => {
         return true;
       }),
     };
-    resetActionState(); // clean the toolbar cache (module state persists across tests)
+    await resetActionState(); // clean the persisted toolbar state (session storage persists across tests)
     vi.clearAllMocks(); // ...then start each test with a clean call history
   });
 
-  afterEach(() => {
-    stopMonitoring();
+  afterEach(async () => {
+    await stopMonitoring();
   });
 
   it("ensureMonitoring arms the alarm once and is idempotent", async () => {
@@ -127,6 +127,19 @@ describe("background alarms", () => {
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeUndefined(); // confirmed idle → alarm cleared
+  });
+
+  it("gives up polling after repeated failures (unreachable NAS), not forever", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    server.use(loginHandler(), http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })));
+
+    // ERROR_LIMIT is 4: the first three failures keep polling, the fourth stops.
+    for (let i = 0; i < 3; i += 1) {
+      await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+      expect(alarms["download-monitor"]).toBeDefined();
+    }
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    expect(alarms["download-monitor"]).toBeUndefined();
   });
 
   it("ensureMonitoring reflects active status immediately, before the first tick", async () => {
