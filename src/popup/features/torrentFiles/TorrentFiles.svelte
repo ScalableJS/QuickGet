@@ -6,7 +6,18 @@
 
   import { getTorrentFiles, setTorrentFiles } from "../downloads/downloadsManager.js";
 
-  let { hash }: { hash: string } = $props();
+  type FileSelection = { index: number; priority: 0 | 1 };
+  type SaveResult = { index: number; ok: boolean; error?: string };
+
+  let {
+    hash,
+    loadFiles = getTorrentFiles,
+    saveFiles = setTorrentFiles,
+  }: {
+    hash: string;
+    loadFiles?: (hash: string) => Promise<TorrentFile[]>;
+    saveFiles?: (hash: string, selections: FileSelection[]) => Promise<SaveResult[]>;
+  } = $props();
 
   const DISPLAY_LIMIT = 100;
 
@@ -24,7 +35,7 @@
     loading = true;
     error = "";
     try {
-      files = await getTorrentFiles(hash);
+      files = await loadFiles(hash);
       wanted = Object.fromEntries(files.map((f) => [f.no, f.priority === 1]));
     } catch (err) {
       error = getErrorMessage(err);
@@ -43,14 +54,19 @@
       // Only send files whose wanted-state changed from the server's value.
       const selections = files
         .filter((f) => (f.priority === 1) !== wanted[f.no])
-        .map((f) => ({ index: f.no, priority: (wanted[f.no] ? 1 : 0) as 0 | 1 }));
+        .map(
+          (f): FileSelection => ({
+            index: f.no,
+            priority: wanted[f.no] ? 1 : 0,
+          }),
+        );
 
       if (selections.length === 0) {
         showStatus("No changes to apply", "info", { autoHideMs: 1500 });
         return;
       }
 
-      const results = await setTorrentFiles(hash, selections);
+      const results = await saveFiles(hash, selections);
       const failed = results.filter((r) => !r.ok).length;
       if (failed === 0) {
         showStatus(`Updated ${results.length} file(s)`, "success", { autoHideMs: 2000 });
@@ -150,6 +166,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-3);
     margin-top: 8px;
   }
 
