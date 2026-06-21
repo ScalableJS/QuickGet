@@ -14,7 +14,7 @@ import {
   stopTorrent as stopTask,
 } from "./downloadsManager.js";
 import { clearSelection, getSelectedHash, onSelectionChange } from "./downloadsState.js";
-import { hideDownloads, renderDownloads, setupDownloadsUI } from "./downloadsUI.js";
+import { hideDownloads, renderDownloads, setRemovingDownload, setupDownloadsUI } from "./downloadsUI.js";
 
 export interface DownloadsFeature {
   refreshNow: () => Promise<void>;
@@ -63,9 +63,16 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
         showStatus("Cannot remove download: missing identifier", "error");
         return;
       }
-      await deleteDownload(normalizedHash);
-      showStatus("Download removed", "success", { autoHideMs: 2000 });
-      await refreshNow();
+      setRemovingDownload(normalizedHash);
+      clearSelection();
+      try {
+        await deleteDownload(normalizedHash);
+        await refreshNow();
+      } catch (error) {
+        showStatus(`Failed to remove download: ${error}`, "error");
+      } finally {
+        setRemovingDownload(null);
+      }
     },
     start: async (hash: string) => {
       await startTask(hash);

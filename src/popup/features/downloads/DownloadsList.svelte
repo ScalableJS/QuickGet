@@ -68,7 +68,7 @@
     <EmptyState>{emptyMessage}</EmptyState>
   {:else}
     {#each visibleTasks as task (task.id)}
-      <DownloadItem {task} selectedHash={view.selectedHash} {onToggle} />
+      <DownloadItem {task} selectedHash={view.selectedHash} removing={view.removingHash === (task.hash ?? task.id)} {onToggle} />
     {/each}
   {/if}
 </div>

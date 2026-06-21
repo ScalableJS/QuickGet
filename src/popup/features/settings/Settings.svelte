@@ -353,12 +353,6 @@
     padding-bottom: var(--space-5);
   }
 
-  .settings-section + .settings-section {
-    margin-top: var(--space-4);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--color-divider);
-  }
-
   .settings-actions {
     position: sticky;
     bottom: 0;

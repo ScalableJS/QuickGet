@@ -42,7 +42,7 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
     remove: () => {
       const hash = requireSelection("remove");
       if (!hash) return;
-      void downloads.remove(hash).then(() => downloads.clearSelection());
+      void downloads.remove(hash);
     },
     add: () => upload.triggerFilePicker(),
     addUrls: () => upload.toggleUrlPanel(),

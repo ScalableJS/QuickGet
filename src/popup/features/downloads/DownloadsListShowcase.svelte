@@ -4,7 +4,11 @@
 
   let { tasks }: { tasks: Task[] } = $props();
 
-  const view = $state<{ tasks: Task[]; selectedHash: string | null }>({ tasks: [], selectedHash: null });
+  const view = $state<{ tasks: Task[]; selectedHash: string | null; removingHash: string | null }>({
+    tasks: [],
+    selectedHash: null,
+    removingHash: null,
+  });
 
   $effect(() => {
     view.tasks = tasks;

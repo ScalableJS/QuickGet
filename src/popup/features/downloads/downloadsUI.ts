@@ -62,6 +62,10 @@ export function renderDownloads(tasks: Task[]): void {
   updateStatusSpeed(tasks);
 }
 
+export function setRemovingDownload(hash: string | null): void {
+  downloadsView.removingHash = hash;
+}
+
 export function hideDownloads(): void {
   ensureElements();
   downloadsSection?.classList.add("hidden");

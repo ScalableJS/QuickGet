@@ -13,7 +13,7 @@ const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
 
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {
-  const mockNas = await startMockNas();
+  const mockNas = await startMockNas({ removeDelayMs: 250 });
   const session = await launchExtensionPopup(extensionDistPath);
   const { page } = session;
 
@@ -39,7 +39,10 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.click("#save-btn");
     await expect(page.locator("#save-btn")).toBeDisabled();
     await expect
-      .poll(() => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/downloadstation/V4/Task/Query")).length)
+      .poll(
+        () =>
+          mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/downloadstation/V4/Task/Query")).length,
+      )
       .toBeGreaterThan(queryCountBeforeSave);
 
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -68,6 +71,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
 
     await page.locator("#downloads-list .download-item").filter({ hasText: "sample" }).click();
     await page.click("#toolbar-remove");
+    await expect(page.locator("#downloads-list .download-item").filter({ hasText: "sample" })).toContainText(
+      "Removing…",
+    );
     await expect(page.locator("#downloads-list .download-item .download-name")).toHaveCount(1, {
       timeout: 15_000,
     });

@@ -11,10 +11,12 @@
   let {
     task,
     selectedHash = null,
+    removing = false,
     onToggle,
   }: {
     task: Task;
     selectedHash?: string | null;
+    removing?: boolean;
     onToggle: (hash: string) => void;
   } = $props();
 
@@ -36,6 +38,7 @@
   });
 
   function toggle(): void {
+    if (removing) return;
     onToggle(view.hash);
   }
 
@@ -51,16 +54,21 @@
   bind:this={el}
   class="download-item"
   class:selected
+  class:removing
   data-hash={view.hash}
   data-status={task.status}
   tabindex="0"
   role="option"
   aria-selected={selected}
+  aria-disabled={removing}
   onclick={toggle}
   onkeydown={handleKey}
 >
   <div class="download-info">
     <p class="download-name" title={task.name}>{task.name}</p>
+    {#if removing}
+      <p class="download-pending" aria-live="polite">Removing…</p>
+    {/if}
     {#if view.addedText}
       <p class="download-added">Added {view.addedText}</p>
     {/if}
@@ -106,3 +114,16 @@
     {/if}
   </div>
 </article>
+
+<style>
+  .download-item.removing {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .download-pending {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+  }
+</style>

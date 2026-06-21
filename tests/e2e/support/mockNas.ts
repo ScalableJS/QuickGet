@@ -8,6 +8,7 @@ import { RedactedHttpLog } from "./redactedHttpLog.js";
 
 interface MockNasOptions {
   initialTasks?: Array<DownloadJob | Task>;
+  removeDelayMs?: number;
 }
 
 interface MockNasHandle {
@@ -329,6 +330,9 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
 
     if (path === "/downloadstation/V4/Task/Remove" && method === "POST") {
       const hash = readFormValue(body, "hash");
+      if (options.removeDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.removeDelayMs));
+      }
       const index = tasks.findIndex((item) => item.hash === hash);
       if (index >= 0) tasks.splice(index, 1);
       reply(200, { error: 0 });
