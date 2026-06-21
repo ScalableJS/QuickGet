@@ -11,6 +11,7 @@ node_modules/
 .env.*.local
 dist/
 dist-firefox/
+store-assets/.cache/
 build/
 *.zip
 web-ext-artifacts/

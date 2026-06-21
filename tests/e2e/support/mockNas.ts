@@ -1,6 +1,7 @@
 import { once } from "node:events";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
+import type { TorrentFile } from "@api/client.js";
 import type { DownloadJob, DownloadJobsListResponse } from "@api/type.js";
 import type { Task, TaskStatus } from "@lib/tasks.js";
 
@@ -168,7 +169,7 @@ function toRawQnapJob(input: DownloadJob | Task, index: number): DownloadJob {
     state,
     temp: "Download",
     total_down: totalDown,
-    total_files: 1,
+    total_files: input.totalFiles ?? 1,
     total_up: totalUp,
     type: "BT",
     uid: 0,
@@ -252,6 +253,7 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
   const tasks = (options.initialTasks ?? [createTask("Ubuntu ISO", 1)]).map((task, index) =>
     toRawQnapJob(task, index + 1),
   );
+  const torrentFiles = new Map<string, TorrentFile[]>();
 
   const server: Server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -284,6 +286,35 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
 
     if (path === "/downloadstation/V4/Task/Query" && method === "POST") {
       reply(200, buildTaskQueryResponse(tasks, body));
+      return;
+    }
+
+    if (path === "/downloadstation/V4/Task/GetFile" && method === "POST") {
+      const hash = readFormValue(body, "hash");
+      if (!hash || !tasks.some((task) => task.hash === hash)) {
+        reply(200, { error: 16387, reason: hash ?? "" });
+        return;
+      }
+      reply(200, {
+        error: 0,
+        total: 1,
+        data: [{ hash, name: "Mock torrent", files: getTorrentFiles(torrentFiles, hash) }],
+      });
+      return;
+    }
+
+    if (path === "/downloadstation/V4/Task/SetFile" && method === "POST") {
+      const hash = readFormValue(body, "hash");
+      const index = Number(readFormValue(body, "index"));
+      const priority = Number(readFormValue(body, "priority"));
+      const files = hash ? torrentFiles.get(hash) : undefined;
+      const file = files?.find((item) => item.no === index);
+      if (!file || (priority !== 0 && priority !== 1)) {
+        reply(200, { error: 16387, reason: hash ?? "" });
+        return;
+      }
+      file.priority = priority;
+      reply(200, { error: 0 });
       return;
     }
 
@@ -460,4 +491,17 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       });
     },
   };
+}
+
+function getTorrentFiles(torrentFiles: Map<string, TorrentFile[]>, hash: string): TorrentFile[] {
+  const existing = torrentFiles.get(hash);
+  if (existing) return existing;
+
+  const files = [
+    { no: 0, filename: "Season 01/Episode 01.mkv", size: 1_572_864_000, done: 0, priority: 1 },
+    { no: 1, filename: "Season 01/Episode 02.mkv", size: 1_572_864_000, done: 0, priority: 1 },
+    { no: 2, filename: "Season 01/Episode 03.mkv", size: 1_572_864_000, done: 0, priority: 0 },
+  ];
+  torrentFiles.set(hash, files);
+  return files;
 }

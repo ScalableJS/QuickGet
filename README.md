@@ -5,7 +5,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Optionally intercept browser `.torrent` downloads and route them to the NAS — *Off*, *Ask*, or *Always*, with a destination-folder picker. **Experimental (Chrome only):** the intercepted download is cancelled (not erased, so it stays retryable from the browser's download list) and the `.torrent` is re-fetched for the NAS; one-time/signed tracker URLs may not survive the round-trip.
+- Intercept browser `.torrent` downloads and route them to the NAS. This is enabled by default and can be turned off in Settings. **Experimental (Chrome only):** the intercepted download is cancelled (not erased, so it stays retryable from the browser's download list) and the `.torrent` is re-fetched for the NAS; one-time/signed tracker URLs may not survive the round-trip.
 - Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
 - Validate NAS settings directly from the popup and persist them locally.
 - Operate on Chromium-based browsers and Firefox without additional plugins.
@@ -31,7 +31,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
    - Port number
    - Username and password
    - HTTPS toggle, temporary directory, and destination directory (optional)
-   - Torrent interception mode (*Off* / *Ask* / *Always*) and an optional list of destination folders (one per line) offered by the folder picker
+   - Torrent interception mode (*Off* / *Always*, default: *Always*) and an optional list of destination folders (one per line) offered by the folder picker
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
 4. Close Settings to return to the downloads list; add torrents or manage existing tasks from the toolbar.
 
@@ -160,4 +160,3 @@ Pull requests are preferred to long-lived forks so improvements remain consolida
 ## License
 
 QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE.md).
-

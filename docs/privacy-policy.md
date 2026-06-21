@@ -15,4 +15,4 @@ The extension does not operate a remote service and does not retain a copy of NA
 
 ## Contact
 
-For privacy questions or issues, open a report in the [QuickGet Remote issue tracker](https://github.com/ScalableJS/QuickGet/issues).
+For privacy questions or support, email [quickget.remote@gmail.com](mailto:quickget.remote@gmail.com) or open a report in the [QuickGet Remote issue tracker](https://github.com/ScalableJS/QuickGet/issues).
