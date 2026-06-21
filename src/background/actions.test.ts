@@ -43,6 +43,7 @@ describe("applyBadgeStats", () => {
     expect(result.idleConfirmed).toBe(false);
     expect(chrome.action.setBadgeText).not.toHaveBeenCalled(); // count stays "2"
     expect(chrome.action.setIcon).not.toHaveBeenCalled();
+    expect(chrome.action.setTitle).not.toHaveBeenCalled(); // tooltip stays consistent with the held count
   });
 
   it("clears only after two consecutive zeros", async () => {

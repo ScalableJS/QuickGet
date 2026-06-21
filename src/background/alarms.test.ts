@@ -6,7 +6,7 @@ import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
 import { resetActionState } from "./actions.js";
-import { ensureMonitoring, handleAlarm, stopMonitoring } from "./alarms.js";
+import { ensureMonitoring, handleAlarm } from "./alarms.js";
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
 
@@ -67,7 +67,7 @@ describe("background alarms", () => {
   });
 
   afterEach(async () => {
-    await stopMonitoring();
+    await resetActionState(); // leave the toolbar state clean for the next test
   });
 
   it("ensureMonitoring arms the alarm once and is idempotent", async () => {

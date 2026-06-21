@@ -84,13 +84,18 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
   const state = await loadState();
   state.errorStreak = 0; // a successful poll resets the failure count
 
-  const title = buildTitle(stats); // tooltip only — invisible, safe to refresh
-  if (title !== state.title) {
-    chrome.action.setTitle({ title });
-    state.title = title;
-  }
+  // Refresh the tooltip only when we actually apply a state — during an idle
+  // hold the tooltip keeps matching the count still on the badge.
+  const refreshTitle = () => {
+    const title = buildTitle(stats);
+    if (title !== state.title) {
+      chrome.action.setTitle({ title });
+      state.title = title;
+    }
+  };
 
   if (stats.active > 0) {
+    refreshTitle();
     state.zeroStreak = 0;
     const text = String(stats.active);
     if (text !== state.badgeText) {
@@ -116,6 +121,7 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
     return { active: 0, idleConfirmed: false };
   }
 
+  refreshTitle();
   if (state.badgeText !== "") {
     chrome.action.setBadgeText({ text: "" });
     state.badgeText = "";

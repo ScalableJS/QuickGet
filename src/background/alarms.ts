@@ -17,7 +17,7 @@ import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
-import { applyBadgeStats, noteMonitoringFailure, resetActionState } from "./actions.js";
+import { applyBadgeStats, noteMonitoringFailure } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -58,14 +58,6 @@ export async function armMonitoring(): Promise<void> {
 export async function ensureMonitoring(): Promise<void> {
   await armMonitoring();
   await pollStatus({ stopWhenIdle: false });
-}
-
-/**
- * Stop monitoring downloads and reset the toolbar to idle.
- */
-export async function stopMonitoring(): Promise<void> {
-  void chrome.alarms.clear(ALARM_NAME);
-  await resetActionState();
 }
 
 /**
