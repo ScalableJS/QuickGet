@@ -7,7 +7,10 @@ export function configureAutoRefresh(options: { onRefresh: RefreshCallback }): v
   refreshCallback = options.onRefresh;
 }
 
-export function startAutoRefresh(intervalMs = 5000): void {
+// 2s keeps progress/speed visibly live while the popup is open. The popup is a
+// normal page (not the MV3 service worker), so it isn't subject to the 30s
+// alarm floor — it can poll as often as is comfortable for the NAS.
+export function startAutoRefresh(intervalMs = 2000): void {
   if (refreshIntervalId || !refreshCallback) {
     return;
   }

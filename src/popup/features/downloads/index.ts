@@ -1,5 +1,7 @@
 import { showStatus } from "@/popup/components";
 
+import { requestMonitoring } from "../../shared/monitor.js";
+
 import {
   configureAutoRefresh,
   stopAutoRefresh as haltAutoRefresh,
@@ -48,6 +50,10 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
   });
 
   await refreshNow();
+  // Re-arm background monitoring on open so an already-running download turns
+  // the toolbar icon active — without it the icon only updates after a mutation.
+  // ensureMonitoring polls and self-stops if nothing is actually active.
+  requestMonitoring();
   runAutoRefresh();
 
   window.addEventListener("beforeunload", () => {
