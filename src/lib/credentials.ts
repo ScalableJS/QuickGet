@@ -24,7 +24,7 @@ async function deriveKey(masterPassword: string, salt: Uint8Array): Promise<Cryp
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: salt.buffer as ArrayBuffer,
+      salt: salt as unknown as ArrayBuffer,
       iterations: PBKDF2_ITERATIONS,
       hash: "SHA-256",
     },
@@ -45,15 +45,15 @@ export async function encryptPassword(plaintext: string, masterPassword: string)
 
   const enc = new TextEncoder();
   const ciphertextBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
     key,
     enc.encode(plaintext)
   );
 
   return {
     ciphertext: arrayBufferToBase64(ciphertextBuffer),
-    iv: arrayBufferToBase64(iv.buffer as ArrayBuffer),
-    salt: arrayBufferToBase64(salt.buffer as ArrayBuffer),
+    iv: arrayBufferToBase64(iv),
+    salt: arrayBufferToBase64(salt),
   };
 }
 
@@ -61,23 +61,25 @@ export async function encryptPassword(plaintext: string, masterPassword: string)
  * Decrypt a password using AES-GCM with a key derived from a master password
  */
 export async function decryptPassword(blob: EncryptedDataBlob, masterPassword: string): Promise<string> {
-  const salt = base64ToArrayBuffer(blob.salt);
-  const iv = base64ToArrayBuffer(blob.iv);
-  const ciphertext = base64ToArrayBuffer(blob.ciphertext);
+  const salt = base64ToUint8Array(blob.salt);
+  const iv = base64ToUint8Array(blob.iv);
+  const ciphertext = base64ToUint8Array(blob.ciphertext);
 
-  const key = await deriveKey(masterPassword, new Uint8Array(salt));
+  const key = await deriveKey(masterPassword, salt);
   const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(iv) },
+    { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
     key,
-    ciphertext
+    ciphertext as unknown as ArrayBuffer
   );
 
   const dec = new TextDecoder();
   return dec.decode(decryptedBuffer);
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+function arrayBufferToBase64(buffer: ArrayBuffer | ArrayBufferView): string {
+  const bytes = ArrayBuffer.isView(buffer)
+    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+    : new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -85,11 +87,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  return bytes.buffer;
+  return bytes;
 }
