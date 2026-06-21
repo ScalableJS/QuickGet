@@ -1,3 +1,4 @@
+import { reflectTasksOnAction } from "@/background/actions.js";
 import { showStatus } from "@/popup/components";
 
 import { requestMonitoring } from "../../shared/monitor.js";
@@ -40,6 +41,9 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
         return;
       }
       renderDownloads(result.tasks);
+      // Drive the toolbar icon/badge from the exact list the In-progress tab
+      // counts, so the app icon can never disagree with what the popup shows.
+      reflectTasksOnAction(result.tasks);
     } catch (error) {
       showStatus(`Failed to list downloads: ${error}`, "error");
     }

@@ -9,6 +9,8 @@
  * persists the action state itself.
  */
 
+import { isInProgress, type Task } from "@lib/tasks.js";
+
 import { formatRate } from "../popup/shared/formatters/speed.js";
 
 const IDLE_ICON_PATH = {
@@ -71,4 +73,26 @@ export function setActiveIcon(): void {
  */
 export function setIdleIcon(): void {
   void chrome.action.setIcon({ path: IDLE_ICON_PATH });
+}
+
+/**
+ * Reflect a task list on the toolbar (badge count, rates, active/idle icon).
+ * Shared by the background poll and the popup so both agree on what "active"
+ * means (the same isInProgress() the In-progress tab uses). Returns the
+ * in-progress count so the caller can decide whether to keep polling.
+ */
+export function reflectTasksOnAction(tasks: Task[]): { activeCount: number } {
+  const activeCount = tasks.filter((task) => isInProgress(task.status)).length;
+  const downRate = tasks.reduce((sum, task) => sum + task.downSpeedBps, 0);
+  const upRate = tasks.reduce((sum, task) => sum + task.upSpeedBps, 0);
+
+  updateStatsBadge({ active: activeCount, all: tasks.length, downRate, upRate });
+
+  if (activeCount > 0) {
+    setActiveIcon();
+  } else {
+    setIdleIcon();
+  }
+
+  return { activeCount };
 }

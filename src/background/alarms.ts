@@ -15,9 +15,8 @@
 import { type ApiClient, createApiClient } from "@api/client.js";
 import { clientSignature } from "@lib/clientSignature.js";
 import { loadSettings } from "@lib/settings.js";
-import { isInProgress } from "@lib/tasks.js";
 
-import { clearBadge, setActiveIcon, setIdleIcon, updateStatsBadge } from "./actions.js";
+import { clearBadge, reflectTasksOnAction, setIdleIcon } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -88,24 +87,13 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     // shows it working. Once per 30s, pulling the list is cheap enough.
     const { tasks } = await client.queryTasks();
 
-    const inProgress = tasks.filter((task) => isInProgress(task.status));
-    const downRate = tasks.reduce((sum, task) => sum + task.downSpeedBps, 0);
-    const upRate = tasks.reduce((sum, task) => sum + task.upSpeedBps, 0);
+    // Same helper the popup uses, so the toolbar always agrees with the
+    // In-progress tab regardless of which context updated it last.
+    const { activeCount } = reflectTasksOnAction(tasks);
 
-    updateStatsBadge({
-      active: inProgress.length,
-      all: tasks.length,
-      downRate,
-      upRate,
-    });
-
-    if (inProgress.length > 0) {
-      setActiveIcon();
-    } else if (stopWhenIdle) {
-      // Nothing in progress — clear the badge/icon and stop polling.
+    if (activeCount === 0 && stopWhenIdle) {
+      // Nothing in progress — also drop the alarm; the next mutation re-arms it.
       stopMonitoring();
-    } else {
-      setIdleIcon();
     }
   } catch (error) {
     console.error("Monitoring error:", error);
