@@ -18,15 +18,17 @@ const {
   CHROME_CLIENT_SECRET,
   CHROME_REFRESH_TOKEN,
   CHROME_EXTENSION_ID,
+  CHROME_PUBLISHER_ID,
 } = process.env;
 
-if (!CHROME_CLIENT_ID || !CHROME_CLIENT_SECRET || !CHROME_REFRESH_TOKEN || !CHROME_EXTENSION_ID) {
+if (!CHROME_CLIENT_ID || !CHROME_CLIENT_SECRET || !CHROME_REFRESH_TOKEN || !CHROME_EXTENSION_ID || !CHROME_PUBLISHER_ID) {
   console.error("❌ Missing required Chrome Web Store API credentials in environment variables.");
   process.exit(1);
 }
 
 const store = chromeWebstoreUpload({
   extensionId: CHROME_EXTENSION_ID,
+  publisherId: CHROME_PUBLISHER_ID,
   clientId: CHROME_CLIENT_ID,
   clientSecret: CHROME_CLIENT_SECRET,
   refreshToken: CHROME_REFRESH_TOKEN,
