@@ -3,7 +3,7 @@ name: Build & Deploy Extension
 on:
   push:
     branches:
-      - env/dev
+      - env/prod
 
 permissions:
   contents: read

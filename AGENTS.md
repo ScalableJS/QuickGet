@@ -22,7 +22,7 @@ npm run typecheck && npm run check:svelte && npm run lint && npm test && npm run
 
 ## Conventions specific to this repo
 
-- **Branching and releases:** work from `env/dev` and push release changes there directly; do not create pull requests targeting `env/dev`. Only pushes to `env/dev` are release candidates and may publish the Chrome extension; do not use `env/prod` for routine work or releases.
+- **Branching and releases:** work and push directly in `env/dev`; do not create pull requests targeting it. Release only through a pull request from `env/dev` to `env/prod`. `env/prod` is the only branch allowed to publish to the Chrome Web Store; do not push routine changes to it directly.
 - **Commits:** conventional-commit style with optional scope (`feat(settings): …`, `fix(background): …`, `chore: …`). This repo is **not** a keabank repo — do not use KSP-ticket commit prefixes.
 - **Logging:** the only sanctioned logger is `src/lib/logger.ts` (used by the API client). No `console.*` in popup/UI/Svelte code (Biome `noConsole`); background/service-worker `console.*` is exempt by config.
 - **API:** QNAP DS V4 `AddUrl`/`AddTorrent` require both `temp` and `move` — see `src/api/client.ts`.
