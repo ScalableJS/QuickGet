@@ -38,6 +38,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Build extension for mock E2E tests
+        run: npm run build
+
       - name: Run mock E2E tests
         run: |
           npx playwright install --with-deps chromium
