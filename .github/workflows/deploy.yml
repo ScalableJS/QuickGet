@@ -6,7 +6,7 @@ on:
       - env/prod
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -38,6 +38,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Build extension for mock E2E tests
+        run: npm run build
+
       - name: Run mock E2E tests
         run: |
           npx playwright install --with-deps chromium
@@ -53,3 +56,17 @@ jobs:
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          ASSET="quickget-remote-$VERSION.zip"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+          fi
