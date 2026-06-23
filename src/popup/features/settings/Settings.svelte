@@ -63,6 +63,16 @@
     Object.assign(form, parseServerUrl(raw));
   }
 
+  function syncServerUrl(raw: string): void {
+    try {
+      applyServerUrl(raw);
+      tempStatus = "idle";
+      dirStatus = "idle";
+    } catch {
+      // Keep the last valid connection settings while the user is still typing.
+    }
+  }
+
   function addRule(): void {
     form = {
       ...form,
@@ -216,15 +226,20 @@
     confirmMasterPasswordInput = "";
   }
 
-  // Auto-load on mount (mirrors the previous restoreSettings-on-init behaviour).
-  void load();
 </script>
 
 <div class="settings-stack">
 <section class="settings-section">
   <h2 class="section-heading">Connection</h2>
   <div class="form-group">
-    <Field id="serverUrl" label="Server address" placeholder="https://downloadstation.local:8080" required bind:value={serverUrl} />
+    <Field
+      id="serverUrl"
+      label="Server address"
+      placeholder="https://downloadstation.local:8080"
+      required
+      bind:value={serverUrl}
+      oninput={(event) => syncServerUrl(event.currentTarget.value)}
+    />
   </div>
 
   <div class="form-group">

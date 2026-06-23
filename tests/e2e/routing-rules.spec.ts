@@ -27,7 +27,7 @@ test("routing rules save priority and fallback settings", async ({}, testInfo) =
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
     await page.fill("#NAStempdir", "Download");
-    await page.fill("#NASdir", "Multimedia/Default");
+    await page.fill("#NASdir", "Multimedia/Movies");
 
     await page.getByRole("button", { name: "Add rule" }).click();
     await page.getByRole("button", { name: "Add rule" }).click();

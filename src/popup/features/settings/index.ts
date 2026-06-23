@@ -12,14 +12,14 @@ export type SettingsFeature = {
   isPanelVisible: () => boolean;
 };
 
-export function initializeSettings(options: InitializeSettingsOptions = {}): SettingsFeature {
+export async function initializeSettings(options: InitializeSettingsOptions = {}): Promise<SettingsFeature> {
   const panel = getSettingsPanel();
   if (panel) {
     panel.replaceChildren();
-    // Settings.svelte loads on mount and saves via its own buttons — no parent-driven lifecycle.
-    mount(SettingsPanel, {
+    const settingsPanel = mount(SettingsPanel, {
       target: panel,
     });
+    await settingsPanel.load();
   }
 
   return {
