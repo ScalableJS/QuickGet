@@ -11,6 +11,18 @@ import { DEFAULTS } from "./config.js";
 import { isLocked, loadSettings, resetSettings, saveSettings, unlock } from "./settings.js";
 
 describe("settings", () => {
+  it("uses empty connection and folder defaults", () => {
+    expect(DEFAULTS).toMatchObject({
+      NASaddress: "",
+      NASport: "",
+      NASlogin: "",
+      NASpassword: "",
+      NAStempdir: "",
+      NASdir: "",
+      torrentInterceptMode: "off",
+    });
+  });
+
   it("loads settings, normalizes values, and backfills missing defaults", async () => {
     seedChromeStorage({
       NASaddress: "files.local",
@@ -31,9 +43,9 @@ describe("settings", () => {
     });
     expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
     expect(snapshot.NASaddress).toBe("files.local");
-    expect(snapshot.NASlogin).toBe(DEFAULTS.NASlogin);
-    expect(snapshot.NAStempdir).toBe(DEFAULTS.NAStempdir);
-    expect(snapshot.torrentInterceptMode).toBe("always");
+    expect(snapshot.NASlogin).toBeUndefined();
+    expect(snapshot.NAStempdir).toBeUndefined();
+    expect(snapshot.torrentInterceptMode).toBe("off");
   });
 
   it("saves partial settings into chrome.storage.local", async () => {
