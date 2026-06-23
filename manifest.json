@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvzcdv3EXzz3zfthAWSxkMnZ99gjNchlZVulkoQXM6RrWrDIwhIzziG3RFyu6ndHjfXtDCbiEauwwQOuRrhE0VQIJkPkSXubiMKENHVHu32JypCamozbMGAOlNde+uVTv6gZx6hiHord20G2c6H99hTAm5JDq3AxunfpGZ+ExZbhbhMW6ZAAForyHYpMu+NidYjAB3nFWJA43TzgDFk/UcQqRIIYmoaA9GXniDLM7nRZk0eX/BiRf9NRyPNb8nAevstStXBTtapHyuUC99jbaytb8Pxj6T6bKw1z8UPHRwm3rNttY19EgIV4avBDaXIzjRhKXwCvm1pSJn7Fvk6aBAQIDAQAB",
   "name": "QuickGet Remote for QNAP",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Send links and torrents to QNAP Download Station from Chrome.",
   "default_locale": "en",
   "minimum_chrome_version": "120",

@@ -27,43 +27,16 @@ export type Settings = {
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
 
-const FALLBACK_DEFAULTS: Settings = {
+export const DEFAULTS: Settings = {
   NASsecure: false,
-  NASaddress: "downloadstation.local",
-  NASport: "8080",
-  NASlogin: "download",
+  NASaddress: "",
+  NASport: "",
+  NASlogin: "",
   NASpassword: "",
-  NAStempdir: "Download", // relative to the share root — DS rejects absolute /share/... paths
-  NASdir: "Multimedia/Movies",
-  torrentInterceptMode: "always",
+  NAStempdir: "",
+  NASdir: "",
+  torrentInterceptMode: "off",
   routingRules: [],
   rememberPassword: false,
   theme: "auto",
-};
-
-const envString = (value: string | undefined, fallback: string): string => {
-  const normalized = (value ?? "").trim();
-  return normalized || fallback;
-};
-
-const envBoolean = (value: string | undefined, fallback: boolean): boolean => {
-  if (value == null) return fallback;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true" || normalized === "1") return true;
-  if (normalized === "false" || normalized === "0" || normalized === "") return false;
-  return fallback;
-};
-
-export const DEFAULTS: Settings = {
-  NASsecure: envBoolean(import.meta.env.VITE_QNAP_SECURE, FALLBACK_DEFAULTS.NASsecure),
-  NASaddress: envString(import.meta.env.VITE_QNAP_ADDRESS, FALLBACK_DEFAULTS.NASaddress),
-  NASport: envString(import.meta.env.VITE_QNAP_PORT, FALLBACK_DEFAULTS.NASport),
-  NASlogin: envString(import.meta.env.VITE_QNAP_LOGIN, FALLBACK_DEFAULTS.NASlogin),
-  NASpassword: envString(import.meta.env.VITE_QNAP_PASSWORD, FALLBACK_DEFAULTS.NASpassword),
-  NAStempdir: envString(import.meta.env.VITE_QNAP_TEMP_DIR, FALLBACK_DEFAULTS.NAStempdir),
-  NASdir: envString(import.meta.env.VITE_QNAP_DEST_DIR, FALLBACK_DEFAULTS.NASdir),
-  torrentInterceptMode: FALLBACK_DEFAULTS.torrentInterceptMode,
-  routingRules: [],
-  rememberPassword: false,
-  theme: FALLBACK_DEFAULTS.theme,
 };
