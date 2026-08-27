@@ -17,6 +17,9 @@ export interface LaunchExtensionPopupOptions {
   beforePageLoad?: (context: BrowserContext) => Promise<void> | void;
   /** Where Chrome writes downloads; give tests their own directory. */
   downloadsPath?: string;
+  /** Reuse a persistent profile (cookies, logins) instead of a throwaway one. */
+  userDataDir?: string;
+  headless?: boolean;
 }
 
 async function resolveWorker(context: BrowserContext): Promise<Worker> {
@@ -37,11 +40,11 @@ export async function launchExtensionPopup(
   extensionPath: string,
   options: LaunchExtensionPopupOptions = {},
 ): Promise<ExtensionSession> {
-  const userDataDir = await mkdtemp(path.join(tmpdir(), "sendtoqnap-e2e-"));
+  const userDataDir = options.userDataDir ?? (await mkdtemp(path.join(tmpdir(), "sendtoqnap-e2e-")));
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: "chromium",
-    headless: true,
+    headless: options.headless ?? true,
     downloadsPath: options.downloadsPath,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   });

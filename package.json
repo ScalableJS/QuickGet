@@ -29,7 +29,9 @@
     "capture:store-assets": "npm run build && playwright test tests/e2e/store-assets.spec.ts && node scripts/generate-store-assets.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e:tracker": "TRACKER_E2E=1 playwright test tests/e2e/private-tracker.real.spec.ts",
+    "tracker:login": "node scripts/tracker-login.mjs"
   },
   "keywords": [
     "qnap",
