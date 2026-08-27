@@ -1,0 +1,14 @@
+# Agent OS Standards Index
+
+api:
+  qnap-download-station-contract:
+    description: Required temp/move parameters for QNAP DS V4 AddUrl/AddTorrent and DTO boundary
+background:
+  mv3-service-worker:
+    description: MV3 listener registration, no in-memory state, transactional downloads, credential guards
+frontend:
+  svelte-runes-only:
+    description: Svelte 5 runes-only API, derive-don't-effect, and the sanctioned logger
+testing:
+  test-layers:
+    description: Vitest vs Playwright split, the hand-written chrome mock, and MV3 e2e mechanics
