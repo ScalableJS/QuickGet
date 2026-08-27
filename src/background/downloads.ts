@@ -65,11 +65,11 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // storage.session was emptied by a browser restart. `isLocked()` only distinguishes
     // the two for the message — it reports false in the second case, so it cannot be the
     // guard itself. Leave the download alone; the browser will finish it normally.
-    if (!settings.NASpassword) {
-      const locked = await isLocked();
-      console.warn("[QuickGet] no NAS password — leaving the download to the browser");
+    if (!settings.NASpassword || !settings.NASaddress || !settings.NASlogin) {
+      const locked = settings.NASpassword === "" && (await isLocked());
+      console.warn("[QuickGet] NAS not usable — leaving the download to the browser");
       notify(
-        locked ? "QuickGet is locked" : "NAS password unavailable",
+        locked ? "QuickGet is locked" : "NAS not configured",
         "The .torrent was left to the browser. Open QuickGet to unlock or configure it.",
       );
       return;
@@ -95,23 +95,30 @@ async function handOffToNas(settings: Settings, downloadId: number, url: string)
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder);
 
-    // The NAS owns the torrent now — only here is it safe to drop the browser's copy.
-    await cancelBrowserDownload(downloadId);
+    // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
+    // cancel itself fails we must not leave the transfer paused: put it back to the browser.
+    const cancelled = await cancelBrowserDownload(downloadId);
+    if (!cancelled && paused) await resumeBrowserDownload(downloadId);
     void ensureMonitoring();
 
     if (duplicate) {
       await notifyDuplicate(settings, name);
     } else {
-      notify("Torrent sent to NAS", name);
+      notify("Torrent sent to NAS", cancelled ? name : `${name} — the browser copy is still downloading.`);
     }
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
-    if (paused) await resumeBrowserDownload(downloadId);
-    notify(
-      "Failed to send torrent",
-      `${getErrorMessage(error)}${paused ? " — browser download resumed." : ""}`,
-    );
+    const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
+    notify("Failed to send torrent", `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`);
   }
+}
+
+/** Say what actually happened to the browser download — never claim a resume that failed. */
+function rollbackSuffix(paused: boolean, resumed: boolean): string {
+  if (!paused) return "";
+  return resumed
+    ? " — browser download resumed."
+    : " — the browser download is paused; resume it from the downloads list.";
 }
 
 /**
@@ -164,28 +171,34 @@ async function pauseBrowserDownload(id: number): Promise<boolean> {
     await chrome.downloads.pause(id);
     return true;
   } catch {
-    return false; // already complete or not in progress
+    // Not active any more, or the pause failed for another reason. Either way we must not
+    // assume it can be resumed later.
+    return false;
   }
 }
 
-async function resumeBrowserDownload(id: number): Promise<void> {
+async function resumeBrowserDownload(id: number): Promise<boolean> {
   try {
     await chrome.downloads.resume(id);
+    return true;
   } catch (error) {
     console.warn("[QuickGet] could not resume the browser download:", error);
+    return false;
   }
 }
 
-async function cancelBrowserDownload(id: number): Promise<void> {
+/**
+ * Intentionally does NOT erase the item: a cancelled download stays in the browser's download
+ * list with a "Retry" affordance, so the user can still fetch the original `.torrent` normally
+ * if the notification is dismissed. Erasing it would make the download unrecoverable.
+ */
+async function cancelBrowserDownload(id: number): Promise<boolean> {
   try {
     await chrome.downloads.cancel(id);
+    return true;
   } catch {
-    // Already finished or not cancellable — ignore.
+    return false; // already finished or not cancellable
   }
-  // Intentionally NOT erasing the item: a cancelled download stays in the
-  // browser's download list with a "Retry" affordance, so the user can still
-  // fetch the original .torrent normally if the NAS hand-off fails or the
-  // notification is dismissed. Erasing it would make the download unrecoverable.
 }
 
 function notify(title: string, message: string): void {

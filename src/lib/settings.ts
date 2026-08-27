@@ -131,8 +131,12 @@ export const SETTINGS_SCHEMA_VERSION = 1;
 /**
  * Releases whose `loadSettings()` persisted the resolved default of `torrentInterceptMode`,
  * writing "off" into profiles that had never chosen it.
+ *
+ * Only 1.0.2: `307c78a` flipped the default to "off" and bumped the manifest to 1.0.2 in the
+ * same commit, so 1.0.0 and 1.0.1 shipped with "always". An "off" stored by those releases is
+ * a deliberate user choice and must not be second-guessed.
  */
-const INTERCEPT_DEFAULT_LEAKED_IN = ["1.0.1", "1.0.2"];
+const INTERCEPT_DEFAULT_LEAKED_IN = ["1.0.2"];
 
 export type SettingsMigrationResult = {
   /** Interception is off in a profile that most likely never asked for it — tell the user. */
@@ -147,23 +151,34 @@ export type SettingsMigrationResult = {
  */
 export async function migrateSettings(previousVersion?: string): Promise<SettingsMigrationResult> {
   const stored = await new Promise<Record<string, unknown>>((resolve) => {
-    chrome.storage.local.get(["settingsSchemaVersion", "torrentInterceptMode"], (items) => resolve(items));
+    chrome.storage.local.get(
+      ["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"],
+      (items) => resolve(items),
+    );
   });
 
-  const alreadyMigrated = stored.settingsSchemaVersion === SETTINGS_SCHEMA_VERSION;
+  // `previousVersion` is only set when reason === "update", so a fresh install never matches.
   const interceptionLeftOff =
-    !alreadyMigrated &&
+    stored.interceptNoticeShown !== true &&
     previousVersion !== undefined &&
     INTERCEPT_DEFAULT_LEAKED_IN.includes(previousVersion) &&
     stored.torrentInterceptMode === "off";
 
-  if (!alreadyMigrated) {
+  if (stored.settingsSchemaVersion !== SETTINGS_SCHEMA_VERSION) {
     await new Promise<void>((resolve) =>
       chrome.storage.local.set({ settingsSchemaVersion: SETTINGS_SCHEMA_VERSION }, resolve),
     );
   }
 
   return { interceptionLeftOff };
+}
+
+/**
+ * Record that the interception notice was delivered. Kept separate from the schema version so
+ * a failed `notifications.create` does not silently consume the one chance to show it.
+ */
+export async function markInterceptNoticeShown(): Promise<void> {
+  await new Promise<void>((resolve) => chrome.storage.local.set({ interceptNoticeShown: true }, resolve));
 }
 
 /**

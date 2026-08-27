@@ -112,8 +112,9 @@ that was never a credential. The same commit changed the test to assert `"off"`.
 **Depends on:** BUG-8 (migration) — flipping the default without a migration story leaves
 existing profiles broken.
 **Done 2026-08-27** — default restored to `"always"`; `modeWithDefault` no longer adds the
-resolved value to `missing`, so reading settings is no longer a write. `settings.test.ts` now
-asserts the flag is *not* persisted, instead of certifying the regression.
+resolved value to `missing`, so the behavioural flag is resolved in memory only.
+`loadSettings()` still backfills the other missing keys — it is not a pure read.
+`settings.test.ts` now asserts the flag is *not* persisted, instead of certifying the regression.
 
 ---
 
@@ -183,4 +184,7 @@ Prerequisite for closing BUG-1 properly.
 
 **Done 2026-08-27** — `SETTINGS_SCHEMA_VERSION` + `migrateSettings(previousVersion)` in
 `src/lib/settings.ts`, called from `onInstalled` in `src/background/index.ts`. A stored `"off"`
-from 1.0.1/1.0.2 raises a one-time notification and is never rewritten.
+from **1.0.2 only** raises a one-time notification and is never rewritten — verified against the
+history: 1.0.0 and 1.0.1 shipped the correct `"always"` default, so an `"off"` there is the
+user's own choice. The "shown" marker is separate from the schema version and is written only
+after the notification was actually created.

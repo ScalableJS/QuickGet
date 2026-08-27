@@ -5,6 +5,8 @@ import { createTestSettings } from "../../tests/fixtures/settings.js";
 import {
   createDownloadItem,
   getChromeDownloadsMock,
+  getChromeNotificationsMock,
+  seedChromeSessionStorage,
   seedChromeStorage,
 } from "../../tests/mocks/chrome.js";
 import { server } from "../../tests/msw/server.js";
@@ -39,12 +41,30 @@ function mockSuccessfulHandoff(): { addTorrentCalls: number } {
   return counter;
 }
 
+/** The torrent is fetched fine, but the NAS refuses the task. */
+function mockFailedHandoff(): void {
+  server.use(
+    http.get(TORRENT_URL, () =>
+      HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+        headers: { "content-type": "application/x-bittorrent" },
+      }),
+    ),
+    http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+      HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+    ),
+    http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+      HttpResponse.json({ error: 4096, reason: "temp" }),
+    ),
+  );
+}
+
 describe("download interception", () => {
   let downloads: ReturnType<typeof getChromeDownloadsMock>;
+  let notifications: ReturnType<typeof getChromeNotificationsMock>;
 
   beforeEach(() => {
     downloads = getChromeDownloadsMock();
-    seedChromeStorage(createTestSettings({ NASpassword: "", rememberPassword: false }));
+    notifications = getChromeNotificationsMock();
   });
 
   it("ignores the download entirely when interception is off", async () => {
@@ -83,14 +103,24 @@ describe("download interception", () => {
     expect(downloads.cancel).toHaveBeenCalledWith(1);
     expect(downloads.resume).not.toHaveBeenCalled();
 
-    // The contract: pause happens before the hand-off, cancel strictly after it.
     const pausedAt = downloads.pause.mock.invocationCallOrder[0];
     const cancelledAt = downloads.cancel.mock.invocationCallOrder[0];
     expect(pausedAt).toBeLessThan(cancelledAt);
   });
 
-  it("resumes the browser download when the NAS rejects the torrent", async () => {
+  it("holds the cancel until AddTorrent actually resolves", async () => {
+    // Ordering alone is too weak: `pause → cancel → send` satisfies it. Gate the NAS response
+    // so the assertion happens while the hand-off is still in flight.
     seedChromeStorage(createTestSettings());
+
+    let releaseAddTorrent!: () => void;
+    let signalAddTorrentReached!: () => void;
+    const addTorrentGate = new Promise<void>((resolve) => {
+      releaseAddTorrent = resolve;
+    });
+    const addTorrentReached = new Promise<void>((resolve) => {
+      signalAddTorrentReached = resolve;
+    });
 
     server.use(
       http.get(TORRENT_URL, () =>
@@ -101,10 +131,63 @@ describe("download interception", () => {
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
-        HttpResponse.json({ error: 4096, reason: "temp" }),
-      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async () => {
+        signalAddTorrentReached();
+        await addTorrentGate;
+        return HttpResponse.json({ error: 0 });
+      }),
     );
+
+    const handling = handleDownloadCreated(createDownloadItem());
+    await addTorrentReached;
+
+    expect(downloads.pause).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
+
+    releaseAddTorrent();
+    await handling;
+
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("does not resume a download that was never paused", async () => {
+    seedChromeStorage(createTestSettings());
+    downloads.pause.mockRejectedValueOnce(new Error("download already complete"));
+    mockFailedHandoff();
+
+    await handleDownloadCreated(createDownloadItem());
+
+    expect(downloads.resume).not.toHaveBeenCalled();
+    expect(downloads.cancel).not.toHaveBeenCalled();
+  });
+
+  it("puts the transfer back to the browser when the cancel fails after a successful send", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+    downloads.cancel.mockRejectedValueOnce(new Error("not cancellable"));
+
+    await handleDownloadCreated(createDownloadItem());
+
+    // The NAS has the torrent, but the browser transfer must not be left hanging paused.
+    expect(downloads.resume).toHaveBeenCalledWith(1);
+  });
+
+  it("reports the paused state honestly when the resume also fails", async () => {
+    seedChromeStorage(createTestSettings());
+    mockFailedHandoff();
+    downloads.resume.mockRejectedValueOnce(new Error("cannot resume"));
+
+    await handleDownloadCreated(createDownloadItem());
+
+    const calls = notifications.create.mock.calls;
+    const options = calls[calls.length - 1][0] as { message: string };
+    expect(options.message).toContain("paused");
+    expect(options.message).not.toContain("resumed");
+  });
+
+  it("resumes the browser download when the NAS rejects the torrent", async () => {
+    seedChromeStorage(createTestSettings());
+    mockFailedHandoff();
 
     await handleDownloadCreated(createDownloadItem());
 
@@ -112,15 +195,42 @@ describe("download interception", () => {
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
+  it("works from the normal session-credential state, not just a legacy local password", async () => {
+    // rememberPassword=false keeps the password in storage.session; local holds none.
+    seedChromeStorage(createTestSettings({ NASpassword: "", rememberPassword: false }));
+    seedChromeSessionStorage({ sessionNASpassword: "secret" });
+    const nas = mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem());
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("leaves the download alone when the NAS address is not configured", async () => {
+    seedChromeStorage(createTestSettings({ NASaddress: "" }));
+
+    await handleDownloadCreated(createDownloadItem());
+
+    expect(downloads.pause).not.toHaveBeenCalled();
+    expect(downloads.cancel).not.toHaveBeenCalled();
+  });
+
   it("never touches the download while the master password is locked", async () => {
-    seedChromeStorage(
-      createTestSettings({ NASpassword: "", rememberPassword: true, torrentInterceptMode: "always" }),
-    );
+    // A real lock needs the encrypted blob present and the session empty — without the blob
+    // isLocked() returns false and this would only exercise the generic empty-password path.
+    seedChromeStorage({
+      ...createTestSettings({ NASpassword: "", rememberPassword: true }),
+      encryptedNASpassword: { ciphertext: "AAAA", iv: "BBBB", salt: "CCCC" },
+    });
 
     await handleDownloadCreated(createDownloadItem());
 
     expect(downloads.cancel).not.toHaveBeenCalled();
     expect(downloads.pause).not.toHaveBeenCalled();
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "QuickGet is locked" }),
+    );
   });
 
   it("never touches the download when the session password was cleared by a restart", async () => {

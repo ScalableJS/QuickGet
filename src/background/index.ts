@@ -3,7 +3,7 @@
  * Orchestrates background tasks and event handlers
  */
 
-import { migrateSettings } from "@lib/settings.js";
+import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
 
 import { applyBadgeStats } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
@@ -34,21 +34,25 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 /**
- * 1.0.1/1.0.2 wrote the resolved `torrentInterceptMode` default into storage, leaving "off"
- * in profiles that never chose it. That is indistinguishable from a deliberate choice, so
- * the value is left alone and the user is told where to turn it back on.
+ * 1.0.2 wrote the resolved `torrentInterceptMode` default into storage, leaving "off" in
+ * profiles that never chose it. That is indistinguishable from a deliberate choice, so the
+ * value is left alone and the wording does not assert which of the two happened.
+ *
+ * The "shown" marker is written only after the notification was actually created, so a
+ * failure here does not consume the single delivery.
  */
 async function runSettingsMigration(previousVersion?: string): Promise<void> {
   try {
     const { interceptionLeftOff } = await migrateSettings(previousVersion);
     if (!interceptionLeftOff) return;
 
-    chrome.notifications.create({
+    await chrome.notifications.create({
       type: "basic",
       iconUrl: chrome.runtime.getURL("icons/128_download.png"),
       title: "Torrent interception is off",
-      message: "An earlier version disabled it by mistake. Open Settings to turn it back on.",
+      message: "Earlier versions could turn it off unintentionally. Check Settings if you expected it on.",
     });
+    await markInterceptNoticeShown();
   } catch (error) {
     console.error("[QuickGet] Settings migration failed:", error);
   }

@@ -11,6 +11,7 @@ import { DEFAULTS } from "./config.js";
 import {
   isLocked,
   loadSettings,
+  markInterceptNoticeShown,
   migrateSettings,
   resetSettings,
   saveSettings,
@@ -71,17 +72,34 @@ describe("settings", () => {
       expect(getChromeStorageSnapshot().settingsSchemaVersion).toBe(SETTINGS_SCHEMA_VERSION);
     });
 
-    it("stays quiet for unaffected versions and for a deliberate off on a fresh install", async () => {
+    it("stays quiet for releases that shipped the correct default", async () => {
+      // 307c78a flipped the default and bumped to 1.0.2 in one commit, so 1.0.0/1.0.1 shipped
+      // "always" — an "off" stored by them is the user's own choice.
       seedChromeStorage({ torrentInterceptMode: "off" });
       expect((await migrateSettings("1.0.0")).interceptionLeftOff).toBe(false);
 
-      seedChromeStorage({});
-      expect((await migrateSettings(undefined)).interceptionLeftOff).toBe(false);
+      seedChromeStorage({ torrentInterceptMode: "off" });
+      expect((await migrateSettings("1.0.1")).interceptionLeftOff).toBe(false);
     });
 
-    it("runs only once", async () => {
-      seedChromeStorage({ torrentInterceptMode: "off", settingsSchemaVersion: SETTINGS_SCHEMA_VERSION });
+    it("stays quiet on a fresh install and when interception is already on", async () => {
+      // previousVersion is only set when reason === "update".
+      seedChromeStorage({});
+      expect((await migrateSettings(undefined)).interceptionLeftOff).toBe(false);
 
+      seedChromeStorage({ torrentInterceptMode: "always" });
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(false);
+    });
+
+    it("notifies only once the notice was actually delivered, not merely attempted", async () => {
+      seedChromeStorage({ torrentInterceptMode: "off" });
+
+      // Bumping the schema version alone must not consume the single delivery: the notice
+      // stays pending until markInterceptNoticeShown() confirms it went out.
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(true);
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(true);
+
+      await markInterceptNoticeShown();
       expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(false);
     });
   });
