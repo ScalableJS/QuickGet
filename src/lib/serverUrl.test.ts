@@ -5,8 +5,8 @@ import { composeServerUrl, parseServerUrl } from "./serverUrl.js";
 describe("serverUrl", () => {
   describe("composeServerUrl", () => {
     it("builds http URL with port", () => {
-      expect(composeServerUrl({ NASsecure: false, NASaddress: "192.168.88.185", NASport: "8080" })).toBe(
-        "http://192.168.88.185:8080",
+      expect(composeServerUrl({ NASsecure: false, NASaddress: "192.168.1.100", NASport: "8080" })).toBe(
+        "http://192.168.1.100:8080",
       );
     });
 
@@ -27,9 +27,9 @@ describe("serverUrl", () => {
 
   describe("parseServerUrl", () => {
     it("parses a full http URL", () => {
-      expect(parseServerUrl("http://192.168.88.185:8080")).toEqual({
+      expect(parseServerUrl("http://192.168.1.100:8080")).toEqual({
         NASsecure: false,
-        NASaddress: "192.168.88.185",
+        NASaddress: "192.168.1.100",
         NASport: "8080",
       });
     });
@@ -51,9 +51,9 @@ describe("serverUrl", () => {
     });
 
     it("defaults to http when no scheme is given", () => {
-      expect(parseServerUrl("192.168.88.185:8080")).toEqual({
+      expect(parseServerUrl("192.168.1.100:8080")).toEqual({
         NASsecure: false,
-        NASaddress: "192.168.88.185",
+        NASaddress: "192.168.1.100",
         NASport: "8080",
       });
     });

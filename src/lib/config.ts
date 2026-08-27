@@ -15,7 +15,7 @@ export type ThemeMode = (typeof THEME_MODES)[number];
 
 export type Settings = {
   NASsecure: boolean;
-  NASaddress: string; // e.g. "192.168.88.185" or hostname
+  NASaddress: string; // e.g. "192.168.1.100" or hostname
   NASport: string; // e.g. "8080"
   NASlogin: string;
   NASpassword: string; // kept in session storage; encrypted at rest when "remember" is on

@@ -40,7 +40,7 @@ We already enumerate folders through Download Station's own
 `path`, `dir`, `writtable`). So validation reuses the existing authenticated DS session and
 the existing endpoint — no second login, no XML, no extra `cookies`/host permissions.
 
-> ✅ **HARD GATE RESOLVED — verified on live NAS `192.168.88.185:8080` (2026-06-20):**
+> ✅ **HARD GATE RESOLVED — verified on a live NAS (2026-06-20):**
 > 1. **Nested listing works.** `Misc/Dir` with `path="Multimedia"` returns its children
 >    (`{dir:"Books", path:"Multimedia/Books", writtable:true}`, …) at any depth.
 > 2. **Paths are RELATIVE, no leading slash.** Top-level entries are `Download`, `Movies`, …

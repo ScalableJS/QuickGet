@@ -28,9 +28,9 @@ export function parseServerUrl(raw: string): ServerUrlParts {
   try {
     url = new URL(withScheme);
   } catch {
-    throw new Error("Invalid server address. Example: http://192.168.88.185:8080");
+    throw new Error("Invalid server address. Example: http://192.168.1.100:8080");
   }
-  if (!url.hostname) throw new Error("Invalid server address. Example: http://192.168.88.185:8080");
+  if (!url.hostname) throw new Error("Invalid server address. Example: http://192.168.1.100:8080");
 
   return {
     NASsecure: url.protocol === "https:",

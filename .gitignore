@@ -44,6 +44,7 @@ test-results/
 !docs/popup-refactoring-plan.md
 !docs/synology-download-station-analysis.md
 !docs/download-interception-bugs.md
+!icons/chrome-extension-icon-animation.md
 
 storybook-static/
 
