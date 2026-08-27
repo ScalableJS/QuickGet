@@ -23,6 +23,12 @@ import {
 import { ensureMonitoring } from "./alarms.js";
 
 const RESUME_PREFIX = "qg-resume-";
+/** Marks a download paused for a hand-off that has not reached its terminal action yet. */
+const PENDING_PREFIX = "qg-pending-";
+/** Marks a download already taken over, so onCreated and onChanged cannot both send it. */
+const CLAIMED_PREFIX = "qg-claimed-";
+
+const pendingKey = (id: number): string => `${PENDING_PREFIX}${id}`;
 
 export function initDownloadInterception(): void {
   if (!chrome.downloads?.onCreated) {
@@ -34,11 +40,50 @@ export function initDownloadInterception(): void {
     void handleDownloadCreated(item);
   });
 
+  // Chrome often does not know the MIME type or the post-redirect URL when the download is
+  // created — both are in `DownloadDelta`, so a tracker endpoint that only identifies itself
+  // as a torrent later would never be intercepted from `onCreated` alone.
+  chrome.downloads.onChanged?.addListener((delta) => {
+    if (!delta.mime && !delta.finalUrl && !delta.filename) return;
+    void handleDownloadChanged(delta.id);
+  });
+
   chrome.notifications.onButtonClicked.addListener((notificationId) => {
     void handleNotificationButton(notificationId);
   });
 
+  // The worker may have been killed mid-hand-off, leaving a download paused forever.
+  // This runs on every worker start, which is exactly when such a leftover can be found.
+  void recoverAbandonedHandoffs();
+
   console.log("[QuickGet] download interception listener registered");
+}
+
+/**
+ * MV3 terminates the service worker on its own schedule — a slow or unreachable NAS can
+ * outlive it, in which case neither the cancel nor the resume ever runs and the browser
+ * download stays paused with nothing left to release it.
+ *
+ * The pending marker lives in `chrome.storage.session`, which survives worker restarts but
+ * not a browser restart; a download interrupted by a browser restart is unresumable anyway.
+ */
+export async function recoverAbandonedHandoffs(): Promise<void> {
+  try {
+    const stored = await chrome.storage.session.get(null);
+    const abandoned = Object.keys(stored).filter((key) => key.startsWith(PENDING_PREFIX));
+    if (abandoned.length === 0) return;
+
+    console.warn(`[QuickGet] recovering ${abandoned.length} abandoned hand-off(s)`);
+
+    for (const key of abandoned) {
+      const id = Number(key.slice(PENDING_PREFIX.length));
+      if (Number.isFinite(id)) await resumeBrowserDownload(id);
+    }
+
+    await chrome.storage.session.remove(abandoned);
+  } catch (error) {
+    console.error("[QuickGet] could not recover abandoned hand-offs:", error);
+  }
 }
 
 /**
@@ -57,13 +102,17 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     if (settings.torrentInterceptMode === "off") return;
 
     const url = item.finalUrl || item.url;
-    if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, item.mime)) {
+    if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, item.mime, item.filename)) {
       return; // not a torrent — leave it to the browser
     }
 
-    // No usable credential: either the master password was never entered, or
-    // storage.session was emptied by a browser restart. `isLocked()` only distinguishes
-    // the two for the message — it reports false in the second case, so it cannot be the
+    // onCreated and onChanged can both recognise the same download; whichever gets here
+    // first owns it, and the session marker keeps that true across a worker restart.
+    if (!(await claimDownload(item.id))) return;
+
+    // No usable NAS: the master password was never entered, storage.session was emptied by a
+    // browser restart, or the connection was never configured. `isLocked()` only distinguishes
+    // the first case for the message — it reports false in the second, so it cannot be the
     // guard itself. Leave the download alone; the browser will finish it normally.
     if (!settings.NASpassword || !settings.NASaddress || !settings.NASlogin) {
       const locked = settings.NASpassword === "" && (await isLocked());
@@ -79,6 +128,40 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     notify("Failed to redirect download", getErrorMessage(error));
+  } finally {
+    inFlight.delete(item.id);
+  }
+}
+
+/**
+ * Ids currently being processed. Added and tested *synchronously*, which is what settles the
+ * race: `onCreated` and `onChanged` can both recognise the same download, and the
+ * `await chrome.storage.session.get()` below would otherwise let both read "unclaimed" and
+ * send the torrent twice. Entries are released once handling finishes, so this guards
+ * concurrency only — the durable "already handled" record is the session marker.
+ */
+const inFlight = new Set<number>();
+
+/** Take ownership of a download id, returning false if something else already has it. */
+async function claimDownload(id: number): Promise<boolean> {
+  if (inFlight.has(id)) return false;
+  inFlight.add(id);
+
+  const key = `${CLAIMED_PREFIX}${id}`;
+  const existing = await chrome.storage.session.get(key);
+  if (existing[key]) return false;
+
+  await chrome.storage.session.set({ [key]: true });
+  return true;
+}
+
+/** Re-evaluate a download whose type-identifying fields only just became known. */
+async function handleDownloadChanged(id: number): Promise<void> {
+  try {
+    const [item] = await chrome.downloads.search({ id });
+    if (item && item.state === "in_progress") await handleDownloadCreated(item);
+  } catch (error) {
+    console.warn("[QuickGet] could not re-evaluate a changed download:", error);
   }
 }
 
@@ -90,6 +173,8 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
 
 async function handOffToNas(settings: Settings, downloadId: number, url: string): Promise<void> {
   const paused = await pauseBrowserDownload(downloadId);
+  // Written before the hand-off so a worker death mid-flight is recoverable on next start.
+  if (paused) await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
 
   try {
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
@@ -110,6 +195,9 @@ async function handOffToNas(settings: Settings, downloadId: number, url: string)
     console.error("[QuickGet] Failed to send torrent:", error);
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
     notify("Failed to send torrent", `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`);
+  } finally {
+    // A terminal action ran, so there is nothing left for the recovery sweep to release.
+    if (paused) await chrome.storage.session.remove(pendingKey(downloadId));
   }
 }
 

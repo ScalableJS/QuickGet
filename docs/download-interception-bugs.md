@@ -2,10 +2,11 @@
 
 Recorded 2026-08-27 against `env/dev` @ `4933b52`.
 
-**Status: BUG-1 through BUG-4, BUG-6 and BUG-8 are fixed** (same day). BUG-7 is partly done —
-unit coverage landed, the E2E spec has not. BUG-5 is still open. Live status and resolution
-notes: `agent-os/product/bugs-kanban.md`. This document is kept as the analysis of record,
-so the "current" tense below describes the code *before* the fix.
+**Status: all of BUG-1 through BUG-9 are fixed** (2026-08-27/28), released as 1.0.3. Live
+status, resolution notes and two findings that only surfaced during the fix — BUG-9 (MV3 worker
+death mid-hand-off) and the measured fact that a small `.torrent` completes before the cancel —
+are in `agent-os/product/bugs-kanban.md`. This document is kept as the analysis of record, so
+the "current" tense below describes the code *before* the fix.
 
 Two user-visible symptoms were reported:
 

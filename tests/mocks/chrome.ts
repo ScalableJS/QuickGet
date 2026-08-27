@@ -111,7 +111,9 @@ const downloadsCancel = vi.fn((_id: number) => Promise.resolve());
 const downloadsPause = vi.fn((_id: number) => Promise.resolve());
 const downloadsResume = vi.fn((_id: number) => Promise.resolve());
 const downloadsErase = vi.fn((_query: unknown) => Promise.resolve([]));
+const downloadsSearch = vi.fn((_query: unknown) => Promise.resolve([] as chrome.downloads.DownloadItem[]));
 const downloadsOnCreatedAddListener = vi.fn();
+const downloadsOnChangedAddListener = vi.fn();
 
 const notificationsCreate = vi.fn();
 const notificationsClear = vi.fn();
@@ -175,7 +177,9 @@ export function resetChromeMockState(): void {
   downloadsPause.mockClear();
   downloadsResume.mockClear();
   downloadsErase.mockClear();
+  downloadsSearch.mockClear();
   downloadsOnCreatedAddListener.mockClear();
+  downloadsOnChangedAddListener.mockClear();
 
   notificationsCreate.mockClear();
   notificationsClear.mockClear();
@@ -189,6 +193,7 @@ export function getChromeDownloadsMock() {
     cancel: downloadsCancel,
     pause: downloadsPause,
     resume: downloadsResume,
+    search: downloadsSearch,
     onCreatedAddListener: downloadsOnCreatedAddListener,
   };
 }
@@ -230,8 +235,12 @@ export function installChromeMock(): typeof chrome {
       pause: downloadsPause,
       resume: downloadsResume,
       erase: downloadsErase,
+      search: downloadsSearch,
       onCreated: {
         addListener: downloadsOnCreatedAddListener,
+      },
+      onChanged: {
+        addListener: downloadsOnChangedAddListener,
       },
     },
     notifications: {

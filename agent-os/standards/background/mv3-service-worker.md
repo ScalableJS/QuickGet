@@ -22,8 +22,22 @@ identify → guard credentials → pause → send to NAS
   → failure: resume it
 ```
 
-A `.torrent` is small enough that the browser finishes fetching it during the NAS round-trip.
 This ordering is the fix for a real data-loss defect — see `docs/download-interception-bugs.md`.
+
+Two consequences measured in E2E, not assumed:
+
+- **A small file usually completes before the cancel lands**, so the browser keeps a copy even
+  on success. The transaction protects against loss, not against a stray file.
+- **The worker can die mid-hand-off**, leaving the download paused forever. Record a marker in
+  `chrome.storage.session` before pausing, clear it in a `finally`, and sweep for leftovers on
+  every worker start.
+
+## Deduplicate listeners synchronously
+
+`onCreated` and `onChanged` can both fire for the same download. A claim written as
+`await storage.get()` then `storage.set()` is not atomic — both callers read "unclaimed" and
+act twice. Take the claim from an in-memory `Set` **before the first await**, and keep a session
+entry as the durable record across worker restarts.
 
 ## Credential preconditions apply to background entry points too
 

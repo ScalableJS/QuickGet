@@ -6,6 +6,7 @@ import {
   createDownloadItem,
   getChromeDownloadsMock,
   getChromeNotificationsMock,
+  getChromeSessionStorageSnapshot,
   seedChromeSessionStorage,
   seedChromeStorage,
 } from "../../tests/mocks/chrome.js";
@@ -15,7 +16,7 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { handleDownloadCreated } from "./downloads.js";
+import { handleDownloadCreated, recoverAbandonedHandoffs } from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
 
@@ -205,6 +206,99 @@ describe("download interception", () => {
 
     expect(nas.addTorrentCalls).toBe(1);
     expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("handles a torrent whose extension is followed by a fragment", async () => {
+    seedChromeStorage(createTestSettings());
+    const url = "https://tracker.example.com/file.torrent#pk";
+    server.use(
+      http.get(url, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 0 }),
+      ),
+    );
+
+    await handleDownloadCreated(createDownloadItem({ url, finalUrl: url, mime: "application/octet-stream" }));
+
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("recognises a torrent by filename when the URL and MIME say nothing", async () => {
+    seedChromeStorage(createTestSettings());
+    const url = "https://tracker.example.com/download?id=1234";
+    server.use(
+      http.get(url, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 0 }),
+      ),
+    );
+
+    await handleDownloadCreated(
+      createDownloadItem({
+        url,
+        finalUrl: url,
+        mime: "application/octet-stream",
+        filename: "/Users/me/Downloads/Ubuntu.torrent",
+      }),
+    );
+
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("sends a download only once when onCreated and onChanged both recognise it", async () => {
+    seedChromeStorage(createTestSettings());
+    const nas = mockSuccessfulHandoff();
+    const item = createDownloadItem();
+
+    await handleDownloadCreated(item);
+    await handleDownloadCreated(item); // the onChanged path arriving for the same id
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends only once when both listeners fire concurrently", async () => {
+    // Found in E2E, not here: sequential calls are settled by the session marker, but two
+    // concurrent ones both read it as unset and sent the torrent twice. The claim has to be
+    // taken synchronously, before the first await.
+    seedChromeStorage(createTestSettings());
+    const nas = mockSuccessfulHandoff();
+    const item = createDownloadItem();
+
+    await Promise.all([handleDownloadCreated(item), handleDownloadCreated(item)]);
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a download abandoned by a service worker that died mid-hand-off", async () => {
+    seedChromeSessionStorage({ "qg-pending-7": true, sessionNASpassword: "secret" });
+
+    await recoverAbandonedHandoffs();
+
+    expect(downloads.resume).toHaveBeenCalledWith(7);
+    expect(getChromeSessionStorageSnapshot()["qg-pending-7"]).toBeUndefined();
+    // Unrelated session keys must survive the sweep.
+    expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("secret");
+  });
+
+  it("clears the pending marker once the hand-off reached a terminal action", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem());
+
+    expect(getChromeSessionStorageSnapshot()["qg-pending-1"]).toBeUndefined();
   });
 
   it("leaves the download alone when the NAS address is not configured", async () => {

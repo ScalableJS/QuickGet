@@ -53,10 +53,20 @@ function normalizeName(value: string): string {
 
 /**
  * Decide whether a download is a torrent source that must be routed to the NAS.
+ *
+ * `filename` is worth checking on its own: trackers commonly serve a `.torrent` from an
+ * opaque endpoint and only reveal the real name through `Content-Disposition`, which Chrome
+ * surfaces as the download item's filename rather than in the URL.
  */
-export function isTorrentSource(url: string, mime?: string): boolean {
+export function isTorrentSource(url: string, mime?: string, filename?: string): boolean {
   if (mime === "application/x-bittorrent") return true;
-  return /\.torrent(\?|$)/i.test(url) || /\/dl\.php\b/i.test(url);
+  if (filename && hasTorrentExtension(filename)) return true;
+  return hasTorrentExtension(url) || /\/dl\.php\b/i.test(url);
+}
+
+/** Matches a `.torrent` ending, allowing for a query string or a fragment after it. */
+function hasTorrentExtension(value: string): boolean {
+  return /\.torrent(?:[?#]|$)/i.test(value);
 }
 
 /**

@@ -17,10 +17,11 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-3 | Locked / empty-credential state unguarded in background | background | high | Done |
 | BUG-4 | Hand-off failure swallowed by `sendAndNotify` | background | medium | Done |
 | BUG-1 | Interception default flipped to `off` and persisted on read | settings | high | Done |
+| BUG-9 | Service worker death between pause and cancel/resume | background | medium | Done |
 | BUG-8 | No settings schema version or migration path | settings | medium | Done |
+| BUG-7 | No test coverage for `handleDownloadCreated` | testing | medium | Done |
 | BUG-6 | Documentation drift on interception default and modes | docs | low | Done |
-| BUG-7 | No test coverage for `handleDownloadCreated` | testing | medium | In Progress |
-| BUG-5 | `.torrent` detection gaps (fragment URLs, `filename`, `onChanged`) | background | low | Backlog |
+| BUG-5 | `.torrent` detection gaps (fragment URLs, `filename`, `onChanged`) | background | low | Done |
 
 ---
 
@@ -120,7 +121,7 @@ resolved value to `missing`, so the behavioural flag is resolved in memory only.
 
 ### BUG-7 — No test coverage for `handleDownloadCreated`
 
-**Severity:** medium · **Area:** testing · **Status:** In Progress
+**Severity:** medium · **Area:** testing · **Status:** Done
 **Files:** `tests/mocks/chrome.ts`, `src/background/downloads.test.ts` (absent)
 
 The function carrying BUG-2 through BUG-5 has never had a test. A `downloads.test.ts` existed
@@ -135,16 +136,18 @@ layer that can prove the browser download actually resumes.
 
 **Sequencing:** write the failing tests against the current code *before* fixing BUG-2, so
 the fix is proven.
-**In progress 2026-08-27** — `tests/mocks/chrome.ts` gained `downloads`/`notifications` stubs and
-`createDownloadItem()`; `src/background/downloads.test.ts` covers 6 cases (written against the
-old code first: 4 failed, 2 passed). **Remaining:** the Playwright spec driving a real download
-through the mock NAS — the only layer that can prove a resumed download actually completes.
+**Done 2026-08-28** — `tests/mocks/chrome.ts` gained `downloads`/`notifications` stubs and
+`createDownloadItem()`; `src/background/downloads.test.ts` covers 18 cases (written against the
+old code first: 4 of the first 6 failed). `tests/e2e/download-interception.spec.ts` drives three
+real Chrome downloads through a delaying torrent host, including the two original defects: an
+unreachable NAS and a missing credential must both leave the file intact. Added to
+`test:e2e:mock`, so CI gates on it.
 
 ---
 
 ### BUG-5 — `.torrent` detection gaps
 
-**Severity:** low · **Area:** background · **Status:** Backlog
+**Severity:** low · **Area:** background · **Status:** Done
 **Files:** `src/lib/torrentSender.ts:57-60`
 
 - `/\.torrent(\?|$)/i` misses fragments — `foo.torrent#bar` slips through.
@@ -153,6 +156,11 @@ through the mock NAS — the only layer that can prove a resumed download actual
   `onChanged`, so endpoints like `/download?id=1234` are never intercepted.
 
 No data loss — misclassification simply skips interception. Harden after the above are green.
+
+**Done 2026-08-28** — `hasTorrentExtension()` accepts `?` and `#`; `isTorrentSource()` also takes
+`item.filename`; a `downloads.onChanged` listener re-evaluates a download once Chrome learns its
+MIME type or final URL. Adding that listener needed the claim described in BUG-9, since two
+listeners can now recognise the same download.
 
 ---
 
@@ -188,3 +196,43 @@ from **1.0.2 only** raises a one-time notification and is never rewritten — ve
 history: 1.0.0 and 1.0.1 shipped the correct `"always"` default, so an `"off"` there is the
 user's own choice. The "shown" marker is separate from the schema version and is written only
 after the notification was actually created.
+
+---
+
+### BUG-9 — Service worker death between pause and cancel/resume
+
+**Severity:** medium · **Area:** background · **Status:** Done
+**Files:** `src/background/downloads.ts`
+
+Raised by an external review of the BUG-2 fix. MV3 terminates the service worker on its own
+schedule — an unreachable NAS can outlive it — so neither the cancel nor the resume runs and
+the browser download stays paused with nothing left to release it. Precisely the failure case
+the fix was meant to cover.
+
+The reviewer's remedy was to drop `pause` entirely (`send → cancel on success, otherwise leave
+it alone`). Rejected: without a pause the `.torrent` usually lands on disk, which is what
+interception exists to prevent.
+
+**Done 2026-08-28** — a `qg-pending-<id>` marker in `chrome.storage.session` is written before
+the hand-off and cleared in a `finally`. `recoverAbandonedHandoffs()` runs on every worker
+start and resumes whatever was left behind. Session storage survives a worker restart but not
+a browser restart, which is the right lifetime: a download interrupted by a browser restart is
+not resumable anyway.
+
+**Related, found while testing this:** `onCreated` and `onChanged` can both recognise the same
+download, and a claim implemented as `await get()` then `set()` let both callers read
+"unclaimed" and send the torrent twice — visible in E2E as the torrent host being fetched five
+times instead of three. The claim is now taken synchronously from an in-memory set before the
+first await, with the session marker carrying it across restarts.
+
+---
+
+## Measured behaviour worth remembering
+
+E2E (`tests/e2e/download-interception.spec.ts`) established something the design assumed
+otherwise: **a small `.torrent` from a fast host reaches `complete` before the cancel can take
+effect**, so Chrome keeps a local copy even on a fully successful hand-off. The pause/cancel
+transaction therefore protects against *loss*, not against a stray file. The spec asserts the
+contract that actually holds — the download is never left in progress — rather than a
+`interrupted` state that only occurs when the transfer is slow enough. The torrent host in the
+test delays its body specifically so the transaction under test can happen at all.
