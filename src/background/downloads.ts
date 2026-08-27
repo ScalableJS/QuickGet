@@ -4,13 +4,14 @@
  * Watches for .torrent downloads and routes them to QNAP Download Station.
  * Behaviour is driven by settings.torrentInterceptMode:
  *   - "off"    → do nothing (normal browser download)
- *   - "always" → cancel and send straight to the NAS default folder
+ *   - "always" → hand the torrent to the NAS, cancelling the browser download only once
+ *                the NAS has accepted it
  */
 
 import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
-import { loadSettings } from "@lib/settings.js";
+import { isLocked, loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
   isRestartable,
@@ -40,7 +41,15 @@ export function initDownloadInterception(): void {
   console.log("[QuickGet] download interception listener registered");
 }
 
-async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
+/**
+ * Hand a `.torrent` download over to the NAS without ever destroying it on failure.
+ *
+ * The transfer is transactional: pause the browser download, try the hand-off, and only
+ * cancel once the NAS has accepted it — otherwise resume and let the browser finish.
+ * Cancelling first (as this did until the "ask" mode was removed) loses the file whenever
+ * the NAS is unreachable, the credentials are missing, or the URL is single-use.
+ */
+export async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
   console.log("[QuickGet] download created:", { id: item.id, url: item.url, finalUrl: item.finalUrl, mime: item.mime });
 
   try {
@@ -52,8 +61,21 @@ async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promi
       return; // not a torrent — leave it to the browser
     }
 
-    await cancelBrowserDownload(item.id);
-    await sendAndNotify(settings, url);
+    // No usable credential: either the master password was never entered, or
+    // storage.session was emptied by a browser restart. `isLocked()` only distinguishes
+    // the two for the message — it reports false in the second case, so it cannot be the
+    // guard itself. Leave the download alone; the browser will finish it normally.
+    if (!settings.NASpassword) {
+      const locked = await isLocked();
+      console.warn("[QuickGet] no NAS password — leaving the download to the browser");
+      notify(
+        locked ? "QuickGet is locked" : "NAS password unavailable",
+        "The .torrent was left to the browser. Open QuickGet to unlock or configure it.",
+      );
+      return;
+    }
+
+    await handOffToNas(settings, item.id, url);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     notify("Failed to redirect download", getErrorMessage(error));
@@ -66,11 +88,17 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
   }
 }
 
-async function sendAndNotify(settings: Settings, url: string): Promise<void> {
+async function handOffToNas(settings: Settings, downloadId: number, url: string): Promise<void> {
+  const paused = await pauseBrowserDownload(downloadId);
+
   try {
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder);
+
+    // The NAS owns the torrent now — only here is it safe to drop the browser's copy.
+    await cancelBrowserDownload(downloadId);
     void ensureMonitoring();
+
     if (duplicate) {
       await notifyDuplicate(settings, name);
     } else {
@@ -78,7 +106,11 @@ async function sendAndNotify(settings: Settings, url: string): Promise<void> {
     }
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
-    notify("Failed to send torrent", getErrorMessage(error));
+    if (paused) await resumeBrowserDownload(downloadId);
+    notify(
+      "Failed to send torrent",
+      `${getErrorMessage(error)}${paused ? " — browser download resumed." : ""}`,
+    );
   }
 }
 
@@ -119,6 +151,28 @@ async function handleResumeButton(notificationId: string): Promise<void> {
   } catch (error) {
     console.error("[QuickGet] Failed to resume task:", error);
     notify("Failed to resume task", getErrorMessage(error));
+  }
+}
+
+/**
+ * Hold the transfer while the NAS hand-off is attempted. Returns whether the download was
+ * actually paused — a `.torrent` is small enough that it may already have finished, and a
+ * download that was never paused must not be resumed.
+ */
+async function pauseBrowserDownload(id: number): Promise<boolean> {
+  try {
+    await chrome.downloads.pause(id);
+    return true;
+  } catch {
+    return false; // already complete or not in progress
+  }
+}
+
+async function resumeBrowserDownload(id: number): Promise<void> {
+  try {
+    await chrome.downloads.resume(id);
+  } catch (error) {
+    console.warn("[QuickGet] could not resume the browser download:", error);
   }
 }
 

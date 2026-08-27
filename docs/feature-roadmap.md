@@ -217,7 +217,8 @@ Do not duplicate these:
 - **Alarm-based status polling** — `src/background/alarms.ts` (30s, self-disarms when idle).
 - **Quick-add (multi-line URL/magnet)** — `src/popup/features/upload/CreateUrls.svelte`.
 - **`.torrent` download interception** — `src/background/downloads.ts`
-  (`torrentInterceptMode` off/ask/always) + intercept/resume notifications.
+  (`torrentInterceptMode` off/always — the `ask` chooser was removed in `2ed381c`)
+  + intercept/resume notifications.
 
 ---
 

@@ -35,7 +35,7 @@ export const DEFAULTS: Settings = {
   NASpassword: "",
   NAStempdir: "",
   NASdir: "",
-  torrentInterceptMode: "off",
+  torrentInterceptMode: "always",
   routingRules: [],
   rememberPassword: false,
   theme: "auto",
