@@ -53,10 +53,20 @@ function normalizeName(value: string): string {
 
 /**
  * Decide whether a download is a torrent source that must be routed to the NAS.
+ *
+ * `filename` is worth checking on its own: trackers commonly serve a `.torrent` from an
+ * opaque endpoint and only reveal the real name through `Content-Disposition`, which Chrome
+ * surfaces as the download item's filename rather than in the URL.
  */
-export function isTorrentSource(url: string, mime?: string): boolean {
+export function isTorrentSource(url: string, mime?: string, filename?: string): boolean {
   if (mime === "application/x-bittorrent") return true;
-  return /\.torrent(\?|$)/i.test(url) || /\/dl\.php\b/i.test(url);
+  if (filename && hasTorrentExtension(filename)) return true;
+  return hasTorrentExtension(url) || /\/dl\.php\b/i.test(url);
+}
+
+/** Matches a `.torrent` ending, allowing for a query string or a fragment after it. */
+function hasTorrentExtension(value: string): boolean {
+  return /\.torrent(?:[?#]|$)/i.test(value);
 }
 
 /**
@@ -74,6 +84,8 @@ export async function sendTorrentUrlToNas(
   }
 
   const blob = await response.blob();
+  await assertLooksLikeTorrent(blob, response);
+
   const name = torrentFileName(response, url);
   const file = new File([blob], name, { type: "application/x-bittorrent" });
 
@@ -82,6 +94,29 @@ export async function sendTorrentUrlToNas(
   const result = await client.addTorrent(file);
 
   return { name, duplicate: Boolean(result.duplicate) };
+}
+
+/**
+ * Trackers answer an unauthenticated `dl.php` with the login page rather than a 4xx, so a
+ * successful HTTP status proves nothing. Uploading that HTML would create a task on the NAS
+ * for a file that is not a torrent — the symptom this check exists to turn into a real error.
+ *
+ * A `.torrent` is bencoded, so it always starts with `d` followed by a digit (the first key's
+ * length), e.g. `d8:announce`.
+ */
+async function assertLooksLikeTorrent(blob: Blob, response: Response): Promise<void> {
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  const bencodedDict = head[0] === 0x64 && head[1] >= 0x30 && head[1] <= 0x39; // "d" + digit
+  if (bencodedDict) return;
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/x-bittorrent")) return;
+
+  throw new Error(
+    contentType.includes("text/html")
+      ? "The tracker returned a web page, not a .torrent — you may need to log in to it first."
+      : "The downloaded file is not a .torrent.",
+  );
 }
 
 function torrentFileName(response: Response, url: string): string {

@@ -3,6 +3,8 @@
  * Orchestrates background tasks and event handlers
  */
 
+import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
+
 import { applyBadgeStats } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { initDownloadInterception } from "./downloads.js";
@@ -23,12 +25,38 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 });
 
 // Initialize on install
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
+  void runSettingsMigration(details.previousVersion);
   // Reflect any already-running downloads right away after an install/update.
   void ensureMonitoring();
 });
+
+/**
+ * 1.0.2 wrote the resolved `torrentInterceptMode` default into storage, leaving "off" in
+ * profiles that never chose it. That is indistinguishable from a deliberate choice, so the
+ * value is left alone and the wording does not assert which of the two happened.
+ *
+ * The "shown" marker is written only after the notification was actually created, so a
+ * failure here does not consume the single delivery.
+ */
+async function runSettingsMigration(previousVersion?: string): Promise<void> {
+  try {
+    const { interceptionLeftOff } = await migrateSettings(previousVersion);
+    if (!interceptionLeftOff) return;
+
+    await chrome.notifications.create({
+      type: "basic",
+      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
+      title: "Torrent interception is off",
+      message: "Earlier versions could turn it off unintentionally. Check Settings if you expected it on.",
+    });
+    await markInterceptNoticeShown();
+  } catch (error) {
+    console.error("[QuickGet] Settings migration failed:", error);
+  }
+}
 
 // Cold browser start: nothing has opened the popup or mutated a task yet, so
 // without this the toolbar would sit at its stale value until the user clicks.

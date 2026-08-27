@@ -4,6 +4,21 @@ A Svelte 5 + TypeScript Chrome (MV3) extension that sends downloads/torrents to 
 NAS Download Station. Built with Vite, linted/formatted by **Biome**, tested with Vitest
 (unit) + Playwright (E2E).
 
+## Agent OS
+
+This repo uses [Agent OS](https://github.com/buildermethods/agent-os). Product context and
+machine-readable standards live in `agent-os/`:
+
+- **`agent-os/product/`** — `mission.md` (problem, users, principles, non-goals),
+  `roadmap.md` (phases; details in `docs/feature-roadmap.md`), `tech-stack.md`,
+  and **`bugs-kanban.md` — the single source of truth for open defects.**
+- **`agent-os/standards/`** — concise, injectable rules, listed in `index.yml`.
+  Read the index first and pull only what the task needs; `/inject-standards` does this
+  for you. Commands live in `.claude/commands/agent-os/`, skills in `.agents/skills/`.
+
+Before starting work: check `bugs-kanban.md` for a card covering it, and read the standards
+relevant to the area you are touching.
+
 ## Code standards — read before writing code
 
 Follow the repo code standard and review guide in `.github/instructions/`:

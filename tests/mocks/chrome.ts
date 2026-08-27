@@ -102,6 +102,38 @@ const runtimeOnInstalledAddListener = vi.fn();
 const contextMenusOnClickedAddListener = vi.fn();
 const alarmsOnAlarmAddListener = vi.fn();
 
+/**
+ * The download-interception mocks track *when* each call happened, not just that it
+ * happened: the ordering of cancel/pause/resume around the NAS hand-off is the contract
+ * under test, and it is asserted via `mock.invocationCallOrder`.
+ */
+const downloadsCancel = vi.fn((_id: number) => Promise.resolve());
+const downloadsPause = vi.fn((_id: number) => Promise.resolve());
+const downloadsResume = vi.fn((_id: number) => Promise.resolve());
+const downloadsErase = vi.fn((_query: unknown) => Promise.resolve([]));
+const downloadsSearch = vi.fn((_query: unknown) => Promise.resolve([] as chrome.downloads.DownloadItem[]));
+const downloadsOnCreatedAddListener = vi.fn();
+const downloadsOnChangedAddListener = vi.fn();
+
+const notificationsCreate = vi.fn();
+const notificationsClear = vi.fn();
+const notificationsOnButtonClickedAddListener = vi.fn();
+const notificationsOnClosedAddListener = vi.fn();
+
+const runtimeGetURL = vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`);
+
+/** A `DownloadItem` with only the fields the interception path reads. */
+export function createDownloadItem(overrides: Partial<chrome.downloads.DownloadItem> = {}): chrome.downloads.DownloadItem {
+  return {
+    id: 1,
+    url: "https://tracker.example.com/file.torrent",
+    finalUrl: "https://tracker.example.com/file.torrent",
+    filename: "file.torrent",
+    mime: "application/x-bittorrent",
+    ...overrides,
+  } as chrome.downloads.DownloadItem;
+}
+
 export function seedChromeStorage(items: StorageState): void {
   storageState = { ...items };
 }
@@ -140,6 +172,34 @@ export function resetChromeMockState(): void {
   runtimeOnInstalledAddListener.mockClear();
   contextMenusOnClickedAddListener.mockClear();
   alarmsOnAlarmAddListener.mockClear();
+
+  downloadsCancel.mockClear();
+  downloadsPause.mockClear();
+  downloadsResume.mockClear();
+  downloadsErase.mockClear();
+  downloadsSearch.mockClear();
+  downloadsOnCreatedAddListener.mockClear();
+  downloadsOnChangedAddListener.mockClear();
+
+  notificationsCreate.mockClear();
+  notificationsClear.mockClear();
+  notificationsOnButtonClickedAddListener.mockClear();
+  notificationsOnClosedAddListener.mockClear();
+  runtimeGetURL.mockClear();
+}
+
+export function getChromeDownloadsMock() {
+  return {
+    cancel: downloadsCancel,
+    pause: downloadsPause,
+    resume: downloadsResume,
+    search: downloadsSearch,
+    onCreatedAddListener: downloadsOnCreatedAddListener,
+  };
+}
+
+export function getChromeNotificationsMock() {
+  return { create: notificationsCreate, clear: notificationsClear };
 }
 
 export function installChromeMock(): typeof chrome {
@@ -167,6 +227,30 @@ export function installChromeMock(): typeof chrome {
     runtime: {
       onInstalled: {
         addListener: runtimeOnInstalledAddListener,
+      },
+      getURL: runtimeGetURL,
+    },
+    downloads: {
+      cancel: downloadsCancel,
+      pause: downloadsPause,
+      resume: downloadsResume,
+      erase: downloadsErase,
+      search: downloadsSearch,
+      onCreated: {
+        addListener: downloadsOnCreatedAddListener,
+      },
+      onChanged: {
+        addListener: downloadsOnChangedAddListener,
+      },
+    },
+    notifications: {
+      create: notificationsCreate,
+      clear: notificationsClear,
+      onButtonClicked: {
+        addListener: notificationsOnButtonClickedAddListener,
+      },
+      onClosed: {
+        addListener: notificationsOnClosedAddListener,
       },
     },
     contextMenus: {

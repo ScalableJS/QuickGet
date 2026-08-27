@@ -19,19 +19,32 @@ playwright-report/
 test-results/
 .e2e-artifacts/
 
-# Ignore all markdown files except README, project instructions, and tracked docs
+# Ignore all markdown files except README, project instructions, and tracked docs.
+# NOTE: this is an allow-list — a new .md file is invisible to git until it is listed here.
+# That is how the Agent OS migration silently failed the first time.
 *.md
 !LICENSE.md
 !README.md
+!AGENTS.md
 !CLAUDE.md
+!CHROMEWEBSTORE.md
 !.github/**/*.md
-!docs/toolbar-actions.md
 
+# Agent OS — product context, standards, and the bug board.
+!agent-os/**/*.md
+!.agents/**/*.md
+
+!docs/toolbar-actions.md
 !docs/svelte-migration-plan.md
 !docs/privacy-policy.md
 !docs/firefox-release-guide.md
 !docs/competitor-analysis.md
 !docs/feature-roadmap.md
+!docs/cache-options.md
+!docs/popup-refactoring-plan.md
+!docs/synology-download-station-analysis.md
+!docs/download-interception-bugs.md
+!icons/chrome-extension-icon-animation.md
 
 storybook-static/
 

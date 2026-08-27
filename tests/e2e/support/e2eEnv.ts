@@ -60,3 +60,24 @@ export function loadRealNasEnv(rootDir: string): RealNasEnv {
 export function hasRequiredRealNasEnv(env: RealNasEnv): boolean {
   return Boolean(env.host && env.port && env.login && env.password);
 }
+
+export interface TrackerEnv {
+  enabled: boolean;
+  /** Topic page carrying a download link, configured locally. */
+  topicUrl: string;
+}
+
+/**
+ * Settings for the opt-in private-tracker test. Kept out of the default run: it talks to a live
+ * third-party site, so it must never gate CI. The site is configured locally and deliberately
+ * has no default here.
+ */
+export function loadTrackerEnv(rootDir: string): TrackerEnv {
+  const localEnv = parseDotEnvFile(path.join(rootDir, ".env.e2e.local"));
+  const merged = { ...localEnv, ...process.env } as Record<string, string | undefined>;
+
+  return {
+    enabled: envFlag(merged.TRACKER_E2E, false),
+    topicUrl: merged.TRACKER_E2E_TOPIC ?? "",
+  };
+}

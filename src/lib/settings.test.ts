@@ -8,7 +8,16 @@ import {
 } from "../../tests/mocks/chrome";
 
 import { DEFAULTS } from "./config.js";
-import { isLocked, loadSettings, resetSettings, saveSettings, unlock } from "./settings.js";
+import {
+  isLocked,
+  loadSettings,
+  markInterceptNoticeShown,
+  migrateSettings,
+  resetSettings,
+  saveSettings,
+  SETTINGS_SCHEMA_VERSION,
+  unlock,
+} from "./settings.js";
 
 describe("settings", () => {
   it("uses empty connection and folder defaults", () => {
@@ -19,7 +28,7 @@ describe("settings", () => {
       NASpassword: "",
       NAStempdir: "",
       NASdir: "",
-      torrentInterceptMode: "off",
+      torrentInterceptMode: "always",
     });
   });
 
@@ -45,7 +54,54 @@ describe("settings", () => {
     expect(snapshot.NASaddress).toBe("files.local");
     expect(snapshot.NASlogin).toBeUndefined();
     expect(snapshot.NAStempdir).toBeUndefined();
-    expect(snapshot.torrentInterceptMode).toBe("off");
+    // Behavioural flags resolve in memory but must never be written back: persisting one
+    // freezes it as a user choice that no later default change can override.
+    expect(settings.torrentInterceptMode).toBe("always");
+    expect(snapshot.torrentInterceptMode).toBeUndefined();
+  });
+
+  describe("migrateSettings", () => {
+    it("flags interception left off by the 1.0.2 default leak without rewriting it", async () => {
+      seedChromeStorage({ torrentInterceptMode: "off" });
+
+      const { interceptionLeftOff } = await migrateSettings("1.0.2");
+
+      expect(interceptionLeftOff).toBe(true);
+      // The user's stored choice is reported, never overwritten.
+      expect(getChromeStorageSnapshot().torrentInterceptMode).toBe("off");
+      expect(getChromeStorageSnapshot().settingsSchemaVersion).toBe(SETTINGS_SCHEMA_VERSION);
+    });
+
+    it("stays quiet for releases that shipped the correct default", async () => {
+      // 307c78a flipped the default and bumped to 1.0.2 in one commit, so 1.0.0/1.0.1 shipped
+      // "always" — an "off" stored by them is the user's own choice.
+      seedChromeStorage({ torrentInterceptMode: "off" });
+      expect((await migrateSettings("1.0.0")).interceptionLeftOff).toBe(false);
+
+      seedChromeStorage({ torrentInterceptMode: "off" });
+      expect((await migrateSettings("1.0.1")).interceptionLeftOff).toBe(false);
+    });
+
+    it("stays quiet on a fresh install and when interception is already on", async () => {
+      // previousVersion is only set when reason === "update".
+      seedChromeStorage({});
+      expect((await migrateSettings(undefined)).interceptionLeftOff).toBe(false);
+
+      seedChromeStorage({ torrentInterceptMode: "always" });
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(false);
+    });
+
+    it("notifies only once the notice was actually delivered, not merely attempted", async () => {
+      seedChromeStorage({ torrentInterceptMode: "off" });
+
+      // Bumping the schema version alone must not consume the single delivery: the notice
+      // stays pending until markInterceptNoticeShown() confirms it went out.
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(true);
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(true);
+
+      await markInterceptNoticeShown();
+      expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(false);
+    });
   });
 
   it("saves partial settings into chrome.storage.local", async () => {

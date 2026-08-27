@@ -50,12 +50,17 @@ export async function loadSettings(): Promise<Settings> {
           return fallback;
         };
 
+        /**
+         * Behavioural flags are resolved in memory only — deliberately NOT added to
+         * `missing`. Persisting one turns it into an explicit user choice that a later
+         * default change can no longer override, which is how interception silently
+         * stayed off for every existing profile.
+         */
         const modeWithDefault = (key: keyof Settings, fallback: TorrentInterceptMode): TorrentInterceptMode => {
           const raw = localItems[key];
           if (typeof raw === "string" && (INTERCEPT_MODES as readonly string[]).includes(raw)) {
             return raw as TorrentInterceptMode;
           }
-          (missing as Record<string, unknown>)[key] = fallback;
           return fallback;
         };
 
@@ -118,6 +123,62 @@ export async function loadSettings(): Promise<Settings> {
       });
     });
   });
+}
+
+/** Bumped whenever stored settings need a one-off fix-up on update. */
+export const SETTINGS_SCHEMA_VERSION = 1;
+
+/**
+ * Releases whose `loadSettings()` persisted the resolved default of `torrentInterceptMode`,
+ * writing "off" into profiles that had never chosen it.
+ *
+ * Only 1.0.2: `307c78a` flipped the default to "off" and bumped the manifest to 1.0.2 in the
+ * same commit, so 1.0.0 and 1.0.1 shipped with "always". An "off" stored by those releases is
+ * a deliberate user choice and must not be second-guessed.
+ */
+const INTERCEPT_DEFAULT_LEAKED_IN = ["1.0.2"];
+
+export type SettingsMigrationResult = {
+  /** Interception is off in a profile that most likely never asked for it — tell the user. */
+  interceptionLeftOff: boolean;
+};
+
+/**
+ * Run once per update, from `chrome.runtime.onInstalled`.
+ *
+ * A stored "off" cannot be told apart from a deliberate user choice, so it is never
+ * rewritten — the user is notified instead and decides for themselves.
+ */
+export async function migrateSettings(previousVersion?: string): Promise<SettingsMigrationResult> {
+  const stored = await new Promise<Record<string, unknown>>((resolve) => {
+    chrome.storage.local.get(
+      ["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"],
+      (items) => resolve(items),
+    );
+  });
+
+  // `previousVersion` is only set when reason === "update", so a fresh install never matches.
+  const interceptionLeftOff =
+    stored.interceptNoticeShown !== true &&
+    previousVersion !== undefined &&
+    INTERCEPT_DEFAULT_LEAKED_IN.includes(previousVersion) &&
+    stored.torrentInterceptMode === "off";
+
+  if (stored.settingsSchemaVersion !== SETTINGS_SCHEMA_VERSION) {
+    await new Promise<void>((resolve) =>
+      chrome.storage.local.set({ settingsSchemaVersion: SETTINGS_SCHEMA_VERSION }, resolve),
+    );
+  }
+
+  return { interceptionLeftOff };
+}
+
+/**
+ * Record that the interception notice was delivered. Kept separate from the schema version so
+ * a failed `notifications.create` does not silently consume the one chance to show it.
+ */
+export async function markInterceptNoticeShown(): Promise<void> {
+  await new Promise<void>((resolve) => chrome.storage.local.set({ interceptNoticeShown: true }, resolve));
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "quickget-remote",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Lightweight client for QNAP Download Station 5",
   "type": "module",
   "scripts": {
@@ -12,8 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e:mock": "playwright test tests/e2e/mockNas.contract.spec.ts tests/e2e/popup.full-cycle.spec.ts tests/e2e/routing-rules.spec.ts tests/e2e/torrent-files.spec.ts",
-    "test:e2e:mock:headed": "playwright test tests/e2e/mockNas.contract.spec.ts tests/e2e/popup.full-cycle.spec.ts tests/e2e/routing-rules.spec.ts tests/e2e/torrent-files.spec.ts --headed",
+    "test:e2e:mock": "playwright test tests/e2e/mockNas.contract.spec.ts tests/e2e/popup.full-cycle.spec.ts tests/e2e/routing-rules.spec.ts tests/e2e/torrent-files.spec.ts tests/e2e/download-interception.spec.ts",
+    "test:e2e:mock:headed": "playwright test tests/e2e/mockNas.contract.spec.ts tests/e2e/popup.full-cycle.spec.ts tests/e2e/routing-rules.spec.ts tests/e2e/torrent-files.spec.ts tests/e2e/download-interception.spec.ts --headed",
     "test:e2e:real": "QNAP_E2E_REAL=1 playwright test tests/e2e/popup.real-nas.spec.ts --grep-invert @mutating",
     "test:e2e:real:mutating": "QNAP_E2E_REAL=1 QNAP_E2E_ALLOW_MUTATIONS=1 playwright test tests/e2e/popup.real-nas.spec.ts --grep @mutating",
     "generate-icons": "node scripts/generate-icons.js",
@@ -29,7 +29,9 @@
     "capture:store-assets": "npm run build && playwright test tests/e2e/store-assets.spec.ts && node scripts/generate-store-assets.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e:tracker": "TRACKER_E2E=1 playwright test tests/e2e/private-tracker.real.spec.ts",
+    "tracker:login": "node scripts/tracker-login.mjs"
   },
   "keywords": [
     "qnap",
