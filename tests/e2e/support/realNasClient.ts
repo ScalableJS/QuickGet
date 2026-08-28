@@ -21,7 +21,6 @@ export function toRealNasSettings(env: RealNasEnv): Settings {
     NASdir: env.destDir,
     torrentInterceptMode: "always",
     routingRules: [],
-    rememberPassword: false,
     theme: "auto",
   };
 }

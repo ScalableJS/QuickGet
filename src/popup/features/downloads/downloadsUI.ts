@@ -57,6 +57,9 @@ export function renderDownloads(tasks: Task[]): void {
   const settingsOpen = settingsPanel ? !settingsPanel.classList.contains("hidden") : false;
   if (!settingsOpen) {
     downloadsSection.classList.remove("hidden");
+    // The activity log belongs to the downloads view; left on screen it appears to be part of
+    // the settings, where it explains nothing.
+    document.getElementById("activity-section")?.classList.remove("hidden");
   }
 
   updateStatusSpeed(tasks);
@@ -69,4 +72,5 @@ export function setRemovingDownload(hash: string | null): void {
 export function hideDownloads(): void {
   ensureElements();
   downloadsSection?.classList.add("hidden");
+  document.getElementById("activity-section")?.classList.add("hidden");
 }

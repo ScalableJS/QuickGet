@@ -43,7 +43,6 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
     torrentInterceptMode: "always",
-    rememberPassword: false,
     ...overrides,
   };
 }
@@ -122,7 +121,7 @@ test("leaves the download alone when no NAS credentials are available", async ()
     // Interception on and the NAS reachable, but the master password was never entered.
     await seedSettings(
       session.worker,
-      nasSettings(mockNas.port, { NASpassword: "", rememberPassword: true }),
+      nasSettings(mockNas.port, { NASpassword: "" }),
     );
 
     const page = await session.context.newPage();

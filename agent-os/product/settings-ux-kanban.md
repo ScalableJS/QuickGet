@@ -29,6 +29,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **Done** |
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
+| UX-16 | Settings held things that did not justify being there | ui | M | **Done** |
 
 ---
 
@@ -539,3 +540,39 @@ existing `guardedTrackerHost` — the mock that already proved the hotlink path.
 3. Magnet handling checked against a correctly derived `info_hash` — SHA-1 over the exact
    bencoded `info` dictionary, not over a re-serialised object.
 
+---
+
+### UX-16 — Settings held things that did not justify being there
+
+**Size:** M · **Area:** ui · **Status:** Done
+**Raised:** 2026-08-28 (owner): "удали все что не обосновывает свое нахождение там"
+
+Audit of everything on the settings screen, keeping only what a user can act on and would
+look for there.
+
+**Removed — "Recent activity".** It was mounted below the downloads list and nothing hid it
+when the settings opened, so it rendered under Backup and read as a setting. It belongs to the
+downloads view and is now hidden with it.
+
+**Removed — the "Remember password" checkbox.** Turning it off kept the password in session
+storage only, so after a browser restart the service worker had nothing to log in with and
+every intercepted torrent silently stayed in Chrome. That is the exact failure the master
+password was removed for. An option whose "off" state breaks the extension's main function is
+not a choice worth offering: the password is now always stored.
+
+`rememberPassword` is gone from `Settings` entirely — the type, the defaults, the load and save
+paths, the backup allow-list and the client signature. Storage written by an older version
+keeps the stale key harmlessly; nothing reads it.
+
+**Kept, with reasons:**
+
+| Item | Why it stays |
+| --- | --- |
+| Server address, username, password | The connection cannot be derived |
+| Temp / Target folder | Required by Download Station; defaults do not fit every NAS |
+| Intercept checkbox | The one behaviour a user genuinely turns off |
+| Theme | Preference with immediate effect |
+| Protect settings | Opt-in, and the only thing guarding the credentials on a shared machine |
+| Routing rules | The feature's whole point for anyone who uses it |
+| Export / Import | Recovery and moving between machines; correctly under Advanced |
+| Version line | The first thing to ask for in a bug report |

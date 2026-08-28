@@ -30,7 +30,6 @@ const CONNECTED = {
   NAStempdir: "Download",
   NASdir: "Multimedia/Movies",
   torrentInterceptMode: "always",
-  rememberPassword: true,
   theme: "auto",
   routingRules: [],
 };

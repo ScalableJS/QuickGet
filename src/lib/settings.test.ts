@@ -127,31 +127,9 @@ describe("settings", () => {
     expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBeUndefined();
   });
 
-  describe("rememberPassword policy", () => {
-    it("handles rememberPassword: false correctly (stores password in session, clears plaintext/encrypted from local)", async () => {
-      seedChromeStorage({
-        rememberPassword: false,
-        NASpassword: "old-local-plaintext-password",
-      });
-
-      // Reading no longer rewrites storage — a load must not have side effects. The stored
-      // value is simply used.
-      const loaded = await loadSettings();
-      expect(loaded.NASpassword).toBe("old-local-plaintext-password");
-
-      // Save a new password
-      await saveSettings({
-        rememberPassword: false,
-        NASpassword: "new-session-password",
-      });
-
-      expect(getChromeStorageSnapshot().NASpassword).toBe("");
-      expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
-      expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("new-session-password");
-    });
-
+  describe("password storage", () => {
     it("persists the password so a restarted browser can still reach the NAS", async () => {
-      await saveSettings({ rememberPassword: true, NASpassword: "secret-nas-password" });
+      await saveSettings({ NASpassword: "secret-nas-password" });
 
       expect(getChromeStorageSnapshot().NASpassword).toBe("secret-nas-password");
       // No encrypted blob is written any more: there is nothing to unlock, by design.
@@ -163,11 +141,10 @@ describe("settings", () => {
 
     it("clears a blob left by the previous encrypted scheme", async () => {
       seedChromeStorage({
-        rememberPassword: true,
         encryptedNASpassword: { iv: "x", salt: "y", data: "z" },
       });
 
-      await saveSettings({ rememberPassword: true, NASpassword: "new-password" });
+      await saveSettings({ NASpassword: "new-password" });
 
       // A leftover blob is what produced a locked state no password in the UI could open.
       expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
@@ -183,23 +160,22 @@ describe("settings", () => {
  */
 describe("password availability to the background", () => {
   it("survives a browser restart when remembering is on", async () => {
-    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" });
+    await saveSettings({ NASpassword: "nas-secret" });
 
     seedChromeSessionStorage({});
     expect((await loadSettings()).NASpassword).toBe("nas-secret");
   });
 
-  it("is session-only when remembering is off, and says so by going empty", async () => {
-    await saveSettings({ rememberPassword: false, NASpassword: "nas-secret" });
+  it("is always persisted, because a worker that cannot log in drops every download", async () => {
+    await saveSettings({ NASpassword: "nas-secret" });
 
-    expect((await loadSettings()).NASpassword).toBe("nas-secret");
-
+    // A browser restart empties session storage; the background must still be able to log in.
     seedChromeSessionStorage({});
-    expect((await loadSettings()).NASpassword).toBe("");
+    expect((await loadSettings()).NASpassword).toBe("nas-secret");
   });
 
   it("does not wipe the stored password when saving something unrelated", async () => {
-    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" });
+    await saveSettings({ NASpassword: "nas-secret" });
 
     // Changing a folder, a routing rule or the theme must leave the connection alone. Writing
     // an empty password on every partial save is how a working setup got wiped in the field.
@@ -211,7 +187,7 @@ describe("password availability to the background", () => {
   });
 
   it("prefers an unsaved session edit over the stored value", async () => {
-    await saveSettings({ rememberPassword: true, NASpassword: "stored" });
+    await saveSettings({ NASpassword: "stored" });
     seedChromeSessionStorage({ sessionNASpassword: "just-typed" });
 
     expect((await loadSettings()).NASpassword).toBe("just-typed");

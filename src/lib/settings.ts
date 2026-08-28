@@ -74,7 +74,6 @@ export async function loadSettings(): Promise<Settings> {
           return fallback;
         };
 
-        const rememberPassword = booleanWithDefault("rememberPassword", DEFAULTS.rememberPassword);
 
         /**
          * The NAS password is stored, full stop, and the service worker can always read it.
@@ -102,7 +101,6 @@ export async function loadSettings(): Promise<Settings> {
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
-          rememberPassword,
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };
 
@@ -178,11 +176,6 @@ export async function markInterceptNoticeShown(): Promise<void> {
  * Save settings to chrome.storage.local/session
  */
 export async function saveSettings(settings: Partial<Settings>): Promise<void> {
-  const rememberPassword =
-    settings.rememberPassword !== undefined
-      ? settings.rememberPassword
-      : Boolean((await chrome.storage.local.get("rememberPassword")).rememberPassword);
-
   const localUpdate: Record<string, unknown> = { ...settings };
   const passwordToSave = settings.NASpassword;
 
@@ -191,14 +184,12 @@ export async function saveSettings(settings: Partial<Settings>): Promise<void> {
   // an empty string is exactly how a working connection got wiped in the field.
   if (passwordToSave === undefined) {
     delete localUpdate.NASpassword;
-  } else if (rememberPassword) {
-    // Persist it. Extension storage is not encrypted, and this build no longer pretends
-    // otherwise: protecting data at rest on a personal machine is the operating system's job,
-    // through disk encryption and account separation.
-    localUpdate.NASpassword = passwordToSave;
   } else {
-    // Session only: gone when the browser restarts, which the user is told when they choose it.
-    localUpdate.NASpassword = "";
+    // Always persisted. A password the worker cannot read after a browser restart is a
+    // password that silently stops every intercepted download, which is not a setting anyone
+    // would choose on purpose. Extension storage is not encrypted, and this build does not
+    // pretend otherwise: protecting data at rest is the operating system's job.
+    localUpdate.NASpassword = passwordToSave;
   }
 
   await chrome.storage.local.set(localUpdate);

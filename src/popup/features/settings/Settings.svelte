@@ -326,12 +326,7 @@
       invalidateClientCache();
       applyTheme(form.theme);
       markClean();
-      showStatus(
-        form.rememberPassword
-          ? "Settings saved"
-          : "Settings saved — the password is kept only until the browser restarts",
-        "success",
-      );
+      showStatus("Settings saved", "success");
 
       // Save and test are one action: settings that cannot reach the NAS should say so now,
       // not hours later when a download quietly fails.
@@ -370,7 +365,7 @@
       return;
     }
 
-    await saveSettings({ NASaddress: "", NASlogin: "", NASpassword: "", rememberPassword: false });
+    await saveSettings({ NASaddress: "", NASlogin: "", NASpassword: "" });
     await clearConnectionHealth();
     form = await loadSettings();
     serverUrl = composeServerUrl(form);
@@ -446,19 +441,6 @@
   <div class="form-group">
     <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
   </div>
-
-  <div class="form-group form-inline">
-    <Checkbox id="rememberPassword" bind:checked={form.rememberPassword}>
-      Remember password on this device
-    </Checkbox>
-  </div>
-
-  {#if !form.rememberPassword}
-    <Alert tone="hint">
-      The password is kept only until the browser restarts. Turn on "Remember password" to keep
-      sending downloads to the NAS after a restart.
-    </Alert>
-  {/if}
   {/if}
   </FormSection>
 

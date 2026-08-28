@@ -41,7 +41,6 @@ test.describe("tracker hotlink guard", () => {
           NAStempdir: "Download",
           NASdir: "Multimedia/Movies",
           torrentInterceptMode: "always",
-          rememberPassword: false,
         } as Record<string, unknown>,
       );
 
@@ -97,7 +96,6 @@ test.describe("tracker hotlink guard", () => {
           NAStempdir: "Download",
           NASdir: "Multimedia/Movies",
           torrentInterceptMode: "always",
-          rememberPassword: false,
         } as Record<string, unknown>,
       );
 

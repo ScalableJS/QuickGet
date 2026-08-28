@@ -23,7 +23,6 @@ export type Settings = {
   NASdir: string; // final destination folder on NAS
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
-  rememberPassword: boolean;
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
 
@@ -48,6 +47,5 @@ export const DEFAULTS: Settings = {
   NASdir: "Download",
   torrentInterceptMode: "always",
   routingRules: [],
-  rememberPassword: false,
   theme: "auto",
 };

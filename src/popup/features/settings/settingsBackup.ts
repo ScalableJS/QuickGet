@@ -5,7 +5,7 @@ import { sanitizeRoutingRules } from "@lib/routingRules.js";
 const BACKUP_APP = "quickget-remote";
 const BACKUP_VERSION = 1;
 
-// Keys safe to export/import. Credentials (NASpassword, rememberPassword) are
+// Keys safe to export/import. The password is
 // intentionally excluded so a backup file never carries secrets.
 const PORTABLE_KEYS = [
   "NASsecure",
@@ -102,7 +102,6 @@ const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
   torrentInterceptMode: "Interception mode",
   routingRules: "Routing rules",
   theme: "Theme",
-  rememberPassword: "Remember password",
 };
 
 export function describeImport(patch: Partial<Settings>): string[] {

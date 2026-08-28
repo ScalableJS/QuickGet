@@ -5,7 +5,7 @@ import { describeImport, exportSettings, parseImportedSettings } from "./setting
 
 describe("exportSettings", () => {
   it("excludes credentials and wraps with metadata", () => {
-    const settings = createTestSettings({ NASpassword: "topsecret", rememberPassword: true });
+    const settings = createTestSettings({ NASpassword: "topsecret" });
     const json = exportSettings(settings, new Date("2026-06-20T10:00:00.000Z"));
     const parsed = JSON.parse(json);
 
@@ -14,7 +14,6 @@ describe("exportSettings", () => {
     expect(parsed.exportedAt).toBe("2026-06-20T10:00:00.000Z");
     expect(parsed.settings.NASaddress).toBe("nas.local");
     expect(parsed.settings).not.toHaveProperty("NASpassword");
-    expect(parsed.settings).not.toHaveProperty("rememberPassword");
   });
 
   it("round-trips through parseImportedSettings", () => {

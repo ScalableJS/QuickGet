@@ -203,8 +203,8 @@ describe("download interception", () => {
   });
 
   it("works from the normal session-credential state, not just a legacy local password", async () => {
-    // rememberPassword=false keeps the password in storage.session; local holds none.
-    seedChromeStorage(createTestSettings({ NASpassword: "", rememberPassword: false }));
+    // The password lives in storage.session while an unsaved edit is in flight; local has none.
+    seedChromeStorage(createTestSettings({ NASpassword: "" }));
     seedChromeSessionStorage({ sessionNASpassword: "secret" });
     const nas = mockSuccessfulHandoff();
 
@@ -334,10 +334,10 @@ describe("download interception", () => {
   });
 
   it("never touches the download when the session password was cleared by a restart", async () => {
-    // rememberPassword=false: the password lives only in storage.session, which a browser
+    // The password lives only in storage.session, which a browser
     // restart empties. isLocked() reports false here, so it alone is not a sufficient guard.
     seedChromeStorage(
-      createTestSettings({ NASpassword: "", rememberPassword: false, torrentInterceptMode: "always" }),
+      createTestSettings({ NASpassword: "", torrentInterceptMode: "always" }),
     );
 
     await handleDownloadCreated(createDownloadItem());
@@ -561,7 +561,7 @@ describe("download interception — configuration is visible", () => {
 
   it("reports a missing password as plain misconfiguration, with nothing to unlock", async () => {
     seedChromeStorage({
-      ...createTestSettings({ NASpassword: "", rememberPassword: true }),
+      ...createTestSettings({ NASpassword: "" }),
       // A leftover blob from the encrypted scheme must not resurrect a locked state.
       encryptedNASpassword: { iv: "x", salt: "y", data: "z" },
     });

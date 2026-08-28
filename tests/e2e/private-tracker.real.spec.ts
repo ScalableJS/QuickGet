@@ -56,7 +56,6 @@ test.describe("private tracker (live)", () => {
           NAStempdir: "Download",
           NASdir: "Multimedia/Movies",
           torrentInterceptMode: "always",
-          rememberPassword: false,
         } as Record<string, unknown>,
       );
 

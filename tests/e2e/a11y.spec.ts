@@ -30,7 +30,6 @@ test.describe("accessibility", () => {
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
     torrentInterceptMode: "always",
-    rememberPassword: true,
     routingRules: [
       { namePattern: "*.mkv", destination: "Multimedia/Movies" },
       { domain: "*.example.com", destination: "Multimedia/Other" },
@@ -244,6 +243,38 @@ test.describe("accessibility", () => {
         async () => (await chrome.storage.local.get("torrentInterceptMode")).torrentInterceptMode,
       );
       expect(stored).toBe("off");
+    } finally {
+      await session.close();
+      await nas.close();
+    }
+  });
+
+  /**
+   * The activity log belongs to the downloads view. Left visible behind the settings panel it
+   * reads as a setting, which is where it was found: "Recent activity" sitting under Backup.
+   */
+  test("the activity log is not shown inside the settings", async () => {
+    const nas = await startMockNas();
+    const session = await launchExtensionPopup(extensionDistPath);
+
+    try {
+      await session.worker.evaluate(
+        (values) => chrome.storage.local.set(values as Record<string, unknown>),
+        {
+          ...CONFIGURED(nas.port),
+          "qg:activity": [{ at: Date.now(), name: "sample.torrent", source: "tracker.example.com", outcome: "sent" }],
+        } as Record<string, unknown>,
+      );
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      const activity = session.page.getByText(/Recent activity/);
+      await expect(activity).toBeVisible();
+
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+      await expect(activity).toBeHidden();
+
+      await session.page.getByRole("button", { name: "Back to downloads" }).click();
+      await expect(activity).toBeVisible();
     } finally {
       await session.close();
       await nas.close();
