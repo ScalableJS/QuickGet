@@ -1,6 +1,6 @@
 {
   "name": "quickget-remote",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Lightweight client for QNAP Download Station 5",
   "type": "module",
   "scripts": {
