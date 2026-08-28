@@ -18,16 +18,19 @@ import {
 } from "./settings.js";
 
 describe("settings", () => {
-  it("uses empty connection and folder defaults", () => {
+  it("ships empty credentials but a working folder default", () => {
     expect(DEFAULTS).toMatchObject({
       NASaddress: "",
       NASport: "",
       NASlogin: "",
       NASpassword: "",
-      NAStempdir: "",
-      NASdir: "",
       torrentInterceptMode: "always",
     });
+
+    // Download Station requires a temporary folder, and QNAP creates a `Download` share when
+    // the NAS is initialised — so the common case works without the user guessing a path.
+    expect(DEFAULTS.NAStempdir).toBe("Download");
+    expect(DEFAULTS.NASdir).toBe("Download");
   });
 
   it("loads settings, normalizes values, and backfills missing defaults", async () => {
@@ -212,5 +215,32 @@ describe("password availability to the background", () => {
     seedChromeSessionStorage({ sessionNASpassword: "just-typed" });
 
     expect((await loadSettings()).NASpassword).toBe("just-typed");
+  });
+});
+
+/**
+ * The folder default exists so the common case works without the user guessing a path that
+ * Download Station only reports as `{error: 1, reason: "temp"}`. It must not, however, behave
+ * like a decision the user made.
+ */
+describe("folder defaults", () => {
+  it("fills an unset folder in memory without writing it back", async () => {
+    seedChromeStorage({ NASaddress: "nas.local" });
+
+    const settings = await loadSettings();
+
+    expect(settings.NAStempdir).toBe("Download");
+    // Persisting it would freeze today's default as an explicit choice no later change could
+    // override — the trap the interception mode fell into.
+    expect(getChromeStorageSnapshot().NAStempdir).toBeUndefined();
+  });
+
+  it("never overrides a folder the user chose", async () => {
+    seedChromeStorage({ NAStempdir: "Multimedia/Incoming", NASdir: "Multimedia/Movies" });
+
+    const settings = await loadSettings();
+
+    expect(settings.NAStempdir).toBe("Multimedia/Incoming");
+    expect(settings.NASdir).toBe("Multimedia/Movies");
   });
 });

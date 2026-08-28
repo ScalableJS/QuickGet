@@ -530,8 +530,8 @@ describe("download interception — claim lifecycle", () => {
  * shown without opening anything, which is why it is asserted rather than left to the log.
  */
 describe("download interception — configuration is visible", () => {
-  it("marks the toolbar and names the missing folder instead of failing on an API field", async () => {
-    seedChromeStorage(createTestSettings({ NAStempdir: "" }));
+  it("marks the toolbar and names the missing setting instead of failing on an API field", async () => {
+    seedChromeStorage(createTestSettings({ NASlogin: "" }));
     const action = getChromeActionMock();
     const notifications = getChromeNotificationsMock();
     const downloads = getChromeDownloadsMock();
@@ -541,7 +541,7 @@ describe("download interception — configuration is visible", () => {
     expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
     expect(action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: "#D93025" });
     expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining("Temp Folder") }),
+      expect.objectContaining({ message: expect.stringContaining("Username") }),
     );
     // The browser keeps the file: a configuration fault must never cost the download.
     expect(downloads.cancel).not.toHaveBeenCalled();
@@ -549,14 +549,14 @@ describe("download interception — configuration is visible", () => {
   });
 
   it("lists every missing setting at once rather than one per attempt", async () => {
-    seedChromeStorage(createTestSettings({ NAStempdir: "", NASlogin: "" }));
+    seedChromeStorage(createTestSettings({ NASpassword: "", NASlogin: "" }));
     const notifications = getChromeNotificationsMock();
 
     await handleDownloadCreated(createDownloadItem({ id: 71 }));
 
     const message = notifications.create.mock.calls[0]?.[0]?.message as string;
     expect(message).toContain("Username");
-    expect(message).toContain("Temp Folder");
+    expect(message).toContain("Password");
   });
 
   it("reports a missing password as plain misconfiguration, with nothing to unlock", async () => {
@@ -655,7 +655,7 @@ describe("download interception — notification restraint", () => {
     mockFailedHandoff();
     await handleDownloadCreated(createDownloadItem({ id: 87 }));
 
-    seedChromeStorage(createTestSettings({ NAStempdir: "" }));
+    seedChromeStorage(createTestSettings({ NASlogin: "" }));
     await handleDownloadCreated(createDownloadItem({ id: 88 }));
 
     expect(notifications.create).toHaveBeenCalledTimes(2);

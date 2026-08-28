@@ -391,7 +391,11 @@ already loaded, so the folders are picked rather than typed.
 2. What happens to the folder section when the NAS later goes unreachable? The saved values are
    still correct, so hiding them would repeat the mistake UX-7 fixed. Probably: keep them
    visible and editable, with the picker degraded to a plain text field.
-3. Is a default worth offering? `Download` exists on essentially every QNAP, and pre-filling it
-   would make the common case need no decision at all. Weigh against pretending to know the
-   user's NAS layout.
+3. ~~Is a default worth offering?~~ **Settled 2026-08-28: yes, `Download` for both folders.**
+   Verified against a live QTS 5 NAS (`Misc/Dir` lists it among the shares QNAP creates at
+   initialisation) and against the competing QNAP extension, which pre-fills folders rather
+   than shipping them empty. The same check killed the idea of detecting the temp folder
+   automatically: `temporary: true` comes back for *every* folder, so it means "usable as
+   temporary", not "is the temporary one". Implemented; the default resolves in memory and is
+   deliberately not written to storage.
 

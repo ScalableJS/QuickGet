@@ -33,8 +33,19 @@ export const DEFAULTS: Settings = {
   NASport: "",
   NASlogin: "",
   NASpassword: "",
-  NAStempdir: "",
-  NASdir: "",
+  /**
+   * QNAP creates a `Download` share when the NAS is initialised, so it exists on essentially
+   * every install — verified against a live QTS 5 NAS, where it is listed alongside Public,
+   * Multimedia, Music, Web and home.
+   *
+   * It is pre-filled because Download Station *requires* a temporary folder and answers an
+   * empty one with `{error: 1, reason: "temp"}` — an API field name that tells the user
+   * nothing. Leaving it blank made the common case fail by default. The folder is still
+   * validated against the NAS, so an install without it gets a real message rather than a
+   * silent failure.
+   */
+  NAStempdir: "Download",
+  NASdir: "Download",
   torrentInterceptMode: "always",
   routingRules: [],
   rememberPassword: false,

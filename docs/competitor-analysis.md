@@ -243,3 +243,43 @@ EXT.settings.sendCookiesForDM
    `.torrent` за непрозрачным эндпоинтом раньше, чем это делаем мы.
 2. **`erase` как альтернатива `cancel`** — у них это настройка (`{ erase, resume }`). Мы
    всегда оставляем отменённую загрузку в списке; выбор мог бы быть за пользователем.
+
+### Дефолтные папки — что делают конкуренты (проверено 2026-08-28)
+
+Повод: стоит ли предзаполнять Temp Folder, раз Download Station без неё отвергает любую задачу.
+
+**QNAP Download Station Manager** (`agbfjhjpdmkibfdlbpjmlmhdkbmcgjpm`, v1.0.8) — прямой
+конкурент на том же NAS. Предзаполняет, причём сразу двумя готовыми профилями:
+
+```js
+defaultState: { NasConnectionSettings: { url: "", username: "", password: "", folders: [
+  { name: "Movies",    tempFolder: "Content/@DownloadStationTempFiles", moveFolder: "Content/Movies" },
+  { name: "TV Series", tempFolder: "Content/@DownloadStationTempFiles", moveFolder: "Content/TV Series" },
+]}}
+```
+
+`@DownloadStationTempFiles` — служебная папка, которую создаёт сам Download Station. Префикс
+`Content/` — раскладка конкретного NAS автора, у большинства её нет, так что копировать эти
+пути нельзя. Но сам факт: **разработчик, знающий QNAP, счёл пустое поле неприемлемым**.
+
+Там же видно, что валидацию формы они делают схемой (yup) с `required` на каждое поле, включая
+`tempFolder` — см. UX-2, наш вывод про Valibot остаётся в силе.
+
+**Synology DS client** — `destination: ""` во всех путях. Это не небрежность: у Synology
+destination необязателен, NAS подставляет собственную настройку Download Station. У QNAP
+`temp` обязателен, поэтому их подход нам не переносится.
+
+**ASUS Download Master** — `Download` фигурирует в коде как папка по умолчанию.
+
+**Проверка на живом QTS 5** (`Misc/Dir`, 2026-08-28): общие папки —
+`Browser Station, Container, Docker, Download, Movies, Multimedia, Music, Public, Web, home`.
+`Download` присутствует; QNAP создаёт эту share при инициализации NAS.
+
+Отдельно важно: **`temporary: true` стоит у всех десяти папок**. Значит это «пригодна как
+временная», а не «является временной» — автоопределить temp-папку через API нельзя, и дефолт
+действительно необходим.
+
+**Вывод:** предзаполняем `Download` для обеих папок. Значение резолвится в память, но **не
+записывается** в storage — иначе сегодняшний дефолт застынет как осознанный выбор пользователя,
+ровно та ловушка, в которую раньше попал `torrentInterceptMode`.
+

@@ -16,7 +16,12 @@ export async function loadSettings(): Promise<Settings> {
       chrome.storage.session.get("sessionNASpassword", (sessionItems) => {
         const missing: Partial<Settings> = {};
 
-        const stringWithDefault = (key: keyof Settings, fallback: string): string => {
+        /**
+         * `persist: false` resolves the default in memory without writing it back. Used for
+         * the folders: persisting one would freeze today's default as an explicit user choice
+         * that no later change could override — the same trap the interception mode fell into.
+         */
+        const stringWithDefault = (key: keyof Settings, fallback: string, persist = true): string => {
           const raw = localItems[key];
           if (typeof raw === "string") {
             const trimmed = raw.trim();
@@ -26,7 +31,7 @@ export async function loadSettings(): Promise<Settings> {
             if (asString) return asString;
           }
 
-          if (fallback) {
+          if (fallback && persist) {
             (missing as Record<string, unknown>)[key] = fallback;
           }
           return fallback;
@@ -93,8 +98,8 @@ export async function loadSettings(): Promise<Settings> {
           NASport: stringWithDefault("NASport", DEFAULTS.NASport),
           NASlogin: stringWithDefault("NASlogin", DEFAULTS.NASlogin),
           NASpassword,
-          NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
-          NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
+          NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
+          NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           rememberPassword,

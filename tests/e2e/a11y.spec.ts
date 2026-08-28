@@ -86,16 +86,18 @@ test.describe("accessibility", () => {
     try {
       await session.worker.evaluate(
         (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        { ...CONFIGURED(nas.port), NAStempdir: "" } as Record<string, unknown>,
+        // An unset username, not an unset folder: the folder now has a working default, so an
+        // empty one is no longer reachable.
+        { ...CONFIGURED(nas.port), NASlogin: "" } as Record<string, unknown>,
       );
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
-      // An unset Temp Folder means the connection is incomplete, so the form shows directly.
+      // An incomplete connection shows the form directly, with no card in front of it.
       await session.page.waitForSelector("#serverUrl");
 
-      // Dirty the form so Save is enabled, then try to save an incomplete configuration.
-      await session.page.fill("#NASlogin", "demo-user-2");
+      // Dirty the form so Save is enabled, then try to save while a required field is empty.
+      await session.page.fill("#NASdir", "Multimedia/Films");
       await session.page.click("#save-btn");
 
       // The field itself must carry the state — a status line alone leaves a screen reader
