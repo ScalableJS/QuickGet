@@ -24,7 +24,7 @@
   import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
-  type Props = { initialTab?: "connection" | "appearance" | "advanced" };
+  type Props = { initialTab?: "connection" | "advanced" };
   let { initialTab = "connection" }: Props = $props();
 
   let form = $state<Settings>({ ...DEFAULTS });
@@ -84,7 +84,6 @@
 
   const TABS: { id: NonNullable<Props["initialTab"]>; label: string }[] = [
     { id: "connection", label: "Connection" },
-    { id: "appearance", label: "Appearance" },
     { id: "advanced", label: "Advanced" },
   ];
   // `initialTab` only sets the starting value; reading it here (rather than in a closure) is
@@ -391,6 +390,25 @@
   </Alert>
 {/if}
 
+<!-- Above the tabs, not inside one: the theme applies the moment it is picked, so it is not
+     part of anything the Save button commits, and a tab holding a single instant control is
+     navigation for its own sake. -->
+<div class="settings-header">
+  <span class="control-label">Theme</span>
+  <SegmentedControl
+    compact
+    size="sm"
+    label="Theme"
+    items={[
+      { value: "auto", label: "Follow system", icon: Monitor },
+      { value: "light", label: "Light", icon: Sun },
+      { value: "dark", label: "Dark", icon: Moon },
+    ]}
+    bind:value={form.theme}
+    onActivate={(theme) => void chooseTheme(theme)}
+  />
+</div>
+
 <Tabs tabs={TABS} active={activeTab} onActivate={(id) => (activeTab = id)}>
   {#snippet panels(tab)}
     {#if tab.id === "connection"}
@@ -465,26 +483,6 @@
     >
       Send .torrent downloads to the NAS
     </Checkbox>
-  </div>
-  </FormSection>
-</section>
-    {:else if tab.id === "appearance"}
-<section class="settings-section">
-  <FormSection legend="Appearance">
-  <div class="form-group form-inline-control">
-    <span class="control-label" id="theme-label">Theme</span>
-    <SegmentedControl
-      compact
-      size="sm"
-      label="Theme"
-      items={[
-        { value: "auto", label: "Follow system", icon: Monitor },
-        { value: "light", label: "Light", icon: Sun },
-        { value: "dark", label: "Dark", icon: Moon },
-      ]}
-      bind:value={form.theme}
-      onActivate={(theme) => void chooseTheme(theme)}
-    />
   </div>
   </FormSection>
 </section>
@@ -730,6 +728,14 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
   }
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
   .connection-card {
     display: flex;
     flex-direction: column;
@@ -763,12 +769,6 @@
     text-align: center;
     font-size: 11px;
     color: var(--text-secondary);
-  }
-  .form-inline-control {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
   }
 
   .control-label {

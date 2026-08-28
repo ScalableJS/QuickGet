@@ -576,3 +576,8 @@ keeps the stale key harmlessly; nothing reads it.
 | Routing rules | The feature's whole point for anyone who uses it |
 | Export / Import | Recovery and moving between machines; correctly under Advanced |
 | Version line | The first thing to ask for in a bug report |
+
+**2026-08-28 — theme lifted out of the tabs.** With the theme applying on selection, an
+Appearance tab held one instant control that Save has nothing to do with — navigation for its
+own sake. It now sits in a header row above the tab list, which leaves two tabs: **Connection**
+(everything a first run needs) and **Advanced** (what most users never open).

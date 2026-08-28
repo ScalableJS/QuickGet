@@ -106,7 +106,6 @@ export const SettingsLocked: Story = {
  * reviewed without clicking through the others.
  */
 export const TabConnection: Story = { args: { storage: CONNECTED, initialTab: "connection" } };
-export const TabAppearance: Story = { args: { storage: CONNECTED, initialTab: "appearance" } };
 export const TabAdvanced: Story = {
   args: { storage: { ...CONNECTED, routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }] }, initialTab: "advanced" },
 };

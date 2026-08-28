@@ -36,7 +36,6 @@ test.describe("theme", () => {
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
-      await session.page.getByRole("tab", { name: "Appearance" }).click();
 
       const root = session.page.locator("html");
       await expect(root).toHaveAttribute("data-theme", "light");

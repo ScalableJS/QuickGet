@@ -11,7 +11,7 @@
   type Props = {
     storage?: Record<string, unknown>;
     session?: Record<string, unknown>;
-    initialTab?: "connection" | "appearance" | "advanced";
+    initialTab?: "connection" | "advanced";
   };
 
   let { storage = {}, session = {}, initialTab = "connection" }: Props = $props();
