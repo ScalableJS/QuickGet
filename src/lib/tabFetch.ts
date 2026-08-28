@@ -42,7 +42,7 @@ export async function fetchFromPageContext(url: string, preferredPageUrl?: strin
     const result = injection?.result as TabFetchResult | undefined;
     if (!result) return undefined;
 
-    return new Response(new Blob([base64ToBytes(result.base64)]), {
+    return new Response(base64ToBytes(result.base64), {
       status: result.status,
       headers: {
         "content-type": result.contentType,
