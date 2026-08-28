@@ -298,10 +298,18 @@
       // never the background hand-off. Turning it on is the only case that needs a password.
       if (settingsLockEnabled && !lockWasEnabled) {
         if (lockPasswordInput.length < 8) {
+          fieldErrors = { ...fieldErrors, lockPasswordInput: "Use at least 8 characters" };
+          activeTab = "advanced";
+          await tick();
+          document.getElementById("lockPasswordInput")?.focus();
           showStatus("The settings password must be at least 8 characters long", "error");
           return;
         }
         if (lockPasswordInput !== confirmLockPasswordInput) {
+          fieldErrors = { ...fieldErrors, confirmLockPasswordInput: "Passwords do not match" };
+          activeTab = "advanced";
+          await tick();
+          document.getElementById("confirmLockPasswordInput")?.focus();
           showStatus("The settings passwords do not match", "error");
           return;
         }
@@ -502,10 +510,16 @@
 
   {#if settingsLockEnabled && !lockWasEnabled}
     <div class="form-group">
-      <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} />
+      <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} error={fieldErrors.lockPasswordInput} oninput={() => {
+        const { lockPasswordInput: _removed, ...rest } = fieldErrors;
+        fieldErrors = rest;
+      }} />
     </div>
     <div class="form-group">
-      <Field id="confirmLockPasswordInput" label="Confirm settings password" type="password" placeholder="Repeat the settings password" bind:value={confirmLockPasswordInput} />
+      <Field id="confirmLockPasswordInput" label="Confirm settings password" type="password" placeholder="Repeat the settings password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
+        const { confirmLockPasswordInput: _removed, ...rest } = fieldErrors;
+        fieldErrors = rest;
+      }} />
     </div>
   {:else if settingsLockEnabled}
     <p class="text-muted">Settings password is active. Turn this off to remove it.</p>

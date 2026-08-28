@@ -40,24 +40,34 @@ test("capture Chrome Web Store screenshots with mock NAS data", async () => {
     ],
   });
   const session = await launchExtensionPopup(extensionDistPath);
-  const { page } = session;
+  const { page, worker } = session;
 
   try {
-    await page.setViewportSize({ width: 460, height: 700 });
+    await worker.evaluate(
+      (settings) => chrome.storage.local.set(settings),
+      {
+        NASaddress: "127.0.0.1",
+        NASport: String(mockNas.port),
+        NASsecure: false,
+        NASlogin: "demo-user",
+        NASpassword: "demo-password",
+        NAStempdir: "Download",
+        NASdir: "Multimedia/Movies",
+      },
+    );
+    // Chrome lets the popup grow with its content up to 600px.
+    await page.setViewportSize({ width: 450, height: 600 });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await waitForPopupReady(page);
     await openSettingsPanel(page);
-    await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
-    await page.fill("#NASlogin", "demo-user");
-    await page.fill("#NASpassword", "demo-password");
-    await page.fill("#NAStempdir", "Download");
-    await page.fill("#NASdir", "Multimedia/Movies");
+    await page.getByRole("button", { name: "Edit" }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: path.join(assetPath, "settings.png") });
 
-    await page.click("#save-btn");
-    await expect(page.locator("#downloads-list .download-item")).toHaveCount(1, { timeout: 15_000 });
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator("#downloads-list .download-item")).toHaveCount(1, { timeout: 15_000 });
+    await page.getByRole("button", { name: "Back to downloads" }).click();
+    await expect(page.locator("#downloads-list .download-item")).toBeVisible({ timeout: 15_000 });
+    const downloadsHeight = await page.evaluate(() => Math.ceil(document.body.getBoundingClientRect().height));
+    await page.setViewportSize({ width: 450, height: downloadsHeight });
     await page.screenshot({ path: path.join(assetPath, "downloads.png") });
   } finally {
     await session.close();

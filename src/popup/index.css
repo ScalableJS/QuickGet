@@ -314,11 +314,15 @@ body {
   color: var(--color-text);
   background: var(--color-bg);
   width: 450px;
-  height: 600px;
-  overflow: auto;
+  max-height: 600px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 header.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -378,7 +382,7 @@ header.toolbar {
 .container {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0;
 }
 
 header h1 {
@@ -393,8 +397,8 @@ header h1 {
 }
 
 main {
-  flex: 1;
-  overflow-y: auto;
+  flex: none;
+  overflow: visible;
   padding: var(--spacing-md);
 }
 

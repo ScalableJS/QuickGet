@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/svelte-vite";
+import { expect, userEvent, within } from "storybook/test";
 
 import SettingsShowcase from "./SettingsShowcase.svelte";
 
@@ -45,6 +46,19 @@ export const Configured: Story = { args: { storage: CONNECTED } };
  * which Download Station requires. Every torrent fails until it is set.
  */
 export const MissingTempFolder: Story = { args: { storage: { ...CONNECTED, NAStempdir: "" } } };
+
+/** Saving an incomplete form marks and focuses the field instead of only raising a toast. */
+export const RequiredFieldError: Story = {
+  args: { storage: { ...CONNECTED, NASlogin: "" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText("Password"), "-changed");
+    await userEvent.click(canvas.getByRole("button", { name: "Save & test" }));
+    await expect(canvas.getByLabelText("Username")).toHaveAttribute("aria-invalid", "true");
+    await expect(canvas.getByText("Username is required")).toBeVisible();
+    await expect(canvas.getByLabelText("Username")).toHaveFocus();
+  },
+};
 
 /** Remembered but encrypted, with the session gone — the password cannot be shown. */
 export const Locked: Story = {
@@ -101,12 +115,28 @@ export const SettingsLocked: Story = {
   },
 };
 
+/** The optional settings password reports its error on the field and returns focus there. */
+export const ShortSettingsPasswordError: Story = {
+  args: { storage: CONNECTED, initialTab: "advanced" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByLabelText("Protect settings"));
+    await userEvent.type(canvas.getByLabelText("Settings password", { exact: true }), "short");
+    await userEvent.click(canvas.getByRole("button", { name: "Save settings" }));
+    await expect(canvas.getByLabelText("Settings password", { exact: true })).toHaveAttribute("aria-invalid", "true");
+    await expect(canvas.getByText("Use at least 8 characters")).toBeVisible();
+    await expect(canvas.getByLabelText("Settings password", { exact: true })).toHaveFocus();
+  },
+};
+
 /**
  * One story per tab, all on the same configured settings, so each panel's layout can be
  * reviewed without clicking through the others.
  */
 export const TabConnection: Story = { args: { storage: CONNECTED, initialTab: "connection" } };
 export const TabAdvanced: Story = {
-  args: { storage: { ...CONNECTED, routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }] }, initialTab: "advanced" },
+  args: {
+    storage: { ...CONNECTED, routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }] },
+    initialTab: "advanced",
+  },
 };
-

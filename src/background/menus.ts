@@ -7,10 +7,10 @@ import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
-import { recordActivity, sourceHost } from "@lib/activityLog.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { ensureMonitoring } from "./alarms.js";
+import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
 import { notifyDirect } from "./notifier.js";
 
 /**
@@ -87,20 +87,24 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
   console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
+  const failureRevisionAtStart = await markInterceptionStarted();
 
-  if (isTorrentSource(url)) {
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
+  try {
+    if (isTorrentSource(url)) {
+      await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
+    } else {
+      const client = createApiClient({ settings });
+      await client.addUrl(url, { targetFolder });
+    }
+
+    await clearConfigurationProblem(failureRevisionAtStart);
     void ensureMonitoring();
-    await recordActivity({ name, source: sourceHost(url), outcome: duplicate ? "duplicate" : "sent" });
     // Silent on success: the user watched themselves click the menu item, and a toast per
     // click is the noise that buried the messages worth reading.
-    return;
+  } catch (error) {
+    await markConfigurationProblem(getErrorMessage(error));
+    throw error;
   }
-
-  const client = createApiClient({ settings });
-  await client.addUrl(url, { targetFolder });
-  void ensureMonitoring();
-  await recordActivity({ name: url, source: sourceHost(url), outcome: "sent" });
 }
 
 /**

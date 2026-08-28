@@ -26,6 +26,16 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.getByRole("button", { name: "Add rule" }).click();
     await expect(page.locator(".routing-rule")).toHaveCount(1);
     await expect(page.locator("#routing-0-destination")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => ({
+          clientHeight: document.body.clientHeight,
+          scrollHeight: document.body.scrollHeight,
+          toolbarPosition: getComputedStyle(document.querySelector("header.toolbar") ?? document.body).position,
+        })),
+      )
+      .toMatchObject({ clientHeight: 600, toolbarPosition: "sticky" });
+    expect(await page.evaluate(() => document.body.scrollHeight > document.body.clientHeight)).toBe(true);
 
     await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
@@ -55,6 +65,7 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO", {
       timeout: 15_000,
     });
+    await expect.poll(() => page.evaluate(() => document.body.getBoundingClientRect().height)).toBeLessThan(600);
 
     await page.click("#downloads-list .download-item");
 
@@ -68,10 +79,6 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await expect(page.locator("#status-message")).toContainText("Torrent started");
 
     await page.setInputFiles("#torrentFileInput", sampleTorrentPath);
-    await expect(page.locator("#status-message")).toContainText("Torrent added successfully", {
-      timeout: 15_000,
-    });
-
     await page.getByRole("button", { name: "All" }).click();
     await expect(page.locator("#downloads-list .download-item .download-name")).toContainText(["Ubuntu ISO", "sample"]);
 

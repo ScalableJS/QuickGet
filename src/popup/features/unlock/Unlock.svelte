@@ -23,7 +23,6 @@
     try {
       isUnlocking = true;
       if (await unlockSettings(settingsPassword)) {
-        showStatus("Settings unlocked", "success", { autoHideMs: 1500 });
         onUnlock();
       } else {
         showStatus("Incorrect settings password", "error");

@@ -62,6 +62,14 @@ describe("settings", () => {
   });
 
   describe("migrateSettings", () => {
+    it("removes the retired activity log", async () => {
+      seedChromeStorage({ "qg:activity": [{ name: "signed-url" }] });
+
+      await migrateSettings("1.0.3");
+
+      expect(getChromeStorageSnapshot()["qg:activity"]).toBeUndefined();
+    });
+
     it("flags interception left off by the 1.0.2 default leak without rewriting it", async () => {
       seedChromeStorage({ torrentInterceptMode: "off" });
 

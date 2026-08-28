@@ -230,6 +230,7 @@ export function getChromeActionMock() {
     setBadgeText: actionSetBadgeText,
     setBadgeBackgroundColor: actionSetBadgeBackgroundColor,
     setTitle: actionSetTitle,
+    setIcon: actionSetIcon,
   };
 }
 

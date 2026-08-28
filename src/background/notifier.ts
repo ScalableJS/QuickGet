@@ -10,7 +10,7 @@
  *
  * 1. **Success is silent.** Plumbing should be invisible when it works. A sent torrent and a
  *    torrent already on the NAS both leave the user with nothing to do, so neither interrupts.
- *    They are recorded in the activity log instead.
+ *    The task list remains the source of truth.
  * 2. **Failures are reported once per episode**, not once per attempt. Clicking five links at
  *    an unreachable NAS is one problem, not five, and five identical toasts train the user to
  *    dismiss them without reading.

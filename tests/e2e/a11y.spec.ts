@@ -249,35 +249,31 @@ test.describe("accessibility", () => {
     }
   });
 
-  /**
-   * The activity log belongs to the downloads view. Left visible behind the settings panel it
-   * reads as a setting, which is where it was found: "Recent activity" sitting under Backup.
-   */
-  test("the activity log is not shown inside the settings", async () => {
+  test("a settings-password error marks and focuses its field", async () => {
     const nas = await startMockNas();
     const session = await launchExtensionPopup(extensionDistPath);
 
     try {
       await session.worker.evaluate(
         (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        {
-          ...CONFIGURED(nas.port),
-          "qg:activity": [{ at: Date.now(), name: "sample.torrent", source: "tracker.example.com", outcome: "sent" }],
-        } as Record<string, unknown>,
+        CONFIGURED(nas.port) as Record<string, unknown>,
       );
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
-      const activity = session.page.getByText(/Recent activity/);
-      await expect(activity).toBeVisible();
-
       await session.page.getByRole("button", { name: "Open settings" }).click();
-      await expect(activity).toBeHidden();
+      await session.page.getByRole("tab", { name: "Advanced" }).click();
+      await session.page.getByLabel("Protect settings").check();
+      await session.page.getByLabel("Settings password", { exact: true }).fill("short");
+      await session.page.getByRole("button", { name: "Save settings" }).click();
 
-      await session.page.getByRole("button", { name: "Back to downloads" }).click();
-      await expect(activity).toBeVisible();
+      const password = session.page.getByLabel("Settings password", { exact: true });
+      await expect(password).toHaveAttribute("aria-invalid", "true");
+      await expect(password).toBeFocused();
+      await expect(session.page.getByText("Use at least 8 characters")).toBeVisible();
     } finally {
       await session.close();
       await nas.close();
     }
   });
+
 });

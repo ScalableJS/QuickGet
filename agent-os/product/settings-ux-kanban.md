@@ -315,12 +315,14 @@ notificationState: { lastKind, lastFingerprint, lastShownAt }
 ### UX-11 — No activity history in the popup
 
 **Size:** M · **Area:** ui · **Status:** Done
-**2026-08-28:** implemented in `src/lib/activityLog.ts` and `src/popup/features/activity/`.
-Collapsed by default, 50 entries, host only — never the URL.
+**2026-08-28:** implemented, then removed after the full notification audit. The task list is
+the source of truth; a second persisted event list duplicated it, could go stale while the popup
+was open, and introduced a read-modify-write race. Failures remain visible through the deduplicated
+notification, toolbar fault badge, and connection health — each with a distinct responsibility.
 
-Making success and duplicate silent (UX-10) removes the only record that anything happened. The
-popup needs a short activity list — not a delivery channel, but the place that explains what
-occurred while it was closed.
+The original proposal assumed silent success needed a second record in the popup. In practice,
+successful tasks already appear in Download Station's task list, while failures have actionable
+channels. Maintaining another history answered no unique user question.
 
 ```
 02:14  ubuntu.torrent      Sent to NAS
@@ -550,9 +552,10 @@ existing `guardedTrackerHost` — the mock that already proved the hotlink path.
 Audit of everything on the settings screen, keeping only what a user can act on and would
 look for there.
 
-**Removed — "Recent activity".** It was mounted below the downloads list and nothing hid it
-when the settings opened, so it rendered under Backup and read as a setting. It belongs to the
-downloads view and is now hidden with it.
+**Removed — "Recent activity".** It first moved out of Settings, then the follow-up audit removed
+the feature entirely: UI, storage, background writes, and tests. It duplicated the task list and
+failure channels, was only refreshed on mount, and could retain full signed URLs through its
+`name` field despite the module claiming URLs were never stored.
 
 **Removed — the "Remember password" checkbox.** Turning it off kept the password in session
 storage only, so after a browser restart the service worker had nothing to log in with and

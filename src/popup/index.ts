@@ -2,7 +2,6 @@ import { applyTheme } from "@lib/applyTheme.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { showStatus } from "@/popup/components";
 import { loadSettings } from "@lib/settings.js";
-import { initializeActivity } from "./features/activity";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
@@ -52,8 +51,6 @@ async function runMainInit(): Promise<void> {
     });
 
     downloadsFeature = await initializeDownloads();
-    initializeActivity();
-
     initializeToolbar({
       downloads: downloadsFeature,
       settings,

@@ -17,6 +17,7 @@ build/
 web-ext-artifacts/
 playwright-report/
 test-results/
+coverage/
 .e2e-artifacts/
 
 # Ignore all markdown files except README, project instructions, and tracked docs.

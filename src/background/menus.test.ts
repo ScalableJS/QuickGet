@@ -2,7 +2,13 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestSettings } from "../../tests/fixtures/settings.js";
-import { getChromeScriptingMock, seedChromeStorage, seedOpenTab } from "../../tests/mocks/chrome.js";
+import {
+  getChromeActionMock,
+  getChromeScriptingMock,
+  getChromeSessionStorageSnapshot,
+  seedChromeStorage,
+  seedOpenTab,
+} from "../../tests/mocks/chrome.js";
 import { server } from "../../tests/msw/server.js";
 
 vi.mock("./alarms.js", () => ({
@@ -21,6 +27,62 @@ describe("context-menu routing", () => {
           { domain: "*.example.com", destination: "/share/Multimedia/Other" },
         ],
       }),
+    );
+  });
+
+  it("publishes the working icon before AddUrl resolves", async () => {
+    let releaseAddUrl!: () => void;
+    let signalAddUrlReached!: () => void;
+    const addUrlGate = new Promise<void>((resolve) => {
+      releaseAddUrl = resolve;
+    });
+    const addUrlReached = new Promise<void>((resolve) => {
+      signalAddUrlReached = resolve;
+    });
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", async () => {
+        signalAddUrlReached();
+        await addUrlGate;
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    const sending = handleContextMenuClick({
+      editable: false,
+      linkUrl: "https://downloads.example.org/archive.zip",
+      menuItemId: "quickget-send-link",
+    });
+    await addUrlReached;
+
+    expect(getChromeActionMock().setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
+    });
+
+    releaseAddUrl();
+    await sending;
+  });
+
+  it("publishes a red failure state when AddUrl fails", async () => {
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", () =>
+        HttpResponse.json({ error: 4096, reason: "temp" }),
+      ),
+    );
+
+    await handleContextMenuClick({
+      editable: false,
+      linkUrl: "https://downloads.example.org/archive.zip",
+      menuItemId: "quickget-send-link",
+    });
+
+    expect(getChromeSessionStorageSnapshot()["qg:toolbarState"]).toEqual(
+      expect.objectContaining({ badgeText: "!", failureRevision: 1 }),
     );
   });
 
@@ -255,9 +317,7 @@ describe("context-menu tracker fetch", () => {
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
-        HttpResponse.json({ error: 0 }),
-      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => HttpResponse.json({ error: 0 })),
     );
   });
 
@@ -276,10 +336,9 @@ describe("context-menu tracker fetch", () => {
     ]);
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
-    await handleContextMenuClick(
-      { editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" },
-      { url: TOPIC_URL } as chrome.tabs.Tab,
-    );
+    await handleContextMenuClick({ editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" }, {
+      url: TOPIC_URL,
+    } as chrome.tabs.Tab);
 
     const injection = getChromeScriptingMock().executeScript.mock.calls[0]?.[0] as {
       target: { tabId: number };
@@ -296,10 +355,9 @@ describe("context-menu tracker fetch", () => {
       { result: { ok: false, status: 403, contentType: "text/html", contentDisposition: "", base64: "" } },
     ]);
 
-    await handleContextMenuClick(
-      { editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" },
-      { url: TOPIC_URL } as chrome.tabs.Tab,
-    );
+    await handleContextMenuClick({ editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" }, {
+      url: TOPIC_URL,
+    } as chrome.tabs.Tab);
 
     expect(chrome.notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.stringContaining("logged in") }),

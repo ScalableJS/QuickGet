@@ -141,6 +141,9 @@ export type SettingsMigrationResult = {
  * rewritten — the user is notified instead and decides for themselves.
  */
 export async function migrateSettings(previousVersion?: string): Promise<SettingsMigrationResult> {
+  // Removed in 1.0.4: the task list is the only activity source of truth.
+  await chrome.storage.local.remove("qg:activity");
+
   const stored = await new Promise<Record<string, unknown>>((resolve) => {
     chrome.storage.local.get(
       ["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"],

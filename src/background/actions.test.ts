@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyBadgeStats, noteMonitoringFailure, resetActionState } from "./actions.js";
+import { applyBadgeStats, markConfigurationProblem, noteMonitoringFailure, resetActionState } from "./actions.js";
 
 const stats = (active: number, extra: Partial<{ all: number; downRate: number; upRate: number }> = {}) => ({
   active,
@@ -23,6 +23,12 @@ describe("applyBadgeStats", () => {
     expect(chrome.action.setIcon).toHaveBeenCalledWith({
       path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
     });
+  });
+
+  it("keeps a valid NAS snapshot usable when Chrome rejects the icon repaint", async () => {
+    vi.mocked(chrome.action.setIcon).mockRejectedValueOnce(new Error("action unavailable"));
+
+    await expect(applyBadgeStats(stats(2))).resolves.toEqual({ active: 2, idleConfirmed: false });
   });
 
   it("diff guard: an unchanged count is written only once", async () => {
@@ -108,5 +114,42 @@ describe("applyBadgeStats", () => {
     expect(title).toContain("Total: 6");
     expect(title).toContain("Download: 1.2 MB/s");
     expect(title).toContain("Upload: 409.6 KB/s");
+  });
+
+  it("keeps an error badge red while another task is successfully active", async () => {
+    await markConfigurationProblem("AddTorrent failed");
+    vi.clearAllMocks();
+
+    await applyBadgeStats(stats(1));
+
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+    expect(chrome.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
+    expect(chrome.action.setTitle).not.toHaveBeenCalled();
+  });
+
+  it("does not let an overlapping NAS poll erase a newer red failure", async () => {
+    let releaseIcon!: () => void;
+    let signalIconReached!: () => void;
+    const iconGate = new Promise<void>((resolve) => {
+      releaseIcon = resolve;
+    });
+    const iconReached = new Promise<void>((resolve) => {
+      signalIconReached = resolve;
+    });
+    vi.mocked(chrome.action.setIcon).mockImplementationOnce(async () => {
+      signalIconReached();
+      await iconGate;
+    });
+
+    const olderPoll = applyBadgeStats(stats(2));
+    await iconReached;
+    const newerFailure = markConfigurationProblem("parallel poll failure");
+    await Promise.resolve();
+    await Promise.resolve();
+    releaseIcon();
+    await Promise.all([olderPoll, newerFailure]);
+
+    const stored = await chrome.storage.session.get("qg:toolbarState");
+    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ badgeText: "!", failureRevision: 1 }));
   });
 });

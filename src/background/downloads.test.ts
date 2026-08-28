@@ -20,11 +20,11 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { readActivity } from "../lib/activityLog.js";
-
+import { markConfigurationProblem } from "./actions.js";
 import { handleDownloadCreated, recoverAbandonedHandoffs } from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
+const ACTIVE_ICON = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
 
 /** Serve the .torrent itself plus the NAS endpoints a successful hand-off needs. */
 function mockSuccessfulHandoff(): { addTorrentCalls: number } {
@@ -113,6 +113,49 @@ describe("download interception", () => {
     const pausedAt = downloads.pause.mock.invocationCallOrder[0];
     const cancelledAt = downloads.cancel.mock.invocationCallOrder[0];
     expect(pausedAt).toBeLessThan(cancelledAt);
+  });
+
+  it("continues the NAS hand-off when Chrome cannot repaint the action icon", async () => {
+    seedChromeStorage(createTestSettings());
+    const nas = mockSuccessfulHandoff();
+    getChromeActionMock().setIcon.mockRejectedValueOnce(new Error("action unavailable"));
+
+    await handleDownloadCreated(createDownloadItem());
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+  });
+
+  it("does not let an older working-state write erase a newer parallel failure", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+
+    let releaseRepaint!: () => void;
+    let signalRepaintReached!: () => void;
+    const repaintGate = new Promise<void>((resolve) => {
+      releaseRepaint = resolve;
+    });
+    const repaintReached = new Promise<void>((resolve) => {
+      signalRepaintReached = resolve;
+    });
+    getChromeActionMock().setIcon.mockImplementationOnce(async () => {
+      signalRepaintReached();
+      await repaintGate;
+    });
+
+    const olderSuccess = handleDownloadCreated(createDownloadItem());
+    await repaintReached;
+    const newerFailure = markConfigurationProblem("parallel AddTorrent failed");
+    // Let an implementation without serialization read and write its stale snapshot. A
+    // serialized implementation correctly waits behind the gated working transition.
+    await Promise.resolve();
+    await Promise.resolve();
+    releaseRepaint();
+    await Promise.all([newerFailure, olderSuccess]);
+
+    expect(getChromeSessionStorageSnapshot()["qg:toolbarState"]).toEqual(
+      expect.objectContaining({ badgeText: "!", failureRevision: 1 }),
+    );
   });
 
   it("holds the cancel until AddTorrent actually resolves", async () => {
@@ -218,15 +261,11 @@ describe("download interception", () => {
     seedChromeStorage(createTestSettings());
     const url = "https://tracker.example.com/file.torrent#pk";
     server.use(
-      http.get(url, () =>
-        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer),
-      ),
+      http.get(url, () => HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer)),
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
-        HttpResponse.json({ error: 0 }),
-      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => HttpResponse.json({ error: 0 })),
     );
 
     await handleDownloadCreated(createDownloadItem({ url, finalUrl: url, mime: "application/octet-stream" }));
@@ -238,15 +277,11 @@ describe("download interception", () => {
     seedChromeStorage(createTestSettings());
     const url = "https://tracker.example.com/download?id=1234";
     server.use(
-      http.get(url, () =>
-        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer),
-      ),
+      http.get(url, () => HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer)),
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
-        HttpResponse.json({ error: 0 }),
-      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => HttpResponse.json({ error: 0 })),
     );
 
     await handleDownloadCreated(
@@ -336,14 +371,121 @@ describe("download interception", () => {
   it("never touches the download when the session password was cleared by a restart", async () => {
     // The password lives only in storage.session, which a browser
     // restart empties. isLocked() reports false here, so it alone is not a sufficient guard.
-    seedChromeStorage(
-      createTestSettings({ NASpassword: "", torrentInterceptMode: "always" }),
-    );
+    seedChromeStorage(createTestSettings({ NASpassword: "", torrentInterceptMode: "always" }));
 
     await handleDownloadCreated(createDownloadItem());
 
     expect(downloads.cancel).not.toHaveBeenCalled();
     expect(downloads.pause).not.toHaveBeenCalled();
+  });
+});
+
+describe("download interception — toolbar lifecycle", () => {
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings());
+  });
+
+  it("shows the green active icon while the accepted interception is still in flight", async () => {
+    let releaseAddTorrent!: () => void;
+    let signalAddTorrentReached!: () => void;
+    const addTorrentGate = new Promise<void>((resolve) => {
+      releaseAddTorrent = resolve;
+    });
+    const addTorrentReached = new Promise<void>((resolve) => {
+      signalAddTorrentReached = resolve;
+    });
+
+    server.use(
+      http.get(TORRENT_URL, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async () => {
+        signalAddTorrentReached();
+        await addTorrentGate;
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    const handOff = handleDownloadCreated(createDownloadItem({ id: 90 }));
+    await addTorrentReached;
+
+    const action = getChromeActionMock();
+    expect(action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
+    expect(action.setTitle).toHaveBeenCalledWith({ title: "Sending torrent to QNAP…" });
+
+    releaseAddTorrent();
+    await handOff;
+  });
+
+  it("repaints green even when the persisted cache already says active", async () => {
+    seedChromeSessionStorage({
+      "qg:toolbarState": {
+        badgeText: "",
+        icon: "active",
+        colorSet: false,
+        title: "",
+        failureRevision: 0,
+        zeroStreak: 0,
+        errorStreak: 0,
+      },
+    });
+    mockSuccessfulHandoff();
+    const action = getChromeActionMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 93 }));
+
+    expect(action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
+  });
+
+  it("keeps a parallel failure red when an earlier successful hand-off completes afterwards", async () => {
+    let requestCount = 0;
+    let releaseFirstAddTorrent!: () => void;
+    let signalFirstAddTorrentReached!: () => void;
+    const firstAddTorrentGate = new Promise<void>((resolve) => {
+      releaseFirstAddTorrent = resolve;
+    });
+    const firstAddTorrentReached = new Promise<void>((resolve) => {
+      signalFirstAddTorrentReached = resolve;
+    });
+
+    server.use(
+      http.get(TORRENT_URL, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          signalFirstAddTorrentReached();
+          await firstAddTorrentGate;
+          return HttpResponse.json({ error: 0 });
+        }
+        return HttpResponse.json({ error: 4096, reason: "temp" });
+      }),
+    );
+
+    const earlierSuccess = handleDownloadCreated(createDownloadItem({ id: 91 }));
+    await firstAddTorrentReached;
+    await handleDownloadCreated(createDownloadItem({ id: 92 }));
+
+    const action = getChromeActionMock();
+    expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: "!" });
+    expect(action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({ color: "#D93025" });
+
+    releaseFirstAddTorrent();
+    await earlierSuccess;
+
+    expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: "!" });
+    expect(action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({ color: "#D93025" });
   });
 });
 
@@ -368,9 +510,7 @@ describe("download interception — page-context fetch", () => {
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
-        HttpResponse.json({ error: 0 }),
-      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => HttpResponse.json({ error: 0 })),
     );
   }
 
@@ -429,20 +569,6 @@ describe("download interception — page-context fetch", () => {
       target: { tabId: number };
     };
     expect(injection.target.tabId).toBe(2);
-  });
-
-  it("takes the file name the page reported in Content-Disposition", async () => {
-    seedOpenTab(TOPIC_URL);
-    pageReturnsTorrent();
-
-    await handleDownloadCreated(
-      createDownloadItem({ id: 62, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
-    );
-
-    // Success is silent now, so the activity log is where the name has to show up.
-    const [entry] = await readActivity();
-    expect(entry.name).toBe("picked-up.torrent");
-    expect(entry.outcome).toBe("sent");
   });
 
   it("falls back to the worker's own fetch when the site is not open in any tab", async () => {
@@ -569,9 +695,7 @@ describe("download interception — configuration is visible", () => {
 
     await handleDownloadCreated(createDownloadItem({ id: 72 }));
 
-    expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "QuickGet is not configured" }),
-    );
+    expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({ title: "QuickGet is not configured" }));
     const message = notifications.create.mock.calls[0]?.[0]?.message as string;
     expect(message).toContain("Password");
   });
@@ -614,9 +738,6 @@ describe("download interception — notification restraint", () => {
     await handleDownloadCreated(createDownloadItem({ id: 80 }));
 
     expect(notifications.create).not.toHaveBeenCalled();
-    // Silent does not mean invisible: it is in the activity log.
-    const [entry] = await readActivity();
-    expect(entry.outcome).toBe("sent");
   });
 
   it("reports a failure once, not once per attempt", async () => {
@@ -628,8 +749,6 @@ describe("download interception — notification restraint", () => {
     await handleDownloadCreated(createDownloadItem({ id: 83 }));
 
     expect(notifications.create).toHaveBeenCalledTimes(1);
-    // Every attempt is still recorded — only the interruption is deduplicated.
-    expect(await readActivity()).toHaveLength(3);
   });
 
   it("speaks up again after things worked in between", async () => {
@@ -659,21 +778,5 @@ describe("download interception — notification restraint", () => {
     await handleDownloadCreated(createDownloadItem({ id: 88 }));
 
     expect(notifications.create).toHaveBeenCalledTimes(2);
-  });
-
-  it("never records the source URL, only its host", async () => {
-    mockSuccessfulHandoff();
-
-    await handleDownloadCreated(
-      createDownloadItem({
-        id: 89,
-        url: `${TORRENT_URL}?token=secret-session-token`,
-        finalUrl: `${TORRENT_URL}?token=secret-session-token`,
-      }),
-    );
-
-    // Tracker links are signed; storing them would turn the log into a credential store.
-    expect(JSON.stringify(await readActivity())).not.toContain("secret-session-token");
-    expect((await readActivity())[0].source).toBe("tracker.example.com");
   });
 });
