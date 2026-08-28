@@ -21,7 +21,7 @@
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
   import type { FolderFieldStatus } from "../folderPicker/validateFolder.js";
-  import { exportSettings, parseImportedSettings } from "./settingsBackup.js";
+  import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
   type Props = { initialTab?: "connection" | "downloads" | "appearance" | "advanced" };
@@ -185,20 +185,42 @@
     showStatus("Settings exported", "success", { autoHideMs: 1500 });
   }
 
+  /**
+   * A file chosen from disk used to overwrite the form the instant it was picked, with nothing
+   * said beforehand and no way back. It is held here instead until the user confirms, and the
+   * confirmation names what will change — the file's contents are otherwise invisible to them.
+   */
+  let pendingImport = $state<{ patch: Partial<Settings>; changes: string[] } | null>(null);
+
   async function importBackup(event: Event): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+
     try {
       const patch = parseImportedSettings(await file.text());
-      Object.assign(form, patch);
-      serverUrl = composeServerUrl(form);
-      showStatus("Settings imported — review and Save", "success", { autoHideMs: 2500 });
+      const changes = describeImport(patch);
+
+      if (changes.length === 0) {
+        showStatus("That backup contains no settings to import", "error");
+        return;
+      }
+
+      pendingImport = { patch, changes };
     } catch (error) {
       showStatus(`Import failed: ${getErrorMessage(error)}`, "error");
     } finally {
       input.value = ""; // let the same file be re-selected later
     }
+  }
+
+  function applyImport(): void {
+    if (!pendingImport) return;
+
+    Object.assign(form, pendingImport.patch);
+    serverUrl = composeServerUrl(form);
+    pendingImport = null;
+    showStatus("Settings imported — review and Save", "success", { autoHideMs: 2500 });
   }
 
   // Drop incomplete rules and normalise blank conditions to "no condition".
@@ -544,11 +566,26 @@
 <section class="settings-section">
   <FormSection legend="Backup">
   <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
-  <div class="backup-actions">
-    <Button variant="secondary" onclick={exportBackup}>Export settings</Button>
-    <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
-    <input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
-  </div>
+
+  {#if pendingImport}
+    <Alert tone="warning">
+      Importing will overwrite your current settings: {pendingImport.changes.join(", ")}.
+      Nothing is saved until you press Save.
+    </Alert>
+    <div class="backup-actions">
+      <Button onclick={applyImport}>Replace settings</Button>
+      <Button variant="secondary" onclick={() => (pendingImport = null)}>Cancel</Button>
+    </div>
+  {:else}
+    <div class="backup-actions">
+      <Button variant="secondary" onclick={exportBackup}>Export settings</Button>
+      <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
+    </div>
+  {/if}
+
+  <!-- Named because the popup has another file input (torrent upload); an unqualified
+       `input[type=file]` selector reaches the wrong one. -->
+  <input id="import-input" bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
   </FormSection>
 </section>
     {/if}

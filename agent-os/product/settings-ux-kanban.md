@@ -27,7 +27,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-11 | No activity history in the popup | ui | M | **Done** |
 | UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
 | UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **Done** |
-| UX-14 | Export/Import sits between real settings | ui | S | Next |
+| UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
 
 ---
@@ -479,6 +479,18 @@ We have no such warning — import silently replaces the form.
 
 **Direction:** move Export/Import into an Advanced group (folded by default, part of UX-13) and
 add the overwrite confirmation before an import is applied.
+
+**2026-08-28 — done.** Backup moved under the Advanced tab with UX-13. The import now parses
+the file, holds the result, and names what it will replace ("Server address, Username, Routing
+rules (2)") before anything is touched; Cancel leaves the form untouched, Replace applies it to
+the form only, and Save still persists it.
+
+Naming the changes rather than warning generically matters because the file is opaque: the user
+picked it from disk and cannot see what is inside.
+
+Found while testing: the popup has **two** file inputs — this one and the torrent upload — so an
+unqualified `input[type=file]` selector reaches the wrong one. The import input is now
+`#import-input`.
 
 ---
 
