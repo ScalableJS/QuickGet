@@ -12,6 +12,7 @@ import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { findConfigProblem } from "@lib/configHealth.js";
+import { recordFailure, recordSuccess } from "@lib/connectionHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
@@ -246,6 +247,7 @@ async function handOffToNas(
     // Success is silent: nothing is asked of the user, and a toast per download is noise. The
     // activity log is where it becomes visible.
     await clearFailureEpisode();
+    await recordSuccess();
     await recordActivity({
       name,
       source: sourceHost(url),
@@ -259,6 +261,7 @@ async function handOffToNas(
     // A failed hand-off is exactly the moment the toolbar should stop looking normal: the
     // download silently stayed in the browser, and nothing else on screen says so.
     void markConfigurationProblem(getErrorMessage(error));
+    await recordFailure(error);
     await recordActivity({
       name: url,
       source: sourceHost(url),

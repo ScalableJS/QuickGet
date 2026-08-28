@@ -11,10 +11,11 @@
   import { getErrorMessage } from "@lib/errors.js";
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { findConfigProblem } from "@lib/configHealth.js";
+  import { clearConnectionHealth, type ConnectionState, readConnectionState, recordFailure, recordSuccess } from "@lib/connectionHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
-  import { Alert, Button, Checkbox, Field, FormSection, SegmentedControl, Select } from "@ui";
+  import { Alert, Button, Checkbox, Field, FormSection, Link, SegmentedControl, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -49,6 +50,17 @@
    * Waiting for Save is how an empty Temp Folder went unnoticed until every download failed.
    */
   let fieldErrors = $state<Record<string, string>>({});
+
+  /**
+   * Configuration and health are separate: a NAS that is switched off does not make the saved
+   * settings wrong, so the form is not shown again just because a check failed.
+   */
+  let connection = $state<ConnectionState>({ configured: false, health: { kind: "unknown" } });
+  /** True while the user is deliberately editing an already-configured connection. */
+  let editingConnection = $state(false);
+  let isTesting = $state(false);
+
+  const showConnectionForm = $derived(!connection.configured || editingConnection);
 
   /** Field ids in the order they appear, so Save can focus the first one that is wrong. */
   const REQUIRED_FIELDS: { id: string; label: string; value: () => string }[] = [
@@ -184,6 +196,8 @@
       form = await loadSettings();
       serverUrl = composeServerUrl(form);
 
+      connection = await readConnectionState(form);
+
       const lock = await getSettingsLockState();
       settingsLockEnabled = lock.enabled;
       lockWasEnabled = lock.enabled;
@@ -247,6 +261,9 @@
       lockPasswordInput = "";
       confirmLockPasswordInput = "";
 
+      connection = await readConnectionState(form);
+      editingConnection = false;
+
       invalidateClientCache();
       applyTheme(form.theme);
       markClean();
@@ -257,10 +274,9 @@
         "success",
       );
 
-      if (shouldVerifyConnection) {
-        const settings = $state.snapshot(form);
-        void verifySavedConnection(settings);
-      }
+      // Save and test are one action: settings that cannot reach the NAS should say so now,
+      // not hours later when a download quietly fails.
+      if (shouldVerifyConnection) await testConnection();
     } catch (error) {
       showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
     } finally {
@@ -268,18 +284,49 @@
     }
   }
 
-  /** Names of the connection fields left empty, in the order they appear in the form. */
-  async function verifySavedConnection(settings: Settings): Promise<void> {
+  /**
+   * One action behind two labels: "Save & test" while editing, "Test connection" on the card.
+   * A third "Connect" would imply a session that is held open, which none of this does.
+   */
+  async function testConnection(): Promise<void> {
+    if (isTesting) return;
+
     try {
-      const client = await getApiClient({ settings });
-      const { tasks } = await client.queryTasks({ params: { limit: 1 } });
-      if (!Array.isArray(tasks)) {
-        showStatus("Settings saved; connection could not be verified", "info", { autoHideMs: 4000 });
-      }
+      isTesting = true;
+      const client = await getApiClient({ settings: $state.snapshot(form) });
+      await client.queryTasks({ params: { limit: 1 } });
+      await recordSuccess();
+      showStatus("Connected to the NAS", "success", { autoHideMs: 2500 });
     } catch (error) {
-      showStatus(`Settings saved; connection could not be verified: ${getErrorMessage(error)}`, "info", { autoHideMs: 4000 });
+      await recordFailure(error);
+      showStatus(getErrorMessage(error), "error");
+    } finally {
+      connection = await readConnectionState(form);
+      isTesting = false;
     }
   }
+
+  async function removeConnection(): Promise<void> {
+    if (!confirm("Remove the saved NAS address, username and password? Downloads will no longer be sent to this NAS.")) {
+      return;
+    }
+
+    await saveSettings({ NASaddress: "", NASlogin: "", NASpassword: "", rememberPassword: false });
+    await clearConnectionHealth();
+    form = await loadSettings();
+    serverUrl = composeServerUrl(form);
+    connection = await readConnectionState(form);
+    editingConnection = false;
+    markClean();
+    showStatus("Connection removed", "info", { autoHideMs: 2500 });
+  }
+
+  const HEALTH_LABEL: Record<ConnectionState["health"]["kind"], string> = {
+    unknown: "Not checked yet",
+    ready: "Ready",
+    unreachable: "NAS unreachable",
+    "auth-failed": "Authentication failed",
+  };
 
 </script>
 
@@ -292,6 +339,31 @@
 
 <section class="settings-section">
   <FormSection legend="Connection">
+  {#if !showConnectionForm}
+    <!-- Configured: no inputs at all. Showing a password box permanently is what let an empty
+         one overwrite a working password. -->
+    <div class="connection-card">
+      <p class="connection-identity">{form.NASlogin}@{form.NASaddress}</p>
+      <p class="connection-health" class:problem={connection.health.kind !== "ready"}>
+        {HEALTH_LABEL[connection.health.kind]}
+      </p>
+      {#if connection.health.kind === "unreachable"}
+        <p class="text-muted">Saved connection settings are still in use.</p>
+      {:else if connection.health.kind === "auth-failed"}
+        <p class="text-muted">The NAS rejected the saved credentials.</p>
+      {/if}
+
+      <div class="connection-actions">
+        <Button variant="secondary" disabled={isTesting} onclick={testConnection}>
+          {isTesting ? "Testing…" : "Test connection"}
+        </Button>
+        <Button variant="secondary" onclick={() => (editingConnection = true)}>Edit</Button>
+      </div>
+      <div class="connection-actions">
+        <Link size="small" onclick={removeConnection}>Remove connection</Link>
+      </div>
+    </div>
+  {:else}
   <div class="form-group">
     <Field
       id="serverUrl"
@@ -324,6 +396,7 @@
       The password is kept only until the browser restarts. Turn on "Remember password" to keep
       sending downloads to the NAS after a restart.
     </Alert>
+  {/if}
   {/if}
   </FormSection>
 </section>
@@ -450,7 +523,7 @@
 <footer class="settings-actions">
   <div class="settings-action-buttons">
     <Button id="save-btn" disabled={!isDirty || isSaving} onclick={save}>
-      {isSaving ? "Saving…" : "Save Settings"}
+      {isSaving ? "Saving…" : showConnectionForm ? "Save & test" : "Save settings"}
     </Button>
   </div>
 </footer>
@@ -589,6 +662,34 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
   }
+  .connection-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .connection-identity {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .connection-health {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .connection-health.problem {
+    color: var(--color-warning);
+  }
+
+  .connection-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-1);
+  }
+
   .version-line {
     margin: var(--space-3) 0 var(--space-2);
     text-align: center;

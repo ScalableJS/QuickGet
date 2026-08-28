@@ -49,6 +49,20 @@ test.describe("accessibility", () => {
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
+
+      // A configured connection shows a card, not inputs — check that state first.
+      await expect(session.page.getByRole("button", { name: "Test connection" })).toBeVisible();
+
+      const cardResults = await new AxeBuilder({ page: session.page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      expect(
+        cardResults.violations.map((violation) => `${violation.id}: ${violation.help}`),
+        "axe violations on the connection card",
+      ).toEqual([]);
+
+      // Then the form behind Edit, which is where the inputs live.
+      await session.page.getByRole("button", { name: "Edit" }).click();
       await session.page.waitForSelector("#serverUrl");
 
       const results = await new AxeBuilder({ page: session.page })
@@ -77,6 +91,7 @@ test.describe("accessibility", () => {
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
+      // An unset Temp Folder means the connection is incomplete, so the form shows directly.
       await session.page.waitForSelector("#serverUrl");
 
       // Dirty the form so Save is enabled, then try to save an incomplete configuration.

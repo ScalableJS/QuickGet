@@ -20,7 +20,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-4 | Validation only runs on Save, and reports everything at once | ui | M | **Done** |
 | UX-5 | Status messages are never announced | ui | S | **Done** |
 | UX-6 | Routing rules are unnamed field soup for screen readers | ui | M | **Done** |
-| UX-7 | Connection has no connected/disconnected state model | ui | L | **Agreed — ready** |
+| UX-7 | Connection has no connected/disconnected state model | ui | L | **Done** |
 | UX-8 | Master password protects settings, not downloads | settings | M | **Done** |
 | UX-9 | a11y regression gate in CI | testing | S | **Done** |
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
@@ -151,8 +151,11 @@ from UX-5.
 
 ### UX-7 — Connection has no connected/disconnected state model
 
-**Size:** L · **Area:** ui · **Status:** Agreed — ready
+**Size:** L · **Area:** ui · **Status:** Done
 **Decided:** 2026-08-28 · supersedes the original "Connect / Disconnect" sketch
+**2026-08-28:** implemented. `src/lib/connectionHealth.ts` holds the health axis; the
+Connection section shows a card with Test connection / Edit / Remove once configured, and the
+form only while unconfigured or explicitly editing. Save and test are one action.
 
 **Decision:** do not model this as Connected/Disconnected. A SID is a runtime cache detail — it
 can expire in a minute while the saved configuration stays perfectly correct, so "disconnected"
@@ -348,4 +351,21 @@ one field that could not be marked invalid. Fixed with a `formError` prop.
 UX-2 closed with no library. The two trust boundaries named in the card
 (`parseImportedSettings`, `loadSettings`) remain candidates for Valibot if they ever misbehave;
 nothing in the form work needed one.
+
+---
+
+## Board complete — 2026-08-28
+
+All eleven cards are closed. What the settings screen looked like when this board opened:
+one status line for every error, no input ever marked, zero fieldsets, zero `aria-invalid`,
+a password box permanently on screen that could overwrite a working password with an empty
+string, and a master password that silently stopped downloads after every browser restart.
+
+Remaining follow-ups, deliberately not started:
+
+- **Folders after connecting.** UX-7 keeps Temp/Target folders in their own section regardless
+  of connection state. Moving them behind a successful connection would let them be picked from
+  the NAS's real folder list instead of typed — better, but it changes the first-run flow and
+  deserves its own card.
+- **Valibot at the two trust boundaries** (`parseImportedSettings`, `loadSettings`) — see UX-2.
 
