@@ -25,6 +25,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-9 | a11y regression gate in CI | testing | S | **Done** |
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
+| UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
 
 ---
 
@@ -361,11 +362,36 @@ one status line for every error, no input ever marked, zero fieldsets, zero `ari
 a password box permanently on screen that could overwrite a working password with an empty
 string, and a master password that silently stopped downloads after every browser restart.
 
-Remaining follow-ups, deliberately not started:
+Remaining follow-up: **Valibot at the two trust boundaries** (`parseImportedSettings`,
+`loadSettings`) — see UX-2. Folders became UX-12.
 
-- **Folders after connecting.** UX-7 keeps Temp/Target folders in their own section regardless
-  of connection state. Moving them behind a successful connection would let them be picked from
-  the NAS's real folder list instead of typed — better, but it changes the first-run flow and
-  deserves its own card.
-- **Valibot at the two trust boundaries** (`parseImportedSettings`, `loadSettings`) — see UX-2.
+---
+
+### UX-12 — Folders are typed before there is anything to pick them from
+
+**Size:** M · **Area:** ui · **Status:** Next
+**Raised:** 2026-08-28 (owner), following UX-7
+
+Temp Folder and Target Folder sit in their own section regardless of whether the NAS is
+reachable, so on first run they are typed blind. `FolderSelect` can list the real folders, but
+only once there are working credentials — before that it has nothing to offer and the user is
+guessing at a path format they have not been told.
+
+That guess is what produced the failure this whole board started from: an empty Temp Folder,
+which Download Station rejects with `{error: 1, reason: "temp"}`.
+
+**Direction:** show the folder section only after a connection has succeeded, with the list
+already loaded, so the folders are picked rather than typed.
+
+**Open questions to settle first:**
+
+1. First-run order. Connection must be saved and tested before folders can be shown, but the
+   folders are required for a complete configuration — so "Configured" cannot mean "connection
+   works" alone. Does the first run become two visible steps, or one form that grows?
+2. What happens to the folder section when the NAS later goes unreachable? The saved values are
+   still correct, so hiding them would repeat the mistake UX-7 fixed. Probably: keep them
+   visible and editable, with the picker degraded to a plain text field.
+3. Is a default worth offering? `Download` exists on essentially every QNAP, and pre-filling it
+   would make the common case need no decision at all. Weigh against pretending to know the
+   user's NAS layout.
 
