@@ -31,6 +31,8 @@
   let masterPasswordInput = $state("");
   let confirmMasterPasswordInput = $state("");
   let hasCachedMasterPassword = $state(false);
+  /** Whether a remembered password should be encrypted. Off keeps it in plain local storage. */
+  let useMasterPassword = $state(false);
   let savedSignature = $state("");
   let savedConnectionSignature = $state("");
   let isSaving = $state(false);
@@ -44,6 +46,8 @@
       masterPasswordInput,
       confirmMasterPasswordInput,
       hasCachedMasterPassword,
+      // Toggling encryption on its own is a change worth saving, so it must dirty the form.
+      useMasterPassword,
     });
   }
 
@@ -176,7 +180,7 @@
       let masterPasswordToUse: string | undefined;
 
       if (form.rememberPassword) {
-        if (!hasCachedMasterPassword) {
+        if (!hasCachedMasterPassword && useMasterPassword) {
           if (!masterPasswordInput) {
             showStatus("Please enter a master password", "error");
             return;
@@ -190,7 +194,7 @@
             return;
           }
           masterPasswordToUse = masterPasswordInput;
-        } else {
+        } else if (hasCachedMasterPassword) {
           const session = await chrome.storage.session.get("cachedMasterPassword");
           masterPasswordToUse = session.cachedMasterPassword as string | undefined;
         }
@@ -284,12 +288,25 @@
   </div>
 
   {#if form.rememberPassword && !hasCachedMasterPassword}
-    <div class="form-group">
-      <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="At least 8 characters" bind:value={masterPasswordInput} required />
+    <div class="form-group form-inline">
+      <Checkbox id="useMasterPassword" bind:checked={useMasterPassword}>
+        Protect it with a master password
+      </Checkbox>
     </div>
-    <div class="form-group">
-      <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat the master password" bind:value={confirmMasterPasswordInput} required />
-    </div>
+
+    {#if useMasterPassword}
+      <div class="form-group">
+        <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="At least 8 characters" bind:value={masterPasswordInput} />
+      </div>
+      <div class="form-group">
+        <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat the master password" bind:value={confirmMasterPasswordInput} />
+      </div>
+    {:else}
+      <Alert tone="hint">
+        The password is stored unencrypted. Anyone with access to this browser profile can read
+        it — fine on a machine only you use.
+      </Alert>
+    {/if}
   {:else if form.rememberPassword && hasCachedMasterPassword}
     <div class="form-group form-inline-text">
       <span class="text-muted">Master password is active.</span>

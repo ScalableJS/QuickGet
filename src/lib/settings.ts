@@ -91,12 +91,14 @@ export async function loadSettings(): Promise<Settings> {
               NASpassword = DEFAULTS.NASpassword;
             }
           }
+        } else if (typeof sessionItems.sessionNASpassword === "string") {
+          NASpassword = sessionItems.sessionNASpassword;
+        } else if (typeof localItems.NASpassword === "string" && localItems.NASpassword !== "") {
+          // Remembered without a master password: the value sits in local storage unencrypted
+          // and is simply read back. Only the encrypted variant has a locked state.
+          NASpassword = localItems.NASpassword;
         } else {
-          if (typeof sessionItems.sessionNASpassword === "string") {
-            NASpassword = sessionItems.sessionNASpassword;
-          } else {
-            NASpassword = ""; // locked state
-          }
+          NASpassword = ""; // locked: an encrypted password exists but has not been unlocked
         }
 
         const settings: Settings = {
@@ -235,15 +237,22 @@ export async function saveSettings(
             }
           }
 
-          if (plaintext !== undefined) {
-            if (!options?.masterPassword) {
-              throw new Error("Master password is required to encrypt the NAS password");
-            }
+          if (plaintext !== undefined && options?.masterPassword) {
             // Re-encrypt with a fresh salt/IV on every save; this also keeps the blob in
             // sync with the (possibly newly changed) master password.
             const encryptedBlob = await encryptPassword(plaintext, options.masterPassword);
             localUpdate.encryptedNASpassword = encryptedBlob;
 
+            await new Promise<void>((res) =>
+              chrome.storage.session.set({ sessionNASpassword: plaintext }, res),
+            );
+          } else if (plaintext !== undefined) {
+            // Remembered without a master password. The password persists in local storage in
+            // plain text — extension storage is not encrypted, so anyone with access to the
+            // browser profile can read it. That trade-off is the user's to make; it is stated
+            // where the choice is offered, and no stale encrypted blob may survive it.
+            localUpdate.NASpassword = plaintext;
+            await new Promise<void>((res) => chrome.storage.local.remove(["encryptedNASpassword"], res));
             await new Promise<void>((res) =>
               chrome.storage.session.set({ sessionNASpassword: plaintext }, res),
             );

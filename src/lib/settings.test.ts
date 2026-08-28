@@ -254,3 +254,46 @@ describe("settings", () => {
     });
   });
 });
+
+/**
+ * Remembering the password without a master password. The value persists in local storage in
+ * plain text — an explicit trade-off for a personal machine, and the reason the previous
+ * behaviour ("remember" implied encryption) lost the password on every browser restart when
+ * the user declined to set one.
+ */
+describe("remember without a master password", () => {
+  it("keeps the password in local storage and reads it back after the session is gone", async () => {
+    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" });
+
+    expect(getChromeStorageSnapshot().NASpassword).toBe("nas-secret");
+    // Nothing encrypted was written, so there is nothing to unlock.
+    expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
+
+    // A browser restart empties session storage; the password must survive it.
+    seedChromeSessionStorage({});
+    const loaded = await loadSettings();
+
+    expect(loaded.NASpassword).toBe("nas-secret");
+    expect(await isLocked()).toBe(false);
+  });
+
+  it("drops a previously encrypted password when encryption is turned off", async () => {
+    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" }, { masterPassword: "master-pass" });
+    expect(getChromeStorageSnapshot().encryptedNASpassword).toBeDefined();
+
+    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" });
+
+    // Leaving the stale blob behind would put the profile back into a locked state that no
+    // master password in the UI can open.
+    expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
+    expect(getChromeStorageSnapshot().NASpassword).toBe("nas-secret");
+  });
+
+  it("still reports locked when an encrypted password exists and the session is empty", async () => {
+    await saveSettings({ rememberPassword: true, NASpassword: "nas-secret" }, { masterPassword: "master-pass" });
+    seedChromeSessionStorage({});
+
+    expect(await isLocked()).toBe(true);
+    expect((await loadSettings()).NASpassword).toBe("");
+  });
+});
