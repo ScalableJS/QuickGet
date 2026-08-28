@@ -357,6 +357,7 @@
       {isSaving ? "Saving…" : "Save Settings"}
     </Button>
   </div>
+  <p class="version-line">Version {chrome.runtime.getManifest().version}</p>
 </footer>
 </div>
 
@@ -480,6 +481,12 @@
   }
   .text-muted {
     font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .version-line {
+    margin: var(--space-2) 0 0;
+    text-align: center;
+    font-size: 11px;
     color: var(--text-secondary);
   }
   .form-inline-text {

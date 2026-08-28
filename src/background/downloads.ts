@@ -95,20 +95,34 @@ export async function recoverAbandonedHandoffs(): Promise<void> {
  * the NAS is unreachable, the credentials are missing, or the URL is single-use.
  */
 export async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
-  console.log("[QuickGet] download created:", { id: item.id, url: item.url, finalUrl: item.finalUrl, mime: item.mime });
-
+  // Every exit is logged with its reason: without it a download that is simply not recognised
+  // is indistinguishable from a worker that never received the event at all.
   try {
     const settings = await loadSettings();
-    if (settings.torrentInterceptMode === "off") return;
+    if (settings.torrentInterceptMode === "off") {
+      console.log("[QuickGet] skipped: interception is off in Settings", { id: item.id });
+      return;
+    }
 
     const url = item.finalUrl || item.url;
     if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, item.mime, item.filename)) {
+      console.log("[QuickGet] skipped: not recognised as a torrent", {
+        id: item.id,
+        url,
+        mime: item.mime,
+        filename: item.filename,
+      });
       return; // not a torrent — leave it to the browser
     }
 
     // onCreated and onChanged can both recognise the same download; whichever gets here
     // first owns it, and the session marker keeps that true across a worker restart.
-    if (!(await claimDownload(item.id))) return;
+    if (!(await claimDownload(item.id))) {
+      console.log("[QuickGet] skipped: already claimed by another listener", { id: item.id });
+      return;
+    }
+
+    console.log("[QuickGet] intercepting torrent download", { id: item.id, url });
 
     // No usable NAS: the master password was never entered, storage.session was emptied by a
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes

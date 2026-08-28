@@ -82,6 +82,7 @@ export async function handleContextMenuClick(
 async function sendDownloadToStation(url: string): Promise<void> {
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
+  console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
 
   if (isTorrentSource(url)) {
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder);
