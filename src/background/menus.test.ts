@@ -2,7 +2,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestSettings } from "../../tests/fixtures/settings.js";
-import { seedChromeStorage } from "../../tests/mocks/chrome.js";
+import { getChromeScriptingMock, seedChromeStorage, seedOpenTab } from "../../tests/mocks/chrome.js";
 import { server } from "../../tests/msw/server.js";
 
 vi.mock("./alarms.js", () => ({
@@ -242,39 +242,16 @@ describe("context-menu torrent handling", () => {
 });
 
 /**
- * Same hotlink guard as the interception path: a `dl.php` fetched without a `Referer` is
- * refused with 403 even when the session cookie is valid. The tab the link was clicked on is
- * the referrer the guard expects.
+ * Same hotlink guard as the interception path: a request that does not originate on the
+ * tracker's own pages is refused. The tab the link was right-clicked on is that context.
  */
-describe("context-menu tracker referrer", () => {
+describe("context-menu tracker fetch", () => {
   const GUARDED_URL = "https://tracker.example.com/forum/dl.php?t=6645249";
   const TOPIC_URL = "https://tracker.example.com/forum/viewtopic.php?t=6645249";
 
   beforeEach(() => {
     seedChromeStorage(createTestSettings({ NASdir: "/share/Multimedia/Default" }));
-  });
-
-  function spyOnTorrentFetch(): { init: RequestInit | undefined } {
-    const captured: { init: RequestInit | undefined } = { init: undefined };
-    const original = globalThis.fetch;
-
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (String(input) === GUARDED_URL) captured.init = init;
-      return original(input as RequestInfo, init);
-    });
-
-    return captured;
-  }
-
-  it("uses the tab's URL as the referrer", async () => {
-    const fetchSpy = spyOnTorrentFetch();
-
     server.use(
-      http.get(GUARDED_URL, () =>
-        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
-          headers: { "content-type": "application/x-bittorrent" },
-        }),
-      ),
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
@@ -282,24 +259,47 @@ describe("context-menu tracker referrer", () => {
         HttpResponse.json({ error: 0 }),
       ),
     );
+  });
+
+  it("runs the fetch in the tab the link was clicked on", async () => {
+    seedOpenTab(TOPIC_URL, 88);
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      {
+        result: {
+          ok: true,
+          status: 200,
+          contentType: "application/x-bittorrent",
+          contentDisposition: "",
+          base64: btoa("d8:announce20:http://bt/announcee"),
+        },
+      },
+    ]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     await handleContextMenuClick(
       { editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" },
       { url: TOPIC_URL } as chrome.tabs.Tab,
     );
 
-    expect(fetchSpy.init?.referrer).toBe(TOPIC_URL);
-    expect(fetchSpy.init?.referrerPolicy).toBe("unsafe-url");
+    const injection = getChromeScriptingMock().executeScript.mock.calls[0]?.[0] as {
+      target: { tabId: number };
+      args: string[];
+    };
+    expect(injection.target.tabId).toBe(88);
+    expect(injection.args).toEqual([GUARDED_URL]);
+    expect(fetchSpy.mock.calls.map((call) => String(call[0]))).not.toContain(GUARDED_URL);
   });
 
-  it("tells the user to log in when the tracker answers 403", async () => {
-    server.use(http.get(GUARDED_URL, () => new HttpResponse(null, { status: 403 })));
+  it("tells the user to log in when the tracker refuses", async () => {
+    seedOpenTab(TOPIC_URL);
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      { result: { ok: false, status: 403, contentType: "text/html", contentDisposition: "", base64: "" } },
+    ]);
 
-    await handleContextMenuClick({
-      editable: false,
-      linkUrl: GUARDED_URL,
-      menuItemId: "quickget-send-link",
-    });
+    await handleContextMenuClick(
+      { editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" },
+      { url: TOPIC_URL } as chrome.tabs.Tab,
+    );
 
     expect(chrome.notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.stringContaining("logged in") }),

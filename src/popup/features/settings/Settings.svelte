@@ -1,5 +1,8 @@
 <script lang="ts">
+  import Monitor from "~icons/lucide/monitor";
+  import Moon from "~icons/lucide/moon";
   import Plus from "~icons/lucide/plus";
+  import Sun from "~icons/lucide/sun";
   import X from "~icons/lucide/x";
 
   import { showStatus } from "@/popup/components";
@@ -9,7 +12,7 @@
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
-  import { Alert, Button, Checkbox, Field, Link, Select } from "@ui";
+  import { Alert, Button, Checkbox, Field, Link, SegmentedControl, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -159,6 +162,15 @@
         return;
       }
 
+      // Saving an incomplete connection is what leaves the extension silently unable to reach
+      // the NAS later, so the required fields are checked here rather than trusting `required`
+      // on the inputs — nothing submits this form, so the browser never enforces them.
+      const missing = missingConnectionFields();
+      if (missing.length > 0) {
+        showStatus(`Fill in ${missing.join(", ")} before saving`, "error");
+        return;
+      }
+
       normalizeRoutingRules();
 
       let masterPasswordToUse: string | undefined;
@@ -196,6 +208,12 @@
       invalidateClientCache();
       applyTheme(form.theme);
       markClean();
+      showStatus(
+        form.rememberPassword
+          ? "Settings saved"
+          : "Settings saved — the password is kept only until the browser restarts",
+        "success",
+      );
 
       if (shouldVerifyConnection) {
         const settings = $state.snapshot(form);
@@ -206,6 +224,15 @@
     } finally {
       isSaving = false;
     }
+  }
+
+  /** Names of the connection fields left empty, in the order they appear in the form. */
+  function missingConnectionFields(): string[] {
+    const missing: string[] = [];
+    if (!serverUrl.trim()) missing.push("Server address");
+    if (!form.NASlogin.trim()) missing.push("Username");
+    if (!form.NASpassword) missing.push("Password");
+    return missing;
   }
 
   async function verifySavedConnection(settings: Settings): Promise<void> {
@@ -235,7 +262,7 @@
     <Field
       id="serverUrl"
       label="Server address"
-      placeholder="https://downloadstation.local:8080"
+      placeholder="http://192.168.1.100:8080"
       required
       bind:value={serverUrl}
       oninput={(event) => syncServerUrl(event.currentTarget.value)}
@@ -243,11 +270,11 @@
   </div>
 
   <div class="form-group">
-    <Field id="NASlogin" label="Username" placeholder="download" required bind:value={form.NASlogin} />
+    <Field id="NASlogin" label="Username" placeholder="Your QNAP account" required bind:value={form.NASlogin} />
   </div>
 
   <div class="form-group">
-    <Field id="NASpassword" label="Password" type="password" placeholder="App-specific password" required bind:value={form.NASpassword} />
+    <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} />
   </div>
 
   <div class="form-group form-inline">
@@ -258,10 +285,10 @@
 
   {#if form.rememberPassword && !hasCachedMasterPassword}
     <div class="form-group">
-      <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="Minimum 8 characters" bind:value={masterPasswordInput} required />
+      <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="At least 8 characters" bind:value={masterPasswordInput} required />
     </div>
     <div class="form-group">
-      <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat master password" bind:value={confirmMasterPasswordInput} required />
+      <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat the master password" bind:value={confirmMasterPasswordInput} required />
     </div>
   {:else if form.rememberPassword && hasCachedMasterPassword}
     <div class="form-group form-inline-text">
@@ -275,12 +302,12 @@
   <h2 class="section-heading">Download defaults</h2>
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
-    <FolderSelect id="NAStempdir" placeholder="Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} />
+    <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} />
   </div>
 
   <div class="form-group">
     <label for="NASdir">Target Folder</label>
-    <FolderSelect id="NASdir" placeholder="Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
+    <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
 
   <div class="form-group">
@@ -290,12 +317,19 @@
     </Select>
   </div>
 
-  <div class="form-group">
-    <Select id="theme" label="Theme" bind:value={form.theme}>
-      <option value="auto">Auto — follow system</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-    </Select>
+  <div class="form-group form-inline-control">
+    <span class="control-label" id="theme-label">Theme</span>
+    <SegmentedControl
+      compact
+      size="sm"
+      label="Theme"
+      items={[
+        { value: "auto", label: "Follow system", icon: Monitor },
+        { value: "light", label: "Light", icon: Sun },
+        { value: "dark", label: "Dark", icon: Moon },
+      ]}
+      bind:value={form.theme}
+    />
   </div>
 </section>
 
@@ -324,16 +358,16 @@
             </Select>
           </div>
           <div class="routing-text-field">
-            <Field placeholder="Name e.g. *.mkv" aria-label="Filename pattern" bind:value={rule.namePattern} />
+            <Field placeholder="e.g. *.mkv" aria-label="Filename pattern" bind:value={rule.namePattern} />
           </div>
           <div class="routing-text-field">
-            <Field placeholder="Domain e.g. *.site.com" aria-label="Domain" bind:value={rule.domain} />
+            <Field placeholder="e.g. *.site.com" aria-label="Domain" bind:value={rule.domain} />
           </div>
           <button type="button" class="rule-remove" aria-label="Remove rule" title="Remove rule" onclick={() => removeRule(i)}>
             <X aria-hidden="true" />
           </button>
         </div>
-        <FolderSelect id={`routing-${i}-destination`} placeholder="Destination folder" settings={$state.snapshot(form)} bind:value={rule.destination} />
+        <FolderSelect id={`routing-${i}-destination`} placeholder="e.g. Multimedia/Films" settings={$state.snapshot(form)} bind:value={rule.destination} />
       </div>
     {/each}
   {/if}
@@ -357,8 +391,9 @@
       {isSaving ? "Saving…" : "Save Settings"}
     </Button>
   </div>
-  <p class="version-line">Version {chrome.runtime.getManifest().version}</p>
 </footer>
+
+<p class="version-line">Version {chrome.runtime.getManifest().version}</p>
 </div>
 
 <style>
@@ -484,11 +519,22 @@
     color: var(--text-secondary);
   }
   .version-line {
-    margin: var(--space-2) 0 0;
+    margin: var(--space-3) 0 var(--space-2);
     text-align: center;
     font-size: 11px;
     color: var(--text-secondary);
   }
+  .form-inline-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .control-label {
+    font-size: 13px;
+  }
+
   .form-inline-text {
     display: flex;
     align-items: center;

@@ -1,29 +1,43 @@
 <script lang="ts" generics="T extends string">
+  import type { Component } from "svelte";
+
   import Badge from "./Badge.svelte";
   import type { ControlSize } from "./controlSize.js";
 
-  type Item = { value: T; label: string; badge?: number };
+  // `icon` replaces the visible label with a glyph; the label then names the button for
+  // assistive tech and as a tooltip, so it stays required either way.
+  type Item = { value: T; label: string; badge?: number; icon?: Component };
 
   type Props = {
     value: T;
     items: Item[];
     label?: string;
     size?: ControlSize;
+    /** Size segments to their content and sit at their natural width instead of filling the row. */
+    compact?: boolean;
   };
 
-  let { value = $bindable(), items, label = "Filter", size = "md" }: Props = $props();
+  let { value = $bindable(), items, label = "Filter", size = "md", compact = false }: Props = $props();
 </script>
 
-<div class="segmented" role="group" aria-label={label}>
+<div class="segmented" class:compact role="group" aria-label={label}>
   {#each items as item (item.value)}
     <button
       type="button"
       class={["segment", `segment-${size}`]}
       class:active={value === item.value}
+      class:icon-only={item.icon}
       aria-pressed={value === item.value}
+      aria-label={item.icon ? item.label : undefined}
+      title={item.icon ? item.label : undefined}
       onclick={() => (value = item.value)}
     >
-      {item.label}{#if item.badge}<Badge>{item.badge}</Badge>{/if}
+      {#if item.icon}
+        <item.icon aria-hidden="true" />
+      {:else}
+        {item.label}
+      {/if}
+      {#if item.badge}<Badge>{item.badge}</Badge>{/if}
     </button>
   {/each}
 </div>
@@ -66,6 +80,18 @@
   .segment:hover {
     color: var(--color-text);
     border-color: var(--color-primary-visual);
+  }
+
+  .segmented.compact {
+    flex: 0 0 auto;
+  }
+
+  .segmented.compact .segment {
+    flex: 0 0 auto;
+  }
+
+  .icon-only {
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
 
   .segment.active {

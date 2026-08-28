@@ -7,8 +7,11 @@ import {
   getChromeDownloadsMock,
   getChromeNotificationsMock,
   getChromeSessionStorageSnapshot,
+  getChromeScriptingMock,
+  getChromeTabsMock,
   seedChromeSessionStorage,
   seedChromeStorage,
+  seedOpenTab,
 } from "../../tests/mocks/chrome.js";
 import { server } from "../../tests/msw/server.js";
 
@@ -342,42 +345,23 @@ describe("download interception", () => {
 });
 
 /**
- * A tracker's hotlink guard answers a refererless request with 403 even when the session
- * cookie is valid. The service worker's own fetch sends no referrer, so without this the
- * feature fails on exactly the private trackers it exists to serve.
- *
- * The assertion is on the request init rather than on a received `Referer` header: `referrer`
- * is applied by the browser's fetch, and the test environment's fetch does not translate it
- * into a header. What the code controls — and therefore what is worth pinning — is the init.
+ * A tracker's hotlink guard refuses a request that does not look like a click from its own
+ * pages. The service worker cannot produce one: `Referer` is unsettable from there (the Fetch
+ * spec discards a cross-origin `referrer`), and the request still carries the extension's
+ * origin. So the fetch is delegated to a tab already on the site, where all of that is native.
  */
-describe("download interception — tracker referrer", () => {
+describe("download interception — page-context fetch", () => {
   const GUARDED_URL = "https://tracker.example.com/forum/dl.php?t=6645249";
   const TOPIC_URL = "https://tracker.example.com/forum/viewtopic.php?t=6645249";
+  const OTHER_TOPIC = "https://tracker.example.com/forum/viewtopic.php?t=1";
 
   beforeEach(() => {
     seedChromeStorage(createTestSettings());
+    mockNasAccepts();
   });
 
-  /** Records the init of the torrent fetch while leaving the request itself to MSW. */
-  function spyOnTorrentFetch(): { init: RequestInit | undefined } {
-    const captured: { init: RequestInit | undefined } = { init: undefined };
-    const original = globalThis.fetch;
-
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (String(input) === GUARDED_URL) captured.init = init;
-      return original(input as RequestInfo, init);
-    });
-
-    return captured;
-  }
-
-  function mockTracker(): void {
+  function mockNasAccepts(): void {
     server.use(
-      http.get(GUARDED_URL, () =>
-        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce\u2026e").buffer as ArrayBuffer, {
-          headers: { "content-type": "application/x-bittorrent" },
-        }),
-      ),
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
         HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
       ),
@@ -387,47 +371,103 @@ describe("download interception — tracker referrer", () => {
     );
   }
 
-  it("sends the download's own referrer so the tracker does not refuse it", async () => {
-    mockTracker();
-    const fetchSpy = spyOnTorrentFetch();
+  /** Stands in for the page: returns the torrent base64-encoded, as the injected code does. */
+  function pageReturnsTorrent(): void {
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      {
+        result: {
+          ok: true,
+          status: 200,
+          contentType: "application/x-bittorrent",
+          contentDisposition: 'attachment; filename="picked-up.torrent"',
+          base64: btoa("d8:announce20:http://bt/announcee"),
+        },
+      },
+    ]);
+  }
+
+  it("fetches through the tab the download came from, not from the worker", async () => {
+    seedOpenTab(TOPIC_URL, 77);
+    pageReturnsTorrent();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     const downloads = getChromeDownloadsMock();
 
     await handleDownloadCreated(
-      createDownloadItem({
-        id: 42,
-        url: GUARDED_URL,
-        finalUrl: GUARDED_URL,
-        filename: "torrent.torrent",
-        referrer: TOPIC_URL,
-      }),
+      createDownloadItem({ id: 60, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
     );
 
-    expect(fetchSpy.init?.referrer).toBe(TOPIC_URL);
-    // The default policy trims the referrer to the origin; some guards check the path.
-    expect(fetchSpy.init?.referrerPolicy).toBe("unsafe-url");
-    expect(fetchSpy.init?.credentials).toBe("include");
-    // The whole point: the hand-off completed, so the browser copy was dropped.
-    expect(downloads.cancel).toHaveBeenCalledWith(42);
+    const injection = getChromeScriptingMock().executeScript.mock.calls[0]?.[0] as {
+      target: { tabId: number };
+      args: string[];
+      world: string;
+    };
+    expect(injection.target.tabId).toBe(77);
+    expect(injection.args).toEqual([GUARDED_URL]);
+    // MAIN world, so the request carries the page's own origin rather than an isolated one.
+    expect(injection.world).toBe("MAIN");
+
+    // The worker must not have fetched the tracker itself — that is the request that gets a 403.
+    expect(fetchSpy.mock.calls.map((call) => String(call[0]))).not.toContain(GUARDED_URL);
+    expect(downloads.cancel).toHaveBeenCalledWith(60);
   });
 
-  it("falls back to the tracker's own origin when Chrome recorded no referrer", async () => {
-    mockTracker();
-    const fetchSpy = spyOnTorrentFetch();
+  it("prefers the tab the download started from over another tab on the site", async () => {
+    getChromeTabsMock().query.mockResolvedValue([
+      { id: 1, url: OTHER_TOPIC } as chrome.tabs.Tab,
+      { id: 2, url: TOPIC_URL } as chrome.tabs.Tab,
+    ]);
+    pageReturnsTorrent();
 
     await handleDownloadCreated(
-      createDownloadItem({ id: 43, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: "" }),
+      createDownloadItem({ id: 61, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
     );
 
-    expect(fetchSpy.init?.referrer).toBe("https://tracker.example.com/");
+    const injection = getChromeScriptingMock().executeScript.mock.calls[0]?.[0] as {
+      target: { tabId: number };
+    };
+    expect(injection.target.tabId).toBe(2);
   });
 
-  it("explains a 403 instead of reporting a bare HTTP status", async () => {
+  it("takes the file name the page reported in Content-Disposition", async () => {
+    seedOpenTab(TOPIC_URL);
+    pageReturnsTorrent();
     const notifications = getChromeNotificationsMock();
 
-    server.use(http.get(GUARDED_URL, () => new HttpResponse(null, { status: 403 })));
+    await handleDownloadCreated(
+      createDownloadItem({ id: 62, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
+    );
+
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("picked-up.torrent") }),
+    );
+  });
+
+  it("falls back to the worker's own fetch when the site is not open in any tab", async () => {
+    const nas = mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem({ id: 63 }));
+
+    expect(getChromeScriptingMock().executeScript).not.toHaveBeenCalled();
+    expect(nas.addTorrentCalls).toBe(1);
+  });
+
+  it("explains a refusal instead of reporting a bare HTTP status", async () => {
+    seedOpenTab(TOPIC_URL);
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      {
+        result: {
+          ok: false,
+          status: 403,
+          contentType: "text/html",
+          contentDisposition: "",
+          base64: "",
+        },
+      },
+    ]);
+    const notifications = getChromeNotificationsMock();
 
     await handleDownloadCreated(
-      createDownloadItem({ id: 44, url: GUARDED_URL, finalUrl: GUARDED_URL }),
+      createDownloadItem({ id: 64, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
     );
 
     expect(notifications.create).toHaveBeenCalledWith(
