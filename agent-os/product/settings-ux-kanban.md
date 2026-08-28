@@ -23,8 +23,8 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-7 | Connection has no connected/disconnected state model | ui | L | **Agreed — ready** |
 | UX-8 | Master password protects settings, not downloads | settings | M | **Done** |
 | UX-9 | a11y regression gate in CI | testing | S | Discussion |
-| UX-10 | Notifications fire on every outcome, including success | background | M | **Agreed — ready** |
-| UX-11 | No activity history in the popup | ui | M | Discussion |
+| UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
+| UX-11 | No activity history in the popup | ui | M | **Done** |
 
 ---
 
@@ -268,8 +268,8 @@ CI, alongside the existing gates.
 
 ### UX-10 — Notifications fire on every outcome, including success
 
-**Size:** M · **Area:** background · **Status:** Agreed — ready
-**Decided:** 2026-08-28
+**Size:** M · **Area:** background · **Status:** Done
+**Decided:** 2026-08-28 · **Implemented:** 2026-08-28 in `src/background/notifier.ts`
 
 A system toast is not a log. It is for something the user must learn *now*, while the popup is
 closed. Today every outcome raises one, so the signal is buried in noise.
@@ -306,7 +306,9 @@ notificationState: { lastKind, lastFingerprint, lastShownAt }
 
 ### UX-11 — No activity history in the popup
 
-**Size:** M · **Area:** ui · **Status:** Discussion
+**Size:** M · **Area:** ui · **Status:** Done
+**2026-08-28:** implemented in `src/lib/activityLog.ts` and `src/popup/features/activity/`.
+Collapsed by default, 50 entries, host only — never the URL.
 
 Making success and duplicate silent (UX-10) removes the only record that anything happened. The
 popup needs a short activity list — not a delivery channel, but the place that explains what

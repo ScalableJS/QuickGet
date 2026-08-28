@@ -7,9 +7,11 @@ import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
+import { recordActivity, sourceHost } from "@lib/activityLog.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { ensureMonitoring } from "./alarms.js";
+import { notifyDirect } from "./notifier.js";
 
 /**
  * Create context menu items
@@ -64,7 +66,8 @@ export async function handleContextMenuClick(
     await sendDownloadToStation(url, tab?.url);
   } catch (error) {
     console.error("Context menu error:", error);
-    showNotification("Failed to send with QuickGet", getErrorMessage(error));
+    // A failure the user directly asked for: they are waiting for an answer right now.
+    notifyDirect("Failed to send with QuickGet", getErrorMessage(error));
   }
 }
 
@@ -88,14 +91,16 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
   if (isTorrentSource(url)) {
     const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
     void ensureMonitoring();
-    showNotification(duplicate ? "Already on NAS" : "Success", name);
+    await recordActivity({ name, source: sourceHost(url), outcome: duplicate ? "duplicate" : "sent" });
+    // Silent on success: the user watched themselves click the menu item, and a toast per
+    // click is the noise that buried the messages worth reading.
     return;
   }
 
   const client = createApiClient({ settings });
   await client.addUrl(url, { targetFolder });
   void ensureMonitoring();
-  showNotification("Success", `Download sent to Download Station: ${url}`);
+  await recordActivity({ name: url, source: sourceHost(url), outcome: "sent" });
 }
 
 /**
@@ -112,20 +117,4 @@ function isValidUrl(url: string): boolean {
 
 function isTorrentUrl(url: string): boolean {
   return /^magnet:/i.test(url) || /\.torrent$/i.test(url);
-}
-
-/**
- * Show notification
- */
-function showNotification(title: string, message: string): void {
-  try {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
-      title,
-      message,
-    });
-  } catch (error) {
-    console.log("Notifications not available:", error);
-  }
 }

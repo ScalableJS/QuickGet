@@ -20,6 +20,8 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
+import { readActivity } from "../lib/activityLog.js";
+
 import { handleDownloadCreated, recoverAbandonedHandoffs } from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
@@ -432,15 +434,15 @@ describe("download interception — page-context fetch", () => {
   it("takes the file name the page reported in Content-Disposition", async () => {
     seedOpenTab(TOPIC_URL);
     pageReturnsTorrent();
-    const notifications = getChromeNotificationsMock();
 
     await handleDownloadCreated(
       createDownloadItem({ id: 62, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: TOPIC_URL }),
     );
 
-    expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining("picked-up.torrent") }),
-    );
+    // Success is silent now, so the activity log is where the name has to show up.
+    const [entry] = await readActivity();
+    expect(entry.name).toBe("picked-up.torrent");
+    expect(entry.outcome).toBe("sent");
   });
 
   it("falls back to the worker's own fetch when the site is not open in any tab", async () => {
@@ -593,5 +595,85 @@ describe("download interception — configuration is visible", () => {
     await handleDownloadCreated(createDownloadItem({ id: 74 }));
 
     expect(action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+  });
+});
+
+/**
+ * A toast is not a log. It is worth interrupting for only when the user must act — which a
+ * successful send never is. Reporting every outcome is what buried the messages that mattered.
+ */
+describe("download interception — notification restraint", () => {
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings());
+  });
+
+  it("says nothing at all when the torrent goes through", async () => {
+    const notifications = getChromeNotificationsMock();
+    mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem({ id: 80 }));
+
+    expect(notifications.create).not.toHaveBeenCalled();
+    // Silent does not mean invisible: it is in the activity log.
+    const [entry] = await readActivity();
+    expect(entry.outcome).toBe("sent");
+  });
+
+  it("reports a failure once, not once per attempt", async () => {
+    const notifications = getChromeNotificationsMock();
+    mockFailedHandoff();
+
+    await handleDownloadCreated(createDownloadItem({ id: 81 }));
+    await handleDownloadCreated(createDownloadItem({ id: 82 }));
+    await handleDownloadCreated(createDownloadItem({ id: 83 }));
+
+    expect(notifications.create).toHaveBeenCalledTimes(1);
+    // Every attempt is still recorded — only the interruption is deduplicated.
+    expect(await readActivity()).toHaveLength(3);
+  });
+
+  it("speaks up again after things worked in between", async () => {
+    const notifications = getChromeNotificationsMock();
+
+    mockFailedHandoff();
+    await handleDownloadCreated(createDownloadItem({ id: 84 }));
+    expect(notifications.create).toHaveBeenCalledTimes(1);
+
+    mockSuccessfulHandoff();
+    await handleDownloadCreated(createDownloadItem({ id: 85 }));
+
+    mockFailedHandoff();
+    await handleDownloadCreated(createDownloadItem({ id: 86 }));
+
+    // A problem that returns after a recovery is news again.
+    expect(notifications.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not suppress a different kind of problem behind an ongoing one", async () => {
+    const notifications = getChromeNotificationsMock();
+
+    mockFailedHandoff();
+    await handleDownloadCreated(createDownloadItem({ id: 87 }));
+
+    seedChromeStorage(createTestSettings({ NAStempdir: "" }));
+    await handleDownloadCreated(createDownloadItem({ id: 88 }));
+
+    expect(notifications.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("never records the source URL, only its host", async () => {
+    mockSuccessfulHandoff();
+
+    await handleDownloadCreated(
+      createDownloadItem({
+        id: 89,
+        url: `${TORRENT_URL}?token=secret-session-token`,
+        finalUrl: `${TORRENT_URL}?token=secret-session-token`,
+      }),
+    );
+
+    // Tracker links are signed; storing them would turn the log into a credential store.
+    expect(JSON.stringify(await readActivity())).not.toContain("secret-session-token");
+    expect((await readActivity())[0].source).toBe("tracker.example.com");
   });
 });
