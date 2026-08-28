@@ -1,6 +1,11 @@
 import type { Preview } from "@storybook/svelte-vite";
 
 import "../src/popup/index.css";
+import { installChromeMock } from "./chromeMock";
+
+// Settings and the folder picker read `chrome.storage` on mount; without a stand-in they throw
+// before rendering, so none of their states could be reviewed here.
+installChromeMock();
 
 function applyTheme(theme: string): void {
   const root = document.documentElement;
