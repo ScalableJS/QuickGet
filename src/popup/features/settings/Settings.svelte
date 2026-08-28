@@ -236,6 +236,9 @@
     if (!serverUrl.trim()) missing.push("Server address");
     if (!form.NASlogin.trim()) missing.push("Username");
     if (!form.NASpassword) missing.push("Password");
+    // Download Station refuses a task without a temporary folder, so an empty one is not a
+    // preference — it makes every download fail with an error naming a field, not a setting.
+    if (!form.NAStempdir.trim()) missing.push("Temp Folder");
     return missing;
   }
 

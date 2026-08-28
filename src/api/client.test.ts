@@ -405,3 +405,72 @@ describe("ApiClient", () => {
     expect(torrentBody).not.toContain("/share/");
   });
 });
+
+/**
+ * Download Station requires a temporary folder and reports a missing one as
+ * `{error: 1, reason: "temp"}` — a field name, not a setting name. Every torrent fails until
+ * the user connects that to the empty Temp Folder box, which the raw message does not help with.
+ */
+describe("AddTorrent folder requirements", () => {
+  const torrent = new File([new Uint8Array([0x64, 0x38])], "sample.torrent", {
+    type: "application/x-bittorrent",
+  });
+
+  it("names the setting instead of asking the NAS with an empty temp folder", async () => {
+    const client = createApiClient({
+      settings: createTestSettings({ NAStempdir: "" }),
+      fetchFn: fetch,
+    });
+
+    let reached = false;
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => {
+        reached = true;
+        return HttpResponse.json({ error: 1, reason: "temp" });
+      }),
+    );
+
+    await expect(client.addTorrent(torrent)).rejects.toThrow(/Temp Folder/i);
+    // A request that cannot succeed is not worth making.
+    expect(reached).toBe(false);
+  });
+
+  it("explains a rejected temp folder rather than repeating the field name", async () => {
+    const client = createApiClient({
+      settings: createTestSettings({ NAStempdir: "NoSuchFolder" }),
+      fetchFn: fetch,
+    });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 1, reason: "temp" }),
+      ),
+    );
+
+    await expect(client.addTorrent(torrent)).rejects.toThrow(/temporary folder.*Settings/i);
+  });
+
+  it("explains a rejected destination folder too", async () => {
+    const client = createApiClient({
+      settings: createTestSettings({ NAStempdir: "Download", NASdir: "Nope" }),
+      fetchFn: fetch,
+    });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 1, reason: "move" }),
+      ),
+    );
+
+    await expect(client.addTorrent(torrent)).rejects.toThrow(/Target Folder/i);
+  });
+});

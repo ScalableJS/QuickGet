@@ -36,11 +36,28 @@ const coerceString = (value: unknown, fallback = ""): string => {
  * Create a typed error from QNAP API response
  * Enriches error with code, reason, and flags for specific error types
  */
+/**
+ * Turn the API's field-name reasons into something the user can act on. Download Station
+ * answers `{error: 1, reason: "temp"}` when a required folder is empty or unusable — a message
+ * naming the setting is the difference between a fixable problem and an opaque code.
+ */
+function explainReason(errorCode: number, reason: string): string | undefined {
+  if (errorCode !== 1) return undefined;
+
+  if (reason === "temp") {
+    return "Download Station rejected the temporary folder. Set a valid Temp Folder in Settings (e.g. Download).";
+  }
+  if (reason === "move" || reason === "dest_path") {
+    return "Download Station rejected the destination folder. Check the Target Folder in Settings.";
+  }
+  return undefined;
+}
+
 export function createApiError(prefix: string, result: unknown): Error {
   const payload = toApiResult(result);
   const errorCode = coerceNumber(payload.error, -1);
   const reason = coerceString(payload.reason).trim();
-  const message = reason ? `${prefix} (${errorCode}): ${reason}` : `${prefix} (${errorCode})`;
+  const message = explainReason(errorCode, reason) ?? (reason ? `${prefix} (${errorCode}): ${reason}` : `${prefix} (${errorCode})`);
 
   const error = new Error(message) as Error & {
     code: number;
