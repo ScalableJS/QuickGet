@@ -112,9 +112,6 @@ test.describe("real NAS popup e2e", () => {
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForPopupReady(page);
       await page.setInputFiles("#torrentFileInput", fixture.torrentFilePath);
-      await expect(page.locator("#status-message")).toContainText("Torrent added successfully", {
-        timeout: 20_000,
-      });
 
       const ownedItem = page.locator("#downloads-list .download-item").filter({
         hasText: fixture.displayName,

@@ -17,6 +17,7 @@ build/
 web-ext-artifacts/
 playwright-report/
 test-results/
+coverage/
 .e2e-artifacts/
 
 # Ignore all markdown files except README, project instructions, and tracked docs.
@@ -44,9 +45,12 @@ test-results/
 !docs/popup-refactoring-plan.md
 !docs/synology-download-station-analysis.md
 !docs/download-interception-bugs.md
+!docs/local-development.md
+!docs/settings-ux-plan.md
 !icons/chrome-extension-icon-animation.md
 
 storybook-static/
 
 # repomix code dumps
 repomix-output.xml
+dist-dev/

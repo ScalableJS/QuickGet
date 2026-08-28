@@ -42,7 +42,6 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     }
 
     if (failed === 0) {
-      showStatus(`Added ${ok} task(s)`, "success", { autoHideMs: 2000 });
       options.onSuccess?.();
       return;
     }

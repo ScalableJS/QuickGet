@@ -10,68 +10,23 @@
     children: Snippet;
   } & HTMLButtonAttributes;
 
+  const sizeClasses = {
+    sm: "w-[var(--control-height-sm)] h-[var(--control-height-sm)]",
+    md: "w-[var(--control-height-md)] h-[var(--control-height-md)]",
+  } satisfies Record<ControlSize, string>;
+
   let { el = $bindable(), size = "md", type = "button", class: klass, children, ...rest }: Props = $props();
 </script>
 
-<button bind:this={el} {type} class={["icon-button", `icon-button-${size}`, klass]} {...rest}>
+<button
+  bind:this={el}
+  {type}
+  class={[
+    "border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--color-bg-alt)] text-[var(--color-text)] text-14px leading-none flex items-center justify-center cursor-pointer p-0 transition-[background,border-color] duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-bg-alt))] hover:border-[var(--color-primary-visual)] aria-[pressed=true]:bg-[color-mix(in_srgb,var(--color-primary)_16%,var(--color-bg-alt))] aria-[pressed=true]:border-[var(--color-primary-visual)] aria-[pressed=true]:text-[var(--color-primary-visual)] aria-[pressed=true]:hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-bg-alt))] active:bg-[var(--color-primary)] active:text-[var(--color-text-inverse)] active:border-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-[var(--toolbar-disabled-bg)] [&>svg]:w-4 [&>svg]:h-4",
+    sizeClasses[size],
+    klass,
+  ]}
+  {...rest}
+>
   {@render children()}
 </button>
-
-<style>
-  .icon-button {
-    width: var(--control-height-md);
-    height: var(--control-height-md);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    background: var(--color-bg-alt);
-    color: var(--color-text);
-    font-size: 14px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition:
-      background 0.2s ease,
-      border-color 0.2s ease;
-    padding: 0;
-  }
-
-  .icon-button-sm {
-    width: var(--control-height-sm);
-    height: var(--control-height-sm);
-  }
-
-  .icon-button :global(svg) {
-    width: 16px;
-    height: 16px;
-  }
-
-  .icon-button:hover {
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-alt));
-    border-color: var(--color-primary-visual);
-  }
-
-  .icon-button[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg-alt));
-    border-color: var(--color-primary-visual);
-    color: var(--color-primary-visual);
-  }
-
-  .icon-button[aria-pressed="true"]:hover {
-    background: color-mix(in srgb, var(--color-primary) 24%, var(--color-bg-alt));
-  }
-
-  .icon-button:active {
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
-    border-color: var(--color-primary);
-  }
-
-  .icon-button:disabled,
-  .icon-button[disabled] {
-    opacity: 0.4;
-    cursor: not-allowed;
-    background: var(--toolbar-disabled-bg);
-  }
-</style>

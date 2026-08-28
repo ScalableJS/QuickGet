@@ -13,7 +13,6 @@ describe("clientSignature", () => {
     const base = createTestSettings();
     const tweaked = createTestSettings({
       torrentInterceptMode: "always",
-      rememberPassword: true,
       routingRules: [{ destination: "Movies" }],
     });
     expect(clientSignature(tweaked)).toBe(clientSignature(base));

@@ -10,23 +10,14 @@
   let { expanded, type = "button", class: klass, children, ...rest }: Props = $props();
 </script>
 
-<button {type} class={["disclosure", klass]} aria-expanded={expanded} {...rest}>
+<button
+  {type}
+  class={[
+    "mt-[6px] bg-transparent border border-[var(--color-border)] rounded-[var(--radius)] px-2 py-[2px] text-12px cursor-pointer text-[var(--color-primary)] hover:bg-[var(--color-bg-alt)]",
+    klass,
+  ]}
+  aria-expanded={expanded}
+  {...rest}
+>
   {@render children()}
 </button>
-
-<style>
-  .disclosure {
-    margin-top: 6px;
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 2px 8px;
-    font-size: 12px;
-    cursor: pointer;
-    color: var(--color-primary);
-  }
-
-  .disclosure:hover {
-    background: var(--color-bg-alt);
-  }
-</style>

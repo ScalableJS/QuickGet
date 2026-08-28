@@ -31,7 +31,7 @@
   );
 </script>
 
-<div class="download-controls">
+<div class="download-controls flex gap-[var(--spacing-xs)] mb-[var(--spacing-sm)]">
   <SegmentedControl
     size="sm"
     bind:value={filter}
@@ -44,7 +44,7 @@
   />
   <IconButton
     size="sm"
-    class="search-toggle"
+    class="search-toggle bg-transparent text-[var(--text-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)] aria-[expanded=true]:text-[var(--color-text)] aria-[expanded=true]:border-[var(--color-border-strong)] [&>svg]:w-[15px] [&>svg]:h-[15px]"
     aria-label="Search downloads"
     aria-expanded={searchOpen}
     title="Search downloads"
@@ -58,12 +58,12 @@
 </div>
 
 {#if searchOpen}
-  <div class="download-search-wrap">
+  <div class="download-search-wrap -mt-[var(--spacing-sm)] mb-[var(--spacing-sm)]">
     <SearchField size="sm" placeholder="Search downloads" aria-label="Search downloads" bind:value={query} />
   </div>
 {/if}
 
-<div id="downloads-list" role="listbox" aria-label="Download tasks" aria-multiselectable="false">
+<div id="downloads-list" class="flex flex-col gap-[var(--spacing-sm)] m-0 p-0" role="listbox" aria-label="Download tasks" aria-multiselectable="false">
   {#if visibleTasks.length === 0}
     <EmptyState>{emptyMessage}</EmptyState>
   {:else}
@@ -72,9 +72,3 @@
     {/each}
   {/if}
 </div>
-
-<style>
-  .download-search-wrap {
-    margin: calc(var(--spacing-sm) * -1) 0 var(--spacing-sm);
-  }
-</style>

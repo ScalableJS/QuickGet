@@ -33,6 +33,10 @@ const ACTIVE_ICON_PATH = {
   128: "icons/128_active.png",
 } as const;
 
+/** Badge shown when the extension is configured in a way that cannot work. */
+const CONFIG_BADGE = "!";
+const CONFIG_BADGE_COLOR = "#D93025";
+
 // Consecutive confirmed-zero polls required before the badge clears.
 const ZERO_CONFIRM = 2;
 
@@ -47,6 +51,7 @@ type ToolbarState = {
   icon: IconState | null;
   colorSet: boolean;
   title: string;
+  failureRevision: number;
   zeroStreak: number;
   errorStreak: number;
 };
@@ -57,9 +62,39 @@ const DEFAULT_STATE: ToolbarState = {
   icon: null,
   colorSet: false,
   title: "",
+  failureRevision: 0,
   zeroStreak: 0,
   errorStreak: 0,
 };
+
+// This is a same-worker mutex, not authoritative state. The state itself remains in
+// storage.session so MV3 worker suspension cannot lose it. Without serialization, two
+// get → mutate → set sequences can save in reverse order and erase the newer transition.
+let stateUpdateQueue = Promise.resolve();
+
+async function updateState<Result>(update: (state: ToolbarState) => Promise<Result>): Promise<Result> {
+  const operation = stateUpdateQueue.then(async () => {
+    const state = await loadState();
+    const result = await update(state);
+    await saveState(state);
+    return result;
+  });
+  stateUpdateQueue = operation.then(
+    () => undefined,
+    () => undefined,
+  );
+  return operation;
+}
+
+async function tryActionUpdate(label: string, update: () => Promise<void>): Promise<boolean> {
+  try {
+    await update();
+    return true;
+  } catch (error) {
+    console.error(`[QuickGet] could not update toolbar ${label}:`, error);
+    return false;
+  }
+}
 
 async function loadState(): Promise<ToolbarState> {
   const stored = await chrome.storage.session.get(STATE_KEY);
@@ -81,57 +116,120 @@ function buildTitle(stats: ProgressSummary): string {
  * caller can stop polling). Do NOT call on a failed/aborted/skipped poll.
  */
 export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active: number; idleConfirmed: boolean }> {
-  const state = await loadState();
-  state.errorStreak = 0; // a successful poll resets the failure count
+  return updateState(async (state) => {
+    state.errorStreak = 0; // a successful poll resets the failure count
+    const needsAttention = state.badgeText === CONFIG_BADGE;
 
-  // Refresh the tooltip only when we actually apply a state — during an idle
-  // hold the tooltip keeps matching the count still on the badge.
-  const refreshTitle = () => {
-    const title = buildTitle(stats);
-    if (title !== state.title) {
-      chrome.action.setTitle({ title });
-      state.title = title;
-    }
-  };
+    // Refresh the tooltip only when we actually apply a state — during an idle
+    // hold the tooltip keeps matching the count still on the badge.
+    const refreshTitle = () => {
+      const title = buildTitle(stats);
+      if (title !== state.title) {
+        chrome.action.setTitle({ title });
+        state.title = title;
+      }
+    };
 
-  if (stats.active > 0) {
-    refreshTitle();
-    state.zeroStreak = 0;
-    const text = String(stats.active);
-    if (text !== state.badgeText) {
-      chrome.action.setBadgeText({ text });
-      state.badgeText = text;
+    if (stats.active > 0) {
+      if (!needsAttention) refreshTitle();
+      state.zeroStreak = 0;
+      const text = String(stats.active);
+      if (!needsAttention && text !== state.badgeText) {
+        chrome.action.setBadgeText({ text });
+        state.badgeText = text;
+      }
+      if (!needsAttention && !state.colorSet) {
+        chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // green, set once
+        state.colorSet = true;
+      }
+      if (state.icon !== "active") {
+        if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
+          state.icon = "active";
+        }
+      }
+      return { active: stats.active, idleConfirmed: false };
     }
-    if (!state.colorSet) {
-      chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // green, set once
-      state.colorSet = true;
+
+    // active === 0 — hold the last badge/icon until the zeros are sustained.
+    state.zeroStreak += 1;
+    if (state.zeroStreak < ZERO_CONFIRM) {
+      return { active: 0, idleConfirmed: false };
     }
-    if (state.icon !== "active") {
-      void chrome.action.setIcon({ path: ACTIVE_ICON_PATH });
+
+    if (!needsAttention) refreshTitle();
+    if (!needsAttention && state.badgeText !== "") {
+      chrome.action.setBadgeText({ text: "" });
+      state.badgeText = "";
+    }
+    if (state.icon !== "idle") {
+      if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: IDLE_ICON_PATH }))) {
+        state.icon = "idle";
+      }
+    }
+    return { active: 0, idleConfirmed: true };
+  });
+}
+
+/**
+ * Publish the real start of a browser-download hand-off immediately. The returned failure
+ * revision lets this operation clear only an error that already existed when it started; an
+ * older success can never erase a newer failure from a parallel hand-off.
+ */
+export async function markInterceptionStarted(): Promise<number> {
+  return updateState(async (state) => {
+    // This is an explicit lifecycle event, not a poll. Repaint even when the persisted cache
+    // already says active because Chrome's visible action and our cache can drift.
+    if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
       state.icon = "active";
     }
-    await saveState(state);
-    return { active: stats.active, idleConfirmed: false };
-  }
 
-  // active === 0 — hold the last badge/icon until the zeros are sustained.
-  state.zeroStreak += 1;
-  if (state.zeroStreak < ZERO_CONFIRM) {
-    await saveState(state);
-    return { active: 0, idleConfirmed: false };
-  }
+    if (state.badgeText !== CONFIG_BADGE) {
+      const title = "Sending torrent to QNAP…";
+      if (await tryActionUpdate("title", () => chrome.action.setTitle({ title }))) state.title = title;
+    }
 
-  refreshTitle();
-  if (state.badgeText !== "") {
-    chrome.action.setBadgeText({ text: "" });
-    state.badgeText = "";
-  }
-  if (state.icon !== "idle") {
-    void chrome.action.setIcon({ path: IDLE_ICON_PATH });
-    state.icon = "idle";
-  }
-  await saveState(state);
-  return { active: 0, idleConfirmed: true };
+    return state.failureRevision;
+  });
+}
+
+/**
+ * Put the toolbar into a "this needs your attention" state and keep it there.
+ *
+ * A misconfiguration is silent by nature: nothing is downloading, so no poll runs and no badge
+ * changes — the user only finds out when a torrent quietly fails. A red badge is the one signal
+ * visible without opening anything.
+ *
+ * It deliberately outranks the download count: a count is a status, this is a fault, and the
+ * count comes back on the next successful poll once the fault is cleared.
+ */
+export async function markConfigurationProblem(reason: string): Promise<void> {
+  await updateState(async (state) => {
+    state.failureRevision += 1;
+
+    if (state.badgeText !== CONFIG_BADGE) {
+      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
+        state.badgeText = CONFIG_BADGE;
+      }
+    }
+    await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR }));
+    // The next successful poll must repaint green rather than assume it is already set.
+    state.colorSet = false;
+
+    const title = `QuickGet needs attention\n${reason}`;
+    if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
+      state.title = title;
+    }
+  });
+}
+
+/** Clear a configuration fault once a request succeeds. */
+export async function clearConfigurationProblem(failureRevisionAtStart: number): Promise<void> {
+  await updateState(async (state) => {
+    if (state.badgeText !== CONFIG_BADGE || state.failureRevision !== failureRevisionAtStart) return;
+
+    if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
+    if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
+  });
 }
 
 /**
@@ -140,10 +238,10 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
  * the caller can stop polling an unreachable NAS instead of retrying forever.
  */
 export async function noteMonitoringFailure(): Promise<{ giveUp: boolean }> {
-  const state = await loadState();
-  state.errorStreak += 1;
-  await saveState(state);
-  return { giveUp: state.errorStreak >= ERROR_LIMIT };
+  return updateState(async (state) => {
+    state.errorStreak += 1;
+    return { giveUp: state.errorStreak >= ERROR_LIMIT };
+  });
 }
 
 /**
@@ -153,5 +251,7 @@ export async function noteMonitoringFailure(): Promise<{ giveUp: boolean }> {
 export async function resetActionState(): Promise<void> {
   chrome.action.setBadgeText({ text: "" });
   void chrome.action.setIcon({ path: IDLE_ICON_PATH });
-  await saveState({ ...DEFAULT_STATE, icon: "idle" });
+  await updateState(async (state) => {
+    Object.assign(state, DEFAULT_STATE, { icon: "idle" });
+  });
 }

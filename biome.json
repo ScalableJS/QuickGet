@@ -56,7 +56,9 @@
         "useImportType": "error",
         "useConsistentArrayType": {
           "level": "error",
-          "options": { "syntax": "shorthand" }
+          "options": {
+            "syntax": "shorthand"
+          }
         }
       },
       "complexity": {
@@ -78,11 +80,18 @@
       "bracketSpacing": true,
       "bracketSameLine": false
     },
-    "globals": ["chrome"]
+    "globals": [
+      "chrome"
+    ]
   },
   "overrides": [
     {
-      "includes": ["tests/**", "**/*.test.ts", "**/*.spec.ts", "**/*.stories.ts"],
+      "includes": [
+        "tests/**",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/*.stories.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
@@ -93,7 +102,12 @@
       }
     },
     {
-      "includes": ["src/background/**", "scripts/**"],
+      "includes": [
+        "src/background/**",
+        "src/lib/tabFetch.ts",
+        "src/lib/activityLog.ts",
+        "scripts/**"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

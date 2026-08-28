@@ -12,86 +12,28 @@
   let { checked = $bindable(false), id, disabled = false, class: klass, children, ...rest }: Props = $props();
 </script>
 
-<label class={["checkbox", disabled && "disabled", klass]}>
-  <span class="checkbox-control">
-    <input type="checkbox" {id} {disabled} bind:checked {...rest} />
-    <span class="checkbox-check" aria-hidden="true"><Check /></span>
+<label
+  class={[
+    "flex items-center gap-[var(--spacing-sm)] font-500 cursor-pointer text-[var(--color-text)]",
+    disabled && "cursor-not-allowed text-[var(--text-disabled)]",
+    klass,
+  ]}
+>
+  <span class="relative grid flex-none w-4 h-4 place-content-center">
+    <input
+      type="checkbox"
+      {id}
+      {disabled}
+      bind:checked
+      class="peer appearance-none m-0 w-4 h-4 grid place-content-center rounded-[3px] border border-[var(--color-control-border)] bg-[var(--textbox-bg)] cursor-pointer transition-[background,border-color] duration-150 checked:border-[var(--color-primary)] checked:bg-[var(--color-primary)] focus-visible:outline-none focus-visible:border-[var(--color-primary-visual)] focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
+      {...rest}
+    />
+    <span
+      class="pointer-events-none absolute inset-0 grid place-content-center opacity-0 peer-checked:opacity-100 [&>svg]:w-3 [&>svg]:h-3 [&>svg]:stroke-[var(--color-text-inverse)] [&>svg]:[stroke-width:3]"
+      aria-hidden="true"
+    >
+      <Check />
+    </span>
   </span>
   {@render children()}
 </label>
-
-<style>
-  .checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--color-text);
-  }
-
-  .checkbox-control {
-    position: relative;
-    display: grid;
-    flex: 0 0 16px;
-    width: 16px;
-    height: 16px;
-  }
-
-  .checkbox input[type="checkbox"] {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    display: grid;
-    place-content: center;
-    border: 1px solid var(--color-control-border);
-    border-radius: 3px;
-    background: var(--textbox-bg);
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .checkbox-check {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-content: center;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .checkbox-check :global(svg) {
-    width: 12px;
-    height: 12px;
-    stroke: var(--color-text-inverse);
-    stroke-width: 3;
-  }
-
-  .checkbox input[type="checkbox"]:checked + .checkbox-check {
-    opacity: 1;
-  }
-
-  .checkbox input[type="checkbox"]:checked {
-    border-color: var(--color-primary);
-    background: var(--color-primary);
-  }
-
-  .checkbox input[type="checkbox"]:focus-visible {
-    outline: none;
-    border-color: var(--color-primary-visual);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  }
-
-  .checkbox.disabled {
-    color: var(--text-disabled);
-    cursor: not-allowed;
-  }
-
-  .checkbox input[type="checkbox"]:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-</style>

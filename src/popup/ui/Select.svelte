@@ -14,77 +14,33 @@
     children: Snippet;
   } & Omit<HTMLSelectAttributes, "size" | "value">;
 
+  const sizeClasses = {
+    sm: "h-[var(--control-height-sm)] text-12px",
+    md: "h-[var(--control-height-md)] text-13px",
+  } satisfies Record<ControlSize, string>;
+
   let { id, label, value = $bindable(""), size = "md", class: klass, children, ...rest }: Props = $props();
 </script>
 
-<div class="field">
+<div class="relative block">
   {#if label}
-    <label for={id}>{label}</label>
+    <label for={id} class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">{label}</label>
   {/if}
-  <div class="select-control">
-    <select {id} class={["field-select", `field-select-${size}`, klass]} bind:value {...rest}>
+  <div class="relative">
+    <select
+      {id}
+      class={[
+        "w-full appearance-none pl-[var(--spacing-sm)] pr-[var(--space-6)] py-0 border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] cursor-pointer transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]",
+        sizeClasses[size],
+        klass,
+      ]}
+      bind:value
+      {...rest}
+    >
       {@render children()}
     </select>
-    <span class="select-icon" aria-hidden="true"><ChevronDown /></span>
+    <span class="absolute right-[var(--space-3)] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)] pointer-events-none flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4" aria-hidden="true">
+      <ChevronDown />
+    </span>
   </div>
 </div>
-
-<style>
-  .field {
-    position: relative;
-    display: block;
-  }
-
-  label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: var(--spacing-sm);
-    color: var(--color-text);
-  }
-
-  .field-select {
-    width: 100%;
-    height: var(--control-height-md);
-    appearance: none;
-    padding: 0 var(--space-6) 0 var(--spacing-sm);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-family: inherit;
-    background: var(--textbox-bg);
-    color: var(--textbox-text);
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-
-  .select-control {
-    position: relative;
-  }
-
-  .field-select-sm {
-    height: var(--control-height-sm);
-    font-size: 12px;
-  }
-
-  .field-select:focus {
-    outline: none;
-    border-color: var(--color-primary-visual);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  }
-
-  .select-icon {
-    position: absolute;
-    right: var(--space-3);
-    top: 50%;
-    width: 16px;
-    height: 16px;
-    color: var(--color-text-secondary);
-    pointer-events: none;
-    transform: translateY(-50%);
-  }
-
-  .select-icon :global(svg) {
-    width: 16px;
-    height: 16px;
-  }
-</style>

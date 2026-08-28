@@ -38,7 +38,10 @@ test("multi-file torrent selection loads files and saves changed priorities", as
     await page.fill("#NASlogin", "demo-user");
     await page.fill("#NASpassword", "demo-password");
     await page.fill("#NAStempdir", "Download");
+    // The picker opens its listbox on focus and would cover what follows.
+    await page.press("#NAStempdir", "Escape");
     await page.fill("#NASdir", "Multimedia/Movies");
+    await page.press("#NASdir", "Escape");
     await page.click("#save-btn");
     await page.reload({ waitUntil: "domcontentloaded" });
 

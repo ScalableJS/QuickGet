@@ -41,27 +41,27 @@
     { label: "remove", name: "trash-2", Icon: Trash2 },
   ];
 
-  const toneColor: Record<string, string> = {
-    blue: "var(--color-primary)",
-    green: "var(--color-success)",
-    red: "var(--color-error)",
-    orange: "var(--color-warning)",
-    muted: "var(--color-text-secondary)",
+  const toneClasses: Record<string, string> = {
+    blue: "text-[var(--color-primary)]",
+    green: "text-[var(--color-success)]",
+    red: "text-[var(--color-error)]",
+    orange: "text-[var(--color-warning)]",
+    muted: "text-[var(--color-text-secondary)]",
   };
 </script>
 
-<div class="gallery">
+<div class="flex flex-col gap-6 max-w-[640px]">
   <section>
-    <h3>Download statuses</h3>
-    <p class="note">Icon + colour both encode state, mirroring desktop torrent clients.</p>
-    <div class="grid">
+    <h3 class="m-0 mb-1 font-600 text-16px">Download statuses</h3>
+    <p class="m-0 mb-3 opacity-70 text-13px">Icon + colour both encode state, mirroring desktop torrent clients.</p>
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
       {#each statuses as s (s.label)}
-        <div class="cell">
-          <span class="ico" style="color: {toneColor[s.tone]}"><s.Icon /></span>
-          <div class="meta">
+        <div class="flex items-center gap-[10px] p-[10px] border border-[var(--color-border)] rounded-lg">
+          <span class={["[&>svg]:w-[22px] [&>svg]:h-[22px]", toneClasses[s.tone]]}><s.Icon /></span>
+          <div class="flex flex-col gap-[2px] min-w-0">
             <strong>{s.label}</strong>
-            <code>lucide/{s.name}</code>
-            <small>{s.why}</small>
+            <code class="text-11px opacity-80 font-mono">lucide/{s.name}</code>
+            <small class="text-11px opacity-60">{s.why}</small>
           </div>
         </div>
       {/each}
@@ -69,66 +69,18 @@
   </section>
 
   <section>
-    <h3>Toolbar controls</h3>
-    <p class="note">Task-control row (start/stop/pause), add, and delete (trash = client convention).</p>
-    <div class="grid">
+    <h3 class="m-0 mb-1 font-600 text-16px">Toolbar controls</h3>
+    <p class="m-0 mb-3 opacity-70 text-13px">Task-control row (start/stop/pause), add, and delete (trash = client convention).</p>
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
       {#each toolbar as t (t.label)}
-        <div class="cell">
-          <span class="ico"><t.Icon /></span>
-          <div class="meta">
+        <div class="flex items-center gap-[10px] p-[10px] border border-[var(--color-border)] rounded-lg">
+          <span class="[&>svg]:w-[22px] [&>svg]:h-[22px]"><t.Icon /></span>
+          <div class="flex flex-col gap-[2px] min-w-0">
             <strong>{t.label}</strong>
-            <code>lucide/{t.name}</code>
+            <code class="text-11px opacity-80 font-mono">lucide/{t.name}</code>
           </div>
         </div>
       {/each}
     </div>
   </section>
 </div>
-
-<style>
-  .gallery {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    max-width: 640px;
-  }
-  h3 {
-    margin: 0 0 4px;
-  }
-  .note {
-    margin: 0 0 12px;
-    opacity: 0.7;
-    font-size: 13px;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-  }
-  .cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 8px;
-  }
-  .ico :global(svg) {
-    width: 22px;
-    height: 22px;
-  }
-  .meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  code {
-    font-size: 11px;
-    opacity: 0.8;
-  }
-  small {
-    font-size: 11px;
-    opacity: 0.6;
-  }
-</style>

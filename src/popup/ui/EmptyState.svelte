@@ -8,13 +8,6 @@
   let { children }: Props = $props();
 </script>
 
-<p class="empty-state" role="note">{@render children()}</p>
-
-<style>
-  .empty-state {
-    margin: 0;
-    padding: var(--spacing-md);
-    color: var(--color-text-secondary);
-    font-size: 13px;
-  }
-</style>
+<p class="m-0 p-[var(--spacing-md)] text-[var(--color-text-secondary)] text-13px" role="note">
+  {@render children()}
+</p>

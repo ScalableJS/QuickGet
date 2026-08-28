@@ -52,9 +52,18 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 <article
   bind:this={el}
-  class="download-item"
-  class:selected
-  class:removing
+  class={[
+    "download-item flex flex-col [@media(min-width:601px)]:flex-row p-[var(--space-3)] border rounded-[var(--radius)] text-[var(--torrent-text-primary)] transition-[background,border-color] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--color-primary-visual)] focus-visible:outline-offset-2",
+    task.status === "error"
+      ? selected
+        ? "border-[var(--download-error-selected-border)] bg-[var(--download-error-selected-bg)]"
+        : "border-[var(--download-error-border)] bg-[var(--download-error-bg)]"
+      : selected
+        ? "border-[var(--download-selected-border)] bg-[var(--download-selected-bg)]"
+        : "border-[var(--torrent-border)] bg-[var(--torrent-bg)] hover:border-[var(--download-hover-border)] hover:bg-[var(--download-hover-bg)]",
+    selected && "selected",
+    removing && "opacity-60 pointer-events-none removing",
+  ]}
   data-hash={view.hash}
   data-status={task.status}
   tabindex="0"
@@ -64,14 +73,32 @@
   onclick={toggle}
   onkeydown={handleKey}
 >
-  <div class="download-info">
-    <p class="download-name" title={task.name}>{task.name}</p>
+  <div class="download-info flex-1 min-w-0 w-full flex flex-col gap-[var(--spacing-xs)]">
+    <p
+      class={[
+        "download-name m-0 font-500 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
+        task.status === "error" ? "text-[var(--torrent-text-error)]" : "text-[var(--torrent-text-primary)]",
+      ]}
+      title={task.name}
+    >
+      {task.name}
+    </p>
     {#if view.addedText}
-      <p class="download-added">Added {view.addedText}</p>
+      <p class="download-added m-0 text-12px text-[var(--color-text-secondary)]">Added {view.addedText}</p>
     {/if}
-    <div class="download-meta">
-      <span class="download-status">{view.statusLabel}:</span>
-      <span class="download-speed" aria-label={view.speedLabel}>
+    <div class="download-meta flex items-center gap-[var(--spacing-sm)] min-w-0">
+      <span class="download-status inline-flex items-center gap-[var(--space-1)] min-w-0 text-[var(--torrent-text-secondary)] text-12px whitespace-nowrap">
+        {view.statusLabel}:
+      </span>
+      <span
+        class={[
+          "download-speed inline-flex items-center gap-[var(--space-1)] text-12px text-right flex-none whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3 [&>svg]:flex-none",
+          task.status === "error"
+            ? "text-[color-mix(in_srgb,var(--torrent-text-error)_60%,var(--color-text))]"
+            : "text-[var(--torrent-text-secondary)]",
+        ]}
+        aria-label={view.speedLabel}
+      >
         {#if view.isDownloadComplete}
           <ArrowUp aria-hidden="true" />
           <span>{view.uploadedText}</span>
@@ -91,8 +118,10 @@
         {/if}
       </span>
     </div>
-    <div class="progress-container">
-      <span class="progress-icon" aria-label={view.statusLabel}><StatusIcon status={task.status} /></span>
+    <div class="progress-container flex items-center gap-[var(--spacing-sm)] w-full">
+      <span class="progress-icon text-12px leading-none flex-none inline-flex items-center justify-center" aria-label={view.statusLabel}>
+        <StatusIcon status={task.status} />
+      </span>
       <ProgressBar value={view.progress} variant={view.progressVariant} inline />
     </div>
     {#if canChooseFiles}
@@ -114,11 +143,3 @@
     {/if}
   </div>
 </article>
-
-<style>
-  .download-item.removing {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
-</style>

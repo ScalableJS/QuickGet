@@ -14,6 +14,8 @@ Derived from `package.json`, `vite.config.ts`, and `.github/workflows/ci.yml`.
 - **TypeScript**, `strict: true`. `type` over `interface` in new code; no `any`.
 - **Svelte 5, runes only** (`$state` / `$derived` / `$props` / `$effect`).
   See `agent-os/standards/frontend/svelte-runes-only.md`.
+- **UnoCSS + presetWind4** for popup UI utilities. Existing CSS custom properties in `tokens.css` remain the source of truth for semantic theme colors. Statically extractable classes only; no Attributify, no runtime shortcuts.
+  See `agent-os/standards/frontend/unocss-llm-first.md`.
 - **Storybook 10** for component development.
 - Icons via `unplugin-icons` + `@iconify-json/lucide`.
 

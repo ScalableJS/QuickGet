@@ -9,6 +9,8 @@ background:
 frontend:
   svelte-runes-only:
     description: Svelte 5 runes-only API, derive-don't-effect, and the sanctioned logger
+  unocss-llm-first:
+    description: UnoCSS with presetWind4, LLM-first explicit classes, static typed maps, and CSS token variables
 testing:
   test-layers:
     description: Vitest vs Playwright split, the hand-written chrome mock, and MV3 e2e mechanics

@@ -13,6 +13,10 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
+| BUG-13 | Toolbar repaint failure aborts the NAS hand-off | background | high | Done |
+| BUG-12 | Parallel toolbar transitions lose the newer failure state | background | high | Done |
+| BUG-11 | Toolbar icon updates only after a later poll or popup click | background | medium | Done |
 | BUG-2 | Browser download cancelled before the NAS hand-off succeeds | background | high | Done |
 | BUG-3 | Locked / empty-credential state unguarded in background | background | high | Done |
 | BUG-4 | Hand-off failure swallowed by `sendAndNotify` | background | medium | Done |
@@ -27,6 +31,111 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-14 — Context-menu sends omit working and failure toolbar states
+
+**Severity:** medium · **Area:** background · **Status:** Done
+**Files:** `src/background/menus.ts`, `src/background/menus.test.ts`
+
+The context-menu path starts the same AddUrl/AddTorrent process but only requests a NAS poll
+after success. While the request is in flight the toolbar remains idle, and on failure it
+shows only a transient notification without the persistent red action state.
+
+**Reproduced 2026-08-28** — gated AddUrl test observes zero active-icon writes before the NAS
+response; rejected AddUrl leaves no `qg:toolbarState` failure marker.
+
+**Done 2026-08-28** — both AddUrl and fetched-torrent context-menu sends now publish the active
+state before network completion, clear only an older failure on success, and persist red on
+failure. Both new regressions pass.
+
+---
+
+### BUG-13 — Toolbar repaint failure aborts the NAS hand-off
+
+**Severity:** high · **Area:** background · **Status:** Done
+**Files:** `src/background/actions.ts`, `src/background/downloads.test.ts`
+
+`markInterceptionStarted()` awaits `chrome.action.setIcon()` in the critical hand-off path.
+If Chrome rejects that cosmetic API call, the torrent is never sent to the NAS. A toolbar
+rendering failure must be observable in diagnostics but must never control the transfer.
+
+**Reproduced 2026-08-28** — regression test forces `setIcon()` to reject; `AddTorrent` receives
+zero requests and the browser download is not cancelled.
+
+**Done 2026-08-28** — toolbar API failures are caught at the visual boundary. They no longer
+abort a hand-off or turn a valid NAS snapshot into a monitoring failure; failed icon state is
+not cached as applied, so a later transition retries it.
+
+---
+
+### BUG-12 — Parallel toolbar transitions lose the newer failure state
+
+**Severity:** high · **Area:** background · **Status:** Done
+**Files:** `src/background/actions.ts`, `src/background/downloads.test.ts`
+
+Toolbar writers independently perform `storage.session.get → mutate → set`. Two overlapping
+operations can read the same revision and save in reverse order, allowing an older green
+working transition to erase a newer red failure. Revision comparison cannot protect data that
+was already lost by the write race.
+
+**Reproduced 2026-08-28** — deterministic gated test overlaps the working repaint with a
+parallel failure. Final persisted state is incorrectly empty at revision 0 instead of red `!`
+at revision 1.
+
+**Done 2026-08-28** — every toolbar state transition (event, poll, failure counter, clear and
+reset) now passes through one same-worker queue while authoritative state remains in
+`storage.session`. The deterministic overlap tests preserve the newer red revision.
+
+**Verification:** 210/210 unit tests, 18/18 mock Chromium E2E, typecheck, Svelte check, lint and
+production build all green.
+
+---
+
+### BUG-11 — Toolbar icon updates only after a later poll or popup click
+
+**Severity:** medium · **Area:** background · **Status:** Done
+**Files:** `src/background/downloads.ts`, `src/background/actions.ts`
+
+The interception listener has already claimed and paused a torrent, but it does not publish
+that real process transition to `chrome.action`. It waits until `AddTorrent` finishes and then
+queries the NAS. A newly accepted task may not appear in that first query, so the icon stays
+idle until an alarm tick or opening the popup sends a fresh snapshot. The result looks as if
+the toolbar needs a click to repaint, although Chrome was never asked to repaint it.
+
+**Required behaviour:** drive the toolbar from the interception lifecycle itself — green as
+soon as a valid hand-off starts, red on failure, then reconcile the count from the NAS. A
+failure must remain red even when another hand-off succeeds concurrently; completion order
+must not let the success clear a newer failure.
+
+**Test-first 2026-08-28** — add regression coverage for the in-flight success state and for
+concurrent success/failure ordering before changing production code.
+
+**Done 2026-08-28** — both regression tests failed on the old implementation: no `setIcon`
+call occurred while `AddTorrent` was in flight, and an earlier success cleared a later red
+failure. `markInterceptionStarted()` now publishes the green active icon directly from the
+download event and returns the current failure revision. A success clears only an error that
+predates its own start; a newer parallel failure keeps the red `!` and its tooltip even when a
+successful NAS snapshot reports active tasks. The targeted tests then passed (46/46), followed
+by the full suite (203 unit, 17 mock E2E).
+
+**Reopened 2026-08-28** — real Chrome still delays the visible change. The first regression
+started from an empty toolbar cache and missed a cache/UI drift: after an extension reload the
+persisted state may say `active` while Chrome is displaying the manifest's idle icon, causing
+the diff guard to skip the explicit repaint. Add this state to the regression suite and verify
+the event-to-toolbar transition in real Chromium rather than only through the unit mock.
+
+**Done again 2026-08-28** — the reopened regression failed with zero `setIcon` calls. An
+explicit interception event now always writes the active icon and title, even when the cached
+values match. Real Chromium E2E seeds the stale-cache condition and requires the action title
+to change within 2 seconds, before the deliberately delayed torrent transfer completes. Full
+suite: 204 unit and 17 mock E2E.
+
+**Lifecycle verification 2026-08-28** — Chromium E2E now also proves both terminal states:
+two confirmed zero snapshots clear the badge and persist `icon: idle`, while a rejected NAS
+hand-off keeps the browser download and exposes a red `!` badge (`#D93025`). The completion
+case was repeated three times in parallel before the full 18-test mock E2E gate passed.
+
+---
 
 ### BUG-2 — Browser download cancelled before the NAS hand-off succeeds
 

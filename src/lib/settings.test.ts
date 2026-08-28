@@ -9,27 +9,28 @@ import {
 
 import { DEFAULTS } from "./config.js";
 import {
-  isLocked,
   loadSettings,
   markInterceptNoticeShown,
   migrateSettings,
   resetSettings,
   saveSettings,
   SETTINGS_SCHEMA_VERSION,
-  unlock,
 } from "./settings.js";
 
 describe("settings", () => {
-  it("uses empty connection and folder defaults", () => {
+  it("ships empty credentials but a working folder default", () => {
     expect(DEFAULTS).toMatchObject({
       NASaddress: "",
       NASport: "",
       NASlogin: "",
       NASpassword: "",
-      NAStempdir: "",
-      NASdir: "",
       torrentInterceptMode: "always",
     });
+
+    // Download Station requires a temporary folder, and QNAP creates a `Download` share when
+    // the NAS is initialised — so the common case works without the user guessing a path.
+    expect(DEFAULTS.NAStempdir).toBe("Download");
+    expect(DEFAULTS.NASdir).toBe("Download");
   });
 
   it("loads settings, normalizes values, and backfills missing defaults", async () => {
@@ -61,6 +62,14 @@ describe("settings", () => {
   });
 
   describe("migrateSettings", () => {
+    it("removes the retired activity log", async () => {
+      seedChromeStorage({ "qg:activity": [{ name: "signed-url" }] });
+
+      await migrateSettings("1.0.3");
+
+      expect(getChromeStorageSnapshot()["qg:activity"]).toBeUndefined();
+    });
+
     it("flags interception left off by the 1.0.2 default leak without rewriting it", async () => {
       seedChromeStorage({ torrentInterceptMode: "off" });
 
@@ -109,7 +118,6 @@ describe("settings", () => {
 
     expect(chrome.storage.local.set).toHaveBeenCalledWith(
       expect.objectContaining({ NASdir: "/share/Downloads/New" }),
-      expect.any(Function),
     );
     expect(getChromeStorageSnapshot().NASdir).toBe("/share/Downloads/New");
   });
@@ -127,130 +135,96 @@ describe("settings", () => {
     expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBeUndefined();
   });
 
-  describe("rememberPassword policy", () => {
-    it("handles rememberPassword: false correctly (stores password in session, clears plaintext/encrypted from local)", async () => {
-      seedChromeStorage({
-        rememberPassword: false,
-        NASpassword: "old-local-plaintext-password",
-      });
+  describe("password storage", () => {
+    it("persists the password so a restarted browser can still reach the NAS", async () => {
+      await saveSettings({ NASpassword: "secret-nas-password" });
 
-      // Load settings (should trigger migration from local to session)
-      const loaded = await loadSettings();
-      expect(loaded.NASpassword).toBe("old-local-plaintext-password");
-      expect(getChromeStorageSnapshot().NASpassword).toBe("");
-      expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("old-local-plaintext-password");
-
-      // Save a new password
-      await saveSettings({
-        rememberPassword: false,
-        NASpassword: "new-session-password",
-      });
-
-      expect(getChromeStorageSnapshot().NASpassword).toBe("");
+      expect(getChromeStorageSnapshot().NASpassword).toBe("secret-nas-password");
+      // No encrypted blob is written any more: there is nothing to unlock, by design.
       expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
-      expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("new-session-password");
-    });
 
-    it("handles rememberPassword: true correctly (encrypts with masterPassword, stores blob in local, caches decrypted in session)", async () => {
-      const masterPassword = "my-master-password";
-      const nasPassword = "secret-nas-password";
-
-      await saveSettings(
-        {
-          rememberPassword: true,
-          NASpassword: nasPassword,
-        },
-        { masterPassword },
-      );
-
-      // Verify plaintext password is not in local storage
-      expect(getChromeStorageSnapshot().NASpassword).toBe("");
-      // Verify encrypted password exists in local storage
-      expect(getChromeStorageSnapshot().encryptedNASpassword).toBeDefined();
-      // Verify decrypted password is cached in session storage
-      expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe(nasPassword);
-
-      // Verify loadSettings retrieves from session storage
-      const loaded = await loadSettings();
-      expect(loaded.NASpassword).toBe(nasPassword);
-    });
-
-    it("handles locking and unlocking lifecycle", async () => {
-      const masterPassword = "my-master-password";
-      const nasPassword = "secret-nas-password";
-
-      // Save settings with rememberPassword = true
-      await saveSettings(
-        {
-          rememberPassword: true,
-          NASpassword: nasPassword,
-        },
-        { masterPassword },
-      );
-
-      // Verify not locked initially because it is cached in session
-      expect(await isLocked()).toBe(false);
-
-      // Simulate browser restart by clearing session storage
       seedChromeSessionStorage({});
-      expect(await isLocked()).toBe(true);
-
-      // Loading settings when locked should return empty password
-      const loadedLocked = await loadSettings();
-      expect(loadedLocked.NASpassword).toBe("");
-
-      // Attempt unlock with wrong password
-      const unlockWrong = await unlock("wrong-password");
-      expect(unlockWrong).toBe(false);
-      expect(await isLocked()).toBe(true);
-
-      // Unlock with correct password
-      const unlockCorrect = await unlock(masterPassword);
-      expect(unlockCorrect).toBe(true);
-      expect(await isLocked()).toBe(false);
-
-      // Verify loaded password is correct now
-      const loadedUnlocked = await loadSettings();
-      expect(loadedUnlocked.NASpassword).toBe(nasPassword);
+      expect((await loadSettings()).NASpassword).toBe("secret-nas-password");
     });
 
-    it("re-encrypts the session password when changing the master password without re-entering the NAS password", async () => {
-      const nasPassword = "secret-nas-password";
-
-      await saveSettings(
-        { rememberPassword: true, NASpassword: nasPassword },
-        { masterPassword: "old-master" },
-      );
-
-      // Change the master password while saving an unrelated field (NASpassword omitted).
-      await saveSettings({ rememberPassword: true, NASdir: "/share/Movies" }, { masterPassword: "new-master" });
-
-      // The stale blob must now decrypt with the NEW master password, not the old one.
-      seedChromeSessionStorage({}); // simulate restart -> locked
-      expect(await isLocked()).toBe(true);
-      expect(await unlock("old-master")).toBe(false);
-      expect(await unlock("new-master")).toBe(true);
-
-      const loaded = await loadSettings();
-      expect(loaded.NASpassword).toBe(nasPassword);
-    });
-
-    it("clears the encrypted blob and cached master password when remembering is disabled", async () => {
-      await saveSettings(
-        { rememberPassword: true, NASpassword: "secret-nas-password" },
-        { masterPassword: "my-master" },
-      );
-      seedChromeSessionStorage({
-        sessionNASpassword: "secret-nas-password",
-        cachedMasterPassword: "my-master",
+    it("clears a blob left by the previous encrypted scheme", async () => {
+      seedChromeStorage({
+        encryptedNASpassword: { iv: "x", salt: "y", data: "z" },
       });
 
-      await saveSettings({ rememberPassword: false, NASpassword: "secret-nas-password" });
+      await saveSettings({ NASpassword: "new-password" });
 
+      // A leftover blob is what produced a locked state no password in the UI could open.
       expect(getChromeStorageSnapshot().encryptedNASpassword).toBeUndefined();
-      expect(getChromeSessionStorageSnapshot().cachedMasterPassword).toBeUndefined();
-      expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("secret-nas-password");
-      expect(await isLocked()).toBe(false);
+      expect(getChromeStorageSnapshot().NASpassword).toBe("new-password");
     });
+  });
+});
+
+/**
+ * The service worker must be able to reach the NAS the moment a link is clicked — the user is
+ * not there to type anything. A stored password with no locked state is what makes that true;
+ * protecting it at rest is the operating system's job, not the extension's.
+ */
+describe("password availability to the background", () => {
+  it("survives a browser restart when remembering is on", async () => {
+    await saveSettings({ NASpassword: "nas-secret" });
+
+    seedChromeSessionStorage({});
+    expect((await loadSettings()).NASpassword).toBe("nas-secret");
+  });
+
+  it("is always persisted, because a worker that cannot log in drops every download", async () => {
+    await saveSettings({ NASpassword: "nas-secret" });
+
+    // A browser restart empties session storage; the background must still be able to log in.
+    seedChromeSessionStorage({});
+    expect((await loadSettings()).NASpassword).toBe("nas-secret");
+  });
+
+  it("does not wipe the stored password when saving something unrelated", async () => {
+    await saveSettings({ NASpassword: "nas-secret" });
+
+    // Changing a folder, a routing rule or the theme must leave the connection alone. Writing
+    // an empty password on every partial save is how a working setup got wiped in the field.
+    await saveSettings({ NASdir: "Multimedia/Films" });
+
+    expect(getChromeStorageSnapshot().NASpassword).toBe("nas-secret");
+    seedChromeSessionStorage({});
+    expect((await loadSettings()).NASpassword).toBe("nas-secret");
+  });
+
+  it("prefers an unsaved session edit over the stored value", async () => {
+    await saveSettings({ NASpassword: "stored" });
+    seedChromeSessionStorage({ sessionNASpassword: "just-typed" });
+
+    expect((await loadSettings()).NASpassword).toBe("just-typed");
+  });
+});
+
+/**
+ * The folder default exists so the common case works without the user guessing a path that
+ * Download Station only reports as `{error: 1, reason: "temp"}`. It must not, however, behave
+ * like a decision the user made.
+ */
+describe("folder defaults", () => {
+  it("fills an unset folder in memory without writing it back", async () => {
+    seedChromeStorage({ NASaddress: "nas.local" });
+
+    const settings = await loadSettings();
+
+    expect(settings.NAStempdir).toBe("Download");
+    // Persisting it would freeze today's default as an explicit choice no later change could
+    // override — the trap the interception mode fell into.
+    expect(getChromeStorageSnapshot().NAStempdir).toBeUndefined();
+  });
+
+  it("never overrides a folder the user chose", async () => {
+    seedChromeStorage({ NAStempdir: "Multimedia/Incoming", NASdir: "Multimedia/Movies" });
+
+    const settings = await loadSettings();
+
+    expect(settings.NAStempdir).toBe("Multimedia/Incoming");
+    expect(settings.NASdir).toBe("Multimedia/Movies");
   });
 });

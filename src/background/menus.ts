@@ -10,6 +10,8 @@ import { loadSettings } from "@lib/settings.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { ensureMonitoring } from "./alarms.js";
+import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { notifyDirect } from "./notifier.js";
 
 /**
  * Create context menu items
@@ -60,10 +62,12 @@ export async function handleContextMenuClick(
       throw new Error("Invalid URL format");
     }
 
-    await sendDownloadToStation(url);
+    // The page the link was right-clicked on is the referrer a tracker's hotlink guard expects.
+    await sendDownloadToStation(url, tab?.url);
   } catch (error) {
     console.error("Context menu error:", error);
-    showNotification("Failed to send with QuickGet", getErrorMessage(error));
+    // A failure the user directly asked for: they are waiting for an answer right now.
+    notifyDirect("Failed to send with QuickGet", getErrorMessage(error));
   }
 }
 
@@ -79,21 +83,28 @@ export async function handleContextMenuClick(
  * Magnets and ordinary URLs stay on AddUrl: there is no file to fetch, and the NAS needs no
  * session for them.
  */
-async function sendDownloadToStation(url: string): Promise<void> {
+async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
+  console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
+  const failureRevisionAtStart = await markInterceptionStarted();
 
-  if (isTorrentSource(url)) {
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder);
+  try {
+    if (isTorrentSource(url)) {
+      await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
+    } else {
+      const client = createApiClient({ settings });
+      await client.addUrl(url, { targetFolder });
+    }
+
+    await clearConfigurationProblem(failureRevisionAtStart);
     void ensureMonitoring();
-    showNotification(duplicate ? "Already on NAS" : "Success", name);
-    return;
+    // Silent on success: the user watched themselves click the menu item, and a toast per
+    // click is the noise that buried the messages worth reading.
+  } catch (error) {
+    await markConfigurationProblem(getErrorMessage(error));
+    throw error;
   }
-
-  const client = createApiClient({ settings });
-  await client.addUrl(url, { targetFolder });
-  void ensureMonitoring();
-  showNotification("Success", `Download sent to Download Station: ${url}`);
 }
 
 /**
@@ -110,20 +121,4 @@ function isValidUrl(url: string): boolean {
 
 function isTorrentUrl(url: string): boolean {
   return /^magnet:/i.test(url) || /\.torrent$/i.test(url);
-}
-
-/**
- * Show notification
- */
-function showNotification(title: string, message: string): void {
-  try {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
-      title,
-      message,
-    });
-  } catch (error) {
-    console.log("Notifications not available:", error);
-  }
 }

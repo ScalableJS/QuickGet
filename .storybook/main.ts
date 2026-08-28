@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { StorybookConfig } from "@storybook/svelte-vite";
+import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
 import { mergeConfig, type UserConfig } from "vite";
 
@@ -9,7 +10,8 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|ts|svelte)"],
-  addons: ["@storybook/addon-docs"],
+  // a11y runs axe over every story; the settings form is the reason it is here.
+  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
 
   framework: {
     name: "@storybook/svelte-vite",
@@ -27,7 +29,7 @@ const config: StorybookConfig = {
           "@types": resolve(projectRoot, "src/types"),
         },
       },
-      plugins: [Icons({ compiler: "svelte" })],
+      plugins: [UnoCSS(), Icons({ compiler: "svelte" })],
     };
 
     return mergeConfig(baseConfig, overrides);

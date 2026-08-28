@@ -2,7 +2,13 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestSettings } from "../../tests/fixtures/settings.js";
-import { seedChromeStorage } from "../../tests/mocks/chrome.js";
+import {
+  getChromeActionMock,
+  getChromeScriptingMock,
+  getChromeSessionStorageSnapshot,
+  seedChromeStorage,
+  seedOpenTab,
+} from "../../tests/mocks/chrome.js";
 import { server } from "../../tests/msw/server.js";
 
 vi.mock("./alarms.js", () => ({
@@ -21,6 +27,62 @@ describe("context-menu routing", () => {
           { domain: "*.example.com", destination: "/share/Multimedia/Other" },
         ],
       }),
+    );
+  });
+
+  it("publishes the working icon before AddUrl resolves", async () => {
+    let releaseAddUrl!: () => void;
+    let signalAddUrlReached!: () => void;
+    const addUrlGate = new Promise<void>((resolve) => {
+      releaseAddUrl = resolve;
+    });
+    const addUrlReached = new Promise<void>((resolve) => {
+      signalAddUrlReached = resolve;
+    });
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", async () => {
+        signalAddUrlReached();
+        await addUrlGate;
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    const sending = handleContextMenuClick({
+      editable: false,
+      linkUrl: "https://downloads.example.org/archive.zip",
+      menuItemId: "quickget-send-link",
+    });
+    await addUrlReached;
+
+    expect(getChromeActionMock().setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
+    });
+
+    releaseAddUrl();
+    await sending;
+  });
+
+  it("publishes a red failure state when AddUrl fails", async () => {
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", () =>
+        HttpResponse.json({ error: 4096, reason: "temp" }),
+      ),
+    );
+
+    await handleContextMenuClick({
+      editable: false,
+      linkUrl: "https://downloads.example.org/archive.zip",
+      menuItemId: "quickget-send-link",
+    });
+
+    expect(getChromeSessionStorageSnapshot()["qg:toolbarState"]).toEqual(
+      expect.objectContaining({ badgeText: "!", failureRevision: 1 }),
     );
   });
 
@@ -238,5 +300,67 @@ describe("context-menu torrent handling", () => {
     });
 
     expect(move).toBe("Multimedia/Films");
+  });
+});
+
+/**
+ * Same hotlink guard as the interception path: a request that does not originate on the
+ * tracker's own pages is refused. The tab the link was right-clicked on is that context.
+ */
+describe("context-menu tracker fetch", () => {
+  const GUARDED_URL = "https://tracker.example.com/forum/dl.php?t=6645249";
+  const TOPIC_URL = "https://tracker.example.com/forum/viewtopic.php?t=6645249";
+
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings({ NASdir: "/share/Multimedia/Default" }));
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => HttpResponse.json({ error: 0 })),
+    );
+  });
+
+  it("runs the fetch in the tab the link was clicked on", async () => {
+    seedOpenTab(TOPIC_URL, 88);
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      {
+        result: {
+          ok: true,
+          status: 200,
+          contentType: "application/x-bittorrent",
+          contentDisposition: "",
+          base64: btoa("d8:announce20:http://bt/announcee"),
+        },
+      },
+    ]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await handleContextMenuClick({ editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" }, {
+      url: TOPIC_URL,
+    } as chrome.tabs.Tab);
+
+    const injection = getChromeScriptingMock().executeScript.mock.calls[0]?.[0] as {
+      target: { tabId: number };
+      args: string[];
+    };
+    expect(injection.target.tabId).toBe(88);
+    expect(injection.args).toEqual([GUARDED_URL]);
+    expect(fetchSpy.mock.calls.map((call) => String(call[0]))).not.toContain(GUARDED_URL);
+  });
+
+  it("tells the user to log in when the tracker refuses", async () => {
+    seedOpenTab(TOPIC_URL);
+    getChromeScriptingMock().executeScript.mockResolvedValue([
+      { result: { ok: false, status: 403, contentType: "text/html", contentDisposition: "", base64: "" } },
+    ]);
+
+    await handleContextMenuClick({ editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" }, {
+      url: TOPIC_URL,
+    } as chrome.tabs.Tab);
+
+    expect(chrome.notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("logged in") }),
+    );
   });
 });

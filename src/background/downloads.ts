@@ -11,7 +11,9 @@
 import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
-import { isLocked, loadSettings } from "@lib/settings.js";
+import { findConfigProblem } from "@lib/configHealth.js";
+import { recordFailure, recordSuccess } from "@lib/connectionHealth.js";
+import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
   isRestartable,
@@ -20,7 +22,10 @@ import {
   sendTorrentUrlToNas,
 } from "@lib/torrentSender.js";
 
+
+import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
+import { clearFailureEpisode, type FailureKind, notifyDirect, notifyFailure } from "./notifier.js";
 
 const RESUME_PREFIX = "qg-resume-";
 /** Marks a download paused for a hand-off that has not reached its terminal action yet. */
@@ -71,16 +76,23 @@ export async function recoverAbandonedHandoffs(): Promise<void> {
   try {
     const stored = await chrome.storage.session.get(null);
     const abandoned = Object.keys(stored).filter((key) => key.startsWith(PENDING_PREFIX));
-    if (abandoned.length === 0) return;
 
-    console.warn(`[QuickGet] recovering ${abandoned.length} abandoned hand-off(s)`);
+    // Every claim is held by a worker that no longer exists — the in-memory half of the guard
+    // died with it. Left in place they would bar the download from ever being retried, and
+    // accumulate one entry per download for the life of the browser session.
+    const staleClaims = Object.keys(stored).filter((key) => key.startsWith(CLAIMED_PREFIX));
 
-    for (const key of abandoned) {
-      const id = Number(key.slice(PENDING_PREFIX.length));
-      if (Number.isFinite(id)) await resumeBrowserDownload(id);
+    if (abandoned.length === 0 && staleClaims.length === 0) return;
+
+    if (abandoned.length > 0) {
+      console.warn(`[QuickGet] recovering ${abandoned.length} abandoned hand-off(s)`);
+      for (const key of abandoned) {
+        const id = Number(key.slice(PENDING_PREFIX.length));
+        if (Number.isFinite(id)) await resumeBrowserDownload(id);
+      }
     }
 
-    await chrome.storage.session.remove(abandoned);
+    await chrome.storage.session.remove([...abandoned, ...staleClaims]);
   } catch (error) {
     console.error("[QuickGet] could not recover abandoned hand-offs:", error);
   }
@@ -95,39 +107,69 @@ export async function recoverAbandonedHandoffs(): Promise<void> {
  * the NAS is unreachable, the credentials are missing, or the URL is single-use.
  */
 export async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
-  console.log("[QuickGet] download created:", { id: item.id, url: item.url, finalUrl: item.finalUrl, mime: item.mime });
-
+  // Every exit is logged with its reason: without it a download that is simply not recognised
+  // is indistinguishable from a worker that never received the event at all.
   try {
     const settings = await loadSettings();
-    if (settings.torrentInterceptMode === "off") return;
+    if (settings.torrentInterceptMode === "off") {
+      console.log("[QuickGet] skipped: interception is off in Settings", { id: item.id });
+      return;
+    }
 
     const url = item.finalUrl || item.url;
     if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, item.mime, item.filename)) {
+      console.log("[QuickGet] skipped: not recognised as a torrent", {
+        id: item.id,
+        url,
+        mime: item.mime,
+        filename: item.filename,
+      });
       return; // not a torrent — leave it to the browser
     }
 
     // onCreated and onChanged can both recognise the same download; whichever gets here
     // first owns it, and the session marker keeps that true across a worker restart.
-    if (!(await claimDownload(item.id))) return;
+    if (!(await claimDownload(item.id))) {
+      console.log("[QuickGet] skipped: already claimed by another listener", { id: item.id });
+      return;
+    }
+
+    console.log("[QuickGet] intercepting torrent download", { id: item.id, url });
 
     // No usable NAS: the master password was never entered, storage.session was emptied by a
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes
     // the first case for the message — it reports false in the second, so it cannot be the
     // guard itself. Leave the download alone; the browser will finish it normally.
-    if (!settings.NASpassword || !settings.NASaddress || !settings.NASlogin) {
-      const locked = settings.NASpassword === "" && (await isLocked());
-      console.warn("[QuickGet] NAS not usable — leaving the download to the browser");
-      notify(
-        locked ? "QuickGet is locked" : "NAS not configured",
-        "The .torrent was left to the browser. Open QuickGet to unlock or configure it.",
+    // Every setting a hand-off needs, checked before the download is touched. There is no
+    // locked state to consider any more: a download starts when the user clicks a link, not
+    // when they open the popup, so the password is always readable here or genuinely unset.
+    const problem = findConfigProblem(settings);
+    if (problem) {
+      console.warn(`[QuickGet] not configured — leaving the download to the browser: ${problem.summary}`);
+
+      await markConfigurationProblem(problem.summary);
+      // The user clicked a link a moment ago, so this is worth interrupting for — but only
+      // once per episode, not on every torrent they click while it stays unconfigured.
+      await notifyFailure(
+        "not-configured",
+        "QuickGet is not configured",
+        `${problem.summary} The .torrent was left to the browser.`,
+        problem.missing.join(","),
       );
       return;
     }
 
-    await handOffToNas(settings, item.id, url);
+    // Chrome recorded the page the download started from — that is exactly the referrer a
+    // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
+    const failureRevisionAtStart = await markInterceptionStarted();
+    await handOffToNas(settings, item.id, url, item.referrer, failureRevisionAtStart);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
-    notify("Failed to redirect download", getErrorMessage(error));
+    // The claim outlives this worker, so keeping it after a failure would silently bar every
+    // later attempt at the same download — including the `onChanged` event that carries the
+    // MIME type. Release it so the retry path stays open.
+    await releaseClaim(item.id);
+    await notifyFailure("handoff", "Failed to redirect download", getErrorMessage(error));
   } finally {
     inFlight.delete(item.id);
   }
@@ -155,6 +197,10 @@ async function claimDownload(id: number): Promise<boolean> {
   return true;
 }
 
+async function releaseClaim(id: number): Promise<void> {
+  await chrome.storage.session.remove(`${CLAIMED_PREFIX}${id}`).catch(() => {});
+}
+
 /** Re-evaluate a download whose type-identifying fields only just became known. */
 async function handleDownloadChanged(id: number): Promise<void> {
   try {
@@ -171,30 +217,50 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
   }
 }
 
-async function handOffToNas(settings: Settings, downloadId: number, url: string): Promise<void> {
+async function handOffToNas(
+  settings: Settings,
+  downloadId: number,
+  url: string,
+  referrer?: string,
+  failureRevisionAtStart = 0,
+): Promise<void> {
   const paused = await pauseBrowserDownload(downloadId);
   // Written before the hand-off so a worker death mid-flight is recoverable on next start.
   if (paused) await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
 
   try {
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder);
+    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder, referrer);
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
+    await clearConfigurationProblem(failureRevisionAtStart);
     const cancelled = await cancelBrowserDownload(downloadId);
     if (!cancelled && paused) await resumeBrowserDownload(downloadId);
     void ensureMonitoring();
 
-    if (duplicate) {
-      await notifyDuplicate(settings, name);
-    } else {
-      notify("Torrent sent to NAS", cancelled ? name : `${name} — the browser copy is still downloading.`);
-    }
+    // Success is silent: the task list is the source of truth and nothing is asked of the user.
+    await clearFailureEpisode();
+    await recordSuccess();
+
+    if (duplicate) await offerResumeIfStalled(settings, name);
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
+    // A failed hand-off is exactly the moment the toolbar should stop looking normal: the
+    // download silently stayed in the browser, and nothing else on screen says so.
+    await markConfigurationProblem(getErrorMessage(error));
+    await recordFailure(error);
+    // The hand-off is over and it failed. The claim must not outlive it: the browser is
+    // finishing the download itself now, and a later `onChanged` for the same id (or the user
+    // retrying) has to be able to take it again.
+    await releaseClaim(downloadId);
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
-    notify("Failed to send torrent", `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`);
+    await notifyFailure(
+      classifyFailure(error),
+      "QuickGet needs attention",
+      `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`,
+      settings.NASaddress,
+    );
   } finally {
     // A terminal action ran, so there is nothing left for the recovery sweep to release.
     if (paused) await chrome.storage.session.remove(pendingKey(downloadId));
@@ -210,28 +276,36 @@ function rollbackSuffix(paused: boolean, resumed: boolean): string {
 }
 
 /**
- * The torrent is already on the NAS. Inspect the existing task: offer to resume
- * it if it stalled (error/stopped/paused), otherwise just report its status.
+ * A duplicate is normally silent — the desired end state already exists. The exception is a
+ * task that is on the NAS but stalled: that one *is* worth interrupting for, because clicking
+ * the link again will keep doing nothing until someone restarts it.
  */
-async function notifyDuplicate(settings: Settings, name: string): Promise<void> {
+async function offerResumeIfStalled(settings: Settings, name: string): Promise<void> {
   const existing = await findExistingTask(settings, name).catch((error) => {
     console.warn("[QuickGet] could not look up existing task:", error);
     return undefined;
   });
 
-  if (existing?.hash && isRestartable(existing.status)) {
-    chrome.notifications.create(`${RESUME_PREFIX}${existing.hash}`, {
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
-      title: `Already on NAS — ${existing.status}`,
-      message: name,
-      buttons: [{ title: "Resume" }],
-      requireInteraction: true,
-    });
-    return;
-  }
+  if (!existing?.hash || !isRestartable(existing.status)) return;
 
-  notify("Already on NAS", existing ? `${name} — ${existing.status}` : name);
+  chrome.notifications.create(`${RESUME_PREFIX}${existing.hash}`, {
+    type: "basic",
+    iconUrl: chrome.runtime.getURL("icons/128_download.png"),
+    title: `Already on NAS — ${existing.status}`,
+    message: name,
+    buttons: [{ title: "Resume" }],
+    requireInteraction: true,
+  });
+}
+
+/** Distinguishes failures so an episode of one kind does not silence a different problem. */
+function classifyFailure(error: unknown): FailureKind {
+  const message = getErrorMessage(error).toLowerCase();
+  if (message.includes("username or password") || message.includes("rejected the download")) {
+    return "auth";
+  }
+  if (message.includes("failed to fetch") || message.includes("networkerror")) return "unreachable";
+  return "handoff";
 }
 
 async function handleResumeButton(notificationId: string): Promise<void> {
@@ -242,10 +316,10 @@ async function handleResumeButton(notificationId: string): Promise<void> {
   try {
     const settings = await loadSettings();
     await resumeTask(settings, hash);
-    notify("Resumed on NAS", "Task restarted");
+    notifyDirect("Resumed on NAS", "Task restarted");
   } catch (error) {
     console.error("[QuickGet] Failed to resume task:", error);
-    notify("Failed to resume task", getErrorMessage(error));
+    notifyDirect("Failed to resume task", getErrorMessage(error));
   }
 }
 
@@ -286,18 +360,5 @@ async function cancelBrowserDownload(id: number): Promise<boolean> {
     return true;
   } catch {
     return false; // already finished or not cancellable
-  }
-}
-
-function notify(title: string, message: string): void {
-  try {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
-      title,
-      message,
-    });
-  } catch (error) {
-    console.log("Notifications not available:", error);
   }
 }

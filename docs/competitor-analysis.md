@@ -162,3 +162,124 @@ Svelte 5 + TS + Vite. Это главный технический отрыв.
 
 **Чего НЕ повторять:** MV2/`browser_action`, plaintext-пароль, base64 «как защита»,
 внешний auth-helper с Google Drive, глобальные `var`, хардкод числовых стейтов (`state==="5"`).
+
+---
+
+## 7. Как крупные игроки решают приватные трекеры (август 2026)
+
+Разбор свежих Chrome-сборок, выкачанных из Web Store и распакованных. Читались
+минифицированные бандлы, поэтому ниже — только то, что подтверждено конкретным фрагментом
+кода; маркетинговые описания не учитывались.
+
+| Расширение | ID | Версия | Разрешения, относящиеся к делу |
+|---|---|---|---|
+| Synology Download Station client | `ebbdkled…` | 4.2.0 | `scripting`, `tabs`, `downloads`, content scripts |
+| Download Master (WestByte) | `dljdacfoj…` | 4.1.0 | `cookies`, `webRequest`, `scripting`, `nativeMessaging` |
+| ASUS Download Master | `fdbepfmlo…` | 1.2.0 | только `storage`, `contextMenus`, `notifications` |
+
+### Synology: отдаёт NAS голый URL
+
+`InterceptService.transfer` — весь их перехват:
+
+```js
+DownloadService.pause(download.id).pipe(
+  switchMap(() => QueryService.createTask({ url: [download.finalUrl] },
+                                          { source: download.referrer })),
+  ...error: resume / erase
+```
+
+Порядок совпадает с нашим (pause → задача на NAS → erase/resume при ошибке), но на NAS
+уходит **`finalUrl`**, а не файл. `source: download.referrer` выглядит как решение проблемы
+хотлинка — это не так: `source` доходит только до `NotificationService.taskCreated(...)` и
+`contextMessage` в тексте ошибки. На запрос он не влияет никак.
+
+Значит на закрытом трекере их NAS получает ту же страницу логина, что получали мы. Обход у
+них ручной: в форме создания задачи есть `<input type="file">` (`torrent_file_label`) — юзер
+сам качает `.torrent` на диск и выбирает файл.
+
+### Download Master: куки и referer отдаются загрузчику
+
+Единственный, кто проблему реально адресует, — но за счёт нативного приложения:
+
+```js
+EXT.settings.sendCookiesForDM
+  ? EXT.promise.cookies.getAll({ url: e.referrer })
+  : []
+→ sendNativeMessage("com.westbyte.downloadmaster",
+    { method: "downloadFile", url, referrer, cookies, filename })
+```
+
+Расширение ничего не качает. Оно собирает куки для домена referrer'а и передаёт
+`url + referrer + cookies` нативному приложению на той же машине, которое уже качает с
+подставленными заголовками. Нам путь закрыт: нужен установленный нативный хост, а качать
+должен NAS.
+
+Показательно, что отправка кук у них — **опция** (`sendCookiesForDM`), выключаемая: отдавать
+сессионные куки внешнему процессу небезопасно.
+
+### ASUS: не решает вовсе
+
+Ни `downloads`, ни `scripting`, ни content scripts. Только контекстное меню, отдающее URL
+роутеру. На приватном трекере не работает by design.
+
+### Где мы относительно них
+
+Наш путь — забрать `.torrent` браузером в контексте страницы и залить на NAS файлом
+(`AddTorrent`) — строго сильнее:
+
+- в отличие от Synology, работает на закрытом трекере без ручного скачивания;
+- в отличие от Download Master, не требует нативного приложения и **не выносит куки за
+  пределы браузера** — запрос выполняется там же, где живёт сессия, наружу уходит только сам
+  торрент-файл;
+- NAS вообще не ходит на трекер, значит не нужны ни его куки, ни его IP в белом списке.
+
+Цена — вкладка с сайтом должна быть открыта. У конкурентов этого ограничения нет просто
+потому, что они этот сценарий не поддерживают.
+
+### Что стоит забрать
+
+1. **`chrome.downloads.onDeterminingFilename`** — Synology слушает его наравне с `onCreated`
+   и `onChanged`. Событие даёт итоговое имя файла до записи на диск, то есть распознаёт
+   `.torrent` за непрозрачным эндпоинтом раньше, чем это делаем мы.
+2. **`erase` как альтернатива `cancel`** — у них это настройка (`{ erase, resume }`). Мы
+   всегда оставляем отменённую загрузку в списке; выбор мог бы быть за пользователем.
+
+### Дефолтные папки — что делают конкуренты (проверено 2026-08-28)
+
+Повод: стоит ли предзаполнять Temp Folder, раз Download Station без неё отвергает любую задачу.
+
+**QNAP Download Station Manager** (`agbfjhjpdmkibfdlbpjmlmhdkbmcgjpm`, v1.0.8) — прямой
+конкурент на том же NAS. Предзаполняет, причём сразу двумя готовыми профилями:
+
+```js
+defaultState: { NasConnectionSettings: { url: "", username: "", password: "", folders: [
+  { name: "Movies",    tempFolder: "Content/@DownloadStationTempFiles", moveFolder: "Content/Movies" },
+  { name: "TV Series", tempFolder: "Content/@DownloadStationTempFiles", moveFolder: "Content/TV Series" },
+]}}
+```
+
+`@DownloadStationTempFiles` — служебная папка, которую создаёт сам Download Station. Префикс
+`Content/` — раскладка конкретного NAS автора, у большинства её нет, так что копировать эти
+пути нельзя. Но сам факт: **разработчик, знающий QNAP, счёл пустое поле неприемлемым**.
+
+Там же видно, что валидацию формы они делают схемой (yup) с `required` на каждое поле, включая
+`tempFolder` — см. UX-2, наш вывод про Valibot остаётся в силе.
+
+**Synology DS client** — `destination: ""` во всех путях. Это не небрежность: у Synology
+destination необязателен, NAS подставляет собственную настройку Download Station. У QNAP
+`temp` обязателен, поэтому их подход нам не переносится.
+
+**ASUS Download Master** — `Download` фигурирует в коде как папка по умолчанию.
+
+**Проверка на живом QTS 5** (`Misc/Dir`, 2026-08-28): общие папки —
+`Browser Station, Container, Docker, Download, Movies, Multimedia, Music, Public, Web, home`.
+`Download` присутствует; QNAP создаёт эту share при инициализации NAS.
+
+Отдельно важно: **`temporary: true` стоит у всех десяти папок**. Значит это «пригодна как
+временная», а не «является временной» — автоопределить temp-папку через API нельзя, и дефолт
+действительно необходим.
+
+**Вывод:** предзаполняем `Download` для обеих папок. Значение резолвится в память, но **не
+записывается** в storage — иначе сегодняшний дефолт застынет как осознанный выбор пользователя,
+ровно та ловушка, в которую раньше попал `torrentInterceptMode`.
+

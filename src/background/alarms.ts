@@ -14,6 +14,7 @@
 
 import { type ApiClient, createApiClient } from "@api/client.js";
 import { clientSignature } from "@lib/clientSignature.js";
+import { findConfigProblem } from "@lib/configHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
@@ -56,8 +57,14 @@ export async function armMonitoring(): Promise<void> {
  * poll never tears monitoring down — a just-added task may not be counted yet.
  */
 export async function ensureMonitoring(): Promise<void> {
-  await armMonitoring();
-  await pollStatus({ stopWhenIdle: false });
+  // Called as fire-and-forget from every listener, so anything that escapes here becomes an
+  // unhandled rejection in the worker — which surfaces as a stack frame with no message.
+  try {
+    await armMonitoring();
+    await pollStatus({ stopWhenIdle: false });
+  } catch (error) {
+    console.error("[QuickGet] could not start monitoring:", error);
+  }
 }
 
 /**
@@ -76,6 +83,15 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
  */
 async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
   try {
+    // An unconfigured extension is a normal state, not a fault. Polling anyway threw "NAS
+    // address is empty" on every browser start, which Chrome collects on the extension's
+    // Errors page — so a fresh install looked broken before it had ever been set up.
+    const problem = findConfigProblem(await loadSettings());
+    if (problem) {
+      void chrome.alarms.clear(ALARM_NAME);
+      return;
+    }
+
     const client = await getClient();
     const { tasks } = await client.queryTasks();
 
@@ -89,7 +105,7 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     console.error("Monitoring error:", error);
     // Keep the last-known badge/icon. Give up only once failures are sustained,
     // so an unreachable NAS doesn't get polled (and logged) every 30s forever.
-    const { giveUp } = await noteMonitoringFailure();
+    const { giveUp } = await noteMonitoringFailure().catch(() => ({ giveUp: false }));
     if (giveUp) void chrome.alarms.clear(ALARM_NAME);
   }
 }

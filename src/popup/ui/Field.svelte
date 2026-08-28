@@ -8,55 +8,64 @@
     label?: string;
     value?: string;
     size?: ControlSize;
+    /** Shown under the field and announced; also marks the input invalid. */
+    error?: string;
+    /** Persistent guidance, shown only while there is no error to show instead. */
+    hint?: string;
   } & Omit<HTMLInputAttributes, "size" | "value">;
 
-  let { id, label, value = $bindable(""), type = "text", size = "md", class: klass, ...rest }: Props = $props();
+  const sizeClasses = {
+    sm: "h-[var(--control-height-sm)] text-12px",
+    md: "h-[var(--control-height-md)] text-13px",
+  } satisfies Record<ControlSize, string>;
+
+  let {
+    id,
+    label,
+    value = $bindable(""),
+    type = "text",
+    size = "md",
+    error,
+    hint,
+    class: klass,
+    ...rest
+  }: Props = $props();
+
+  // Assistive tech needs the message tied to the input, not merely placed near it.
+  const errorId = $derived(id && error ? `${id}-error` : undefined);
+  const hintId = $derived(id && hint && !error ? `${id}-hint` : undefined);
+  const describedBy = $derived([errorId, hintId].filter(Boolean).join(" ") || undefined);
 </script>
 
-<div class="field">
+<div class="block">
   {#if label}
-    <label for={id}>{label}</label>
+    <label for={id} class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">
+      {label}
+    </label>
   {/if}
-  <input {id} {type} class={["field-input", `field-input-${size}`, klass]} bind:value {...rest} />
+  <input
+    {id}
+    {type}
+    class={[
+      "w-full px-[var(--spacing-sm)] border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]",
+      sizeClasses[size],
+      error && "border-[var(--color-error)]",
+      klass,
+    ]}
+    aria-invalid={error ? "true" : undefined}
+    aria-describedby={describedBy}
+    bind:value
+    {...rest}
+  />
+
+  {#if error}
+    <!-- The border colour repeats this; colour alone cannot carry meaning (WCAG 1.4.1). -->
+    <p id={errorId} class="mt-[var(--spacing-xs)] mb-0 text-11px text-[var(--color-error)]" role="alert">
+      {error}
+    </p>
+  {:else if hint}
+    <p id={hintId} class="mt-[var(--spacing-xs)] mb-0 text-11px text-[var(--text-secondary)]">
+      {hint}
+    </p>
+  {/if}
 </div>
-
-<style>
-  .field {
-    display: block;
-  }
-
-  label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: var(--spacing-sm);
-    color: var(--color-text);
-  }
-
-  .field-input {
-    width: 100%;
-    height: var(--control-height-md);
-    padding: 0 var(--spacing-sm);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-family: inherit;
-    background: var(--textbox-bg);
-    color: var(--textbox-text);
-    transition: border-color 0.2s;
-  }
-
-  .field-input-sm {
-    height: var(--control-height-sm);
-    font-size: 12px;
-  }
-
-  .field-input::placeholder {
-    color: var(--textbox-placeholder);
-  }
-
-  .field-input:focus {
-    outline: none;
-    border-color: var(--color-primary-visual);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  }
-</style>

@@ -29,6 +29,6 @@
   };
 </script>
 
-<header class="toolbar" style="position: static;">
+<header class="toolbar flex justify-between items-center bg-[var(--color-bg-alt)] text-[var(--color-text)] px-[var(--spacing-md)] py-[var(--spacing-sm)] border-b border-b-[var(--color-border)] shadow-[var(--shadow)]" style="position: static;">
   <Toolbar {actions} />
 </header>

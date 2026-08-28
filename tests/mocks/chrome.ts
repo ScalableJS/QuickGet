@@ -122,6 +122,26 @@ const notificationsOnClosedAddListener = vi.fn();
 
 const runtimeGetURL = vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`);
 
+/**
+ * Defaults to "no tab on that origin", which makes the page-context fetch fall back to the
+ * worker's own fetch — the behaviour every test that is not about tab injection expects.
+ */
+const tabsQuery = vi.fn((_query: unknown) => Promise.resolve([] as chrome.tabs.Tab[]));
+const scriptingExecuteScript = vi.fn((_details: unknown) => Promise.resolve([] as { result?: unknown }[]));
+
+export function getChromeTabsMock(): { query: typeof tabsQuery } {
+  return { query: tabsQuery };
+}
+
+export function getChromeScriptingMock(): { executeScript: typeof scriptingExecuteScript } {
+  return { executeScript: scriptingExecuteScript };
+}
+
+/** Make `chrome.tabs.query` report one tab on `url`, as if the site were open. */
+export function seedOpenTab(url: string, tabId = 501): void {
+  tabsQuery.mockResolvedValue([{ id: tabId, url } as chrome.tabs.Tab]);
+}
+
 /** A `DownloadItem` with only the fields the interception path reads. */
 export function createDownloadItem(overrides: Partial<chrome.downloads.DownloadItem> = {}): chrome.downloads.DownloadItem {
   return {
@@ -153,6 +173,13 @@ export function getChromeSessionStorageSnapshot(): StorageState {
 export function resetChromeMockState(): void {
   storageState = {};
   sessionStorageState = {};
+
+  // These carry queued resolutions, not just call history: a leftover `mockResolvedValue` from
+  // one test would silently change how the next one's fetch is routed.
+  tabsQuery.mockReset();
+  tabsQuery.mockResolvedValue([]);
+  scriptingExecuteScript.mockReset();
+  scriptingExecuteScript.mockResolvedValue([]);
 
   storageGet.mockClear();
   storageSet.mockClear();
@@ -195,6 +222,15 @@ export function getChromeDownloadsMock() {
     resume: downloadsResume,
     search: downloadsSearch,
     onCreatedAddListener: downloadsOnCreatedAddListener,
+  };
+}
+
+export function getChromeActionMock() {
+  return {
+    setBadgeText: actionSetBadgeText,
+    setBadgeBackgroundColor: actionSetBadgeBackgroundColor,
+    setTitle: actionSetTitle,
+    setIcon: actionSetIcon,
   };
 }
 
@@ -252,6 +288,12 @@ export function installChromeMock(): typeof chrome {
       onClosed: {
         addListener: notificationsOnClosedAddListener,
       },
+    },
+    tabs: {
+      query: tabsQuery,
+    },
+    scripting: {
+      executeScript: scriptingExecuteScript,
     },
     contextMenus: {
       onClicked: {

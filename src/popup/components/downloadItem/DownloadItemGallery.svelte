@@ -38,19 +38,10 @@
   }
 </script>
 
-<div class="list">
+<div class="max-w-[420px] flex flex-col gap-2">
   {#each STATUSES as status (status)}
     <DownloadItem task={sample(status)} onToggle={() => {}} />
   {/each}
   <DownloadItem task={sample("downloading")} selectedHash="downloading" onToggle={() => {}} />
   <DownloadItem task={sample("downloading")} removing onToggle={() => {}} />
 </div>
-
-<style>
-  .list {
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-</style>

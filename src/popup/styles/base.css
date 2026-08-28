@@ -1,0 +1,41 @@
+/* Global reset and base browser styles */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Noto Sans",
+    Ubuntu,
+    Cantarell,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  width: 450px;
+  max-height: 600px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+@media (max-width: 600px) {
+  body {
+    min-width: 320px;
+  }
+}

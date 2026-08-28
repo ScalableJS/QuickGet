@@ -13,6 +13,19 @@ import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./
 
 declare const self: ServiceWorkerGlobalScope;
 
+/**
+ * An unhandled rejection in the worker surfaces as a bare "(anonymous function)" with no
+ * message, which is unusable for diagnosis — and every async listener here can produce one.
+ * Naming them costs nothing and turns a stack frame into a sentence.
+ */
+self.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+  console.error("[QuickGet] unhandled rejection in the service worker:", event.reason);
+});
+
+self.addEventListener("error", (event: ErrorEvent) => {
+  console.error("[QuickGet] uncaught error in the service worker:", event.message, event.error);
+});
+
 // Service worker lifecycle events
 self.addEventListener("install", (event: ExtendableEvent) => {
   console.log("[QuickGet] Service worker installed");
@@ -90,9 +103,11 @@ chrome.runtime.onMessage.addListener((message: unknown) => {
 
   if (type === SNAPSHOT_MESSAGE) {
     const { stats } = message as BadgeSnapshotMessage;
-    void applyBadgeStats(stats).then(({ active }) => {
-      if (active > 0) void armMonitoring();
-    });
+    void applyBadgeStats(stats)
+      .then(({ active }) => {
+        if (active > 0) void armMonitoring();
+      })
+      .catch((error) => console.error("[QuickGet] could not apply the badge snapshot:", error));
   }
 });
 

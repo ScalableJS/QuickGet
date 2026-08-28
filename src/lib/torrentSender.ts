@@ -8,6 +8,7 @@
 
 import { createApiClient } from "@api/client.js";
 import type { Settings } from "./config.js";
+import { fetchFromPageContext } from "./tabFetch.js";
 import type { Task, TaskStatus } from "./tasks.js";
 
 export type SendTorrentResult = {
@@ -77,10 +78,18 @@ export async function sendTorrentUrlToNas(
   settings: Settings,
   url: string,
   folder?: string,
+  referrer?: string,
 ): Promise<SendTorrentResult> {
-  const response = await fetch(url, { credentials: "include" });
+  // A page on the tracker is the only context whose request looks like a real click. The
+  // worker's own fetch is the fallback for sources that need no session at all.
+  const response = (await fetchFromPageContext(url, referrer)) ?? (await fetch(url, { credentials: "include" }));
+
   if (!response.ok) {
-    throw new Error(`Fetch torrent failed: HTTP ${response.status}`);
+    throw new Error(
+      response.status === 403 || response.status === 401
+        ? `The tracker refused the download (HTTP ${response.status}). Open the topic page and make sure you are logged in.`
+        : `Fetch torrent failed: HTTP ${response.status}`,
+    );
   }
 
   const blob = await response.blob();

@@ -162,6 +162,13 @@ export class ApiClient {
     const temp = normalizeFolderPath(this.settings.NAStempdir);
     const move = normalizeFolderPath(this.settings.NASdir);
 
+    // Download Station requires a temporary folder and answers an empty one with an opaque
+    // `{error: 1, reason: "temp"}`. Failing here names the setting instead, and saves a
+    // round-trip that cannot succeed.
+    if (!temp) {
+      throw new Error("No Temp Folder is set. Open Settings and choose one (e.g. Download).");
+    }
+
     const formData = new FormData();
     formData.append("sid", loginResult.sid);
     formData.append("bt", file);

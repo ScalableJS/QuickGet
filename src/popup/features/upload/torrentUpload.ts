@@ -39,7 +39,6 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
 
     if (result.added) {
       requestMonitoring();
-      showStatus("Torrent added successfully!", "success", { autoHideMs: 2000 });
       options.onSuccess?.();
       return;
     }

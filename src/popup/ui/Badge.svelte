@@ -1,41 +1,27 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Variant = "count" | "accent";
   type Props = {
-    variant?: "count" | "accent";
+    variant?: Variant;
     title?: string;
     children: Snippet;
   };
 
+  const variantClasses = {
+    count: "min-w-4 px-1 rounded-full bg-[color-mix(in_srgb,currentColor_22%,transparent)] leading-4",
+    accent: "ml-1 px-1.5 rounded-[10px] bg-[var(--color-primary)] text-[var(--color-text-inverse)]",
+  } satisfies Record<Variant, string>;
+
   let { variant = "count", title, children }: Props = $props();
 </script>
 
-<span class="badge badge-{variant}" {title}>{@render children()}</span>
-
-<style>
-  .badge {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-  }
-
-  /* Tinted by the parent's text colour — used inside filter buttons. */
-  .badge-count {
-    min-width: 16px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: color-mix(in srgb, currentColor 22%, transparent);
-    line-height: 16px;
-  }
-
-  /* Solid accent pill — used standalone (e.g. URL count). */
-  .badge-accent {
-    margin-left: 4px;
-    padding: 0 6px;
-    border-radius: 10px;
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
-  }
-</style>
+<span
+  class={[
+    "inline-block text-12px font-600 tabular-nums text-center",
+    variantClasses[variant],
+  ]}
+  {title}
+>
+  {@render children()}
+</span>
