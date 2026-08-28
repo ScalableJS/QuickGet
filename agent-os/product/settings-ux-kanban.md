@@ -21,7 +21,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-5 | Status messages are never announced | ui | S | Discussion |
 | UX-6 | Routing rules are unnamed field soup for screen readers | ui | M | Discussion |
 | UX-7 | Connection has no connected/disconnected state model | ui | L | **Agreed — ready** |
-| UX-8 | Master password protects settings, not downloads | settings | M | **Agreed — ready** |
+| UX-8 | Master password protects settings, not downloads | settings | M | **Done** |
 | UX-9 | a11y regression gate in CI | testing | S | Discussion |
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Agreed — ready** |
 | UX-11 | No activity history in the popup | ui | M | Discussion |
@@ -198,8 +198,11 @@ No SID in it.
 
 ### UX-8 — Master password protects settings, not downloads
 
-**Size:** M · **Area:** settings · **Status:** Agreed — ready
+**Size:** M · **Area:** settings · **Status:** Done
 **Decided:** 2026-08-28 (owner) · reviewed against an external consultation
+**2026-08-28:** implemented. `credentials.ts` deleted, `settingsLock.ts` added, `isLocked()`
+and `unlock()` removed from `settings.ts`, and the popup no longer hides the task list behind
+a lock screen.
 
 **Decision:** the master password no longer gates downloading. It gates access to the settings
 screen. The NAS password is therefore always available to the service worker, and the global

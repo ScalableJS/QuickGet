@@ -12,7 +12,7 @@ import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { findConfigProblem } from "@lib/configHealth.js";
-import { isLocked, loadSettings } from "@lib/settings.js";
+import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
   isRestartable,
@@ -137,21 +137,15 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes
     // the first case for the message — it reports false in the second, so it cannot be the
     // guard itself. Leave the download alone; the browser will finish it normally.
-    // Every setting a hand-off needs, checked before the download is touched. Reporting this
-    // up front is the whole point: an unset folder used to surface only as an API field name
-    // after the attempt, which is how a misconfigured extension stayed silently broken.
+    // Every setting a hand-off needs, checked before the download is touched. There is no
+    // locked state to consider any more: a download starts when the user clicks a link, not
+    // when they open the popup, so the password is always readable here or genuinely unset.
     const problem = findConfigProblem(settings);
     if (problem) {
-      const locked = !settings.NASpassword && (await isLocked());
       console.warn(`[QuickGet] not configured — leaving the download to the browser: ${problem.summary}`);
 
-      await markConfigurationProblem(locked ? "Locked — open QuickGet to unlock it." : problem.summary);
-      notify(
-        locked ? "QuickGet is locked" : "QuickGet is not configured",
-        locked
-          ? "The .torrent was left to the browser. Open QuickGet to unlock it."
-          : `${problem.summary} The .torrent was left to the browser.`,
-      );
+      await markConfigurationProblem(problem.summary);
+      notify("QuickGet is not configured", `${problem.summary} The .torrent was left to the browser.`);
       return;
     }
 

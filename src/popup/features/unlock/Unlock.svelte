@@ -1,12 +1,13 @@
 <script lang="ts">
   import { showStatus } from "@/popup/components";
   import { getErrorMessage } from "@lib/errors.js";
-  import { resetSettings, unlock } from "@lib/settings.js";
+  import { resetSettings } from "@lib/settings.js";
+  import { unlockSettings } from "@lib/settingsLock.js";
   import { Button, Link } from "@ui";
 
   let { onUnlock }: { onUnlock: () => void } = $props();
 
-  let masterPassword = $state("");
+  let settingsPassword = $state("");
   let isUnlocking = $state(false);
 
   function focusOnMount(node: HTMLInputElement): void {
@@ -14,21 +15,18 @@
   }
 
   async function handleUnlock(): Promise<void> {
-    if (!masterPassword) {
-      showStatus("Please enter your master password", "error");
+    if (!settingsPassword) {
+      showStatus("Please enter your settings password", "error");
       return;
     }
 
     try {
       isUnlocking = true;
-      const success = await unlock(masterPassword);
-      if (success) {
-        // Cache master password in session storage so saving settings works seamlessly
-        await chrome.storage.session.set({ cachedMasterPassword: masterPassword });
-        showStatus("Unlocked successfully", "success", { autoHideMs: 1500 });
+      if (await unlockSettings(settingsPassword)) {
+        showStatus("Settings unlocked", "success", { autoHideMs: 1500 });
         onUnlock();
       } else {
-        showStatus("Incorrect master password", "error");
+        showStatus("Incorrect settings password", "error");
       }
     } catch (error) {
       showStatus(`Unlock error: ${getErrorMessage(error)}`, "error");
@@ -60,30 +58,31 @@
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
       </svg>
     </div>
-    <h2>QuickGet is Locked</h2>
-    <p class="subtitle">Enter your master password to unlock your credentials</p>
+    <h2>Settings are locked</h2>
+    <p class="subtitle">Enter your settings password to view or change the NAS connection.</p>
+    <p class="subtitle">Background downloads continue to work while settings are locked.</p>
   </div>
 
   <form onsubmit={(e) => { e.preventDefault(); void handleUnlock(); }}>
     <div class="form-group">
       <input
         type="password"
-        id="masterPassword"
-        placeholder="Master Password"
+        id="settingsPassword"
+        placeholder="Settings password"
         required
-        bind:value={masterPassword}
+        bind:value={settingsPassword}
         disabled={isUnlocking}
         use:focusOnMount
       />
     </div>
 
     <Button type="submit" block disabled={isUnlocking}>
-      {isUnlocking ? "Unlocking..." : "Unlock"}
+      {isUnlocking ? "Unlocking…" : "Unlock settings"}
     </Button>
   </form>
 
   <div class="unlock-footer">
-    <Link size="small" onclick={handleReset}>Forgot master password? Reset settings</Link>
+    <Link size="small" onclick={handleReset}>Forgot it? Reset all settings</Link>
   </div>
 </div>
 

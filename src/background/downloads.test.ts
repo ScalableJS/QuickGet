@@ -314,21 +314,21 @@ describe("download interception", () => {
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it("never touches the download while the master password is locked", async () => {
-    // A real lock needs the encrypted blob present and the session empty — without the blob
-    // isLocked() returns false and this would only exercise the generic empty-password path.
+  it("sends the torrent even though a settings password is set", async () => {
+    // The settings lock guards the settings screen, never the hand-off. A download starts when
+    // the user clicks a link, not when they open the popup — gating it here is what silently
+    // dropped every torrent after a browser restart.
     seedChromeStorage({
-      ...createTestSettings({ NASpassword: "", rememberPassword: true }),
-      encryptedNASpassword: { ciphertext: "AAAA", iv: "BBBB", salt: "CCCC" },
+      ...createTestSettings(),
+      settingsLockEnabled: true,
+      settingsLockVerifier: "irrelevant",
     });
+    const nas = mockSuccessfulHandoff();
 
     await handleDownloadCreated(createDownloadItem());
 
-    expect(downloads.cancel).not.toHaveBeenCalled();
-    expect(downloads.pause).not.toHaveBeenCalled();
-    expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "QuickGet is locked" }),
-    );
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalled();
   });
 
   it("never touches the download when the session password was cleared by a restart", async () => {
@@ -557,10 +557,10 @@ describe("download interception — configuration is visible", () => {
     expect(message).toContain("Temp Folder");
   });
 
-  it("says it is locked rather than misconfigured when the password is merely unavailable", async () => {
+  it("reports a missing password as plain misconfiguration, with nothing to unlock", async () => {
     seedChromeStorage({
       ...createTestSettings({ NASpassword: "", rememberPassword: true }),
-      // Only an encrypted password makes the state "locked" rather than "never configured".
+      // A leftover blob from the encrypted scheme must not resurrect a locked state.
       encryptedNASpassword: { iv: "x", salt: "y", data: "z" },
     });
     const notifications = getChromeNotificationsMock();
@@ -568,8 +568,10 @@ describe("download interception — configuration is visible", () => {
     await handleDownloadCreated(createDownloadItem({ id: 72 }));
 
     expect(notifications.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "QuickGet is locked" }),
+      expect.objectContaining({ title: "QuickGet is not configured" }),
     );
+    const message = notifications.create.mock.calls[0]?.[0]?.message as string;
+    expect(message).toContain("Password");
   });
 
   it("marks the toolbar when the hand-off itself fails", async () => {

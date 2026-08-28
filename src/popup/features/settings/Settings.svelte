@@ -13,7 +13,8 @@
   import { findConfigProblem } from "@lib/configHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
-  import { Alert, Button, Checkbox, Field, Link, SegmentedControl, Select } from "@ui";
+  import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
+  import { Alert, Button, Checkbox, Field, SegmentedControl, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -29,11 +30,11 @@
   // from the stored protocol/host/port; on save we parse it back into them.
   let serverUrl = $state("");
 
-  let masterPasswordInput = $state("");
-  let confirmMasterPasswordInput = $state("");
-  let hasCachedMasterPassword = $state(false);
-  /** Whether a remembered password should be encrypted. Off keeps it in plain local storage. */
-  let useMasterPassword = $state(false);
+  let lockPasswordInput = $state("");
+  let confirmLockPasswordInput = $state("");
+  /** Whether the settings screen itself is password-protected. Never gates downloading. */
+  let settingsLockEnabled = $state(false);
+  let lockWasEnabled = $state(false);
   let savedSignature = $state("");
   let savedConnectionSignature = $state("");
   let isSaving = $state(false);
@@ -47,11 +48,10 @@
     return JSON.stringify({
       form,
       serverUrl,
-      masterPasswordInput,
-      confirmMasterPasswordInput,
-      hasCachedMasterPassword,
-      // Toggling encryption on its own is a change worth saving, so it must dirty the form.
-      useMasterPassword,
+      lockPasswordInput,
+      confirmLockPasswordInput,
+      // Toggling the lock on its own is a change worth saving, so it must dirty the form.
+      settingsLockEnabled,
     });
   }
 
@@ -146,8 +146,9 @@
       form = await loadSettings();
       serverUrl = composeServerUrl(form);
 
-      const session = await chrome.storage.session.get("cachedMasterPassword");
-      hasCachedMasterPassword = Boolean(session.cachedMasterPassword);
+      const lock = await getSettingsLockState();
+      settingsLockEnabled = lock.enabled;
+      lockWasEnabled = lock.enabled;
       markClean();
     } catch (error) {
       showStatus(`Failed to load settings: ${getErrorMessage(error)}`, "error");
@@ -181,37 +182,30 @@
 
       normalizeRoutingRules();
 
-      let masterPasswordToUse: string | undefined;
-
-      if (form.rememberPassword) {
-        if (!hasCachedMasterPassword && useMasterPassword) {
-          if (!masterPasswordInput) {
-            showStatus("Please enter a master password", "error");
-            return;
-          }
-          if (masterPasswordInput.length < 8) {
-            showStatus("Master password must be at least 8 characters long", "error");
-            return;
-          }
-          if (masterPasswordInput !== confirmMasterPasswordInput) {
-            showStatus("Master passwords do not match", "error");
-            return;
-          }
-          masterPasswordToUse = masterPasswordInput;
-        } else if (hasCachedMasterPassword) {
-          const session = await chrome.storage.session.get("cachedMasterPassword");
-          masterPasswordToUse = session.cachedMasterPassword as string | undefined;
+      // The settings lock is independent of the NAS credentials: it guards this screen, and
+      // never the background hand-off. Turning it on is the only case that needs a password.
+      if (settingsLockEnabled && !lockWasEnabled) {
+        if (lockPasswordInput.length < 8) {
+          showStatus("The settings password must be at least 8 characters long", "error");
+          return;
+        }
+        if (lockPasswordInput !== confirmLockPasswordInput) {
+          showStatus("The settings passwords do not match", "error");
+          return;
         }
       }
 
-      await saveSettings($state.snapshot(form), { masterPassword: masterPasswordToUse });
+      await saveSettings($state.snapshot(form));
 
-      if (masterPasswordToUse) {
-        await chrome.storage.session.set({ cachedMasterPassword: masterPasswordToUse });
-        hasCachedMasterPassword = true;
-        masterPasswordInput = "";
-        confirmMasterPasswordInput = "";
+      if (settingsLockEnabled && !lockWasEnabled) {
+        await enableSettingsLock(lockPasswordInput);
+      } else if (!settingsLockEnabled && lockWasEnabled) {
+        await disableSettingsLock();
       }
+
+      lockWasEnabled = settingsLockEnabled;
+      lockPasswordInput = "";
+      confirmLockPasswordInput = "";
 
       invalidateClientCache();
       applyTheme(form.theme);
@@ -257,12 +251,6 @@
     }
   }
 
-  function triggerChangeMasterPassword(): void {
-    hasCachedMasterPassword = false;
-    masterPasswordInput = "";
-    confirmMasterPasswordInput = "";
-  }
-
 </script>
 
 <div class="settings-stack">
@@ -299,31 +287,11 @@
     </Checkbox>
   </div>
 
-  {#if form.rememberPassword && !hasCachedMasterPassword}
-    <div class="form-group form-inline">
-      <Checkbox id="useMasterPassword" bind:checked={useMasterPassword}>
-        Protect it with a master password
-      </Checkbox>
-    </div>
-
-    {#if useMasterPassword}
-      <div class="form-group">
-        <Field id="masterPasswordInput" label="Create Master Password" type="password" placeholder="At least 8 characters" bind:value={masterPasswordInput} />
-      </div>
-      <div class="form-group">
-        <Field id="confirmMasterPasswordInput" label="Confirm Master Password" type="password" placeholder="Repeat the master password" bind:value={confirmMasterPasswordInput} />
-      </div>
-    {:else}
-      <Alert tone="hint">
-        The password is stored unencrypted. Anyone with access to this browser profile can read
-        it — fine on a machine only you use.
-      </Alert>
-    {/if}
-  {:else if form.rememberPassword && hasCachedMasterPassword}
-    <div class="form-group form-inline-text">
-      <span class="text-muted">Master password is active.</span>
-      <Link size="small" onclick={triggerChangeMasterPassword}>Change Master Password</Link>
-    </div>
+  {#if !form.rememberPassword}
+    <Alert tone="hint">
+      The password is kept only until the browser restarts. Turn on "Remember password" to keep
+      sending downloads to the NAS after a restart.
+    </Alert>
   {/if}
 </section>
 
@@ -360,6 +328,31 @@
       bind:value={form.theme}
     />
   </div>
+</section>
+
+<section class="settings-section">
+  <h2 class="section-heading">Privacy</h2>
+  <div class="form-group form-inline">
+    <Checkbox id="settingsLockEnabled" bind:checked={settingsLockEnabled}>
+      Protect settings
+    </Checkbox>
+  </div>
+  <Alert tone="hint">
+    Require a password to view or change your NAS connection settings. Background downloads
+    continue to work while settings are locked. This does not encrypt the stored password —
+    protecting files on this computer is your operating system's job.
+  </Alert>
+
+  {#if settingsLockEnabled && !lockWasEnabled}
+    <div class="form-group">
+      <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} />
+    </div>
+    <div class="form-group">
+      <Field id="confirmLockPasswordInput" label="Confirm settings password" type="password" placeholder="Repeat the settings password" bind:value={confirmLockPasswordInput} />
+    </div>
+  {:else if settingsLockEnabled}
+    <p class="text-muted">Settings password is active. Turn this off to remove it.</p>
+  {/if}
 </section>
 
 <section class="settings-section">
@@ -564,11 +557,4 @@
     font-size: 13px;
   }
 
-  .form-inline-text {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-top: 0;
-    margin-bottom: 0;
-  }
 </style>
