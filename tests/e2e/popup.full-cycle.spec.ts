@@ -32,10 +32,12 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
 
-    await switchSettingsTab(page, "Downloads");
     // Relative to the share root — DS rejects absolute /share/... paths (error 4096).
     await page.fill("#NAStempdir", "Download");
+    // The picker opens its listbox on focus and would cover the next field.
+    await page.press("#NAStempdir", "Escape");
     await page.fill("#NASdir", "Multimedia/Movies");
+    await page.press("#NASdir", "Escape");
 
     const queryCountBeforeSave = mockNas.requestLog
       .toJSON()

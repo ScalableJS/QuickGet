@@ -76,7 +76,7 @@
 
   const TABS: { id: NonNullable<Props["initialTab"]>; label: string }[] = [
     { id: "connection", label: "Connection" },
-    { id: "downloads", label: "Downloads" },
+    { id: "downloads", label: "Behaviour" },
     { id: "appearance", label: "Appearance" },
     { id: "advanced", label: "Advanced" },
   ];
@@ -89,7 +89,7 @@
     { id: "serverUrl", label: "Server address", value: () => serverUrl, tab: "connection" },
     { id: "NASlogin", label: "Username", value: () => form.NASlogin, tab: "connection" },
     { id: "NASpassword", label: "Password", value: () => form.NASpassword, tab: "connection" },
-    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir, tab: "downloads" },
+    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir, tab: "connection" },
   ];
 
   function validateField(id: string): void {
@@ -451,10 +451,8 @@
   {/if}
   {/if}
   </FormSection>
-</section>
-    {:else if tab.id === "downloads"}
-<section class="settings-section">
-  <FormSection legend="Download defaults">
+
+  <FormSection legend="Folders">
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
     <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
@@ -464,7 +462,11 @@
     <label for="NASdir">Target Folder</label>
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
-
+  </FormSection>
+</section>
+    {:else if tab.id === "downloads"}
+<section class="settings-section">
+  <FormSection legend="Downloads">
   <div class="form-group">
     <Select id="torrentInterceptMode" label="Intercept .torrent downloads" bind:value={form.torrentInterceptMode}>
       <option value="off">Off — download normally</option>

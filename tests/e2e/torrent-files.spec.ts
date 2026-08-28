@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
+import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
@@ -37,9 +37,11 @@ test("multi-file torrent selection loads files and saves changed priorities", as
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "demo-user");
     await page.fill("#NASpassword", "demo-password");
-    await switchSettingsTab(page, "Downloads");
     await page.fill("#NAStempdir", "Download");
+    // The picker opens its listbox on focus and would cover what follows.
+    await page.press("#NAStempdir", "Escape");
     await page.fill("#NASdir", "Multimedia/Movies");
+    await page.press("#NASdir", "Escape");
     await page.click("#save-btn");
     await page.reload({ waitUntil: "domcontentloaded" });
 

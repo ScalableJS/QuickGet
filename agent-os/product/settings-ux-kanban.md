@@ -25,7 +25,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-9 | a11y regression gate in CI | testing | S | **Done** |
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
-| UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
+| UX-12 | Folders are typed before there is anything to pick them from | ui | M | **Done** |
 | UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **Done** |
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
@@ -383,10 +383,27 @@ guessing at a path format they have not been told.
 That guess is what produced the failure this whole board started from: an empty Temp Folder,
 which Download Station rejects with `{error: 1, reason: "temp"}`.
 
-**Direction:** show the folder section only after a connection has succeeded, with the list
-already loaded, so the folders are picked rather than typed.
+**Direction (superseded):** show the folder section only after a connection has succeeded.
 
-**Open questions to settle first:**
+**2026-08-28 — done, but not as originally sketched.** Gating the folders behind a successful
+connection would have invented a two-step flow nobody else has. What the competitors do:
+
+- **QNAP Download Station Manager** stores one object —
+  `NasConnectionSettings: { url, username, password, folders: [...] }` — validated by a single
+  schema in which every field, folders included, is `required`. Connection and folders are one
+  form. The whole extension has two tabs: Downloads and Settings.
+- **Synology** does not have this problem: `destination` is optional there (the NAS applies its
+  own default) and is chosen per task, not in settings.
+
+So the folders moved **onto the Connection tab**, directly under the credentials: everything a
+first run needs is on one screen, in the order it is needed. The `Downloads` tab became
+`Behaviour` and holds the interception mode — a preference, not part of setup.
+
+The original worry — that folders cannot be picked before the NAS is reachable — resolved
+itself: `FolderSelect` already loads the real folder list as soon as credentials work, and the
+`Download` default means the field is never empty in the meantime. No gate needed.
+
+**Questions that no longer apply** (both were artefacts of gating the folders):
 
 1. First-run order. Connection must be saved and tested before folders can be shown, but the
    folders are required for a complete configuration — so "Configured" cannot mean "connection

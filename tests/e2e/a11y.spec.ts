@@ -97,16 +97,17 @@ test.describe("accessibility", () => {
       await session.page.waitForSelector("#serverUrl");
 
       // Dirty the form so Save is enabled, then try to save while a required field is empty.
-      await session.page.getByRole("tab", { name: "Downloads" }).click();
-      await session.page.fill("#NASdir", "Multimedia/Films");
+      await session.page.fill("#NASpassword", "another-password");
       await session.page.click("#save-btn");
 
       // The field itself must carry the state — a status line alone leaves a screen reader
-      // user with no way to find which input is wrong.
-      const invalid = session.page.locator('[aria-invalid="true"]');
-      await expect(invalid.first()).toBeVisible();
+      // user with no way to find which input is wrong. Asserted on the empty field by name:
+      // the folder pickers on this tab also report validity, against the NAS rather than the
+      // form, and picking "the first invalid thing" would silently test the wrong one.
+      const invalid = session.page.locator("#NASlogin");
+      await expect(invalid).toHaveAttribute("aria-invalid", "true");
 
-      const describedBy = await invalid.first().getAttribute("aria-describedby");
+      const describedBy = await invalid.getAttribute("aria-describedby");
       expect(describedBy, "the invalid field must point at its error message").toBeTruthy();
       await expect(session.page.locator(`#${describedBy}`)).toHaveText(/required/i);
     } finally {
@@ -116,9 +117,9 @@ test.describe("accessibility", () => {
   });
 
   /**
-   * Save has to reach a field that is not on screen. `focus()` into a hidden panel silently does
-   * nothing, which would reproduce the original complaint exactly: press Save, watch nothing
-   * happen. The empty field here lives on Downloads while the form opens on Connection.
+   * Save has to reach a field that is not on screen. `focus()` into a hidden panel silently
+   * does nothing, which would reproduce the original complaint exactly: press Save, watch
+   * nothing happen. Here the user is on Advanced when the empty field is on Connection.
    */
   test("Save switches to the tab holding the first invalid field", async () => {
     const nas = await startMockNas();
@@ -134,20 +135,19 @@ test.describe("accessibility", () => {
       await session.page.getByRole("button", { name: "Open settings" }).click();
 
       // Empty the folder the way a user would — the default means it cannot be seeded empty.
-      await session.page.getByRole("tab", { name: "Downloads" }).click();
+      await session.page.getByRole("button", { name: "Edit" }).click();
       await session.page.fill("#NAStempdir", "");
 
-      // Then go back to Connection, so the invalid field is on a panel that is not showing.
-      await session.page.getByRole("tab", { name: "Connection" }).click();
-      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute(
+      // Then walk away to a tab that does not contain it.
+      await session.page.getByRole("tab", { name: "Advanced" }).click();
+      await expect(session.page.getByRole("tab", { name: "Advanced" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
 
       await session.page.click("#save-btn");
 
-      // The panel with the empty field must be the one now showing, and the field focused.
-      await expect(session.page.getByRole("tab", { name: "Downloads" })).toHaveAttribute(
+      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
