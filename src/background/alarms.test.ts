@@ -152,3 +152,48 @@ describe("background alarms", () => {
     expect(alarms["download-monitor"]).toBeDefined(); // alarm still armed
   });
 });
+
+/**
+ * A fresh install has no NAS address. Polling anyway threw "NAS address is empty" on every
+ * browser start, and Chrome collects those on the extension's Errors page — so an extension
+ * that had simply never been set up presented itself as broken.
+ */
+describe("monitoring an unconfigured extension", () => {
+  it("stays silent and does not poll", async () => {
+    seedChromeStorage(createTestSettings({ NASaddress: "" }));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    let polled = false;
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Query", () => {
+        polled = true;
+        return HttpResponse.json({ error: 0, data: [] });
+      }),
+    );
+
+    await ensureMonitoring();
+
+    expect(polled).toBe(false);
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
+  it("polls normally once it is configured", async () => {
+    seedChromeStorage(createTestSettings());
+    let polled = false;
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Query", () => {
+        polled = true;
+        return HttpResponse.json({ error: 0, data: [] });
+      }),
+    );
+
+    await ensureMonitoring();
+
+    expect(polled).toBe(true);
+  });
+});

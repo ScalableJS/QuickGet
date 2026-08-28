@@ -14,6 +14,7 @@
 
 import { type ApiClient, createApiClient } from "@api/client.js";
 import { clientSignature } from "@lib/clientSignature.js";
+import { findConfigProblem } from "@lib/configHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
@@ -82,6 +83,15 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
  */
 async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
   try {
+    // An unconfigured extension is a normal state, not a fault. Polling anyway threw "NAS
+    // address is empty" on every browser start, which Chrome collects on the extension's
+    // Errors page — so a fresh install looked broken before it had ever been set up.
+    const problem = findConfigProblem(await loadSettings());
+    if (problem) {
+      void chrome.alarms.clear(ALARM_NAME);
+      return;
+    }
+
     const client = await getClient();
     const { tasks } = await client.queryTasks();
 
