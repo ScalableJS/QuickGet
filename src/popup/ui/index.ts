@@ -6,6 +6,7 @@ export { default as Checkbox } from "./Checkbox.svelte";
 export { default as DisclosureButton } from "./DisclosureButton.svelte";
 export { default as EmptyState } from "./EmptyState.svelte";
 export { default as Field } from "./Field.svelte";
+export { default as FormSection } from "./FormSection.svelte";
 export { default as IconButton } from "./IconButton.svelte";
 export { default as Link } from "./Link.svelte";
 export { default as ProgressBar } from "./ProgressBar.svelte";

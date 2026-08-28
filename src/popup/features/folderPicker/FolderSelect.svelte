@@ -18,13 +18,23 @@
     placeholder = "",
     settings,
     status = $bindable<FolderFieldStatus>("idle"),
+    formError,
   }: {
     id?: string;
     value: string;
     placeholder?: string;
     settings?: Settings;
     status?: FolderFieldStatus;
+    /**
+     * A form-level problem with this field — typically "required, and empty". Separate from
+     * `status`, which reports what the NAS said about a path that was actually entered.
+     */
+    formError?: string;
   } = $props();
+
+  // A field the form has rejected is invalid regardless of what folder validation thinks: it
+  // has nothing to validate.
+  const showsError = $derived(Boolean(formError) || status === "invalid");
 
   let open = $state(false);
   let entries = $state<DirEntry[]>([]);
@@ -177,8 +187,8 @@
       aria-controls={listboxId}
       aria-autocomplete="list"
       aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-      aria-describedby={status === "invalid" || status === "error" ? messageId : undefined}
-      aria-invalid={status === "invalid"}
+      aria-describedby={showsError || status === "error" ? messageId : undefined}
+      aria-invalid={showsError}
       aria-busy={status === "validating"}
       class:has-spinner={status === "validating"}
       {placeholder}
@@ -239,7 +249,9 @@
   {/if}
 </div>
 
-{#if status === "invalid"}
+{#if formError}
+  <p id={messageId} class="field-msg error" role="alert">{formError}</p>
+{:else if status === "invalid"}
   <p id={messageId} class="field-msg error" aria-live="polite">{statusReason}</p>
 {:else if status === "error"}
   <p id={messageId} class="field-msg unverified" aria-live="polite">Couldn't verify folder ({statusReason})</p>

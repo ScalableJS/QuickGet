@@ -13,6 +13,10 @@ export function showStatus(message: string, type: StatusType = "info", options?:
   const { bar, pill, message: messageElement } = getStatusElements();
   if (!bar || !pill || !messageElement) return;
 
+  // An error interrupts; a confirmation waits its turn. Both are announced — the container is
+  // already a live region, but a single politeness level would either nag or bury the errors.
+  pill.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
+
   messageElement.textContent = message;
 
   if (message) {

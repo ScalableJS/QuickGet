@@ -14,7 +14,7 @@
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
-  import { Alert, Button, Checkbox, Field, SegmentedControl, Select } from "@ui";
+  import { Alert, Button, Checkbox, Field, FormSection, SegmentedControl, Select } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -43,6 +43,42 @@
 
   // Shown while the form is incomplete, so the gap is visible before a download reveals it.
   const configProblem = $derived(savedSignature === "" ? undefined : findConfigProblem(form));
+
+  /**
+   * Per-field errors, filled in as fields are left rather than only when Save is pressed.
+   * Waiting for Save is how an empty Temp Folder went unnoticed until every download failed.
+   */
+  let fieldErrors = $state<Record<string, string>>({});
+
+  /** Field ids in the order they appear, so Save can focus the first one that is wrong. */
+  const REQUIRED_FIELDS: { id: string; label: string; value: () => string }[] = [
+    { id: "serverUrl", label: "Server address", value: () => serverUrl },
+    { id: "NASlogin", label: "Username", value: () => form.NASlogin },
+    { id: "NASpassword", label: "Password", value: () => form.NASpassword },
+    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir },
+  ];
+
+  function validateField(id: string): void {
+    const field = REQUIRED_FIELDS.find((candidate) => candidate.id === id);
+    if (!field) return;
+
+    if (field.value().trim()) {
+      const { [id]: _removed, ...rest } = fieldErrors;
+      fieldErrors = rest;
+    } else {
+      fieldErrors = { ...fieldErrors, [id]: `${field.label} is required` };
+    }
+  }
+
+  /** Marks every empty required field and returns the first one, for focus. */
+  function markMissingFields(): string | undefined {
+    const errors: Record<string, string> = {};
+    for (const field of REQUIRED_FIELDS) {
+      if (!field.value().trim()) errors[field.id] = `${field.label} is required`;
+    }
+    fieldErrors = errors;
+    return REQUIRED_FIELDS.find((field) => errors[field.id])?.id;
+  }
 
   function settingsSignature(): string {
     return JSON.stringify({
@@ -93,6 +129,8 @@
 
   function removeRule(index: number): void {
     form.routingRules.splice(index, 1);
+    // Removing a row is silent otherwise: focus moves and nothing says what happened.
+    showStatus(`Rule ${index + 1} removed`, "info", { autoHideMs: 2000 });
   }
 
   function setRuleType(index: number, raw: string): void {
@@ -174,9 +212,11 @@
       // Saving an incomplete connection is what leaves the extension silently unable to reach
       // the NAS later, so the required fields are checked here rather than trusting `required`
       // on the inputs — nothing submits this form, so the browser never enforces them.
-      const missing = missingConnectionFields();
-      if (missing.length > 0) {
-        showStatus(`Fill in ${missing.join(", ")} before saving`, "error");
+      const firstMissing = markMissingFields();
+      if (firstMissing) {
+        // Take the user to the problem rather than describing it and leaving them to look.
+        document.getElementById(firstMissing)?.focus();
+        showStatus("Fill in the highlighted fields before saving", "error");
         return;
       }
 
@@ -229,16 +269,6 @@
   }
 
   /** Names of the connection fields left empty, in the order they appear in the form. */
-  /**
-   * The same check the background runs before a hand-off, so the form cannot save a
-   * configuration that will fail there. `serverUrl` is the form's own field; the parsed
-   * address is what actually gets stored.
-   */
-  function missingConnectionFields(): string[] {
-    if (!serverUrl.trim()) return ["Server address"];
-    return findConfigProblem($state.snapshot(form))?.missing ?? [];
-  }
-
   async function verifySavedConnection(settings: Settings): Promise<void> {
     try {
       const client = await getApiClient({ settings });
@@ -261,7 +291,7 @@
 {/if}
 
 <section class="settings-section">
-  <h2 class="section-heading">Connection</h2>
+  <FormSection legend="Connection">
   <div class="form-group">
     <Field
       id="serverUrl"
@@ -269,16 +299,18 @@
       placeholder="http://192.168.1.100:8080"
       required
       bind:value={serverUrl}
+      error={fieldErrors.serverUrl}
       oninput={(event) => syncServerUrl(event.currentTarget.value)}
+      onblur={() => validateField("serverUrl")}
     />
   </div>
 
   <div class="form-group">
-    <Field id="NASlogin" label="Username" placeholder="Your QNAP account" required bind:value={form.NASlogin} />
+    <Field id="NASlogin" label="Username" placeholder="Your QNAP account" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
   </div>
 
   <div class="form-group">
-    <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} />
+    <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
   </div>
 
   <div class="form-group form-inline">
@@ -293,13 +325,14 @@
       sending downloads to the NAS after a restart.
     </Alert>
   {/if}
+  </FormSection>
 </section>
 
 <section class="settings-section">
-  <h2 class="section-heading">Download defaults</h2>
+  <FormSection legend="Download defaults">
   <div class="form-group">
     <label for="NAStempdir">Temp Folder</label>
-    <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} />
+    <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
   </div>
 
   <div class="form-group">
@@ -328,10 +361,11 @@
       bind:value={form.theme}
     />
   </div>
+  </FormSection>
 </section>
 
 <section class="settings-section">
-  <h2 class="section-heading">Privacy</h2>
+  <FormSection legend="Privacy">
   <div class="form-group form-inline">
     <Checkbox id="settingsLockEnabled" bind:checked={settingsLockEnabled}>
       Protect settings
@@ -353,11 +387,12 @@
   {:else if settingsLockEnabled}
     <p class="text-muted">Settings password is active. Turn this off to remove it.</p>
   {/if}
+  </FormSection>
 </section>
 
 <section class="settings-section">
+  <FormSection legend="Routing rules">
   <div class="routing-header">
-    <h2 class="section-heading routing-title">Routing rules</h2>
     <button type="button" class="add-rule" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <Alert tone="hint">
@@ -369,10 +404,13 @@
     <p class="routing-empty text-muted">No rules yet. All downloads use the Target Folder.</p>
   {:else}
     {#each form.routingRules as rule, i (rule)}
-      <div class="routing-rule">
+      <!-- Each rule is its own group with a name. Without it a screen reader reads three
+           unlabelled controls per rule, with nothing saying where one rule ends. -->
+      <fieldset class="routing-rule">
+        <legend class="visually-hidden">Rule {i + 1}</legend>
         <div class="routing-conditions">
           <div class="routing-match-type">
-            <Select aria-label="Match type" value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
+            <Select aria-label={`Rule ${i + 1} match type`} value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
               <option value="">Any type</option>
               <option value="url">URL</option>
               <option value="magnet">Magnet</option>
@@ -380,24 +418,25 @@
             </Select>
           </div>
           <div class="routing-text-field">
-            <Field placeholder="e.g. *.mkv" aria-label="Filename pattern" bind:value={rule.namePattern} />
+            <Field placeholder="e.g. *.mkv" aria-label={`Rule ${i + 1} filename pattern`} bind:value={rule.namePattern} />
           </div>
           <div class="routing-text-field">
-            <Field placeholder="e.g. *.site.com" aria-label="Domain" bind:value={rule.domain} />
+            <Field placeholder="e.g. *.site.com" aria-label={`Rule ${i + 1} domain`} bind:value={rule.domain} />
           </div>
-          <button type="button" class="rule-remove" aria-label="Remove rule" title="Remove rule" onclick={() => removeRule(i)}>
+          <button type="button" class="rule-remove" aria-label={`Remove rule ${i + 1}`} title="Remove rule" onclick={() => removeRule(i)}>
             <X aria-hidden="true" />
           </button>
         </div>
         <FolderSelect id={`routing-${i}-destination`} placeholder="e.g. Multimedia/Films" settings={$state.snapshot(form)} bind:value={rule.destination} />
-      </div>
+      </fieldset>
     {/each}
   {/if}
+  </FormSection>
 </section>
 
 <section class="settings-section">
+  <FormSection legend="Backup">
   <div class="routing-header">
-    <h2 class="section-heading routing-title">Backup</h2>
   </div>
   <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
   <div class="backup-actions">
@@ -405,6 +444,7 @@
     <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
     <input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
   </div>
+  </FormSection>
 </section>
 
 <footer class="settings-actions">
@@ -446,13 +486,6 @@
     flex: 1;
   }
 
-  .section-heading {
-    margin: 0 0 var(--space-3);
-    color: var(--color-text);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.5;
-  }
 
   .routing-header {
     display: flex;
@@ -461,9 +494,6 @@
     margin-bottom: var(--space-2);
   }
 
-  .routing-title {
-    margin-bottom: 0;
-  }
 
   .add-rule {
     display: inline-flex;
@@ -502,6 +532,25 @@
   .routing-match-type,
   .routing-text-field {
     flex: 1;
+    min-width: 0;
+  }
+
+  /* Present to assistive tech, absent visually — the rules are positional on screen. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .routing-rule {
+    border: none;
+    margin: 0;
+    padding: 0;
     min-width: 0;
   }
 

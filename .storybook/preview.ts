@@ -19,6 +19,9 @@ const preview: Preview = {
   parameters: {
     layout: "padded",
     controls: { expanded: true },
+    // "error" fails the story rather than merely annotating it, so a regression is a failure
+    // and not a note someone has to notice.
+    a11y: { test: "error" },
   },
   globalTypes: {
     theme: {

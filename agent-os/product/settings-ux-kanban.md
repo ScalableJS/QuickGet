@@ -14,15 +14,15 @@ Move a card by editing its Status cell and adding a dated line under the card.
 
 | ID | Task | Area | Size | Status |
 |----|------|------|------|--------|
-| UX-1 | `Field` cannot show an error, hint, or required state | ui | S | Discussion |
-| UX-2 | Form validation approach — hand-rolled vs schema library | ui | M | **Discussion** |
-| UX-3 | Sections are headings, not field groups | ui | S | Discussion |
-| UX-4 | Validation only runs on Save, and reports everything at once | ui | M | Discussion |
-| UX-5 | Status messages are never announced | ui | S | Discussion |
-| UX-6 | Routing rules are unnamed field soup for screen readers | ui | M | Discussion |
+| UX-1 | `Field` cannot show an error, hint, or required state | ui | S | **Done** |
+| UX-2 | Form validation approach — hand-rolled vs schema library | ui | M | **Decided: no library** |
+| UX-3 | Sections are headings, not field groups | ui | S | **Done** |
+| UX-4 | Validation only runs on Save, and reports everything at once | ui | M | **Done** |
+| UX-5 | Status messages are never announced | ui | S | **Done** |
+| UX-6 | Routing rules are unnamed field soup for screen readers | ui | M | **Done** |
 | UX-7 | Connection has no connected/disconnected state model | ui | L | **Agreed — ready** |
 | UX-8 | Master password protects settings, not downloads | settings | M | **Done** |
-| UX-9 | a11y regression gate in CI | testing | S | Discussion |
+| UX-9 | a11y regression gate in CI | testing | S | **Done** |
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
 
@@ -324,4 +324,28 @@ Last 20–50 entries. **Never store the full tracker URL** — signed download l
 tokens in the query string. Filename, sanitised host, and outcome only.
 
 **Blocks:** UX-10 should not ship far ahead of this, or successful sends become invisible.
+
+---
+
+## 2026-08-28 — implementation notes
+
+UX-1, UX-3, UX-4, UX-5, UX-6 and UX-9 shipped together; they are one change from the user's
+point of view and each is meaningless without the others.
+
+- `Field` gained `error` and `hint`, wiring `aria-invalid` and `aria-describedby` itself.
+- `FormSection` (`<fieldset>`/`<legend>`) replaced the section headings; visually identical.
+- Fields validate on blur, and Save moves focus to the first one that is wrong.
+- The status pill switches to `aria-live="assertive"` for errors, `polite` otherwise.
+- Each routing rule is a named group; removing one announces itself.
+- **UX-9 runs axe against the real popup, not Storybook** (`tests/e2e/a11y.spec.ts`), so what
+  is checked is what ships, including the parts assembled imperatively. It is in
+  `npm run test:e2e:mock`, so CI gates on it.
+
+That gate immediately earned itself: it found that `FolderSelect` — where Temp Folder lives —
+had no way to show a form-level error, so the field the user most often leaves empty was the
+one field that could not be marked invalid. Fixed with a `formError` prop.
+
+UX-2 closed with no library. The two trust boundaries named in the card
+(`parseImportedSettings`, `loadSettings`) remain candidates for Valibot if they ever misbehave;
+nothing in the form work needed one.
 

@@ -9,7 +9,8 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|ts|svelte)"],
-  addons: ["@storybook/addon-docs"],
+  // a11y runs axe over every story; the settings form is the reason it is here.
+  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
 
   framework: {
     name: "@storybook/svelte-vite",
