@@ -11,6 +11,7 @@
 import type { Settings } from "@lib/config.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
+import { findConfigProblem } from "@lib/configHealth.js";
 import { isLocked, loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
@@ -20,6 +21,7 @@ import {
   sendTorrentUrlToNas,
 } from "@lib/torrentSender.js";
 
+import { clearConfigurationProblem, markConfigurationProblem } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
 
 const RESUME_PREFIX = "qg-resume-";
@@ -135,12 +137,20 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes
     // the first case for the message — it reports false in the second, so it cannot be the
     // guard itself. Leave the download alone; the browser will finish it normally.
-    if (!settings.NASpassword || !settings.NASaddress || !settings.NASlogin) {
-      const locked = settings.NASpassword === "" && (await isLocked());
-      console.warn("[QuickGet] NAS not usable — leaving the download to the browser");
+    // Every setting a hand-off needs, checked before the download is touched. Reporting this
+    // up front is the whole point: an unset folder used to surface only as an API field name
+    // after the attempt, which is how a misconfigured extension stayed silently broken.
+    const problem = findConfigProblem(settings);
+    if (problem) {
+      const locked = !settings.NASpassword && (await isLocked());
+      console.warn(`[QuickGet] not configured — leaving the download to the browser: ${problem.summary}`);
+
+      await markConfigurationProblem(locked ? "Locked — open QuickGet to unlock it." : problem.summary);
       notify(
-        locked ? "QuickGet is locked" : "NAS not configured",
-        "The .torrent was left to the browser. Open QuickGet to unlock or configure it.",
+        locked ? "QuickGet is locked" : "QuickGet is not configured",
+        locked
+          ? "The .torrent was left to the browser. Open QuickGet to unlock it."
+          : `${problem.summary} The .torrent was left to the browser.`,
       );
       return;
     }
@@ -218,6 +228,7 @@ async function handOffToNas(
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
+    void clearConfigurationProblem();
     const cancelled = await cancelBrowserDownload(downloadId);
     if (!cancelled && paused) await resumeBrowserDownload(downloadId);
     void ensureMonitoring();
@@ -229,6 +240,9 @@ async function handOffToNas(
     }
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
+    // A failed hand-off is exactly the moment the toolbar should stop looking normal: the
+    // download silently stayed in the browser, and nothing else on screen says so.
+    void markConfigurationProblem(getErrorMessage(error));
     // The hand-off is over and it failed. The claim must not outlive it: the browser is
     // finishing the download itself now, and a later `onChanged` for the same id (or the user
     // retrying) has to be able to take it again.

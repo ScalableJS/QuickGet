@@ -33,6 +33,10 @@ const ACTIVE_ICON_PATH = {
   128: "icons/128_active.png",
 } as const;
 
+/** Badge shown when the extension is configured in a way that cannot work. */
+const CONFIG_BADGE = "!";
+const CONFIG_BADGE_COLOR = "#D93025";
+
 // Consecutive confirmed-zero polls required before the badge clears.
 const ZERO_CONFIRM = 2;
 
@@ -132,6 +136,48 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
   }
   await saveState(state);
   return { active: 0, idleConfirmed: true };
+}
+
+/**
+ * Put the toolbar into a "this needs your attention" state and keep it there.
+ *
+ * A misconfiguration is silent by nature: nothing is downloading, so no poll runs and no badge
+ * changes — the user only finds out when a torrent quietly fails. A red badge is the one signal
+ * visible without opening anything.
+ *
+ * It deliberately outranks the download count: a count is a status, this is a fault, and the
+ * count comes back on the next successful poll once the fault is cleared.
+ */
+export async function markConfigurationProblem(reason: string): Promise<void> {
+  const state = await loadState();
+
+  if (state.badgeText !== CONFIG_BADGE) {
+    chrome.action.setBadgeText({ text: CONFIG_BADGE });
+    state.badgeText = CONFIG_BADGE;
+  }
+  chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR });
+  // The next successful poll must repaint green rather than assume it is already set.
+  state.colorSet = false;
+
+  const title = `QuickGet needs attention\n${reason}`;
+  if (title !== state.title) {
+    chrome.action.setTitle({ title });
+    state.title = title;
+  }
+
+  await saveState(state);
+}
+
+/** Clear a configuration fault once a request succeeds. */
+export async function clearConfigurationProblem(): Promise<void> {
+  const state = await loadState();
+  if (state.badgeText !== CONFIG_BADGE) return;
+
+  chrome.action.setBadgeText({ text: "" });
+  state.badgeText = "";
+  state.title = "";
+  chrome.action.setTitle({ title: "" });
+  await saveState(state);
 }
 
 /**

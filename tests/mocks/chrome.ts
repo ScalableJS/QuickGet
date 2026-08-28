@@ -225,6 +225,14 @@ export function getChromeDownloadsMock() {
   };
 }
 
+export function getChromeActionMock() {
+  return {
+    setBadgeText: actionSetBadgeText,
+    setBadgeBackgroundColor: actionSetBadgeBackgroundColor,
+    setTitle: actionSetTitle,
+  };
+}
+
 export function getChromeNotificationsMock() {
   return { create: notificationsCreate, clear: notificationsClear };
 }

@@ -10,6 +10,7 @@
   import { DEFAULTS, type Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
   import type { RoutingMatchType } from "@lib/routingRules.js";
+  import { findConfigProblem } from "@lib/configHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { Alert, Button, Checkbox, Field, Link, SegmentedControl, Select } from "@ui";
@@ -38,6 +39,9 @@
   let isSaving = $state(false);
 
   const isDirty = $derived(savedSignature !== "" && savedSignature !== settingsSignature());
+
+  // Shown while the form is incomplete, so the gap is visible before a download reveals it.
+  const configProblem = $derived(savedSignature === "" ? undefined : findConfigProblem(form));
 
   function settingsSignature(): string {
     return JSON.stringify({
@@ -231,15 +235,14 @@
   }
 
   /** Names of the connection fields left empty, in the order they appear in the form. */
+  /**
+   * The same check the background runs before a hand-off, so the form cannot save a
+   * configuration that will fail there. `serverUrl` is the form's own field; the parsed
+   * address is what actually gets stored.
+   */
   function missingConnectionFields(): string[] {
-    const missing: string[] = [];
-    if (!serverUrl.trim()) missing.push("Server address");
-    if (!form.NASlogin.trim()) missing.push("Username");
-    if (!form.NASpassword) missing.push("Password");
-    // Download Station refuses a task without a temporary folder, so an empty one is not a
-    // preference — it makes every download fail with an error naming a field, not a setting.
-    if (!form.NAStempdir.trim()) missing.push("Temp Folder");
-    return missing;
+    if (!serverUrl.trim()) return ["Server address"];
+    return findConfigProblem($state.snapshot(form))?.missing ?? [];
   }
 
   async function verifySavedConnection(settings: Settings): Promise<void> {
@@ -263,6 +266,12 @@
 </script>
 
 <div class="settings-stack">
+{#if configProblem}
+  <Alert tone="warning">
+    {configProblem.summary} Downloads will stay in the browser until this is fixed.
+  </Alert>
+{/if}
+
 <section class="settings-section">
   <h2 class="section-heading">Connection</h2>
   <div class="form-group">

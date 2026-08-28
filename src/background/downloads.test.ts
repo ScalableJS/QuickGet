@@ -7,6 +7,7 @@ import {
   getChromeDownloadsMock,
   getChromeNotificationsMock,
   getChromeSessionStorageSnapshot,
+  getChromeActionMock,
   getChromeScriptingMock,
   getChromeTabsMock,
   seedChromeSessionStorage,
@@ -518,5 +519,77 @@ describe("download interception — claim lifecycle", () => {
     expect(snapshot["qg-claimed-12"]).toBeUndefined();
     // Unrelated session state must survive the sweep.
     expect(snapshot.sessionNASpassword).toBe("secret");
+  });
+});
+
+/**
+ * A misconfiguration produces no downloads, so no poll runs and no badge changes — the user
+ * finds out only when a torrent quietly fails. The toolbar is the one place a fault can be
+ * shown without opening anything, which is why it is asserted rather than left to the log.
+ */
+describe("download interception — configuration is visible", () => {
+  it("marks the toolbar and names the missing folder instead of failing on an API field", async () => {
+    seedChromeStorage(createTestSettings({ NAStempdir: "" }));
+    const action = getChromeActionMock();
+    const notifications = getChromeNotificationsMock();
+    const downloads = getChromeDownloadsMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 70 }));
+
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+    expect(action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: "#D93025" });
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("Temp Folder") }),
+    );
+    // The browser keeps the file: a configuration fault must never cost the download.
+    expect(downloads.cancel).not.toHaveBeenCalled();
+    expect(downloads.pause).not.toHaveBeenCalled();
+  });
+
+  it("lists every missing setting at once rather than one per attempt", async () => {
+    seedChromeStorage(createTestSettings({ NAStempdir: "", NASlogin: "" }));
+    const notifications = getChromeNotificationsMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 71 }));
+
+    const message = notifications.create.mock.calls[0]?.[0]?.message as string;
+    expect(message).toContain("Username");
+    expect(message).toContain("Temp Folder");
+  });
+
+  it("says it is locked rather than misconfigured when the password is merely unavailable", async () => {
+    seedChromeStorage({
+      ...createTestSettings({ NASpassword: "", rememberPassword: true }),
+      // Only an encrypted password makes the state "locked" rather than "never configured".
+      encryptedNASpassword: { iv: "x", salt: "y", data: "z" },
+    });
+    const notifications = getChromeNotificationsMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 72 }));
+
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "QuickGet is locked" }),
+    );
+  });
+
+  it("marks the toolbar when the hand-off itself fails", async () => {
+    seedChromeStorage(createTestSettings());
+    mockFailedHandoff();
+    const action = getChromeActionMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 73 }));
+
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+  });
+
+  it("clears the fault once a hand-off succeeds", async () => {
+    seedChromeStorage(createTestSettings());
+    seedChromeSessionStorage({ "qg:toolbarState": { badgeText: "!", title: "old", colorSet: false } });
+    mockSuccessfulHandoff();
+    const action = getChromeActionMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 74 }));
+
+    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "" });
   });
 });

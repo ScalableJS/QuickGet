@@ -262,6 +262,12 @@ async function requestLogin(baseUrl: string, username: string, passwordValue: st
 function buildLoginError(payload: Record<string, unknown>): Error {
   const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
   const errorCode = typeof payload.error === "number" ? payload.error : Number(payload.error ?? -1);
+  // Error 4 is Download Station's "wrong username or password". Repeating the code tells the
+  // user nothing about which of the two settings to look at.
+  if (errorCode === 4) {
+    return new Error("The NAS rejected the username or password. Check them in Settings.");
+  }
+
   if (!Number.isNaN(errorCode) && errorCode >= 0) {
     return new Error(reason ? `NAS login failed (${errorCode}): ${reason}` : `NAS login failed (${errorCode})`);
   }
