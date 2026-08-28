@@ -71,16 +71,23 @@ export async function recoverAbandonedHandoffs(): Promise<void> {
   try {
     const stored = await chrome.storage.session.get(null);
     const abandoned = Object.keys(stored).filter((key) => key.startsWith(PENDING_PREFIX));
-    if (abandoned.length === 0) return;
 
-    console.warn(`[QuickGet] recovering ${abandoned.length} abandoned hand-off(s)`);
+    // Every claim is held by a worker that no longer exists — the in-memory half of the guard
+    // died with it. Left in place they would bar the download from ever being retried, and
+    // accumulate one entry per download for the life of the browser session.
+    const staleClaims = Object.keys(stored).filter((key) => key.startsWith(CLAIMED_PREFIX));
 
-    for (const key of abandoned) {
-      const id = Number(key.slice(PENDING_PREFIX.length));
-      if (Number.isFinite(id)) await resumeBrowserDownload(id);
+    if (abandoned.length === 0 && staleClaims.length === 0) return;
+
+    if (abandoned.length > 0) {
+      console.warn(`[QuickGet] recovering ${abandoned.length} abandoned hand-off(s)`);
+      for (const key of abandoned) {
+        const id = Number(key.slice(PENDING_PREFIX.length));
+        if (Number.isFinite(id)) await resumeBrowserDownload(id);
+      }
     }
 
-    await chrome.storage.session.remove(abandoned);
+    await chrome.storage.session.remove([...abandoned, ...staleClaims]);
   } catch (error) {
     console.error("[QuickGet] could not recover abandoned hand-offs:", error);
   }
@@ -138,9 +145,15 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       return;
     }
 
-    await handOffToNas(settings, item.id, url);
+    // Chrome recorded the page the download started from — that is exactly the referrer a
+    // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
+    await handOffToNas(settings, item.id, url, item.referrer);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
+    // The claim outlives this worker, so keeping it after a failure would silently bar every
+    // later attempt at the same download — including the `onChanged` event that carries the
+    // MIME type. Release it so the retry path stays open.
+    await releaseClaim(item.id);
     notify("Failed to redirect download", getErrorMessage(error));
   } finally {
     inFlight.delete(item.id);
@@ -169,6 +182,10 @@ async function claimDownload(id: number): Promise<boolean> {
   return true;
 }
 
+async function releaseClaim(id: number): Promise<void> {
+  await chrome.storage.session.remove(`${CLAIMED_PREFIX}${id}`).catch(() => {});
+}
+
 /** Re-evaluate a download whose type-identifying fields only just became known. */
 async function handleDownloadChanged(id: number): Promise<void> {
   try {
@@ -185,14 +202,19 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
   }
 }
 
-async function handOffToNas(settings: Settings, downloadId: number, url: string): Promise<void> {
+async function handOffToNas(
+  settings: Settings,
+  downloadId: number,
+  url: string,
+  referrer?: string,
+): Promise<void> {
   const paused = await pauseBrowserDownload(downloadId);
   // Written before the hand-off so a worker death mid-flight is recoverable on next start.
   if (paused) await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
 
   try {
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder);
+    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, folder, referrer);
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
@@ -207,6 +229,10 @@ async function handOffToNas(settings: Settings, downloadId: number, url: string)
     }
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
+    // The hand-off is over and it failed. The claim must not outlive it: the browser is
+    // finishing the download itself now, and a later `onChanged` for the same id (or the user
+    // retrying) has to be able to take it again.
+    await releaseClaim(downloadId);
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
     notify("Failed to send torrent", `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`);
   } finally {

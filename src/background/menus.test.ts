@@ -240,3 +240,69 @@ describe("context-menu torrent handling", () => {
     expect(move).toBe("Multimedia/Films");
   });
 });
+
+/**
+ * Same hotlink guard as the interception path: a `dl.php` fetched without a `Referer` is
+ * refused with 403 even when the session cookie is valid. The tab the link was clicked on is
+ * the referrer the guard expects.
+ */
+describe("context-menu tracker referrer", () => {
+  const GUARDED_URL = "https://tracker.example.com/forum/dl.php?t=6645249";
+  const TOPIC_URL = "https://tracker.example.com/forum/viewtopic.php?t=6645249";
+
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings({ NASdir: "/share/Multimedia/Default" }));
+  });
+
+  function spyOnTorrentFetch(): { init: RequestInit | undefined } {
+    const captured: { init: RequestInit | undefined } = { init: undefined };
+    const original = globalThis.fetch;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input) === GUARDED_URL) captured.init = init;
+      return original(input as RequestInfo, init);
+    });
+
+    return captured;
+  }
+
+  it("uses the tab's URL as the referrer", async () => {
+    const fetchSpy = spyOnTorrentFetch();
+
+    server.use(
+      http.get(GUARDED_URL, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 0 }),
+      ),
+    );
+
+    await handleContextMenuClick(
+      { editable: false, linkUrl: GUARDED_URL, menuItemId: "quickget-send-link" },
+      { url: TOPIC_URL } as chrome.tabs.Tab,
+    );
+
+    expect(fetchSpy.init?.referrer).toBe(TOPIC_URL);
+    expect(fetchSpy.init?.referrerPolicy).toBe("unsafe-url");
+  });
+
+  it("tells the user to log in when the tracker answers 403", async () => {
+    server.use(http.get(GUARDED_URL, () => new HttpResponse(null, { status: 403 })));
+
+    await handleContextMenuClick({
+      editable: false,
+      linkUrl: GUARDED_URL,
+      menuItemId: "quickget-send-link",
+    });
+
+    expect(chrome.notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("logged in") }),
+    );
+  });
+});

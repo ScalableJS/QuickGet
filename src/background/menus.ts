@@ -60,7 +60,8 @@ export async function handleContextMenuClick(
       throw new Error("Invalid URL format");
     }
 
-    await sendDownloadToStation(url);
+    // The page the link was right-clicked on is the referrer a tracker's hotlink guard expects.
+    await sendDownloadToStation(url, tab?.url);
   } catch (error) {
     console.error("Context menu error:", error);
     showNotification("Failed to send with QuickGet", getErrorMessage(error));
@@ -79,13 +80,13 @@ export async function handleContextMenuClick(
  * Magnets and ordinary URLs stay on AddUrl: there is no file to fetch, and the NAS needs no
  * session for them.
  */
-async function sendDownloadToStation(url: string): Promise<void> {
+async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
   console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
 
   if (isTorrentSource(url)) {
-    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder);
+    const { name, duplicate } = await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
     void ensureMonitoring();
     showNotification(duplicate ? "Already on NAS" : "Success", name);
     return;

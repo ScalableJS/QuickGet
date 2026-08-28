@@ -77,10 +77,15 @@ export async function sendTorrentUrlToNas(
   settings: Settings,
   url: string,
   folder?: string,
+  referrer?: string,
 ): Promise<SendTorrentResult> {
-  const response = await fetch(url, { credentials: "include" });
+  const response = await fetch(url, buildTorrentRequest(url, referrer));
   if (!response.ok) {
-    throw new Error(`Fetch torrent failed: HTTP ${response.status}`);
+    throw new Error(
+      response.status === 403 || response.status === 401
+        ? `The tracker refused the download (HTTP ${response.status}). Open the topic page and make sure you are logged in.`
+        : `Fetch torrent failed: HTTP ${response.status}`,
+    );
   }
 
   const blob = await response.blob();
@@ -94,6 +99,39 @@ export async function sendTorrentUrlToNas(
   const result = await client.addTorrent(file);
 
   return { name, duplicate: Boolean(result.duplicate) };
+}
+
+/**
+ * Trackers commonly refuse a `dl.php`-style endpoint with 403 unless the request carries a
+ * `Referer` from their own topic page — a hotlink guard. A fetch issued by the service worker
+ * has no referrer at all, so it is refused even with a perfectly valid session cookie.
+ *
+ * `Referer` cannot be set as a header (the Fetch spec forbids it), but `referrer` in the
+ * request init sets it properly, and `referrerPolicy` keeps the full URL rather than letting
+ * the default strip it to the origin — some guards check the path, not just the host.
+ *
+ * The referrer comes from the browser: `DownloadItem.referrer` for an intercepted download,
+ * the tab URL for the right-click menu. Falling back to the target's own origin is what a
+ * same-site link click would send, and is enough for most guards.
+ */
+function buildTorrentRequest(url: string, referrer?: string): RequestInit {
+  const init: RequestInit = { credentials: "include" };
+
+  const effective = referrer || sameOriginReferrer(url);
+  if (effective) {
+    init.referrer = effective;
+    init.referrerPolicy = "unsafe-url";
+  }
+
+  return init;
+}
+
+function sameOriginReferrer(url: string): string {
+  try {
+    return new URL(url).origin + "/";
+  } catch {
+    return "";
+  }
 }
 
 /**

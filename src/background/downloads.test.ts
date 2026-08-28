@@ -340,3 +340,143 @@ describe("download interception", () => {
     expect(downloads.pause).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * A tracker's hotlink guard answers a refererless request with 403 even when the session
+ * cookie is valid. The service worker's own fetch sends no referrer, so without this the
+ * feature fails on exactly the private trackers it exists to serve.
+ *
+ * The assertion is on the request init rather than on a received `Referer` header: `referrer`
+ * is applied by the browser's fetch, and the test environment's fetch does not translate it
+ * into a header. What the code controls — and therefore what is worth pinning — is the init.
+ */
+describe("download interception — tracker referrer", () => {
+  const GUARDED_URL = "https://tracker.example.com/forum/dl.php?t=6645249";
+  const TOPIC_URL = "https://tracker.example.com/forum/viewtopic.php?t=6645249";
+
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings());
+  });
+
+  /** Records the init of the torrent fetch while leaving the request itself to MSW. */
+  function spyOnTorrentFetch(): { init: RequestInit | undefined } {
+    const captured: { init: RequestInit | undefined } = { init: undefined };
+    const original = globalThis.fetch;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input) === GUARDED_URL) captured.init = init;
+      return original(input as RequestInfo, init);
+    });
+
+    return captured;
+  }
+
+  function mockTracker(): void {
+    server.use(
+      http.get(GUARDED_URL, () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce\u2026e").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 0 }),
+      ),
+    );
+  }
+
+  it("sends the download's own referrer so the tracker does not refuse it", async () => {
+    mockTracker();
+    const fetchSpy = spyOnTorrentFetch();
+    const downloads = getChromeDownloadsMock();
+
+    await handleDownloadCreated(
+      createDownloadItem({
+        id: 42,
+        url: GUARDED_URL,
+        finalUrl: GUARDED_URL,
+        filename: "torrent.torrent",
+        referrer: TOPIC_URL,
+      }),
+    );
+
+    expect(fetchSpy.init?.referrer).toBe(TOPIC_URL);
+    // The default policy trims the referrer to the origin; some guards check the path.
+    expect(fetchSpy.init?.referrerPolicy).toBe("unsafe-url");
+    expect(fetchSpy.init?.credentials).toBe("include");
+    // The whole point: the hand-off completed, so the browser copy was dropped.
+    expect(downloads.cancel).toHaveBeenCalledWith(42);
+  });
+
+  it("falls back to the tracker's own origin when Chrome recorded no referrer", async () => {
+    mockTracker();
+    const fetchSpy = spyOnTorrentFetch();
+
+    await handleDownloadCreated(
+      createDownloadItem({ id: 43, url: GUARDED_URL, finalUrl: GUARDED_URL, referrer: "" }),
+    );
+
+    expect(fetchSpy.init?.referrer).toBe("https://tracker.example.com/");
+  });
+
+  it("explains a 403 instead of reporting a bare HTTP status", async () => {
+    const notifications = getChromeNotificationsMock();
+
+    server.use(http.get(GUARDED_URL, () => new HttpResponse(null, { status: 403 })));
+
+    await handleDownloadCreated(
+      createDownloadItem({ id: 44, url: GUARDED_URL, finalUrl: GUARDED_URL }),
+    );
+
+    expect(notifications.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("logged in") }),
+    );
+  });
+});
+
+/**
+ * The claim marker lives in session storage and so outlives the worker, while the in-memory
+ * half of the guard does not. Left behind after a failure it would silently bar every retry —
+ * a download that is never intercepted and never explains why.
+ */
+describe("download interception — claim lifecycle", () => {
+  beforeEach(() => {
+    seedChromeStorage(createTestSettings());
+  });
+
+  it("releases the claim when the hand-off throws, so a later event can retry", async () => {
+    server.use(
+      http.get(TORRENT_URL, () => {
+        throw new Error("network down");
+      }),
+    );
+
+    await handleDownloadCreated(createDownloadItem({ id: 9 }));
+
+    expect(getChromeSessionStorageSnapshot()["qg-claimed-9"]).toBeUndefined();
+  });
+
+  it("keeps the claim while the hand-off succeeds, so both listeners cannot send it twice", async () => {
+    const nas = mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem({ id: 10 }));
+    await handleDownloadCreated(createDownloadItem({ id: 10 }));
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(getChromeSessionStorageSnapshot()["qg-claimed-10"]).toBe(true);
+  });
+
+  it("drops claims left by a dead worker on the next start", async () => {
+    seedChromeSessionStorage({ "qg-claimed-11": true, "qg-claimed-12": true, sessionNASpassword: "secret" });
+
+    await recoverAbandonedHandoffs();
+
+    const snapshot = getChromeSessionStorageSnapshot();
+    expect(snapshot["qg-claimed-11"]).toBeUndefined();
+    expect(snapshot["qg-claimed-12"]).toBeUndefined();
+    // Unrelated session state must survive the sweep.
+    expect(snapshot.sessionNASpassword).toBe("secret");
+  });
+});
