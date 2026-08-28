@@ -26,6 +26,9 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
 | UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
+| UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | Next |
+| UX-14 | Export/Import sits between real settings | ui | S | Next |
+| UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
 
 ---
 
@@ -398,4 +401,84 @@ already loaded, so the folders are picked rather than typed.
    automatically: `temporary: true` comes back for *every* folder, so it means "usable as
    temporary", not "is the temporary one". Implemented; the default resolves in memory and is
    deliberately not written to storage.
+
+---
+
+### UX-13 — Settings are one long scroll with no collapsing and a stranded Save
+
+**Size:** L · **Area:** ui · **Status:** Next
+**Raised:** 2026-08-28 (owner): "полный бред с двумя видами", Save is out of sight while
+credentials are being typed.
+
+Every section is expanded at all times, so entering credentials pushes Save far below the fold
+in a 360px-wide popup. UX-7 added a second mode (card vs form) on top of that, which made the
+scroll worse rather than better.
+
+**How Synology solves it** (read from `ds-client` 4.2, 281 settings strings):
+
+```
+Connection    → Credentials, Polling
+Interface     → Global, Context menus, Quick menus, Tabs
+Downloads     → General, History, Intercept
+Notification  → Banners, Badge count, Snackbar
+Advanced      → Settings Store snapshot (export/import)
+```
+
+Top-level groups, each an **accordion** (`panel__settings__accordion__title__*`), with only the
+relevant one open. They have far more settings than us and still fit, because nothing irrelevant
+is on screen.
+
+**Direction:** collapsible groups over `FormSection`, one open at a time, with Save either
+pinned to the bottom of the panel or moved into the group being edited. Needs a decision on
+which — a sticky footer in a 360px popup costs vertical space that is already scarce.
+
+**Depends on:** UX-7's card, which is the correct top of this hierarchy and should stay.
+
+---
+
+### UX-14 — Export/Import sits between real settings
+
+**Size:** S · **Area:** ui · **Status:** Next
+
+Backup is a top-level section of equal weight to Connection, so a rarely used maintenance
+action occupies prime space in a list the user scrolls constantly.
+
+**Synology puts it under Advanced**, titled "Settings Store snapshot", subtitled *"This is an
+advanced setting meant for debugging purposes only"*, and warns before importing:
+*"⚠️ Warning: Importing a settings snapshot will overwrite your current settings"*.
+
+We have no such warning — import silently replaces the form.
+
+**Direction:** move Export/Import into an Advanced group (folded by default, part of UX-13) and
+add the overwrite confirmation before an import is applied.
+
+---
+
+### UX-15 — Torrent-link handling is guessed at, not derived from tracker sources
+
+**Size:** M · **Area:** testing · **Status:** Backlog
+**Raised:** 2026-08-28 (owner)
+
+`isTorrentSource()` recognises a torrent by `.torrent`, `application/x-bittorrent`, or a
+`/dl.php` path — the last one inferred from a single tracker. Every fix so far came from a
+failure in the field rather than from knowing what trackers actually emit.
+
+**Available reference:** TorrentPier is the open-source engine RuTracker is built on (PHP, and
+3.0 is end-of-life since May 2026 — fine for reading, not for hosting). Reading its download
+endpoint and link generation would replace guesswork with the actual shapes: the download route,
+the `Content-Disposition` it sets, and how magnets are assembled
+(`magnet:?xt=urn:btih:<hash>&dn=&tr=`).
+
+**Explicitly out of scope: running a tracker.** No announce, no peers, no seeding. The value is
+in the *link and response shapes*, which can be lifted from source into fixtures for the
+existing `guardedTrackerHost` — the mock that already proved the hotlink path.
+
+**Concrete deliverables:**
+
+1. Fixtures covering each link form a real engine produces, including the ones we would fail on
+   today (POST-only download endpoints, `Content-Disposition` with RFC 5987 encoding, redirects
+   to a signed one-time URL).
+2. `isTorrentSource()` driven by that table instead of by one remembered path.
+3. Magnet handling checked against a correctly derived `info_hash` — SHA-1 over the exact
+   bencoded `info` dictionary, not over a re-serialised object.
 

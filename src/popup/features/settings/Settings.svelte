@@ -42,6 +42,13 @@
 
   const isDirty = $derived(savedSignature !== "" && savedSignature !== settingsSignature());
 
+  // Applying the theme only on Save meant the control looked broken: you pick "Dark", nothing
+  // happens, and if the form is incomplete Save never runs so it never happens at all. The
+  // preference still needs saving to persist — this is only the preview.
+  $effect(() => {
+    if (savedSignature !== "") applyTheme(form.theme);
+  });
+
   // Shown while the form is incomplete, so the gap is visible before a download reveals it.
   const configProblem = $derived(savedSignature === "" ? undefined : findConfigProblem(form));
 

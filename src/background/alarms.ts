@@ -56,8 +56,14 @@ export async function armMonitoring(): Promise<void> {
  * poll never tears monitoring down — a just-added task may not be counted yet.
  */
 export async function ensureMonitoring(): Promise<void> {
-  await armMonitoring();
-  await pollStatus({ stopWhenIdle: false });
+  // Called as fire-and-forget from every listener, so anything that escapes here becomes an
+  // unhandled rejection in the worker — which surfaces as a stack frame with no message.
+  try {
+    await armMonitoring();
+    await pollStatus({ stopWhenIdle: false });
+  } catch (error) {
+    console.error("[QuickGet] could not start monitoring:", error);
+  }
 }
 
 /**
@@ -89,7 +95,7 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     console.error("Monitoring error:", error);
     // Keep the last-known badge/icon. Give up only once failures are sustained,
     // so an unreachable NAS doesn't get polled (and logged) every 30s forever.
-    const { giveUp } = await noteMonitoringFailure();
+    const { giveUp } = await noteMonitoringFailure().catch(() => ({ giveUp: false }));
     if (giveUp) void chrome.alarms.clear(ALARM_NAME);
   }
 }
