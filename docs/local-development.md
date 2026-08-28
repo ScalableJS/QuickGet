@@ -81,6 +81,18 @@ npm run test:e2e:mock   # needs: npx playwright install --with-deps chromium
 The mock E2E suite drives a real Chrome with the extension loaded against a fake NAS, which is
 the layer that catches service-worker lifecycle problems unit tests cannot see.
 
-`npm run test:e2e:tracker` additionally exercises a live login-protected site. It is opt-in,
-needs a one-time manual login (`npm run tracker:login`) and local configuration, and never
-gates CI. See the header of `tests/e2e/private-tracker.real.spec.ts`.
+`npm run test:e2e:tracker` additionally exercises a live tracker, configured per-machine via
+`TRACKER_E2E_TOPIC` in `.env.e2e.local`. An open tracker needs nothing else; one requiring an
+account needs a one-time `npm run tracker:login`. It is opt-in and never gates CI. See the
+header of `tests/e2e/private-tracker.real.spec.ts`.
+
+`hotlink-guard.spec.ts` covers the same mechanism deterministically and does run in CI: a local
+server refuses hotlinked downloads by inspecting the headers Chrome really attaches, so it fails
+if the fetch is issued anywhere but a page on the site.
+
+## Known limitation
+
+The torrent is fetched from a tab already open on the site, because only there do referrer,
+origin and cookies match what a click produces. If the site is not open in any tab, the request
+falls back to the service worker — which a tracker with a hotlink guard will refuse. In normal
+use the topic page is open, which is where the link was clicked.

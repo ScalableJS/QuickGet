@@ -20,32 +20,28 @@ const env = loadTrackerEnv(rootDir);
  * Opt-in, talks to a live third-party site, never gates CI:
  *   npm run test:e2e:tracker
  *
- * It settles the one thing the mocked suites cannot — whether the extension's own
- * `fetch(url, { credentials: "include" })` really carries the user's session on a
- * login-protected site. Chrome treats such a request as same-site when the extension holds a
- * host permission for the target, so the cookie should be attached; this proves it end to end
- * instead of relying on that. If it were withheld, the site would answer with its login page
- * and the NAS would receive HTML — the failure this feature exists to prevent.
+ * `hotlink-guard.spec.ts` already proves the mechanism against a guard that inspects the real
+ * headers, and it runs in CI. What only a live site can add is whether a particular tracker
+ * accepts what the extension sends — its guard may check more than referer and origin.
  *
- * The session cannot be scripted: anti-bot protection answers a Playwright-driven browser with
- * a challenge page in both headless and headed mode, and no evasion is attempted. Log in once
- * with `npm run tracker:login`; this spec reuses that profile. The target site is configured
- * per-machine in .env.e2e.local and is not recorded here.
+ * The site is configured per-machine in .env.e2e.local (TRACKER_E2E_TOPIC) and is not recorded
+ * here. A tracker that needs no account works without further setup. For one that does, the
+ * session cannot be scripted — anti-bot protection answers a Playwright-driven browser with a
+ * challenge page in both headless and headed mode, and no evasion is attempted; log in once
+ * with `npm run tracker:login` and this spec reuses that profile.
  */
 test.describe("private tracker (live)", () => {
   test.skip(!env.enabled, "Set TRACKER_E2E=1 and TRACKER_E2E_TOPIC in .env.e2e.local to run");
-  test.skip(
-    !existsSync(profileDir),
-    "No tracker profile yet — run `npm run tracker:login` and log in once",
-  );
+  // A profile is only needed for a tracker that requires an account; an open one runs without.
   test.describe.configure({ mode: "serial", timeout: 120_000 });
 
-  test("the extension's fetch carries the session and yields a real .torrent", async () => {
+  test("the tracker accepts the extension's request and yields a real .torrent", async () => {
     const mockNas = await startMockNas();
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-tracker-"));
     const session = await launchExtensionPopup(extensionDistPath, {
       downloadsPath,
-      userDataDir: profileDir,
+      // Only a tracker that requires an account needs the saved profile; an open one does not.
+      userDataDir: existsSync(profileDir) ? profileDir : undefined,
     });
 
     try {
