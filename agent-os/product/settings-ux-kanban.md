@@ -26,7 +26,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
 | UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
-| UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | Next |
+| UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **In Progress** |
 | UX-14 | Export/Import sits between real settings | ui | S | Next |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
 
@@ -428,11 +428,30 @@ Top-level groups, each an **accordion** (`panel__settings__accordion__title__*`)
 relevant one open. They have far more settings than us and still fit, because nothing irrelevant
 is on screen.
 
-**Direction:** collapsible groups over `FormSection`, one open at a time, with Save either
-pinned to the bottom of the panel or moved into the group being edited. Needs a decision on
-which — a sticky footer in a 360px popup costs vertical space that is already scarce.
+**Decided 2026-08-28 (owner):** tabs, not accordions, with **one shared Save** outside the
+panels. Accordions still make the user scroll past collapsed headers to reach Save; tabs keep
+the panel a fixed height, so Save stays where it is regardless of which tab is open. The same
+markup can degrade to a list on a wider surface purely in CSS if that is ever wanted.
 
-**Depends on:** UX-7's card, which is the correct top of this hierarchy and should stay.
+The ordering principle is what the owner asked for: **the minimum needed to start comes first,
+and what a user may never open comes last.**
+
+| Tab | Contains | Why here |
+| --- | --- | --- |
+| Connection | The card / form from UX-7 | Nothing works until this is filled in |
+| Downloads | Temp Folder, Target Folder, intercept mode | Required, but has working defaults |
+| Appearance | Theme | Preference, no consequences |
+| Advanced | Protect settings, Routing rules, Backup | Most users will never open it |
+
+Two constraints that fall out of tabs and are easy to get wrong:
+
+1. The `configProblem` warning must show on **every** tab — it says downloads are currently
+   failing, so hiding it behind a tab defeats its purpose.
+2. Save must switch to the tab containing the first invalid field before focusing it.
+   `document.getElementById(id)?.focus()` silently does nothing in a hidden panel, which would
+   reproduce the original complaint: pressing Save and seeing nothing happen.
+
+**Depends on:** UX-7's card, which is the correct top of this hierarchy and stays as it is.
 
 ---
 
