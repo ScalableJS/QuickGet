@@ -214,4 +214,39 @@ test.describe("accessibility", () => {
       await nas.close();
     }
   });
+
+  /**
+   * The interception setting has two states, so it is a checkbox. It used to be a two-item
+   * select on a tab of its own — a menu to discover that the alternative was "off".
+   */
+  test("interception is a checkbox on the connection tab, and it persists", async () => {
+    const nas = await startMockNas();
+    const session = await launchExtensionPopup(extensionDistPath);
+
+    try {
+      await session.worker.evaluate(
+        (values) => chrome.storage.local.set(values as Record<string, unknown>),
+        CONFIGURED(nas.port) as Record<string, unknown>,
+      );
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+      await session.page.getByRole("button", { name: "Edit" }).click();
+
+      const intercept = session.page.locator("#torrentInterceptMode");
+      await expect(intercept).toBeChecked();
+
+      await intercept.uncheck();
+      await session.page.click("#save-btn");
+
+      // What the background reads is the stored mode, not the checkbox.
+      const stored = await session.worker.evaluate(
+        async () => (await chrome.storage.local.get("torrentInterceptMode")).torrentInterceptMode,
+      );
+      expect(stored).toBe("off");
+    } finally {
+      await session.close();
+      await nas.close();
+    }
+  });
 });

@@ -16,6 +16,6 @@ export async function openSettingsPanel(page: Page): Promise<void> {
 }
 
 /** Settings is tabbed; a field's panel must be active before Playwright can interact with it. */
-export async function switchSettingsTab(page: Page, label: "Connection" | "Behaviour" | "Appearance" | "Advanced"): Promise<void> {
+export async function switchSettingsTab(page: Page, label: "Connection" | "Appearance" | "Advanced"): Promise<void> {
   await page.getByRole("tab", { name: label }).click();
 }

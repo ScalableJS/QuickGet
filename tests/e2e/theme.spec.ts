@@ -48,11 +48,11 @@ test.describe("theme", () => {
       await session.page.getByRole("button", { name: "Light" }).click();
       await expect(root).toHaveAttribute("data-theme", "light");
 
-      // Saving is what makes it stick.
+      // Picking is the commit: no Save is involved, and it survives a reopen.
       await session.page.getByRole("button", { name: "Dark" }).click();
-      await session.page.click("#save-btn");
-      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await expect(session.page.locator("#save-btn")).toBeDisabled();
 
+      await session.page.reload({ waitUntil: "domcontentloaded" });
       await expect(root).toHaveAttribute("data-theme", "dark");
     } finally {
       await session.close();

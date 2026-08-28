@@ -8,7 +8,7 @@
 
   import { showStatus } from "@/popup/components";
   import { applyTheme } from "@lib/applyTheme.js";
-  import { DEFAULTS, type Settings } from "@lib/config.js";
+  import { DEFAULTS, type Settings, type ThemeMode } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { findConfigProblem } from "@lib/configHealth.js";
@@ -24,7 +24,7 @@
   import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
-  type Props = { initialTab?: "connection" | "downloads" | "appearance" | "advanced" };
+  type Props = { initialTab?: "connection" | "appearance" | "advanced" };
   let { initialTab = "connection" }: Props = $props();
 
   let form = $state<Settings>({ ...DEFAULTS });
@@ -47,12 +47,20 @@
 
   const isDirty = $derived(savedSignature !== "" && savedSignature !== settingsSignature());
 
-  // Applying the theme only on Save meant the control looked broken: you pick "Dark", nothing
-  // happens, and if the form is incomplete Save never runs so it never happens at all. The
-  // preference still needs saving to persist — this is only the preview.
-  $effect(() => {
-    if (savedSignature !== "") applyTheme(form.theme);
-  });
+  /**
+   * The theme takes effect and is stored on selection, with no Save involved. It changes
+   * nothing the NAS cares about and cannot be "wrong", so making the user confirm it — and
+   * blocking it behind a form that refuses to save while a field is empty — was pure friction.
+   */
+  async function chooseTheme(theme: ThemeMode): Promise<void> {
+    form.theme = theme;
+    applyTheme(theme);
+    try {
+      await saveSettings({ theme });
+    } catch (error) {
+      showStatus(`Could not save the theme: ${getErrorMessage(error)}`, "error");
+    }
+  }
 
   // Shown while the form is incomplete, so the gap is visible before a download reveals it.
   const configProblem = $derived(savedSignature === "" ? undefined : findConfigProblem(form));
@@ -76,7 +84,6 @@
 
   const TABS: { id: NonNullable<Props["initialTab"]>; label: string }[] = [
     { id: "connection", label: "Connection" },
-    { id: "downloads", label: "Behaviour" },
     { id: "appearance", label: "Appearance" },
     { id: "advanced", label: "Advanced" },
   ];
@@ -115,8 +122,11 @@
   }
 
   function settingsSignature(): string {
+    // The theme is applied and stored the moment it is picked, so it must not make the form
+    // dirty — a preference that takes effect immediately has nothing left to save.
+    const { theme: _appliedImmediately, ...pending } = form;
     return JSON.stringify({
-      form,
+      form: pending,
       serverUrl,
       lockPasswordInput,
       confirmLockPasswordInput,
@@ -462,16 +472,17 @@
     <label for="NASdir">Target Folder</label>
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
-  </FormSection>
-</section>
-    {:else if tab.id === "downloads"}
-<section class="settings-section">
-  <FormSection legend="Downloads">
-  <div class="form-group">
-    <Select id="torrentInterceptMode" label="Intercept .torrent downloads" bind:value={form.torrentInterceptMode}>
-      <option value="off">Off — download normally</option>
-      <option value="always">Always send to NAS</option>
-    </Select>
+
+  <div class="form-group form-inline">
+    <!-- Two states, so a checkbox rather than a two-item select: the setting reads as the
+         sentence it is, and needs no menu to discover what the alternative even is. -->
+    <Checkbox
+      id="torrentInterceptMode"
+      checked={form.torrentInterceptMode === "always"}
+      onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
+    >
+      Send .torrent downloads to the NAS
+    </Checkbox>
   </div>
   </FormSection>
 </section>
@@ -490,6 +501,7 @@
         { value: "dark", label: "Dark", icon: Moon },
       ]}
       bind:value={form.theme}
+      onActivate={(theme) => void chooseTheme(theme)}
     />
   </div>
   </FormSection>

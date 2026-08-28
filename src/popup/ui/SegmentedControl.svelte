@@ -15,9 +15,11 @@
     size?: ControlSize;
     /** Size segments to their content and sit at their natural width instead of filling the row. */
     compact?: boolean;
+    /** Called on selection. Use instead of `bind:value` when picking is itself the commit. */
+    onActivate?: (value: T) => void;
   };
 
-  let { value = $bindable(), items, label = "Filter", size = "md", compact = false }: Props = $props();
+  let { value = $bindable(), items, label = "Filter", size = "md", compact = false, onActivate }: Props = $props();
 </script>
 
 <div class="segmented" class:compact role="group" aria-label={label}>
@@ -30,7 +32,10 @@
       aria-pressed={value === item.value}
       aria-label={item.icon ? item.label : undefined}
       title={item.icon ? item.label : undefined}
-      onclick={() => (value = item.value)}
+      onclick={() => {
+        value = item.value;
+        onActivate?.(item.value);
+      }}
     >
       {#if item.icon}
         <item.icon aria-hidden="true" />
