@@ -26,7 +26,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-10 | Notifications fire on every outcome, including success | background | M | **Done** |
 | UX-11 | No activity history in the popup | ui | M | **Done** |
 | UX-12 | Folders are typed before there is anything to pick them from | ui | M | Next |
-| UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **In Progress** |
+| UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **Done** |
 | UX-14 | Export/Import sits between real settings | ui | S | Next |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
 
@@ -452,6 +452,15 @@ Two constraints that fall out of tabs and are easy to get wrong:
    reproduce the original complaint: pressing Save and seeing nothing happen.
 
 **Depends on:** UX-7's card, which is the correct top of this hierarchy and stays as it is.
+
+**2026-08-28 — done.** `src/popup/ui/Tabs.svelte` implements the ARIA tabs pattern generically
+(roving `tabindex`, arrows, Home/End). Panels stay mounted and are hidden with the `hidden`
+attribute rather than `{#if}`, so switching tabs never drops typed values or validation state.
+
+Both constraints above are covered by a test that fails without them: emptying Temp Folder on
+the Downloads tab, returning to Connection and pressing Save must switch tabs *and* focus the
+field. `await tick()` before `focus()` is load-bearing — Svelte removes `hidden` asynchronously,
+so focusing straight away lands in a panel that is still hidden and is silently dropped.
 
 ---
 

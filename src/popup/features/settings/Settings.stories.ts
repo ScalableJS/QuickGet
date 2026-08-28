@@ -102,3 +102,14 @@ export const SettingsLocked: Story = {
   },
 };
 
+/**
+ * One story per tab, all on the same configured settings, so each panel's layout can be
+ * reviewed without clicking through the others.
+ */
+export const TabConnection: Story = { args: { storage: CONNECTED, initialTab: "connection" } };
+export const TabDownloads: Story = { args: { storage: CONNECTED, initialTab: "downloads" } };
+export const TabAppearance: Story = { args: { storage: CONNECTED, initialTab: "appearance" } };
+export const TabAdvanced: Story = {
+  args: { storage: { ...CONNECTED, routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }] }, initialTab: "advanced" },
+};
+

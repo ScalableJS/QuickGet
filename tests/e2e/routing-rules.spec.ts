@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
+import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
@@ -20,15 +20,20 @@ test("routing rules save priority and fallback settings", async ({}, testInfo) =
     await waitForPopupReady(page);
     await openSettingsPanel(page);
 
+    await switchSettingsTab(page, "Advanced");
     await expect(page.getByText("No rules yet. All downloads use the Target Folder.")).toBeVisible();
     await expect(page.getByText(/Send matching downloads to a folder automatically/)).toBeVisible();
 
+    await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
+
+    await switchSettingsTab(page, "Downloads");
     await page.fill("#NAStempdir", "Download");
     await page.fill("#NASdir", "Multimedia/Movies");
 
+    await switchSettingsTab(page, "Advanced");
     await page.getByRole("button", { name: "Add rule" }).click();
     await page.getByRole("button", { name: "Add rule" }).click();
     await expect(page.locator(".routing-rule")).toHaveCount(2);

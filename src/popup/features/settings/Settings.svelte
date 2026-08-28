@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick, untrack } from "svelte";
   import Monitor from "~icons/lucide/monitor";
   import Moon from "~icons/lucide/moon";
   import Plus from "~icons/lucide/plus";
@@ -15,12 +16,16 @@
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
-  import { Alert, Button, Checkbox, Field, FormSection, Link, SegmentedControl, Select } from "@ui";
+  import { Alert, Button, Checkbox, Field, FormSection, Link, SegmentedControl, Select, Tabs } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
   import type { FolderFieldStatus } from "../folderPicker/validateFolder.js";
   import { exportSettings, parseImportedSettings } from "./settingsBackup.js";
+
+  /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
+  type Props = { initialTab?: "connection" | "downloads" | "appearance" | "advanced" };
+  let { initialTab = "connection" }: Props = $props();
 
   let form = $state<Settings>({ ...DEFAULTS });
 
@@ -69,12 +74,22 @@
 
   const showConnectionForm = $derived(!connection.configured || editingConnection);
 
+  const TABS: { id: NonNullable<Props["initialTab"]>; label: string }[] = [
+    { id: "connection", label: "Connection" },
+    { id: "downloads", label: "Downloads" },
+    { id: "appearance", label: "Appearance" },
+    { id: "advanced", label: "Advanced" },
+  ];
+  // `initialTab` only sets the starting value; reading it here (rather than in a closure) is
+  // deliberate — the tab is expected to change independently of the prop afterwards.
+  let activeTab = $state(untrack(() => initialTab));
+
   /** Field ids in the order they appear, so Save can focus the first one that is wrong. */
-  const REQUIRED_FIELDS: { id: string; label: string; value: () => string }[] = [
-    { id: "serverUrl", label: "Server address", value: () => serverUrl },
-    { id: "NASlogin", label: "Username", value: () => form.NASlogin },
-    { id: "NASpassword", label: "Password", value: () => form.NASpassword },
-    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir },
+  const REQUIRED_FIELDS: { id: string; label: string; value: () => string; tab: NonNullable<Props["initialTab"]> }[] = [
+    { id: "serverUrl", label: "Server address", value: () => serverUrl, tab: "connection" },
+    { id: "NASlogin", label: "Username", value: () => form.NASlogin, tab: "connection" },
+    { id: "NASpassword", label: "Password", value: () => form.NASpassword, tab: "connection" },
+    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir, tab: "downloads" },
   ];
 
   function validateField(id: string): void {
@@ -235,7 +250,12 @@
       // on the inputs — nothing submits this form, so the browser never enforces them.
       const firstMissing = markMissingFields();
       if (firstMissing) {
-        // Take the user to the problem rather than describing it and leaving them to look.
+        // Take the user to the problem rather than describing it and leaving them to look. The
+        // field may live in a tab that isn't open, so switch there first or the focus is silently
+        // dropped into a hidden panel.
+        const field = REQUIRED_FIELDS.find((candidate) => candidate.id === firstMissing);
+        if (field) activeTab = field.tab;
+        await tick();
         document.getElementById(firstMissing)?.focus();
         showStatus("Fill in the highlighted fields before saving", "error");
         return;
@@ -344,6 +364,9 @@
   </Alert>
 {/if}
 
+<Tabs tabs={TABS} active={activeTab} onActivate={(id) => (activeTab = id)}>
+  {#snippet panels(tab)}
+    {#if tab.id === "connection"}
 <section class="settings-section">
   <FormSection legend="Connection">
   {#if !showConnectionForm}
@@ -407,7 +430,7 @@
   {/if}
   </FormSection>
 </section>
-
+    {:else if tab.id === "downloads"}
 <section class="settings-section">
   <FormSection legend="Download defaults">
   <div class="form-group">
@@ -426,7 +449,11 @@
       <option value="always">Always send to NAS</option>
     </Select>
   </div>
-
+  </FormSection>
+</section>
+    {:else if tab.id === "appearance"}
+<section class="settings-section">
+  <FormSection legend="Appearance">
   <div class="form-group form-inline-control">
     <span class="control-label" id="theme-label">Theme</span>
     <SegmentedControl
@@ -443,7 +470,7 @@
   </div>
   </FormSection>
 </section>
-
+    {:else if tab.id === "advanced"}
 <section class="settings-section">
   <FormSection legend="Privacy">
   <div class="form-group form-inline">
@@ -516,8 +543,6 @@
 
 <section class="settings-section">
   <FormSection legend="Backup">
-  <div class="routing-header">
-  </div>
   <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
   <div class="backup-actions">
     <Button variant="secondary" onclick={exportBackup}>Export settings</Button>
@@ -526,6 +551,9 @@
   </div>
   </FormSection>
 </section>
+    {/if}
+  {/snippet}
+</Tabs>
 
 <footer class="settings-actions">
   <div class="settings-action-buttons">

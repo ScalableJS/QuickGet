@@ -8,9 +8,13 @@
   // In the extension the popup calls `load()` after mounting the panel. Storybook has no such
   // host, so the showcase does it — otherwise the form sits on defaults and every story looks
   // identical regardless of the state it seeds.
-  type Props = { storage?: Record<string, unknown>; session?: Record<string, unknown> };
+  type Props = {
+    storage?: Record<string, unknown>;
+    session?: Record<string, unknown>;
+    initialTab?: "connection" | "downloads" | "appearance" | "advanced";
+  };
 
-  let { storage = {}, session = {} }: Props = $props();
+  let { storage = {}, session = {}, initialTab = "connection" }: Props = $props();
 
   let panel = $state<Settings | null>(null);
   let ready = $state(false);
@@ -23,7 +27,7 @@
 </script>
 
 <div class="showcase" class:ready>
-  <Settings bind:this={panel} />
+  <Settings bind:this={panel} {initialTab} />
 </div>
 
 <style>

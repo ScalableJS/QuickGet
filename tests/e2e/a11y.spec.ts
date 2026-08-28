@@ -97,6 +97,7 @@ test.describe("accessibility", () => {
       await session.page.waitForSelector("#serverUrl");
 
       // Dirty the form so Save is enabled, then try to save while a required field is empty.
+      await session.page.getByRole("tab", { name: "Downloads" }).click();
       await session.page.fill("#NASdir", "Multimedia/Films");
       await session.page.click("#save-btn");
 
@@ -108,6 +109,50 @@ test.describe("accessibility", () => {
       const describedBy = await invalid.first().getAttribute("aria-describedby");
       expect(describedBy, "the invalid field must point at its error message").toBeTruthy();
       await expect(session.page.locator(`#${describedBy}`)).toHaveText(/required/i);
+    } finally {
+      await session.close();
+      await nas.close();
+    }
+  });
+
+  /**
+   * Save has to reach a field that is not on screen. `focus()` into a hidden panel silently does
+   * nothing, which would reproduce the original complaint exactly: press Save, watch nothing
+   * happen. The empty field here lives on Downloads while the form opens on Connection.
+   */
+  test("Save switches to the tab holding the first invalid field", async () => {
+    const nas = await startMockNas();
+    const session = await launchExtensionPopup(extensionDistPath);
+
+    try {
+      await session.worker.evaluate(
+        (values) => chrome.storage.local.set(values as Record<string, unknown>),
+        CONFIGURED(nas.port) as Record<string, unknown>,
+      );
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+
+      // Empty the folder the way a user would — the default means it cannot be seeded empty.
+      await session.page.getByRole("tab", { name: "Downloads" }).click();
+      await session.page.fill("#NAStempdir", "");
+
+      // Then go back to Connection, so the invalid field is on a panel that is not showing.
+      await session.page.getByRole("tab", { name: "Connection" }).click();
+      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await session.page.click("#save-btn");
+
+      // The panel with the empty field must be the one now showing, and the field focused.
+      await expect(session.page.getByRole("tab", { name: "Downloads" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await expect(session.page.locator("#NAStempdir")).toBeFocused();
+      await expect(session.page.locator("#NAStempdir")).toHaveAttribute("aria-invalid", "true");
     } finally {
       await session.close();
       await nas.close();

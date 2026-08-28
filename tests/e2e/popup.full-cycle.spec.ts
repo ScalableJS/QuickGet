@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
+import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
@@ -22,13 +22,17 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await openSettingsPanel(page);
     await expect(page.locator("#toolbar-settings")).toHaveAttribute("aria-label", "Back to downloads");
 
+    await switchSettingsTab(page, "Advanced");
     await page.getByRole("button", { name: "Add rule" }).click();
     await expect(page.locator(".routing-rule")).toHaveCount(1);
     await expect(page.locator("#routing-0-destination")).toBeVisible();
 
+    await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
     await page.fill("#NASpassword", "local-e2e-password");
+
+    await switchSettingsTab(page, "Downloads");
     // Relative to the share root — DS rejects absolute /share/... paths (error 4096).
     await page.fill("#NAStempdir", "Download");
     await page.fill("#NASdir", "Multimedia/Movies");
