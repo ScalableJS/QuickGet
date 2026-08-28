@@ -2,39 +2,28 @@
   import type { Snippet } from "svelte";
   import type { HTMLButtonAttributes } from "svelte/elements";
 
+  type Size = "default" | "small";
   type Props = {
-    size?: "default" | "small";
+    size?: Size;
     children: Snippet;
   } & HTMLButtonAttributes;
+
+  const sizeClasses = {
+    default: "text-[0.85rem]",
+    small: "text-[0.8rem]",
+  } satisfies Record<Size, string>;
 
   let { size = "default", type = "button", class: klass, children, ...rest }: Props = $props();
 </script>
 
-<button {type} class={["link", size === "small" && "link-small", klass]} {...rest}>
+<button
+  {type}
+  class={[
+    "bg-transparent border-0 text-[var(--color-primary)] cursor-pointer underline p-0 hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)] disabled:opacity-55 disabled:cursor-not-allowed",
+    sizeClasses[size],
+    klass,
+  ]}
+  {...rest}
+>
   {@render children()}
 </button>
-
-<style>
-  .link {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: 0.85rem;
-    cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
-  }
-
-  .link-small {
-    font-size: 0.8rem;
-  }
-
-  .link:hover {
-    color: color-mix(in srgb, var(--color-primary) 75%, black);
-  }
-
-  .link:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-</style>

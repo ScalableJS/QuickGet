@@ -36,7 +36,7 @@
 {#snippet linkIcon()}<IconLink />{/snippet}
 {#snippet trashIcon()}<IconTrash />{/snippet}
 
-<div class="toolbar-left">
+<div class="toolbar-left flex items-center gap-[var(--spacing-sm)] text-12px text-[var(--color-text-secondary)]">
   <IconButton
     size="sm"
     id="toolbar-settings"
@@ -55,7 +55,7 @@
   </IconButton>
   <span
     id="status-speed"
-    class="status-speed"
+    class="status-speed inline-flex items-center gap-[var(--space-1)] font-mono text-12px font-500 text-[var(--color-text-secondary)] px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3"
     aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
     aria-live="off"
   >
@@ -65,7 +65,7 @@
     {toolbarView.statusUploadSpeed}
   </span>
 </div>
-<div class="toolbar-actions">
+<div class="toolbar-actions flex items-center justify-center gap-[var(--spacing-xs)]">
   <IconButton
     size="sm"
     id="toolbar-play"

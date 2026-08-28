@@ -94,96 +94,36 @@
   }
 </script>
 
-<div class="torrent-files">
+<div class="torrent-files mt-[6px] p-2 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-alt)]">
   {#if loading}
-    <p class="tf-note">Loading files…</p>
+    <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">Loading files…</p>
   {:else if error}
-    <p class="tf-error">{error}</p>
+    <p class="tf-error my-1 text-12px text-[var(--color-error)]">{error}</p>
   {:else if files.length === 0}
-    <p class="tf-note">No files reported for this task.</p>
+    <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">No files reported for this task.</p>
   {:else}
-    <ul class="tf-list">
+    <ul class="tf-list list-none m-0 p-0 max-h-[180px] overflow-y-auto">
       {#each shown as file (file.no)}
-        <li>
+        <li class="py-[3px] text-12px">
           <Checkbox bind:checked={wanted[file.no]}>
-            <span class="tf-name" title={file.filename}>{file.filename}</span>
-            <span class="tf-size">{formatSize(file.size)}</span>
+            <span class="tf-name flex-1 overflow-hidden text-ellipsis whitespace-nowrap" title={file.filename}>{file.filename}</span>
+            <span class="tf-size text-[var(--color-text-secondary)] flex-none">{formatSize(file.size)}</span>
           </Checkbox>
         </li>
       {/each}
     </ul>
 
     {#if files.length > DISPLAY_LIMIT}
-      <p class="tf-note">
+      <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">
         Showing first {DISPLAY_LIMIT} of {files.length} files — manage the rest in the QTS interface.
       </p>
     {/if}
 
-    <div class="tf-actions">
-      <span class="tf-count">{selectedCount} selected</span>
+    <div class="tf-actions flex items-center justify-between gap-[var(--space-3)] mt-2">
+      <span class="tf-count text-12px text-[var(--color-text)]">{selectedCount} selected</span>
       <Button disabled={saving} onclick={save}>
         {saving ? "Saving…" : "Save"}
       </Button>
     </div>
   {/if}
 </div>
-
-<style>
-  .torrent-files {
-    margin-top: 6px;
-    padding: 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-bg-alt);
-  }
-
-  .tf-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 180px;
-    overflow-y: auto;
-  }
-
-  .tf-list li {
-    padding: 3px 0;
-    font-size: 12px;
-  }
-
-  .tf-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tf-size {
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-
-  .tf-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin-top: 8px;
-  }
-
-  .tf-count {
-    font-size: 12px;
-    color: var(--color-text);
-  }
-
-  .tf-note {
-    margin: 4px 0;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-  }
-
-  .tf-error {
-    margin: 4px 0;
-    font-size: 12px;
-    color: var(--color-error);
-  }
-</style>

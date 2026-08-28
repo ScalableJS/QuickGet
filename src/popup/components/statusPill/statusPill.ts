@@ -1,5 +1,14 @@
 type StatusType = "success" | "error" | "info";
 
+const statusClasses = {
+  success: "border-[var(--status-success-border)] bg-[var(--status-success-bg)]",
+  error: "border-[var(--status-error-border)] bg-[var(--status-error-bg)]",
+  info: "border-[var(--status-info-border)] bg-[var(--status-info-bg)]",
+} satisfies Record<StatusType, string>;
+
+const basePillClasses =
+  "status-pill inline-flex items-center border rounded-[var(--radius)] px-[var(--spacing-md)] py-[var(--spacing-xs)]";
+
 let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getStatusElements() {
@@ -20,11 +29,13 @@ export function showStatus(message: string, type: StatusType = "info", options?:
   messageElement.textContent = message;
 
   if (message) {
-    pill.className = `status-pill visible status-${type}`;
-    bar.classList.add("visible");
+    pill.className = `${basePillClasses} ${statusClasses[type]}`;
+    bar.classList.remove("hidden");
+    bar.classList.add("flex", "visible");
   } else {
-    pill.className = "status-pill";
-    bar.classList.remove("visible");
+    pill.className = `${basePillClasses} hidden`;
+    bar.classList.add("hidden");
+    bar.classList.remove("flex", "visible");
   }
 
   if (autoHideTimer) {
@@ -43,9 +54,10 @@ export function clearStatus(): void {
   const { bar, pill, message } = getStatusElements();
   if (!bar || !pill || !message) return;
 
-  pill.className = "status-pill";
+  pill.className = `${basePillClasses} hidden`;
   message.textContent = "";
-  bar.classList.remove("visible");
+  bar.classList.add("hidden");
+  bar.classList.remove("flex", "visible");
 
   if (autoHideTimer) {
     clearTimeout(autoHideTimer);

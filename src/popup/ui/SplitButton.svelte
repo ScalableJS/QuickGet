@@ -81,13 +81,21 @@
   }}
 />
 
-<div class="split-btn" role="group" aria-label={primaryLabel}>
-  <IconButton {id} {size} class="split-primary" title={primaryLabel} aria-label={primaryLabel} {disabled} onclick={onPrimary}>
+<div class="split-btn relative inline-flex" role="group" aria-label={primaryLabel}>
+  <IconButton
+    {id}
+    {size}
+    class="rounded-r-0"
+    title={primaryLabel}
+    aria-label={primaryLabel}
+    {disabled}
+    onclick={onPrimary}
+  >
     {@render primaryIcon()}
   </IconButton>
   <IconButton
     {size}
-    class="split-caret"
+    class="rounded-l-0 border-l border-l-[color-mix(in_srgb,var(--color-control-border)_60%,transparent)] px-[var(--space-1)]"
     title={menuLabel}
     aria-label={menuLabel}
     aria-haspopup="menu"
@@ -103,12 +111,18 @@
   </IconButton>
 
   {#if open}
-    <div class="menu" role="menu" tabindex="-1" aria-label={menuLabel} onkeydown={onMenuKeydown}>
+    <div
+      class="absolute top-full right-0 z-20 mt-[var(--space-1)] min-w-[180px] bg-[var(--menu-bg)] border border-[var(--color-control-border)] rounded-[var(--radius)] shadow-[var(--shadow)] p-[var(--space-1)] flex flex-col"
+      role="menu"
+      tabindex="-1"
+      aria-label={menuLabel}
+      onkeydown={onMenuKeydown}
+    >
       {#each items as item, i (item.label)}
         <button
           type="button"
           role="menuitem"
-          class="menu-item"
+          class="flex items-center gap-[var(--space-2)] min-h-[var(--control-height)] px-[var(--space-2)] py-0 border-0 bg-transparent text-[var(--menu-text)] text-left text-13px cursor-pointer rounded-[var(--radius)] hover:bg-[var(--color-bg-alt)] focus-visible:bg-[var(--color-bg-alt)] focus-visible:outline-none"
           tabindex={i === activeIndex ? 0 : -1}
           bind:this={itemEls[i]}
           onclick={() => pick(item)}
@@ -120,61 +134,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .split-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: stretch;
-  }
-
-  .split-btn :global(.split-primary) {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .split-btn :global(.split-caret) {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-left: 1px solid color-mix(in srgb, var(--color-control-border) 60%, transparent);
-    padding-left: var(--space-1);
-    padding-right: var(--space-1);
-  }
-
-  .menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 20;
-    margin-top: var(--space-1);
-    min-width: 180px;
-    background: var(--menu-bg);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: var(--space-1);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: var(--control-height);
-    padding: 0 var(--space-2);
-    border: none;
-    background: none;
-    color: var(--menu-text);
-    text-align: left;
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: var(--radius);
-  }
-
-  .menu-item:hover,
-  .menu-item:focus-visible {
-    background: var(--color-bg-alt);
-    outline: none;
-  }
-</style>

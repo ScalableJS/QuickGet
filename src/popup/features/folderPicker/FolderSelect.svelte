@@ -6,6 +6,7 @@
   import type { DirEntry } from "@api/client.js";
   import type { Settings } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
+  import { IconButton } from "@ui";
 
   import { getApiClient } from "../../shared/api";
 
@@ -177,8 +178,8 @@
   }
 </script>
 
-<div class="folder-select">
-  <div class="folder-input" class:is-invalid={status === "invalid"} class:success-flash={successFlash}>
+<div class="folder-select relative flex gap-[var(--space-1)]">
+  <div class="folder-input flex-1 min-w-0 relative">
     <input
       {id}
       type="text"
@@ -190,7 +191,12 @@
       aria-describedby={showsError || status === "error" ? messageId : undefined}
       aria-invalid={showsError}
       aria-busy={status === "validating"}
-      class:has-spinner={status === "validating"}
+      class={[
+        "w-full h-[var(--control-height-md)] px-[var(--spacing-sm)] border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] text-13px transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]",
+        status === "validating" && "pr-[var(--space-5)]",
+        showsError && "!border-[var(--color-error)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-error)_25%,transparent)]",
+        successFlash && "!border-[var(--color-success)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-success)_20%,transparent)]",
+      ]}
       {placeholder}
       autocomplete="off"
       bind:value
@@ -200,12 +206,17 @@
       onblur={() => void validate()}
     />
     {#if status === "validating"}
-      <span class="status-icon validating" title="Checking folder…" aria-hidden="true"><RefreshCw /></span>
+      <span
+        class="absolute top-1/2 right-[var(--space-2)] -translate-y-1/2 grid place-content-center pointer-events-none text-[var(--color-text-secondary)] animate-spin motion-reduce:animate-none [&>svg]:w-[14px] [&>svg]:h-[14px]"
+        title="Checking folder…"
+        aria-hidden="true"
+      >
+        <RefreshCw />
+      </span>
     {/if}
   </div>
-  <button
-    type="button"
-    class="refresh"
+  <IconButton
+    class="flex-none hover:bg-[var(--color-bg)] [&>svg]:w-[14px] [&>svg]:h-[14px]"
     title="Refresh folders from NAS"
     aria-label="Refresh folders from NAS"
     onclick={() => {
@@ -214,16 +225,21 @@
     }}
   >
     <RefreshCw aria-hidden="true" />
-  </button>
+  </IconButton>
 
   {#if open}
-    <div class="dropdown" role="listbox" id={listboxId} tabindex="-1">
+    <div
+      class="absolute top-full left-0 right-0 z-30 mt-[var(--space-1)] max-h-[200px] overflow-y-auto bg-[var(--menu-bg)] border border-[var(--color-control-border)] rounded-[var(--radius)] shadow-[var(--shadow)] p-[var(--space-1)]"
+      role="listbox"
+      id={listboxId}
+      tabindex="-1"
+    >
       {#if loading}
-        <p class="ds-note">Loading…</p>
+        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-text-secondary)]">Loading…</p>
       {:else if error}
-        <p class="ds-error">{error}</p>
+        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-error)]">{error}</p>
       {:else if filtered.length === 0}
-        <p class="ds-note">No matching folders — type a path manually.</p>
+        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-text-secondary)]">No matching folders — type a path manually.</p>
       {:else}
         {#each filtered as entry, i (entry.path)}
           <button
@@ -231,16 +247,18 @@
             id={optionId(i)}
             role="option"
             aria-selected={value === entry.path}
-            class="ds-option"
-            class:readonly={!entry.writtable}
-            class:active={i === activeIndex}
+            class={[
+              "flex items-center gap-[var(--space-2)] w-full text-left bg-transparent border-0 min-h-[var(--control-height)] px-[var(--space-2)] text-13px cursor-pointer rounded-[var(--radius)] hover:bg-[var(--color-bg)]",
+              i === activeIndex && "bg-[var(--color-bg)]",
+              !entry.writtable && "text-[var(--text-muted)] cursor-not-allowed",
+            ]}
             disabled={!entry.writtable}
             title={entry.writtable ? entry.path : `${entry.path} (read-only)`}
             onmouseover={() => (activeIndex = i)}
             onfocus={() => (activeIndex = i)}
             onclick={() => choose(entry)}
           >
-            <IconFolder class="ds-folder-icon" />
+            <IconFolder class="flex-none w-[14px] h-[14px] text-[var(--icon-folder)]" />
             <span>{entry.dir}{entry.writtable ? "" : " (read-only)"}</span>
           </button>
         {/each}
@@ -250,177 +268,14 @@
 </div>
 
 {#if formError}
-  <p id={messageId} class="field-msg error" role="alert">{formError}</p>
+  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-error)]" role="alert">{formError}</p>
 {:else if status === "invalid"}
-  <p id={messageId} class="field-msg error" aria-live="polite">{statusReason}</p>
+  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-error)]" aria-live="polite">{statusReason}</p>
 {:else if status === "error"}
-  <p id={messageId} class="field-msg unverified" aria-live="polite">Couldn't verify folder ({statusReason})</p>
+  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-warning)]" aria-live="polite">Couldn't verify folder ({statusReason})</p>
 {/if}
 
 <svelte:window onclick={(e) => {
   // Close when clicking outside this control.
   if (!(e.target instanceof Element) || !e.target.closest(".folder-select")) open = false;
 }} />
-
-<style>
-  .folder-select {
-    position: relative;
-    display: flex;
-    gap: var(--space-1);
-    align-items: stretch;
-  }
-
-  .folder-input {
-    flex: 1;
-    min-width: 0;
-    position: relative;
-  }
-
-  .folder-input input {
-    width: 100%;
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
-  }
-
-  .folder-input input.has-spinner {
-    padding-right: var(--space-5);
-  }
-
-  .folder-input.is-invalid input {
-    border-color: var(--color-error);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 25%, transparent);
-  }
-
-  .folder-input.success-flash input {
-    border-color: var(--color-success);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 20%, transparent);
-  }
-
-  .status-icon {
-    position: absolute;
-    top: 50%;
-    right: var(--space-2);
-    display: grid;
-    place-content: center;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-
-  .status-icon :global(svg),
-  .refresh :global(svg) {
-    width: 14px;
-    height: 14px;
-  }
-
-  .status-icon.validating {
-    color: var(--color-text-secondary);
-    animation: folder-spin 1s linear infinite;
-  }
-
-  @keyframes folder-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .status-icon.validating {
-      animation: none;
-    }
-  }
-
-  .field-msg {
-    margin: var(--space-1) 0 0;
-    font-size: 12px;
-  }
-
-  .field-msg.error {
-    color: var(--color-error);
-  }
-
-  .field-msg.unverified {
-    color: var(--color-warning);
-  }
-
-  .refresh {
-    flex-shrink: 0;
-    border: 1px solid var(--color-control-border);
-    background: var(--color-bg-alt);
-    color: var(--color-text);
-    border-radius: var(--radius);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 var(--space-2);
-    font-size: 14px;
-    line-height: 1;
-  }
-
-  .refresh:hover {
-    background: var(--color-bg);
-  }
-
-  .dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 30;
-    margin-top: var(--space-1);
-    max-height: 200px;
-    overflow-y: auto;
-    background: var(--menu-bg);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: var(--space-1);
-  }
-
-  .ds-option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    min-height: var(--control-height);
-    padding: 0 var(--space-2);
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: var(--radius);
-  }
-
-  .ds-option :global(.ds-folder-icon) {
-    flex-shrink: 0;
-    width: 14px;
-    height: 14px;
-    color: var(--icon-folder);
-  }
-
-  .ds-option:hover,
-  .ds-option.active {
-    background: var(--color-bg);
-  }
-
-  .ds-option.readonly {
-    color: var(--text-muted);
-    cursor: not-allowed;
-  }
-
-  .ds-note {
-    margin: 0;
-    padding: var(--space-1) var(--space-2);
-    font-size: 12px;
-    color: var(--color-text-secondary);
-  }
-
-  .ds-error {
-    margin: 0;
-    padding: var(--space-1) var(--space-2);
-    font-size: 12px;
-    color: var(--color-error);
-  }
-</style>

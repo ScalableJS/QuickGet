@@ -9,26 +9,7 @@
   let { legend, children }: Props = $props();
 </script>
 
-<fieldset class="form-section">
-  <legend class="form-legend">{legend}</legend>
+<fieldset class="border-0 m-0 p-0 min-w-0">
+  <legend class="p-0 text-13px font-600 text-[var(--color-text)] mb-[var(--space-2)]">{legend}</legend>
   {@render children()}
 </fieldset>
-
-<style>
-  /* Browsers give fieldset a border, padding and margin of its own; the section styling comes
-     from the surrounding layout, so they are reset rather than worked around. */
-  .form-section {
-    border: none;
-    margin: 0;
-    padding: 0;
-    min-width: 0;
-  }
-
-  .form-legend {
-    padding: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text);
-    margin-bottom: var(--space-2);
-  }
-</style>

@@ -1,31 +1,21 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Tone = "hint" | "error" | "warning";
   type Props = {
-    tone?: "hint" | "error" | "warning";
+    tone?: Tone;
     children: Snippet;
   };
+
+  const toneClasses = {
+    hint: "text-[var(--color-text-secondary)]",
+    error: "text-[var(--color-error)]",
+    warning: "text-[var(--color-warning)]",
+  } satisfies Record<Tone, string>;
 
   let { tone = "hint", children }: Props = $props();
 </script>
 
-<p class="alert alert-{tone}" aria-live={tone === "hint" ? "off" : "polite"}>{@render children()}</p>
-
-<style>
-  .alert {
-    margin: 0;
-    font-size: 12px;
-  }
-
-  .alert-hint {
-    color: var(--color-text-secondary);
-  }
-
-  .alert-error {
-    color: var(--color-error);
-  }
-
-  .alert-warning {
-    color: var(--color-warning);
-  }
-</style>
+<p class={["m-0 text-12px", toneClasses[tone]]} aria-live={tone === "hint" ? "off" : "polite"}>
+  {@render children()}
+</p>

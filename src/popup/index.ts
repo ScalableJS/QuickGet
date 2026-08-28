@@ -1,3 +1,7 @@
+import "virtual:uno.css";
+import "./styles/tokens.css";
+import "./styles/base.css";
+
 import { applyTheme } from "@lib/applyTheme.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { showStatus } from "@/popup/components";

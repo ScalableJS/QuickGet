@@ -36,9 +36,9 @@
   }
 </script>
 
-<div class="create-urls">
-  <div class="field">
-    <label for="batch-urls">
+<div class="create-urls flex flex-col gap-[var(--space-3)] p-[var(--space-3)]">
+  <div class="flex flex-col gap-[var(--space-1)]">
+    <label for="batch-urls" class="text-13px font-600 text-[var(--color-text)]">
       URLs
       {#if urls.length > 0}
         <Badge variant="accent" title={urls.join("\n")}>{urls.length}</Badge>
@@ -48,13 +48,14 @@
       id="batch-urls"
       rows="4"
       placeholder={"https://example.com/a.zip\nmagnet:?xt=...\nEach line becomes one task"}
+      class="w-full min-h-[var(--control-height)] p-[var(--spacing-sm)] border border-[var(--color-control-border)] rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
       bind:value={raw}
     ></textarea>
     <Alert tone="hint">Each line is treated as an individual URL and creates a task.</Alert>
   </div>
 
-  <div class="field">
-    <label for="batch-folder">Target Folder</label>
+  <div class="flex flex-col gap-[var(--space-1)]">
+    <label for="batch-folder" class="text-13px font-600 text-[var(--color-text)]">Target Folder</label>
     <FolderSelect id="batch-folder" placeholder="/share/Multimedia/Movies" bind:value={targetFolder} />
   </div>
 
@@ -62,27 +63,3 @@
     {submitting ? "Adding…" : `Create ${urls.length || ""} task(s)`}
   </Button>
 </div>
-
-<style>
-  .create-urls {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-3);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .field label {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  textarea {
-    resize: vertical;
-  }
-</style>

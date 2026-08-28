@@ -32,7 +32,7 @@
   }
 </script>
 
-<div class="tabs" role="tablist" tabindex="-1" onkeydown={onKeydown}>
+<div class="flex gap-[var(--space-1)] border-b border-b-[var(--color-control-border)] mb-[var(--space-3)]" role="tablist" tabindex="-1" onkeydown={onKeydown}>
   {#each tabs as tab (tab.id)}
     <button
       type="button"
@@ -41,8 +41,12 @@
       aria-selected={tab.id === active}
       aria-controls={`panel-${tab.id}`}
       tabindex={tab.id === active ? 0 : -1}
-      class="tab"
-      class:active={tab.id === active}
+      class={[
+        "flex-1 min-w-0 px-[var(--space-1)] py-[var(--space-2)] border-0 border-b-2 bg-transparent text-12px font-600 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis hover:text-[var(--color-text)]",
+        tab.id === active
+          ? "text-[var(--color-primary)] border-b-[var(--color-primary)]"
+          : "text-[var(--text-secondary)] border-b-transparent",
+      ]}
       onclick={() => onActivate(tab.id)}
     >
       {tab.label}
@@ -51,46 +55,7 @@
 </div>
 
 {#each tabs as tab (tab.id)}
-  <div id={`panel-${tab.id}`} role="tabpanel" aria-labelledby={`tab-${tab.id}`} tabindex="0" hidden={tab.id !== active} class="tab-panel">
+  <div id={`panel-${tab.id}`} role="tabpanel" aria-labelledby={`tab-${tab.id}`} tabindex="0" hidden={tab.id !== active} class={tab.id !== active ? "hidden" : undefined}>
     {@render panels(tab)}
   </div>
 {/each}
-
-<style>
-  .tabs {
-    display: flex;
-    gap: var(--space-1);
-    border-bottom: 1px solid var(--color-control-border);
-    margin-bottom: var(--space-3);
-  }
-
-  .tab {
-    flex: 1;
-    min-width: 0;
-    padding: var(--space-2) var(--space-1);
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tab:hover {
-    color: var(--color-text);
-  }
-
-  .tab.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-  }
-
-  /* [hidden] already removes the panel from the a11y tree and layout; nothing extra needed. */
-  .tab-panel[hidden] {
-    display: none;
-  }
-</style>

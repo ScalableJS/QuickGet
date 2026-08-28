@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { crx } from "@crxjs/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 import chromeManifest from "./manifest.json";
@@ -29,7 +30,7 @@ function devManifest(base: typeof chromeManifest): typeof chromeManifest {
   const { key: _key, ...rest } = base;
   return { ...rest, name: `${base.name} (dev)` } as typeof chromeManifest;
 }
-const plugins = [svelte(), Icons({ compiler: "svelte" })];
+const plugins = [UnoCSS(), svelte(), Icons({ compiler: "svelte" })];
 if (!isStorybook) {
   plugins.push(crx({ manifest }));
 }

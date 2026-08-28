@@ -32,8 +32,24 @@
     error: TriangleAlert,
   } as const satisfies Record<TaskStatus, unknown>;
 
+  const statusIconColorClasses: Record<TaskStatus, string> = {
+    downloading: "text-[var(--color-primary)]",
+    checking: "text-[var(--color-primary)]",
+    finishing: "text-[var(--color-primary)]",
+
+    seeding: "text-[var(--color-success)]",
+    finished: "text-[var(--color-success)]",
+
+    error: "text-[var(--color-error)]",
+    repairing: "text-[var(--color-warning)]",
+
+    queued: "text-[var(--color-text-secondary)]",
+    extracting: "text-[var(--color-text-secondary)]",
+    paused: "text-[var(--color-text-secondary)]",
+    stopped: "text-[var(--color-text-secondary)]",
+  };
+
   const Icon = $derived(ICONS[status] ?? Circle);
 </script>
 
-<!-- Colour comes from .progress-icon[data-status] (the torrent-client colour cue). -->
-<Icon class="status-icon" aria-hidden="true" />
+<Icon class={["w-[14px] h-[14px]", statusIconColorClasses[status]]} aria-hidden="true" />

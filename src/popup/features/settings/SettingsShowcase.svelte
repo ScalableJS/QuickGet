@@ -26,21 +26,6 @@
   });
 </script>
 
-<div class="showcase" class:ready>
+<div class={["w-[360px] max-w-full transition-opacity duration-100 ease-out", ready ? "opacity-100" : "opacity-0"]}>
   <Settings bind:this={panel} {initialTab} />
 </div>
-
-<style>
-  .showcase {
-    width: 360px;
-    /* The popup is a fixed, narrow surface; reviewing settings at page width hides every
-       wrapping and truncation problem the user actually sees. */
-    max-width: 100%;
-    opacity: 0;
-    transition: opacity 0.1s ease;
-  }
-
-  .showcase.ready {
-    opacity: 1;
-  }
-</style>

@@ -19,16 +19,26 @@
     onActivate?: (value: T) => void;
   };
 
+  const sizeClasses = {
+    sm: "min-h-[var(--control-height-sm)]",
+    md: "min-h-[var(--control-height-md)] text-13px",
+  } satisfies Record<ControlSize, string>;
+
   let { value = $bindable(), items, label = "Filter", size = "md", compact = false, onActivate }: Props = $props();
 </script>
 
-<div class="segmented" class:compact role="group" aria-label={label}>
+<div class={["flex gap-[var(--spacing-xs)]", compact ? "flex-none" : "flex-1"]} role="group" aria-label={label}>
   {#each items as item (item.value)}
     <button
       type="button"
-      class={["segment", `segment-${size}`]}
-      class:active={value === item.value}
-      class:icon-only={item.icon}
+      class={[
+        "inline-flex items-center gap-[var(--spacing-xs)] justify-center px-[var(--spacing-sm)] py-[var(--spacing-xs)] border rounded-[var(--radius)] text-12px cursor-pointer transition-[background,color,border-color] duration-120 hover:text-[var(--color-text)] hover:border-[var(--color-primary-visual)]",
+        compact ? "flex-none" : "flex-1",
+        sizeClasses[size],
+        value === item.value
+          ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-text-inverse)]"
+          : "bg-transparent border-[var(--color-control-border)] text-[var(--text-muted)]",
+      ]}
       aria-pressed={value === item.value}
       aria-label={item.icon ? item.label : undefined}
       title={item.icon ? item.label : undefined}
@@ -46,62 +56,3 @@
     </button>
   {/each}
 </div>
-
-<style>
-  .segmented {
-    display: flex;
-    flex: 1;
-    gap: var(--spacing-xs);
-  }
-
-  .segment {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    flex: 1;
-    min-height: var(--control-height-md);
-    justify-content: center;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--color-control-border);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 12px;
-    cursor: pointer;
-    transition:
-      background 0.12s ease,
-      color 0.12s ease,
-      border-color 0.12s ease;
-  }
-
-  .segment-sm {
-    min-height: var(--control-height-sm);
-  }
-
-  .segment-md {
-    font-size: 13px;
-  }
-
-  .segment:hover {
-    color: var(--color-text);
-    border-color: var(--color-primary-visual);
-  }
-
-  .segmented.compact {
-    flex: 0 0 auto;
-  }
-
-  .segmented.compact .segment {
-    flex: 0 0 auto;
-  }
-
-  .icon-only {
-    padding: var(--spacing-xs) var(--spacing-sm);
-  }
-
-  .segment.active {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: var(--color-text-inverse);
-  }
-</style>

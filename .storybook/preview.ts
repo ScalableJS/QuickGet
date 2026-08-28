@@ -1,6 +1,8 @@
 import type { Preview } from "@storybook/svelte-vite";
 
-import "../src/popup/index.css";
+import "virtual:uno.css";
+import "../src/popup/styles/tokens.css";
+import "../src/popup/styles/base.css";
 import { installChromeMock } from "./chromeMock";
 
 // Settings and the folder picker read `chrome.storage` on mount; without a stand-in they throw

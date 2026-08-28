@@ -4,66 +4,47 @@
 
   import type { ControlSize } from "./controlSize.js";
 
+  type Variant = "primary" | "secondary";
   type Props = {
-    variant?: "primary" | "secondary";
+    variant?: Variant;
     size?: ControlSize;
     block?: boolean;
     children: Snippet;
   } & HTMLButtonAttributes;
 
-  let { variant = "primary", size = "md", block = false, type = "button", class: klass, children, ...rest }: Props = $props();
+  const variantClasses = {
+    primary:
+      "bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,black)]",
+    secondary:
+      "border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text)] hover:bg-[var(--color-bg)]",
+  } satisfies Record<Variant, string>;
+
+  const sizeClasses = {
+    sm: "min-h-[var(--control-height-sm)] px-[var(--space-2)] text-12px",
+    md: "min-h-[var(--control-height-md)] px-[var(--space-3)] text-13px",
+  } satisfies Record<ControlSize, string>;
+
+  let {
+    variant = "primary",
+    size = "md",
+    block = false,
+    type = "button",
+    class: klass,
+    children,
+    ...rest
+  }: Props = $props();
 </script>
 
-<button {type} class={["btn", `btn-${variant}`, `btn-${size}`, block && "btn-block", klass]} {...rest}>
+<button
+  {type}
+  class={[
+    "btn min-w-[100px] flex-1 cursor-pointer rounded-[var(--radius)] border-0 font-500 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55",
+    variantClasses[variant],
+    sizeClasses[size],
+    block && "w-full flex-none",
+    klass,
+  ]}
+  {...rest}
+>
   {@render children()}
 </button>
-
-<style>
-  .btn {
-    min-height: var(--control-height-md);
-    padding: 0 var(--space-3);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex: 1;
-    min-width: 100px;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    color: var(--color-text-inverse);
-  }
-
-  .btn-sm {
-    min-height: var(--control-height-sm);
-    padding: 0 var(--space-2);
-    font-size: 12px;
-  }
-
-  .btn-primary:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
-  }
-
-  .btn-secondary {
-    background: var(--color-bg-alt);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-  }
-
-  .btn-secondary:hover {
-    background: var(--color-bg);
-  }
-
-  .btn-block {
-    width: 100%;
-    flex: none;
-  }
-
-  .btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-</style>

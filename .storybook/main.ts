@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { StorybookConfig } from "@storybook/svelte-vite";
+import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
 import { mergeConfig, type UserConfig } from "vite";
 
@@ -28,7 +29,7 @@ const config: StorybookConfig = {
           "@types": resolve(projectRoot, "src/types"),
         },
       },
-      plugins: [Icons({ compiler: "svelte" })],
+      plugins: [UnoCSS(), Icons({ compiler: "svelte" })],
     };
 
     return mergeConfig(baseConfig, overrides);

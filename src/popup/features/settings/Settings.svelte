@@ -16,7 +16,7 @@
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
-  import { Alert, Button, Checkbox, Field, FormSection, Link, SegmentedControl, Select, Tabs } from "@ui";
+  import { Alert, Button, Checkbox, Field, FormSection, IconButton, Link, SegmentedControl, Select, Tabs } from "@ui";
 
   import { getApiClient, invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
@@ -391,7 +391,7 @@
 
 </script>
 
-<div class="settings-stack">
+<div class="settings-stack flex flex-col pb-[var(--space-5)]">
 {#if configProblem}
   <Alert tone="warning">
     {configProblem.summary} Downloads will stay in the browser until this is fixed.
@@ -401,8 +401,8 @@
 <!-- Above the tabs, not inside one: the theme applies the moment it is picked, so it is not
      part of anything the Save button commits, and a tab holding a single instant control is
      navigation for its own sake. -->
-<div class="settings-header">
-  <span class="control-label">Theme</span>
+<div class="settings-header flex items-center justify-between gap-[var(--space-2)] mb-[var(--space-2)]">
+  <span class="control-label text-13px">Theme</span>
   <SegmentedControl
     compact
     size="sm"
@@ -425,29 +425,29 @@
   {#if !showConnectionForm}
     <!-- Configured: no inputs at all. Showing a password box permanently is what let an empty
          one overwrite a working password. -->
-    <div class="connection-card">
-      <p class="connection-identity">{form.NASlogin}@{form.NASaddress}</p>
-      <p class="connection-health" class:problem={connection.health.kind !== "ready"}>
+    <div class="connection-card flex flex-col gap-[var(--space-1)]">
+      <p class="connection-identity m-0 font-600">{form.NASlogin}@{form.NASaddress}</p>
+      <p class={["connection-health m-0 text-12px", connection.health.kind !== "ready" ? "text-[var(--color-warning)]" : "text-[var(--text-secondary)]"]}>
         {HEALTH_LABEL[connection.health.kind]}
       </p>
       {#if connection.health.kind === "unreachable"}
-        <p class="text-muted">Saved connection settings are still in use.</p>
+        <p class="text-[0.85rem] text-[var(--text-secondary)]">Saved connection settings are still in use.</p>
       {:else if connection.health.kind === "auth-failed"}
-        <p class="text-muted">The NAS rejected the saved credentials.</p>
+        <p class="text-[0.85rem] text-[var(--text-secondary)]">The NAS rejected the saved credentials.</p>
       {/if}
 
-      <div class="connection-actions">
+      <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">
         <Button variant="secondary" disabled={isTesting} onclick={testConnection}>
           {isTesting ? "Testing…" : "Test connection"}
         </Button>
         <Button variant="secondary" onclick={() => (editingConnection = true)}>Edit</Button>
       </div>
-      <div class="connection-actions">
+      <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">
         <Link size="small" onclick={removeConnection}>Remove connection</Link>
       </div>
     </div>
   {:else}
-  <div class="form-group">
+  <div class="form-group mb-[var(--spacing-md)]">
     <Field
       id="serverUrl"
       label="Server address"
@@ -460,28 +460,28 @@
     />
   </div>
 
-  <div class="form-group">
+  <div class="form-group mb-[var(--spacing-md)]">
     <Field id="NASlogin" label="Username" placeholder="Your QNAP account" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
   </div>
 
-  <div class="form-group">
+  <div class="form-group mb-[var(--spacing-md)]">
     <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
   </div>
   {/if}
   </FormSection>
 
   <FormSection legend="Folders">
-  <div class="form-group">
-    <label for="NAStempdir">Temp Folder</label>
+  <div class="form-group mb-[var(--spacing-md)]">
+    <label for="NAStempdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Temp Folder</label>
     <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
   </div>
 
-  <div class="form-group">
-    <label for="NASdir">Target Folder</label>
+  <div class="form-group mb-[var(--spacing-md)]">
+    <label for="NASdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Target Folder</label>
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
 
-  <div class="form-group form-inline">
+  <div class="form-group form-inline mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-sm)] font-500">
     <!-- Two states, so a checkbox rather than a two-item select: the setting reads as the
          sentence it is, and needs no menu to discover what the alternative even is. -->
     <Checkbox
@@ -497,7 +497,7 @@
     {:else if tab.id === "advanced"}
 <section class="settings-section">
   <FormSection legend="Privacy">
-  <div class="form-group form-inline">
+  <div class="form-group form-inline mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-sm)] font-500">
     <Checkbox id="settingsLockEnabled" bind:checked={settingsLockEnabled}>
       Protect settings
     </Checkbox>
@@ -509,28 +509,28 @@
   </Alert>
 
   {#if settingsLockEnabled && !lockWasEnabled}
-    <div class="form-group">
+    <div class="form-group mb-[var(--spacing-md)]">
       <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} error={fieldErrors.lockPasswordInput} oninput={() => {
         const { lockPasswordInput: _removed, ...rest } = fieldErrors;
         fieldErrors = rest;
       }} />
     </div>
-    <div class="form-group">
+    <div class="form-group mb-[var(--spacing-md)]">
       <Field id="confirmLockPasswordInput" label="Confirm settings password" type="password" placeholder="Repeat the settings password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
         const { confirmLockPasswordInput: _removed, ...rest } = fieldErrors;
         fieldErrors = rest;
       }} />
     </div>
   {:else if settingsLockEnabled}
-    <p class="text-muted">Settings password is active. Turn this off to remove it.</p>
+    <p class="text-[0.85rem] text-[var(--text-secondary)]">Settings password is active. Turn this off to remove it.</p>
   {/if}
   </FormSection>
 </section>
 
 <section class="settings-section">
   <FormSection legend="Routing rules">
-  <div class="routing-header">
-    <button type="button" class="add-rule" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
+  <div class="routing-header flex items-center justify-between mb-[var(--space-2)]">
+    <button type="button" class="add-rule inline-flex items-center gap-[var(--space-1)] p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <Alert tone="hint">
     Send matching downloads to a folder automatically. Rules run top to bottom; the first match wins.
@@ -538,15 +538,15 @@
   </Alert>
 
   {#if form.routingRules.length === 0}
-    <p class="routing-empty text-muted">No rules yet. All downloads use the Target Folder.</p>
+    <p class="routing-empty text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target Folder.</p>
   {:else}
     {#each form.routingRules as rule, i (rule)}
       <!-- Each rule is its own group with a name. Without it a screen reader reads three
            unlabelled controls per rule, with nothing saying where one rule ends. -->
-      <fieldset class="routing-rule">
-        <legend class="visually-hidden">Rule {i + 1}</legend>
-        <div class="routing-conditions">
-          <div class="routing-match-type">
+      <fieldset class="routing-rule flex flex-col gap-[var(--space-1)] py-[var(--space-2)] border-0 m-0 p-0 min-w-0">
+        <legend class="visually-hidden sr-only">Rule {i + 1}</legend>
+        <div class="routing-conditions flex gap-[var(--space-1)] items-center">
+          <div class="routing-match-type flex-1 min-w-0">
             <Select aria-label={`Rule ${i + 1} match type`} value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
               <option value="">Any type</option>
               <option value="url">URL</option>
@@ -554,15 +554,15 @@
               <option value="torrent">.torrent</option>
             </Select>
           </div>
-          <div class="routing-text-field">
+          <div class="routing-text-field flex-1 min-w-0">
             <Field placeholder="e.g. *.mkv" aria-label={`Rule ${i + 1} filename pattern`} bind:value={rule.namePattern} />
           </div>
-          <div class="routing-text-field">
+          <div class="routing-text-field flex-1 min-w-0">
             <Field placeholder="e.g. *.site.com" aria-label={`Rule ${i + 1} domain`} bind:value={rule.domain} />
           </div>
-          <button type="button" class="rule-remove" aria-label={`Remove rule ${i + 1}`} title="Remove rule" onclick={() => removeRule(i)}>
+          <IconButton class="flex-none text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_12%,var(--color-bg-alt))]" aria-label={`Remove rule ${i + 1}`} title="Remove rule" onclick={() => removeRule(i)}>
             <X aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
         <FolderSelect id={`routing-${i}-destination`} placeholder="e.g. Multimedia/Films" settings={$state.snapshot(form)} bind:value={rule.destination} />
       </fieldset>
@@ -580,14 +580,14 @@
       Importing will overwrite your current settings: {pendingImport.changes.join(", ")}.
       Nothing is saved until you press Save.
     </Alert>
-    <div class="backup-actions">
-      <Button onclick={applyImport}>Replace settings</Button>
-      <Button variant="secondary" onclick={() => (pendingImport = null)}>Cancel</Button>
+    <div class="backup-actions flex flex-col gap-[var(--space-2)] mt-[var(--space-3)]">
+      <Button onclick={applyImport} block>Replace settings</Button>
+      <Button variant="secondary" onclick={() => (pendingImport = null)} block>Cancel</Button>
     </div>
   {:else}
-    <div class="backup-actions">
-      <Button variant="secondary" onclick={exportBackup}>Export settings</Button>
-      <Button variant="secondary" onclick={() => importInput?.click()}>Import settings</Button>
+    <div class="backup-actions flex flex-col gap-[var(--space-2)] mt-[var(--space-3)]">
+      <Button variant="secondary" onclick={exportBackup} block>Export settings</Button>
+      <Button variant="secondary" onclick={() => importInput?.click()} block>Import settings</Button>
     </div>
   {/if}
 
@@ -600,193 +600,13 @@
   {/snippet}
 </Tabs>
 
-<footer class="settings-actions">
-  <div class="settings-action-buttons">
+<footer class="settings-actions sticky bottom-0 z-10 flex items-center gap-[var(--space-2)] py-[var(--space-3)] bg-[var(--color-bg)]">
+  <div class="settings-action-buttons flex flex-1 gap-[var(--space-2)]">
     <Button id="save-btn" disabled={!isDirty || isSaving} onclick={save}>
       {isSaving ? "Saving…" : showConnectionForm ? "Save & test" : "Save settings"}
     </Button>
   </div>
 </footer>
 
-<p class="version-line">Version {chrome.runtime.getManifest().version}</p>
+<p class="version-line my-[var(--space-3)] mb-[var(--space-2)] text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
 </div>
-
-<style>
-  .settings-stack {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: var(--space-5);
-  }
-
-  .settings-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) 0;
-    background: var(--color-bg);
-  }
-
-  .settings-action-buttons {
-    display: flex;
-    flex: 1;
-    gap: var(--space-2);
-  }
-
-  .settings-action-buttons :global(.btn) {
-    flex: 1;
-  }
-
-
-  .routing-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-2);
-  }
-
-
-  .add-rule {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--color-primary);
-    font-size: 0.8rem;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  .add-rule:hover {
-    color: color-mix(in srgb, var(--color-primary) 75%, black);
-  }
-
-  .routing-empty {
-    font-size: 12px;
-  }
-
-  .routing-rule {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-2) 0;
-  }
-
-  .routing-conditions {
-    display: flex;
-    gap: var(--space-1);
-    align-items: center;
-  }
-
-  .routing-match-type,
-  .routing-text-field {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Present to assistive tech, absent visually — the rules are positional on screen. */
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .routing-rule {
-    border: none;
-    margin: 0;
-    padding: 0;
-    min-width: 0;
-  }
-
-  .rule-remove {
-    flex-shrink: 0;
-    min-height: var(--control-height);
-    border: 1px solid var(--color-control-border);
-    background: var(--color-bg-alt);
-    border-radius: var(--radius);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 var(--space-2);
-    font-size: 13px;
-    line-height: 1;
-    color: var(--color-error);
-  }
-
-  .rule-remove:hover {
-    background: color-mix(in srgb, var(--color-error) 12%, var(--color-bg-alt));
-  }
-
-  .backup-actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-  }
-
-  .backup-actions :global(.btn) {
-    flex: none;
-    width: 100%;
-  }
-  .text-muted {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-  }
-  .settings-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
-  }
-
-  .connection-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .connection-identity {
-    margin: 0;
-    font-weight: 600;
-  }
-
-  .connection-health {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-
-  .connection-health.problem {
-    color: var(--color-warning);
-  }
-
-  .connection-actions {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    margin-top: var(--space-1);
-  }
-
-  .version-line {
-    margin: var(--space-3) 0 var(--space-2);
-    text-align: center;
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
-
-  .control-label {
-    font-size: 13px;
-  }
-
-</style>

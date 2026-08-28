@@ -4,19 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QuickGet Remote</title>
-    <link rel="stylesheet" href="./index.css" />
   </head>
   <body>
-    <div class="container">
+    <div class="container flex flex-col min-h-0">
       <!-- Toolbar rendered by Toolbar.svelte (mounted in toolbar/index.ts) -->
-      <header class="toolbar"></header>
+      <header class="toolbar sticky top-0 z-10 flex justify-between items-center bg-[var(--color-bg-alt)] text-[var(--color-text)] px-[var(--spacing-md)] py-[var(--spacing-sm)] border-b border-b-[var(--color-border)] shadow-[var(--shadow)]"></header>
 
-      <main>
-        <input type="file" id="torrentFileInput" accept=".torrent" hidden />
+      <main class="flex-none overflow-visible p-[var(--spacing-md)]">
+        <input type="file" id="torrentFileInput" accept=".torrent" class="hidden" />
 
-        <div class="status-bar">
-          <section id="status" class="status-pill" role="status" aria-live="polite">
-            <p id="status-message" class="status-message"></p>
+        <div class="status-bar hidden items-center gap-[var(--spacing-sm)] mb-[var(--spacing-md)] justify-between flex-wrap">
+          <section id="status" class="status-pill hidden inline-flex items-center border rounded-[var(--radius)] px-[var(--spacing-md)] py-[var(--spacing-xs)]" role="status" aria-live="polite">
+            <p id="status-message" class="status-message m-0 text-13px break-words text-[var(--color-text)]"></p>
           </section>
         </div>
 
@@ -27,10 +26,10 @@
         <section id="settings-panel" class="settings-panel hidden"></section>
 
         <!-- Batch URL form rendered by CreateUrls.svelte (mounted in upload/index.ts) -->
-        <section id="add-urls-panel" class="settings-panel hidden"></section>
+        <section id="add-urls-panel" class="settings-panel hidden bg-[var(--color-bg-alt)] border border-[var(--color-control-border)] rounded-[var(--radius)] p-[var(--spacing-md)] mb-[var(--spacing-md)]"></section>
 
         <!-- Unlock screen rendered by Unlock.svelte (mounted in unlock/index.ts) -->
-        <section id="unlock-panel" class="settings-panel hidden"></section>
+        <section id="unlock-panel" class="settings-panel hidden bg-[var(--color-bg-alt)] border border-[var(--color-control-border)] rounded-[var(--radius)] p-[var(--spacing-md)] mb-[var(--spacing-md)]"></section>
       </main>
     </div>
 
