@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import type { Task } from "../../src/lib/tasks.js";
+
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
@@ -10,6 +12,67 @@ import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./suppo
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionDistPath = path.resolve(__dirname, "../../dist");
 const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
+
+test("popup renders the QNAP transition states with their official meaning", async () => {
+  const statuses = [
+    { name: "Queued check task", status: "queuedChecking" },
+    { name: "Checking task", status: "checking" },
+    { name: "Metadata task", status: "downloadingMetadata" },
+    { name: "Downloading task", status: "downloading" },
+    { name: "Moving task", status: "moving" },
+    { name: "Allocating task", status: "allocating" },
+    { name: "Seeding task", status: "seeding" },
+  ] as const;
+  const initialTasks: Task[] = statuses.map(({ name, status }, index) => ({
+    id: `status-${index}`,
+    hash: `status-${index}`,
+    name,
+    status,
+    progress: status === "seeding" ? 100 : 42,
+    sizeBytes: 1_000,
+    downloadedBytes: status === "seeding" ? 1_000 : 420,
+    uploadedBytes: 0,
+    downSpeedBps: status === "downloading" ? 100 : 0,
+    upSpeedBps: 0,
+    source: "qnap",
+  }));
+  const mockNas = await startMockNas({ initialTasks });
+  const session = await launchExtensionPopup(extensionDistPath);
+
+  try {
+    await session.worker.evaluate(
+      (values) => chrome.storage.local.set(values),
+      {
+        NASaddress: "127.0.0.1",
+        NASport: String(mockNas.port),
+        NASsecure: false,
+        NASlogin: "admin",
+        NASpassword: "local-e2e-password",
+        NAStempdir: "Download",
+        NASdir: "Multimedia/Movies",
+      },
+    );
+    await session.page.reload({ waitUntil: "domcontentloaded" });
+    await waitForPopupReady(session.page);
+    await session.page.getByRole("button", { name: "All" }).click();
+
+    for (const { name, status } of statuses) {
+      const expected = {
+        queuedChecking: "Queued for checking",
+        checking: "Checking",
+        downloadingMetadata: "Downloading metadata",
+        downloading: "Downloading",
+        moving: "Moving",
+        allocating: "Allocating",
+        seeding: "Seeding",
+      }[status];
+      await expect(session.page.locator(".download-item").filter({ hasText: name })).toContainText(expected);
+    }
+  } finally {
+    await session.close();
+    await mockNas.close();
+  }
+});
 
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {

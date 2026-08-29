@@ -23,7 +23,7 @@ import {
 } from "@lib/torrentSender.js";
 
 
-import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { markConfigurationProblem, markInterceptionStarted } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
 import { clearFailureEpisode, type FailureKind, notifyDirect, notifyFailure } from "./notifier.js";
 
@@ -109,6 +109,8 @@ export async function recoverAbandonedHandoffs(): Promise<void> {
 export async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
   // Every exit is logged with its reason: without it a download that is simply not recognised
   // is indistinguishable from a worker that never received the event at all.
+  let ownsInFlight = false;
+
   try {
     const settings = await loadSettings();
     if (settings.torrentInterceptMode === "off") {
@@ -133,6 +135,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       console.log("[QuickGet] skipped: already claimed by another listener", { id: item.id });
       return;
     }
+    ownsInFlight = true;
 
     console.log("[QuickGet] intercepting torrent download", { id: item.id, url });
 
@@ -161,8 +164,8 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
 
     // Chrome recorded the page the download started from — that is exactly the referrer a
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
-    const failureRevisionAtStart = await markInterceptionStarted();
-    await handOffToNas(settings, item.id, url, item.referrer, failureRevisionAtStart);
+    await markInterceptionStarted();
+    await handOffToNas(settings, item.id, url, item.referrer);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     // The claim outlives this worker, so keeping it after a failure would silently bar every
@@ -171,7 +174,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     await releaseClaim(item.id);
     await notifyFailure("handoff", "Failed to redirect download", getErrorMessage(error));
   } finally {
-    inFlight.delete(item.id);
+    if (ownsInFlight) inFlight.delete(item.id);
   }
 }
 
@@ -188,13 +191,21 @@ const inFlight = new Set<number>();
 async function claimDownload(id: number): Promise<boolean> {
   if (inFlight.has(id)) return false;
   inFlight.add(id);
+  let claimed = false;
 
-  const key = `${CLAIMED_PREFIX}${id}`;
-  const existing = await chrome.storage.session.get(key);
-  if (existing[key]) return false;
+  try {
+    const key = `${CLAIMED_PREFIX}${id}`;
+    const existing = await chrome.storage.session.get(key);
+    if (existing[key]) return false;
 
-  await chrome.storage.session.set({ [key]: true });
-  return true;
+    await chrome.storage.session.set({ [key]: true });
+    claimed = true;
+    return true;
+  } finally {
+    // A caller which learned that a durable claim already exists (or could not persist its
+    // own) still owns this in-memory entry and must release only that entry.
+    if (!claimed) inFlight.delete(id);
+  }
 }
 
 async function releaseClaim(id: number): Promise<void> {
@@ -222,11 +233,13 @@ async function handOffToNas(
   downloadId: number,
   url: string,
   referrer?: string,
-  failureRevisionAtStart = 0,
 ): Promise<void> {
+  // Write intent before touching the browser transfer: if MV3 suspends us in the following
+  // await, startup recovery can resume it. A pause which does not happen must not leave a
+  // false recovery record behind.
+  await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
   const paused = await pauseBrowserDownload(downloadId);
-  // Written before the hand-off so a worker death mid-flight is recoverable on next start.
-  if (paused) await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
+  if (!paused) await chrome.storage.session.remove(pendingKey(downloadId));
 
   try {
     const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
@@ -234,7 +247,6 @@ async function handOffToNas(
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
-    await clearConfigurationProblem(failureRevisionAtStart);
     const cancelled = await cancelBrowserDownload(downloadId);
     if (!cancelled && paused) await resumeBrowserDownload(downloadId);
     void ensureMonitoring();

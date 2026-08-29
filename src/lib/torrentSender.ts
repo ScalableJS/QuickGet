@@ -60,9 +60,21 @@ function normalizeName(value: string): string {
  * surfaces as the download item's filename rather than in the URL.
  */
 export function isTorrentSource(url: string, mime?: string, filename?: string): boolean {
-  if (mime === "application/x-bittorrent") return true;
+  if (mime && isTorrentMime(mime)) return true;
   if (filename && hasTorrentExtension(filename)) return true;
-  return hasTorrentExtension(url) || /\/dl\.php\b/i.test(url);
+  if (hasTorrentExtension(url)) return true;
+
+  // A context-menu click has only the link URL: Chrome has not created a download yet, so
+  // there is no response MIME or Content-Disposition-derived filename to inspect. TorrentPier's
+  // source-backed download route is /dl.php; keep that fallback only while no contradictory
+  // response metadata exists, so an actual PDF served by the same path is never intercepted.
+  return !mime && !filename && /\/dl\.php\b/i.test(url);
+}
+
+/** Matches standard BitTorrent MIME type, ignoring optional parameters like charset. */
+function isTorrentMime(mime: string): boolean {
+  const cleanMime = mime.split(";")[0]?.trim().toLowerCase();
+  return cleanMime === "application/x-bittorrent" || cleanMime === "application/x-torrent";
 }
 
 /** Matches a `.torrent` ending, allowing for a query string or a fragment after it. */
@@ -106,7 +118,7 @@ export async function sendTorrentUrlToNas(
 }
 
 /**
- * Trackers answer an unauthenticated `dl.php` with the login page rather than a 4xx, so a
+ * Trackers answer an unauthenticated request with a login page rather than a 4xx, so a
  * successful HTTP status proves nothing. Uploading that HTML would create a task on the NAS
  * for a file that is not a torrent — the symptom this check exists to turn into a real error.
  *
@@ -128,23 +140,68 @@ async function assertLooksLikeTorrent(blob: Blob, response: Response): Promise<v
   );
 }
 
+/**
+ * Derive the torrent file name from the HTTP response headers (Content-Disposition)
+ * or fallback to the URL pathname, adhering to RFC 6266 and RFC 5987.
+ */
 function torrentFileName(response: Response, url: string): string {
   const disposition = response.headers.get("content-disposition") ?? "";
-  const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
-  if (match?.[1]) {
-    try {
-      return decodeURIComponent(match[1].trim());
-    } catch {
-      return match[1].trim();
-    }
+  const fromHeader = parseContentDispositionFilename(disposition);
+  if (fromHeader) {
+    const base = fromHeader.split(/[/\\]/).pop()?.trim();
+    if (base) return base;
   }
 
   try {
-    const last = new URL(url).pathname.split("/").pop();
-    if (last && /\.torrent$/i.test(last)) return last;
+    const pathname = new URL(url).pathname;
+    const last = pathname.split("/").pop();
+    if (last) {
+      const decoded = decodeURIComponent(last).trim();
+      if (hasTorrentExtension(decoded)) return decoded;
+    }
   } catch {
-    // ignore
+    // ignore invalid URL
   }
 
   return "download.torrent";
+}
+
+/**
+ * Parse filename from Content-Disposition header according to RFC 6266 / RFC 5987.
+ * Gives precedence to `filename*` parameter over `filename`.
+ */
+function parseContentDispositionFilename(disposition: string): string | undefined {
+  if (!disposition) return undefined;
+
+  // RFC 6266 Section 4.3 / RFC 5987 Section 3.2: filename* takes precedence over filename.
+  // Format: filename*=charset'[language]'value-chars
+  const extMatch = disposition.match(/filename\*\s*=\s*(?:([a-zA-Z0-9_-]+)'([a-zA-Z0-9_-]*)'|["']?)([^;\n"']+)/i);
+  if (extMatch) {
+    const charset = extMatch[1]?.toUpperCase() ?? "UTF-8";
+    const rawVal = extMatch[3]?.trim();
+    if (rawVal) {
+      try {
+        if (charset === "ISO-8859-1" || charset === "LATIN1") {
+          return rawVal.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        }
+        return decodeURIComponent(rawVal);
+      } catch {
+        return rawVal;
+      }
+    }
+  }
+
+  // Standard filename parameter: filename="value" or filename=value or filename='value'
+  const stdMatch = disposition.match(/filename\s*=\s*(?:"([^"]+)"|'([^']+)'|([^;\s\n]+))/i);
+  const stdVal = stdMatch?.[1] ?? stdMatch?.[2] ?? stdMatch?.[3];
+  if (stdVal) {
+    const trimmed = stdVal.trim();
+    try {
+      return decodeURIComponent(trimmed);
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return undefined;
 }

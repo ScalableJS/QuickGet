@@ -10,7 +10,7 @@ import { loadSettings } from "@lib/settings.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { ensureMonitoring } from "./alarms.js";
-import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { markConfigurationProblem, markInterceptionStarted } from "./actions.js";
 import { notifyDirect } from "./notifier.js";
 
 /**
@@ -23,14 +23,9 @@ export function createContextMenus(): void {
     void chrome.runtime.lastError; // ignore "no items" on a fresh worker
     chrome.contextMenus.create({
       id: "quickget-send-link",
-      title: "Send with QuickGet",
-      contexts: ["link", "selection"],
-    });
-
-    chrome.contextMenus.create({
-      id: "quickget-send-page",
-      title: "Send current page with QuickGet",
-      contexts: ["page"],
+      title: "Send link to Download Station",
+      contexts: ["link"],
+      documentUrlPatterns: ["*://*/*"],
     });
   });
 }
@@ -47,10 +42,6 @@ export async function handleContextMenuClick(
 
     if (info.menuItemId === "quickget-send-link" && info.linkUrl) {
       url = info.linkUrl;
-    } else if (info.menuItemId === "quickget-send-link" && info.selectionText) {
-      url = info.selectionText.trim();
-    } else if (info.menuItemId === "quickget-send-page" && tab?.url) {
-      url = tab.url;
     }
 
     if (!url) {
@@ -58,8 +49,8 @@ export async function handleContextMenuClick(
     }
 
     // Validate URL
-    if (!isValidUrl(url) && !isTorrentUrl(url)) {
-      throw new Error("Invalid URL format");
+    if (!isSupportedUrl(url)) {
+      throw new Error("Only web and magnet links can be sent to Download Station");
     }
 
     // The page the link was right-clicked on is the referrer a tracker's hotlink guard expects.
@@ -87,7 +78,7 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
   console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
-  const failureRevisionAtStart = await markInterceptionStarted();
+  await markInterceptionStarted();
 
   try {
     if (isTorrentSource(url)) {
@@ -97,7 +88,6 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
       await client.addUrl(url, { targetFolder });
     }
 
-    await clearConfigurationProblem(failureRevisionAtStart);
     void ensureMonitoring();
     // Silent on success: the user watched themselves click the menu item, and a toast per
     // click is the noise that buried the messages worth reading.
@@ -110,15 +100,12 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
 /**
  * Validate URL format
  */
-function isValidUrl(url: string): boolean {
+function isSupportedUrl(url: string): boolean {
+  if (/^magnet:/i.test(url)) return true;
   try {
-    new URL(url);
-    return true;
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:";
   } catch {
     return false;
   }
-}
-
-function isTorrentUrl(url: string): boolean {
-  return /^magnet:/i.test(url) || /\.torrent$/i.test(url);
 }

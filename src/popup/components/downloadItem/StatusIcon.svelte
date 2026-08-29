@@ -7,6 +7,8 @@
   import CircleCheck from "~icons/lucide/circle-check";
   import CircleStop from "~icons/lucide/circle-stop";
   import Clock from "~icons/lucide/clock";
+  import FolderInput from "~icons/lucide/folder-input";
+  import HardDrive from "~icons/lucide/hard-drive";
   import LoaderCircle from "~icons/lucide/loader-circle";
   import PackageOpen from "~icons/lucide/package-open";
   import Pause from "~icons/lucide/pause";
@@ -20,22 +22,30 @@
   // Arrow-down denotes download, arrow-up denotes seed, and alert denotes error.
   const ICONS = {
     downloading: ArrowDown,
+    downloadingMetadata: ArrowDown,
     seeding: ArrowUp,
     queued: Clock,
+    queuedChecking: Clock,
     paused: Pause,
     stopped: CircleStop,
     checking: ScanLine,
     repairing: Wrench,
     extracting: PackageOpen,
     finishing: LoaderCircle,
+    moving: FolderInput,
+    allocating: HardDrive,
     finished: CircleCheck,
     error: TriangleAlert,
   } as const satisfies Record<TaskStatus, unknown>;
 
   const statusIconColorClasses: Record<TaskStatus, string> = {
-    downloading: "text-[var(--color-primary)]",
-    checking: "text-[var(--color-primary)]",
-    finishing: "text-[var(--color-primary)]",
+    downloading: "text-[var(--color-primary-visual)]",
+    downloadingMetadata: "text-[var(--color-primary-visual)]",
+    queuedChecking: "text-[var(--color-primary-visual)]",
+    checking: "text-[var(--color-primary-visual)]",
+    finishing: "text-[var(--color-primary-visual)]",
+    moving: "text-[var(--color-primary-visual)]",
+    allocating: "text-[var(--color-primary-visual)]",
 
     seeding: "text-[var(--color-success)]",
     finished: "text-[var(--color-success)]",
@@ -52,4 +62,11 @@
   const Icon = $derived(ICONS[status] ?? Circle);
 </script>
 
-<Icon class={["w-[14px] h-[14px]", statusIconColorClasses[status]]} aria-hidden="true" />
+<Icon
+  class={[
+    "w-[14px] h-[14px]",
+    statusIconColorClasses[status],
+    status === "finishing" && "animate-spin motion-reduce:animate-none",
+  ]}
+  aria-hidden="true"
+/>

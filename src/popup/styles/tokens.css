@@ -62,8 +62,8 @@
   --torrent-text-error: #fbe8ec;
 
   --progress-track-active: #1976d233;
-  --progress-fill-complete: var(--color-green);
-  --progress-fill-error: var(--color-red);
+  --progress-fill-complete: var(--color-success);
+  --progress-fill-error: var(--color-error);
   --progress-track-error: #e9577926;
 
   --tag-bg: #4a596dbf;
@@ -167,11 +167,11 @@
 
   /* Semantic aliases used throughout the popup */
   --color-primary: var(--color-blue);
-  --color-primary-visual: #258de5;
+  --color-primary-visual: #4ea3ea;
   --color-primary-bright: color-mix(in srgb, var(--color-blue) 70%, white);
   --color-success: var(--color-green);
   --color-success-strong: var(--color-green-dark);
-  --color-error: var(--color-red);
+  --color-error: #ff7894;
   --color-warning: #ff9800;
   --icon-folder: #f5b301;
 
@@ -243,7 +243,7 @@
   --torrent-border: var(--border-light-primary);
   --torrent-text-primary: #405d76;
   --torrent-text-secondary: var(--text-light-secondary);
-  --torrent-text-error: var(--color-red);
+  --torrent-text-error: var(--color-error);
 
   --progress-track-active: #1976d226;
   --download-hover-bg: var(--bg-light-secondary);
@@ -274,6 +274,8 @@
   --scrollbar-thumb-hover: #258de566;
 
   --color-warning: #a85400;
+  --color-success: var(--color-green-dark);
+  --color-error: #c73558;
   --icon-folder: #b77900;
 
   --color-bg: var(--bg-primary);

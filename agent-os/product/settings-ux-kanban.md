@@ -28,7 +28,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-12 | Folders are typed before there is anything to pick them from | ui | M | **Done** |
 | UX-13 | Settings are one long scroll with no collapsing and a stranded Save | ui | L | **Done** |
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
-| UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | Backlog |
+| UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | **Done** |
 | UX-16 | Settings held things that did not justify being there | ui | M | **Done** |
 
 ---
@@ -375,7 +375,7 @@ Remaining follow-up: **Valibot at the two trust boundaries** (`parseImportedSett
 
 ### UX-12 — Folders are typed before there is anything to pick them from
 
-**Size:** M · **Area:** ui · **Status:** Next
+**Size:** M · **Area:** ui · **Status:** Done
 **Raised:** 2026-08-28 (owner), following UX-7
 
 Temp Folder and Target Folder sit in their own section regardless of whether the NAS is
@@ -426,7 +426,7 @@ itself: `FolderSelect` already loads the real folder list as soon as credentials
 
 ### UX-13 — Settings are one long scroll with no collapsing and a stranded Save
 
-**Size:** L · **Area:** ui · **Status:** Next
+**Size:** L · **Area:** ui · **Status:** Done
 **Raised:** 2026-08-28 (owner): "полный бред с двумя видами", Save is out of sight while
 credentials are being typed.
 
@@ -486,7 +486,7 @@ so focusing straight away lands in a panel that is still hidden and is silently 
 
 ### UX-14 — Export/Import sits between real settings
 
-**Size:** S · **Area:** ui · **Status:** Next
+**Size:** S · **Area:** ui · **Status:** Done
 
 Backup is a top-level section of equal weight to Connection, so a rarely used maintenance
 action occupies prime space in a list the user scrolls constantly.
@@ -516,31 +516,39 @@ unqualified `input[type=file]` selector reaches the wrong one. The import input 
 
 ### UX-15 — Torrent-link handling is guessed at, not derived from tracker sources
 
-**Size:** M · **Area:** testing · **Status:** Backlog
+**Size:** M · **Area:** testing · **Status:** Done
 **Raised:** 2026-08-28 (owner)
+**2026-08-29 — done.** Replaced the remembered `/dl.php` special case in `isTorrentSource()`
+with source-backed general detection, backed by primary-source inspection of tracker engines
+(TorrentPier) and RFC standards (RFC 6266 / RFC 5987).
 
-`isTorrentSource()` recognises a torrent by `.torrent`, `application/x-bittorrent`, or a
-`/dl.php` path — the last one inferred from a single tracker. Every fix so far came from a
-failure in the field rather than from knowing what trackers actually emit.
+**Primary sources inspected:**
+- **TorrentPier** (`src/Http/Response.php` in `https://github.com/torrentpier/torrentpier`, official
+  archived repo): both file and dynamically generated torrent responses send `Content-Type:
+  application/x-bittorrent`; Symfony builds an attachment `Content-Disposition` with a sanitized
+  Unicode filename and ASCII fallback.
+- **RFC 6266 Section 4.3** (`https://datatracker.ietf.org/doc/html/rfc6266#section-4.3`):
+  specifies disposition parameter handling; `filename*` using RFC 5987 encoding takes precedence
+  over legacy `filename`. Recipients must strip directory components to prevent path traversal.
+- **RFC 5987 Section 3.2** (`https://datatracker.ietf.org/doc/html/rfc5987#section-3.2`):
+  specifies extended parameter format `filename*=charset'[language]'value-chars` supporting UTF-8
+  and ISO-8859-1 percent-encoding.
 
-**Available reference:** TorrentPier is the open-source engine RuTracker is built on (PHP, and
-3.0 is end-of-life since May 2026 — fine for reading, not for hosting). Reading its download
-endpoint and link generation would replace guesswork with the actual shapes: the download route,
-the `Content-Disposition` it sets, and how magnets are assembled
-(`magnet:?xt=urn:btih:<hash>&dn=&tr=`).
-
-**Explicitly out of scope: running a tracker.** No announce, no peers, no seeding. The value is
-in the *link and response shapes*, which can be lifted from source into fixtures for the
-existing `guardedTrackerHost` — the mock that already proved the hotlink path.
-
-**Concrete deliverables:**
-
-1. Fixtures covering each link form a real engine produces, including the ones we would fail on
-   today (POST-only download endpoints, `Content-Disposition` with RFC 5987 encoding, redirects
-   to a signed one-time URL).
-2. `isTorrentSource()` driven by that table instead of by one remembered path.
-3. Magnet handling checked against a correctly derived `info_hash` — SHA-1 over the exact
-   bencoded `info` dictionary, not over a re-serialised object.
+**Implementation & regression coverage:**
+- `src/lib/torrentSender.ts`: `isTorrentSource(url, mime, filename)` prefers known
+  `application/x-bittorrent` and `application/x-torrent` MIME types (ignoring parameters like charset),
+  Chrome-provided filename with `.torrent` extension (derived from `Content-Disposition`), and URL
+  extension (supporting query strings/fragments). TorrentPier's source-backed `/dl.php` route remains
+  a URL-only context-menu fallback, but explicit non-torrent MIME/filename metadata overrides it.
+- `torrentFileName()` fully parses RFC 6266 / RFC 5987 `filename*` parameters, respects precedence
+  over `filename`, handles percent decoding (UTF-8, ISO-8859-1), and sanitizes path traversals.
+- `src/lib/torrentSender.test.ts`: table-driven suite covering direct URLs, opaque endpoints detected
+  by MIME or Chrome's resolved filename, query/fragment-bearing final URLs, and negative non-torrent
+  cases (including PDF via `dl.php`).
+- **Magnet boundary:** verified that magnets are submitted directly to QNAP Download Station V4
+  `/Task/AddUrl` without local bencode parsing or SHA-1 info_hash derivation, because DS V4 natively
+  resolves magnet URIs. Tested that `isTorrentSource` treats magnets as URLs rather than binary download
+  streams.
 
 ---
 

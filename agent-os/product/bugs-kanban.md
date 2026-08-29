@@ -13,6 +13,20 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-25 | Losing the worker between pause and pending-marker write strands a browser download | background | high | Done |
+| BUG-24 | Rejected duplicate listener can release another listener's in-flight ownership | background | high | Done |
+| BUG-22 | Invalid settings can stop monitoring while leaving a stale active toolbar | background | high | Done |
+| BUG-23 | Failed attention acknowledgement discards the unread reason | background | medium | Done |
+| BUG-26 | Monitoring retry after acknowledgement inherits an exhausted error streak | background | medium | Done |
+| BUG-28 | Concurrent monitoring requests duplicate QNAP task queries | background/performance | medium | Done |
+| BUG-27 | Every monitoring poll reads settings twice | background/performance | low | Done |
+| BUG-20 | Monitoring give-up leaves a permanently stale active toolbar | background | high | Done |
+| BUG-19 | Rapid zero snapshots can clear an active toolbar prematurely | background | high | Done |
+| BUG-18 | Rejected action writes are cached as successfully painted | background | high | Done |
+| BUG-21 | Concurrent monitoring requests can recreate and postpone the alarm | background | medium | Done |
+| BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Done |
+| BUG-15 | Captured torrent status is slow to become visible | background | medium | Done |
+| BUG-16 | Interception error badge has no defined lifetime | background | medium | Done |
 | BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
 | BUG-13 | Toolbar repaint failure aborts the NAS hand-off | background | high | Done |
 | BUG-12 | Parallel toolbar transitions lose the newer failure state | background | high | Done |
@@ -31,6 +45,197 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-25 — Worker death between pause and pending-marker write strands a download
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+`handOffToNas()` pauses the Chrome download before persisting its recovery marker. MV3 may stop
+the worker between those awaits, leaving no durable evidence for `recoverAbandonedHandoffs()`.
+Acceptance: persist recovery intent before pause, remove it when pause does not occur, and prove
+both order and cleanup with tests.
+
+**Resolved 2026-08-29** — recovery intent is persisted before pause and removed immediately when
+pause does not occur. Tests gate the pause call and assert marker ordering and cleanup.
+
+### BUG-24 — Duplicate listener releases another listener's in-flight ownership
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+A concurrent `onCreated`/`onChanged` invocation that fails `claimDownload()` still executes the
+outer `finally` and deletes the shared `inFlight` id. A third event can enter before the owner
+writes its session claim. Acceptance: only the invocation that acquired ownership may release
+the in-memory guard; a gated three-listener test must produce one NAS hand-off.
+
+**Resolved 2026-08-29** — ownership is tracked per invocation; rejected listeners cannot delete
+the owner's guard, and failed durable-claim acquisition releases only its own temporary guard.
+
+### BUG-22 — Invalid settings leave a stale active toolbar
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+If settings become invalid after an active snapshot, `pollStatus()` clears its alarm and returns
+without reconciling the visible count/icon. Acceptance: a fresh unconfigured install stays quiet,
+but previously live state becomes a persistent, readable attention state before monitoring stops.
+
+**Resolved 2026-08-29** — invalid settings replace a previously live toolbar with attention before
+clearing the alarm, while a never-configured installation remains silent.
+
+### BUG-23 — Failed attention acknowledgement discards the reason
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+`acknowledgeAttention()` clears `failureReason` even when Chrome rejects removal of the `!` badge.
+Acceptance: failed acknowledgement preserves both badge state and reason; a later successful open
+returns the same reason and clears it exactly once.
+
+**Resolved 2026-08-29** — a rejected badge clear returns but retains the reason and failure state;
+only a successful acknowledgement consumes it.
+
+### BUG-26 — Monitoring retry inherits an exhausted error streak
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+After give-up, opening the popup re-arms monitoring with `errorStreak >= ERROR_LIMIT`, so the first
+new failure immediately gives up again. Acceptance: explicit acknowledgement starts a fresh retry
+budget without letting unrelated successful work erase an unread failure.
+
+**Resolved 2026-08-29** — successful acknowledgement resets the monitoring error streak before
+reconciliation is re-armed.
+
+### BUG-28 — Concurrent monitoring requests duplicate QNAP task queries
+
+**Severity:** medium · **Area:** background/performance · **Status:** Done
+
+Parallel interception, popup and acknowledgement events could each run an immediate `Task/Query`.
+**Resolved 2026-08-29** — immediate monitoring is single-flight with dirty/rerun semantics: an
+overlap produces at most one catch-up query, so a newer mutation is reconciled rather than dropped.
+
+### BUG-27 — Every monitoring poll reads settings twice
+
+**Severity:** low · **Area:** background/performance · **Status:** Done
+
+`pollStatus()` loads settings for validation and `getClient()` loads them again. Acceptance: one
+settings snapshot must drive validation, client signature, and client creation for the whole poll;
+a test must assert one load per tick.
+
+**Resolved 2026-08-29** — validation, signature and client creation share one settings snapshot;
+tests assert a single settings load per poll.
+
+### BUG-20 — Monitoring give-up leaves a permanently stale active toolbar
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+After four failed QNAP polls the alarm stopped while the last active count/icon remained visible
+indefinitely. **Resolved 2026-08-29** — sustained monitoring failure now replaces the stale count
+with a persistent attention state explaining that Download Station is unreachable. Opening the
+popup acknowledges it and immediately re-arms reconciliation.
+
+### BUG-19 — Rapid zero snapshots can clear an active toolbar prematurely
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+Two popup snapshots could increment `zeroStreak` within milliseconds and masquerade as two
+30-second confirmations. **Resolved 2026-08-29** — idle requires two confident zeros separated by
+at least 30 seconds; a new interception resets that window. Unit and real-Chromium tests cover the
+rapid-zero and confirmed-stop paths.
+
+### BUG-18 — Rejected action writes are cached as successfully painted
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+Rejected `setBadgeText`, `setTitle`, or `setBadgeBackgroundColor` calls still updated persisted
+state, so the diff guard suppressed retries. **Resolved 2026-08-29** — every action mutation is
+awaited and cached only after success, with reject-once/retry tests for all three APIs.
+
+### BUG-21 — Concurrent monitoring requests can recreate and postpone the alarm
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+Parallel `armMonitoring()` calls could both observe no alarm and recreate the same named alarm.
+**Resolved 2026-08-29** — same-worker arming is serialized and `alarms.create()` is awaited; a
+gated concurrency test proves one creation.
+
+### BUG-17 — Context-menu actions are unclear and appear in irrelevant places
+
+**Severity:** medium · **Area:** background/UX · **Status:** Done
+**Files:** `src/background/menus.ts`, `src/background/menus.test.ts`
+
+Chrome currently registers `Send with QuickGet` for both links and arbitrary selected text, and
+`Send current page with QuickGet` for every page context. The labels do not explain what object
+will be sent, where it will go, or the difference between the two actions. The page action also
+appears away from download links and can be visible on QuickGet's own extension UI, where its
+purpose is especially unclear.
+
+**Required investigation:** enumerate the useful user journeys (torrent link, magnet, direct file
+URL, selected URL and current-page URL); decide whether current-page sending is a real supported
+feature or accidental surface area; test Chrome `documentUrlPatterns`/`targetUrlPatterns` limits;
+exclude extension and unsupported schemes where possible; and replace the labels with explicit
+object/action wording. The menu must not imply that arbitrary page content is sent when the
+implementation only passes `tab.url`, and invalid selected text should not be presented as a
+working action if Chrome cannot conditionally validate it.
+
+**Reported 2026-08-29** — users cannot infer the distinction between `Send with QuickGet` and
+`Send current page with QuickGet`; both appear in unexpectedly broad contexts, including the
+extension itself.
+
+**Resolved 2026-08-29** — retained one link-only action named `Send link to Download Station`.
+Removed the page and selected-text actions, restricted the menu to web documents, and reject
+non-HTTP(S)/magnet targets before contacting the NAS.
+
+---
+
+### BUG-15 — Captured torrent status is slow to become visible
+
+**Severity:** medium · **Area:** background · **Status:** Done
+**Files:** `src/background/downloads.ts`, `src/background/actions.ts`, `src/background/alarms.ts`
+
+After Chrome captures a torrent, the toolbar/popup can keep showing the previous state for a
+noticeable time. Establish a timestamped real-browser trace for `onCreated → pause → AddTorrent →
+Task/Query → chrome.action repaint → popup render` and separate delays owned by QuickGet from
+Download Station visibility lag and Chrome/MV3 scheduling limits.
+
+**Required investigation:** determine whether QuickGet can publish an immediate explicit
+`Sending to NAS`/working state before the NAS task becomes queryable; measure whether status
+changes are skipped by the toolbar state cache, the 30-second alarm cadence, service-worker
+suspension, popup polling, or QNAP eventual consistency. Document unavoidable platform limits
+and add deterministic tests for every improvement that remains under our control.
+
+**Reported 2026-08-29** — the captured torrent is handed off, but the visible status changes too
+late for the user to understand that processing has started.
+
+**Resolved 2026-08-29** — hand-off publishes the active working state (`Sending torrent to QNAP…`)
+before contacting the NAS, then starts an immediate catch-up query instead of waiting for the
+30-second alarm. Two zero snapshots separated by at least 30 seconds are required before returning
+to idle. Unit and real-Chromium tests cover immediate visibility, rapid-zero resilience and
+single-flight monitoring.
+
+---
+
+### BUG-16 — Interception error badge has no defined lifetime
+
+**Severity:** medium · **Area:** background · **Status:** Done
+**Files:** `src/background/actions.ts`, `src/background/notifier.ts`, `src/background/alarms.ts`
+
+The red `!` after a failed torrent interception has no documented product lifetime. It is unclear
+whether it should persist until explicit acknowledgement, disappear after a timeout, clear after
+the next successful hand-off, or remain until the underlying failure is demonstrably resolved.
+
+**Required investigation:** compare error-state lifecycles in Chrome/Edge downloads, QNAP,
+Synology and established torrent clients; distinguish transient interception failures from
+persistent NAS connectivity/configuration failures; define acknowledgement, timeout and recovery
+rules that do not hide a failure before the user can notice it. Cover MV3 restarts, concurrent
+success/failure ordering and stale persisted toolbar state with tests before changing behaviour.
+
+**Reported 2026-08-29** — the user expected the interception error to remain visible only for a
+bounded time, but the intended behaviour and competing conventions have not been established.
+
+**Resolved 2026-08-29** — product rule: the error has no timer. Its reason is persisted for the
+browser session and the red `!` remains until the popup is opened. Opening the popup atomically
+returns the reason for the top error pill and acknowledges the toolbar alarm; later successful
+handoffs and background polls cannot erase an unread failure.
+
+---
 
 ### BUG-14 — Context-menu sends omit working and failure toolbar states
 

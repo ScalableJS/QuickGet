@@ -2,7 +2,9 @@ export type Vendor = "synology" | "qnap";
 
 export type TaskStatus =
   | "queued"
+  | "queuedChecking"
   | "downloading"
+  | "downloadingMetadata"
   | "seeding"
   | "paused"
   | "stopped"
@@ -10,6 +12,8 @@ export type TaskStatus =
   | "repairing"
   | "extracting"
   | "finishing"
+  | "moving"
+  | "allocating"
   | "finished"
   | "error";
 
@@ -41,12 +45,16 @@ export interface Task {
  */
 export const IN_PROGRESS_STATUSES: readonly TaskStatus[] = [
   "queued",
+  "queuedChecking",
   "downloading",
+  "downloadingMetadata",
   "paused",
   "checking",
   "repairing",
   "extracting",
   "finishing",
+  "moving",
+  "allocating",
 ];
 
 export function isInProgress(status: TaskStatus): boolean {
@@ -98,7 +106,9 @@ const synologyToUnified: Record<string, TaskStatus> = {
 const qnapToUnified: Record<string, TaskStatus> = {
   queued: "queued",
   waiting: "queued",
+  "queued for checking": "queuedChecking",
   downloading: "downloading",
+  "downloading metadata": "downloadingMetadata",
   seeding: "seeding",
   paused: "paused",
   stopped: "stopped",
@@ -106,6 +116,8 @@ const qnapToUnified: Record<string, TaskStatus> = {
   repairing: "repairing",
   extracting: "extracting",
   finishing: "finishing",
+  moving: "moving",
+  allocating: "allocating",
   finished: "finished",
   complete: "finished",
   error: "error",
@@ -147,22 +159,20 @@ const synologyNumericStates: Record<number, TaskStatus> = {
 };
 
 const qnapNumericStates: Record<number, TaskStatus> = {
+  // Download Station 5.10.2: DS.TASK_STATUS in the installed opt/www/libs/ds-all.js.
+  // Keep this exhaustive contract covered by tasks.test.ts; do not infer states from activity/progress.
   0: "queued",
-  1: "queued", // may be overridden to "paused" later based on progress
-  2: "downloading",
-  3: "paused",
+  1: "paused",
+  2: "stopped",
+  3: "moving",
   4: "error",
   5: "finished",
-  6: "downloading",
-  7: "error",
-  8: "finishing",
-  9: "checking",
   100: "seeding",
-  101: "checking",
+  101: "queuedChecking",
   102: "checking",
-  103: "finishing",
+  103: "downloadingMetadata",
   104: "downloading",
-  105: "seeding",
+  105: "allocating",
 };
 
 type RawTaskRecord = Record<string, unknown>;
@@ -270,42 +280,12 @@ const normalizeQnap = (input: unknown): Task => {
 
   const progress = hasValidProgress ? rawProgress : calculatedProgress;
 
-  let status = mapStatus("qnap", readString(task.status ?? task.state ?? "", ""));
+  const status = mapStatus("qnap", readString(task.status ?? task.state ?? "", ""));
 
-  const activityTime = readNumber(task.activity_time, -1);
   const downRate = readNumber(task.down_rate ?? task.download_speed, 0);
   const upRate = readNumber(task.up_rate ?? task.upload_speed, 0);
-  const rawState = readNumber(task.status ?? task.state, 0);
   const peers = readNumber(task.peers ?? task.peers_connected, 0);
   const seeds = readNumber(task.seeds ?? task.seeds_connected, 0);
-
-  if (rawState === 3 && progress >= 99 && activityTime > 0) {
-    status = "finishing";
-  } else if (rawState === 1 && progress > 0) {
-    status = "paused";
-  }
-
-  if (
-    (rawState === 2 || rawState === 6 || rawState === 104 || rawState === 102) &&
-    activityTime === 0 &&
-    downRate === 0 &&
-    upRate === 0 &&
-    progress < 100
-  ) {
-    status = "stopped";
-  }
-
-  if (
-    rawState === 102 &&
-    progress > 0 &&
-    progress < 100 &&
-    downRate === 0 &&
-    peers === 0 &&
-    seeds === 0 &&
-    activityTime > 0
-  ) {
-    status = "queued";
-  }
 
   const seedsTotal = parseNumber(task.seeds_total);
   const peersTotal = parseNumber(task.peers_total);

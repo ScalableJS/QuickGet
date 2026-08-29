@@ -39,6 +39,7 @@ const CONFIG_BADGE_COLOR = "#D93025";
 
 // Consecutive confirmed-zero polls required before the badge clears.
 const ZERO_CONFIRM = 2;
+const ZERO_CONFIRM_MS = 30_000;
 
 // Consecutive failed polls before we stop the loop. ~2 min at the 30s period —
 // rides out a brief NAS blip, but doesn't poll a truly unreachable NAS forever.
@@ -49,10 +50,12 @@ type IconState = "active" | "idle";
 type ToolbarState = {
   badgeText: string;
   icon: IconState | null;
-  colorSet: boolean;
+  badgeColor: "green" | "red" | null;
   title: string;
+  failureReason: string | null;
   failureRevision: number;
   zeroStreak: number;
+  firstZeroAt: number | null;
   errorStreak: number;
 };
 
@@ -60,10 +63,12 @@ const STATE_KEY = "qg:toolbarState";
 const DEFAULT_STATE: ToolbarState = {
   badgeText: "",
   icon: null,
-  colorSet: false,
+  badgeColor: null,
   title: "",
+  failureReason: null,
   failureRevision: 0,
   zeroStreak: 0,
+  firstZeroAt: null,
   errorStreak: 0,
 };
 
@@ -122,25 +127,25 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
 
     // Refresh the tooltip only when we actually apply a state — during an idle
     // hold the tooltip keeps matching the count still on the badge.
-    const refreshTitle = () => {
+    const refreshTitle = async () => {
       const title = buildTitle(stats);
-      if (title !== state.title) {
-        chrome.action.setTitle({ title });
+      if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
         state.title = title;
       }
     };
 
     if (stats.active > 0) {
-      if (!needsAttention) refreshTitle();
+      if (!needsAttention) await refreshTitle();
       state.zeroStreak = 0;
+      state.firstZeroAt = null;
       const text = String(stats.active);
       if (!needsAttention && text !== state.badgeText) {
-        chrome.action.setBadgeText({ text });
-        state.badgeText = text;
+        if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text }))) state.badgeText = text;
       }
-      if (!needsAttention && !state.colorSet) {
-        chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }); // green, set once
-        state.colorSet = true;
+      if (!needsAttention && state.badgeColor !== "green") {
+        if (await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }))) {
+          state.badgeColor = "green";
+        }
       }
       if (state.icon !== "active") {
         if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
@@ -151,15 +156,18 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
     }
 
     // active === 0 — hold the last badge/icon until the zeros are sustained.
-    state.zeroStreak += 1;
-    if (state.zeroStreak < ZERO_CONFIRM) {
+    const now = Date.now();
+    if (state.firstZeroAt === null) {
+      state.firstZeroAt = now;
+      state.zeroStreak = 1;
       return { active: 0, idleConfirmed: false };
     }
+    if (now - state.firstZeroAt < ZERO_CONFIRM_MS) return { active: 0, idleConfirmed: false };
+    state.zeroStreak = ZERO_CONFIRM;
 
-    if (!needsAttention) refreshTitle();
+    if (!needsAttention) await refreshTitle();
     if (!needsAttention && state.badgeText !== "") {
-      chrome.action.setBadgeText({ text: "" });
-      state.badgeText = "";
+      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
     }
     if (state.icon !== "idle") {
       if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: IDLE_ICON_PATH }))) {
@@ -171,12 +179,13 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
 }
 
 /**
- * Publish the real start of a browser-download hand-off immediately. The returned failure
- * revision lets this operation clear only an error that already existed when it started; an
- * older success can never erase a newer failure from a parallel hand-off.
+ * Publish the real start of a browser-download hand-off immediately. An existing attention
+ * badge deliberately remains until the user opens the popup and can read its reason.
  */
-export async function markInterceptionStarted(): Promise<number> {
-  return updateState(async (state) => {
+export async function markInterceptionStarted(): Promise<void> {
+  await updateState(async (state) => {
+    state.zeroStreak = 0;
+    state.firstZeroAt = null;
     // This is an explicit lifecycle event, not a poll. Repaint even when the persisted cache
     // already says active because Chrome's visible action and our cache can drift.
     if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
@@ -187,8 +196,6 @@ export async function markInterceptionStarted(): Promise<number> {
       const title = "Sending torrent to QNAP…";
       if (await tryActionUpdate("title", () => chrome.action.setTitle({ title }))) state.title = title;
     }
-
-    return state.failureRevision;
   });
 }
 
@@ -204,31 +211,38 @@ export async function markInterceptionStarted(): Promise<number> {
  */
 export async function markConfigurationProblem(reason: string): Promise<void> {
   await updateState(async (state) => {
-    state.failureRevision += 1;
-
-    if (state.badgeText !== CONFIG_BADGE) {
-      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
-        state.badgeText = CONFIG_BADGE;
-      }
-    }
-    await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR }));
-    // The next successful poll must repaint green rather than assume it is already set.
-    state.colorSet = false;
-
-    const title = `QuickGet needs attention\n${reason}`;
-    if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
-      state.title = title;
-    }
+    await applyConfigurationProblem(state, reason);
   });
 }
 
-/** Clear a configuration fault once a request succeeds. */
-export async function clearConfigurationProblem(failureRevisionAtStart: number): Promise<void> {
+/**
+ * Replace a live toolbar state with an actionable configuration failure. A new
+ * unconfigured installation is deliberately quiet: it has never shown work,
+ * so there is no stale status to correct.
+ */
+export async function markConfigurationProblemAfterActiveState(reason: string): Promise<void> {
   await updateState(async (state) => {
-    if (state.badgeText !== CONFIG_BADGE || state.failureRevision !== failureRevisionAtStart) return;
+    if (state.icon !== "active" && state.badgeText !== CONFIG_BADGE) return;
+    await applyConfigurationProblem(state, reason);
+  });
+}
 
-    if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
+/**
+ * Opening the popup is the acknowledgement: return the persisted reason so it can be read in
+ * context, then remove the toolbar alarm. The reason has no timer and survives worker sleeps.
+ */
+export async function acknowledgeAttention(): Promise<string | null> {
+  return updateState(async (state) => {
+    if (state.badgeText !== CONFIG_BADGE) return null;
+
+    const reason = state.failureReason;
+    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) return reason;
+
+    state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
+    state.failureReason = null;
+    state.errorStreak = 0;
+    return reason;
   });
 }
 
@@ -244,6 +258,11 @@ export async function noteMonitoringFailure(): Promise<{ giveUp: boolean }> {
   });
 }
 
+/** Monitoring stopped after sustained failures; never leave a cached active count looking live. */
+export async function markMonitoringUnavailable(): Promise<void> {
+  await markConfigurationProblem("Cannot reach Download Station — displayed task status may be stale.");
+}
+
 /**
  * Force the toolbar back to idle and forget the cached state. Used on explicit
  * stop / teardown (and to isolate tests).
@@ -254,4 +273,27 @@ export async function resetActionState(): Promise<void> {
   await updateState(async (state) => {
     Object.assign(state, DEFAULT_STATE, { icon: "idle" });
   });
+}
+
+async function applyConfigurationProblem(state: ToolbarState, reason: string): Promise<void> {
+  state.failureRevision += 1;
+  state.failureReason = reason;
+
+  if (state.badgeText !== CONFIG_BADGE) {
+    if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
+      state.badgeText = CONFIG_BADGE;
+    }
+  }
+  if (state.badgeColor !== "red") {
+    if (
+      await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR }))
+    ) {
+      state.badgeColor = "red";
+    }
+  }
+
+  const title = `QuickGet needs attention\n${reason}`;
+  if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
+    state.title = title;
+  }
 }

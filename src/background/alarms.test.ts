@@ -1,12 +1,17 @@
+import { loadSettings } from "@lib/settings.js";
 import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createTestSettings } from "../../tests/fixtures/settings";
 import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
 import { resetActionState } from "./actions.js";
-import { ensureMonitoring, handleAlarm } from "./alarms.js";
+import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
+
+vi.mock("@lib/settings.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@lib/settings.js")>();
+  return { ...actual, loadSettings: vi.fn(actual.loadSettings) };
+});
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
 
@@ -17,8 +22,7 @@ function loginHandler() {
 }
 
 // Minimal Task/Query job. `state` drives the unified status (104=downloading,
-// 8=finishing, 5=finished). A non-zero down_rate keeps a downloading job out of
-// the "stopped" normalization branch.
+// 3=moving, 5=finished).
 function job(state: number, overrides: Record<string, unknown> = {}) {
   return {
     hash: `H${state}`,
@@ -90,7 +94,7 @@ describe("background alarms", () => {
     server.use(
       loginHandler(),
       // downloading + finishing are in progress; finished is not → badge "2".
-      queryHandler([job(104), job(8), job(5)], () => {
+      queryHandler([job(104), job(3), job(5)], () => {
         queryHits += 1;
       }),
       http.post(`${BASE}/Task/Status`, () => {
@@ -109,7 +113,7 @@ describe("background alarms", () => {
 
   it("keeps the badge active for a finishing task (regression: cleared too early)", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
-    server.use(loginHandler(), queryHandler([job(8)]));
+    server.use(loginHandler(), queryHandler([job(3)]));
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
 
@@ -125,13 +129,18 @@ describe("background alarms", () => {
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeDefined(); // one zero is not trusted
 
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeUndefined(); // confirmed idle → alarm cleared
   });
 
   it("gives up polling after repeated failures (unreachable NAS), not forever", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
-    server.use(loginHandler(), http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })),
+    );
 
     // ERROR_LIMIT is 4: the first three failures keep polling, the fourth stops.
     for (let i = 0; i < 3; i += 1) {
@@ -140,6 +149,26 @@ describe("background alarms", () => {
     }
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeUndefined();
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+  });
+
+  it("serializes concurrent arm requests into one alarm creation", async () => {
+    let releaseGet!: () => void;
+    const getGate = new Promise<void>((resolve) => {
+      releaseGet = resolve;
+    });
+    const get = vi.mocked(chrome.alarms.get);
+    get.mockImplementationOnce(async () => {
+      await getGate;
+      return undefined;
+    });
+
+    const first = armMonitoring();
+    const second = armMonitoring();
+    releaseGet();
+    await Promise.all([first, second]);
+
+    expect(chrome.alarms.create).toHaveBeenCalledTimes(1);
   });
 
   it("ensureMonitoring reflects active status immediately, before the first tick", async () => {
@@ -150,6 +179,62 @@ describe("background alarms", () => {
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "3" });
     expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
     expect(alarms["download-monitor"]).toBeDefined(); // alarm still armed
+  });
+
+  it("coalesces overlapping monitor requests into the current poll and one catch-up poll", async () => {
+    let queryHits = 0;
+    let releaseFirstQuery!: () => void;
+    let signalFirstQuery!: () => void;
+    const firstQueryGate = new Promise<void>((resolve) => {
+      releaseFirstQuery = resolve;
+    });
+    const firstQueryReached = new Promise<void>((resolve) => {
+      signalFirstQuery = resolve;
+    });
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, async () => {
+        queryHits += 1;
+        if (queryHits === 1) {
+          signalFirstQuery();
+          await firstQueryGate;
+        }
+        const tasks = queryHits === 1 ? [] : [job(104)];
+        return HttpResponse.json({ error: 0, data: tasks, total: tasks.length });
+      }),
+    );
+
+    const first = ensureMonitoring();
+    await firstQueryReached;
+    const second = ensureMonitoring();
+    const third = ensureMonitoring();
+    releaseFirstQuery();
+    await Promise.all([first, second, third]);
+
+    expect(queryHits).toBe(2);
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "1" });
+  });
+
+  it("replaces a previously active toolbar with attention when settings become invalid", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    await ensureMonitoring();
+    vi.clearAllMocks();
+
+    seedChromeStorage(createTestSettings({ NASaddress: "" }));
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: "#D93025" });
+    expect(alarms["download-monitor"]).toBeUndefined();
+  });
+
+  it("loads one settings snapshot for each monitoring tick", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    vi.mocked(loadSettings).mockClear();
+
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(loadSettings).toHaveBeenCalledTimes(1);
   });
 });
 

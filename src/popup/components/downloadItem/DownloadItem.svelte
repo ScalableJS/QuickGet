@@ -50,7 +50,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-<article
+<div
   bind:this={el}
   class={[
     "download-item flex flex-col [@media(min-width:601px)]:flex-row p-[var(--space-3)] border rounded-[var(--radius)] text-[var(--torrent-text-primary)] transition-[background,border-color] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--color-primary-visual)] focus-visible:outline-offset-2",
@@ -87,14 +87,19 @@
       <p class="download-added m-0 text-12px text-[var(--color-text-secondary)]">Added {view.addedText}</p>
     {/if}
     <div class="download-meta flex items-center gap-[var(--spacing-sm)] min-w-0">
-      <span class="download-status inline-flex items-center gap-[var(--space-1)] min-w-0 text-[var(--torrent-text-secondary)] text-12px whitespace-nowrap">
+      <span
+        class={[
+          "download-status inline-flex items-center gap-[var(--space-1)] min-w-0 text-12px whitespace-nowrap",
+          task.status === "error" ? "text-[var(--torrent-text-error)]" : "text-[var(--torrent-text-secondary)]",
+        ]}
+      >
         {view.statusLabel}:
       </span>
       <span
         class={[
           "download-speed inline-flex items-center gap-[var(--space-1)] text-12px text-right flex-none whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3 [&>svg]:flex-none",
           task.status === "error"
-            ? "text-[color-mix(in_srgb,var(--torrent-text-error)_60%,var(--color-text))]"
+            ? "text-[var(--torrent-text-error)]"
             : "text-[var(--torrent-text-secondary)]",
         ]}
         aria-label={view.speedLabel}
@@ -122,7 +127,7 @@
       <span class="progress-icon text-12px leading-none flex-none inline-flex items-center justify-center" aria-label={view.statusLabel}>
         <StatusIcon status={task.status} />
       </span>
-      <ProgressBar value={view.progress} variant={view.progressVariant} inline />
+      <ProgressBar value={view.progress} label={`${view.statusLabel} progress`} variant={view.progressVariant} inline />
     </div>
     {#if canChooseFiles}
       <DisclosureButton
@@ -142,4 +147,4 @@
       {/if}
     {/if}
   </div>
-</article>
+</div>

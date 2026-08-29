@@ -322,6 +322,49 @@ describe("download interception", () => {
     expect(downloads.cancel).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the first listener's in-flight ownership while duplicate listeners return", async () => {
+    // A must wait before it persists the durable claim. B sees A's synchronous in-memory
+    // claim and returns. C then proves whether B incorrectly released A's ownership in its
+    // outer finally: only A is allowed to make the NAS hand-off.
+    seedChromeStorage(createTestSettings());
+    const nas = mockSuccessfulHandoff();
+    const item = createDownloadItem({ id: 87 });
+
+    let releaseClaimWrite!: () => void;
+    let signalClaimWriteReached!: () => void;
+    const claimWriteGate = new Promise<void>((resolve) => {
+      releaseClaimWrite = resolve;
+    });
+    const claimWriteReached = new Promise<void>((resolve) => {
+      signalClaimWriteReached = resolve;
+    });
+    const sessionSet = vi.mocked(chrome.storage.session.set);
+    const originalSessionSet = sessionSet.getMockImplementation();
+    sessionSet.mockImplementationOnce(async (items, callback) => {
+      if (Object.getOwnPropertyDescriptor(items, "qg-claimed-87")?.value === true) {
+        signalClaimWriteReached();
+        await claimWriteGate;
+      }
+      originalSessionSet?.(items, callback);
+    });
+
+    const first = handleDownloadCreated(item);
+    await claimWriteReached;
+    await handleDownloadCreated(item);
+    const third = handleDownloadCreated(item);
+
+    // Keep A's claim write blocked through one event-loop turn. The broken ownership release
+    // lets C reach the NAS in that window; a correct one leaves C rejected by A's in-flight
+    // guard without needing timing assumptions about the NAS mock.
+    await new Promise((resolve) => setTimeout(resolve));
+
+    releaseClaimWrite();
+    await Promise.all([first, third]);
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledTimes(1);
+  });
+
   it("releases a download abandoned by a service worker that died mid-hand-off", async () => {
     seedChromeSessionStorage({ "qg-pending-7": true, sessionNASpassword: "secret" });
 
@@ -340,6 +383,32 @@ describe("download interception", () => {
     await handleDownloadCreated(createDownloadItem());
 
     expect(getChromeSessionStorageSnapshot()["qg-pending-1"]).toBeUndefined();
+  });
+
+  it("records recovery intent before pausing the browser download", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+
+    await handleDownloadCreated(createDownloadItem({ id: 88 }));
+
+    const pendingWrite = vi
+      .mocked(chrome.storage.session.set)
+      .mock.calls.findIndex(([items]) => Object.getOwnPropertyDescriptor(items, "qg-pending-88")?.value === true);
+    expect(pendingWrite).toBeGreaterThanOrEqual(0);
+    const pendingWriteOrder = vi.mocked(chrome.storage.session.set).mock.invocationCallOrder[pendingWrite];
+    const pauseOrder = downloads.pause.mock.invocationCallOrder[0];
+    expect(pendingWriteOrder).toBeLessThan(pauseOrder);
+  });
+
+  it("removes recovery intent when Chrome cannot pause the browser download", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+    downloads.pause.mockRejectedValueOnce(new Error("download already complete"));
+
+    await handleDownloadCreated(createDownloadItem({ id: 89 }));
+
+    expect(getChromeSessionStorageSnapshot()["qg-pending-89"]).toBeUndefined();
+    expect(chrome.storage.session.remove).toHaveBeenCalledWith("qg-pending-89");
   });
 
   it("leaves the download alone when the NAS address is not configured", async () => {
@@ -710,7 +779,7 @@ describe("download interception — configuration is visible", () => {
     expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
   });
 
-  it("clears the fault once a hand-off succeeds", async () => {
+  it("keeps the fault until the user opens the popup even after a later hand-off succeeds", async () => {
     seedChromeStorage(createTestSettings());
     seedChromeSessionStorage({ "qg:toolbarState": { badgeText: "!", title: "old", colorSet: false } });
     mockSuccessfulHandoff();
@@ -718,7 +787,7 @@ describe("download interception — configuration is visible", () => {
 
     await handleDownloadCreated(createDownloadItem({ id: 74 }));
 
-    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+    expect(action.setBadgeText).not.toHaveBeenCalledWith({ text: "" });
   });
 });
 
