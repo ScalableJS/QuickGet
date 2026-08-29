@@ -65,8 +65,8 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
   };
 }
 
-async function startSession() {
-  const torrentHost = await startTorrentHost(torrentFixture, { bodyDelayMs: BODY_DELAY_MS });
+async function startSession(options: { bodyDelayMs?: number } = {}) {
+  const torrentHost = await startTorrentHost(torrentFixture, options);
   const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-downloads-"));
   const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
   return { torrentHost, session };
@@ -74,7 +74,7 @@ async function startSession() {
 
 test("hands the torrent to the NAS and only then cancels the browser download", async () => {
   const mockNas = await startMockNas();
-  const { torrentHost, session } = await startSession();
+  const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS });
 
   try {
     await seedSettings(session.worker, nasSettings(mockNas.port));
@@ -134,8 +134,18 @@ test("returns the toolbar to idle only after completion is confirmed twice", asy
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
+    // This is a toolbar-state test, not a configuration/monitoring test. Let the popup's initial
+    // unconfigured refresh finish, then remove that context so BUG-22 cannot correctly replace
+    // our synthetic active state with an attention badge mid-assertion.
+    await session.page.close();
+    await expect
+      .poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor")))
+      .toBeUndefined();
+    const messagePage = await session.context.newPage();
+    await messagePage.goto(`chrome-extension://${session.extensionId}/manifest.json`);
+
     const sendSnapshot = (active: number) =>
-      session.page.evaluate((count) =>
+      messagePage.evaluate((count) =>
         chrome.runtime.sendMessage({
           type: "qg:badgeSnapshot",
           stats: { active: count, all: count, downRate: 0, upRate: 0 },

@@ -194,6 +194,38 @@ describe("applyBadgeStats", () => {
     await expect(acknowledgeAttention()).resolves.toBeNull();
   });
 
+  it("preserves unread attention when Chrome rejects its acknowledgement, then clears it on retry", async () => {
+    const reason = "Download Station rejected the torrent";
+    await markConfigurationProblem(reason);
+    vi.clearAllMocks();
+    vi.mocked(chrome.action.setBadgeText).mockRejectedValueOnce(new Error("action unavailable"));
+
+    await expect(acknowledgeAttention()).resolves.toBe(reason);
+
+    const afterFailedAcknowledgement = await chrome.storage.session.get("qg:toolbarState");
+    expect(afterFailedAcknowledgement["qg:toolbarState"]).toEqual(
+      expect.objectContaining({ badgeText: "!", failureReason: reason }),
+    );
+
+    await expect(acknowledgeAttention()).resolves.toBe(reason);
+    const afterSuccessfulAcknowledgement = await chrome.storage.session.get("qg:toolbarState");
+    expect(afterSuccessfulAcknowledgement["qg:toolbarState"]).toEqual(
+      expect.objectContaining({ badgeText: "", failureReason: null }),
+    );
+  });
+
+  it("resets an exhausted monitoring retry budget only after attention is acknowledged", async () => {
+    await noteMonitoringFailure();
+    await noteMonitoringFailure();
+    await noteMonitoringFailure();
+    await noteMonitoringFailure();
+    await markConfigurationProblem("Cannot reach Download Station");
+
+    await acknowledgeAttention();
+
+    expect((await noteMonitoringFailure()).giveUp).toBe(false);
+  });
+
   it("does not let an overlapping NAS poll erase a newer red failure", async () => {
     let releaseIcon!: () => void;
     let signalIconReached!: () => void;

@@ -13,12 +13,19 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-25 | Losing the worker between pause and pending-marker write strands a browser download | background | high | Done |
+| BUG-24 | Rejected duplicate listener can release another listener's in-flight ownership | background | high | Done |
+| BUG-22 | Invalid settings can stop monitoring while leaving a stale active toolbar | background | high | Done |
+| BUG-23 | Failed attention acknowledgement discards the unread reason | background | medium | Done |
+| BUG-26 | Monitoring retry after acknowledgement inherits an exhausted error streak | background | medium | Done |
+| BUG-28 | Concurrent monitoring requests duplicate QNAP task queries | background/performance | medium | Done |
+| BUG-27 | Every monitoring poll reads settings twice | background/performance | low | Done |
 | BUG-20 | Monitoring give-up leaves a permanently stale active toolbar | background | high | Done |
 | BUG-19 | Rapid zero snapshots can clear an active toolbar prematurely | background | high | Done |
 | BUG-18 | Rejected action writes are cached as successfully painted | background | high | Done |
 | BUG-21 | Concurrent monitoring requests can recreate and postpone the alarm | background | medium | Done |
 | BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Done |
-| BUG-15 | Captured torrent status is slow to become visible | background | medium | Backlog |
+| BUG-15 | Captured torrent status is slow to become visible | background | medium | Done |
 | BUG-16 | Interception error badge has no defined lifetime | background | medium | Done |
 | BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
 | BUG-13 | Toolbar repaint failure aborts the NAS hand-off | background | high | Done |
@@ -38,6 +45,82 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-25 — Worker death between pause and pending-marker write strands a download
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+`handOffToNas()` pauses the Chrome download before persisting its recovery marker. MV3 may stop
+the worker between those awaits, leaving no durable evidence for `recoverAbandonedHandoffs()`.
+Acceptance: persist recovery intent before pause, remove it when pause does not occur, and prove
+both order and cleanup with tests.
+
+**Resolved 2026-08-29** — recovery intent is persisted before pause and removed immediately when
+pause does not occur. Tests gate the pause call and assert marker ordering and cleanup.
+
+### BUG-24 — Duplicate listener releases another listener's in-flight ownership
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+A concurrent `onCreated`/`onChanged` invocation that fails `claimDownload()` still executes the
+outer `finally` and deletes the shared `inFlight` id. A third event can enter before the owner
+writes its session claim. Acceptance: only the invocation that acquired ownership may release
+the in-memory guard; a gated three-listener test must produce one NAS hand-off.
+
+**Resolved 2026-08-29** — ownership is tracked per invocation; rejected listeners cannot delete
+the owner's guard, and failed durable-claim acquisition releases only its own temporary guard.
+
+### BUG-22 — Invalid settings leave a stale active toolbar
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+If settings become invalid after an active snapshot, `pollStatus()` clears its alarm and returns
+without reconciling the visible count/icon. Acceptance: a fresh unconfigured install stays quiet,
+but previously live state becomes a persistent, readable attention state before monitoring stops.
+
+**Resolved 2026-08-29** — invalid settings replace a previously live toolbar with attention before
+clearing the alarm, while a never-configured installation remains silent.
+
+### BUG-23 — Failed attention acknowledgement discards the reason
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+`acknowledgeAttention()` clears `failureReason` even when Chrome rejects removal of the `!` badge.
+Acceptance: failed acknowledgement preserves both badge state and reason; a later successful open
+returns the same reason and clears it exactly once.
+
+**Resolved 2026-08-29** — a rejected badge clear returns but retains the reason and failure state;
+only a successful acknowledgement consumes it.
+
+### BUG-26 — Monitoring retry inherits an exhausted error streak
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+After give-up, opening the popup re-arms monitoring with `errorStreak >= ERROR_LIMIT`, so the first
+new failure immediately gives up again. Acceptance: explicit acknowledgement starts a fresh retry
+budget without letting unrelated successful work erase an unread failure.
+
+**Resolved 2026-08-29** — successful acknowledgement resets the monitoring error streak before
+reconciliation is re-armed.
+
+### BUG-28 — Concurrent monitoring requests duplicate QNAP task queries
+
+**Severity:** medium · **Area:** background/performance · **Status:** Done
+
+Parallel interception, popup and acknowledgement events could each run an immediate `Task/Query`.
+**Resolved 2026-08-29** — immediate monitoring is single-flight with dirty/rerun semantics: an
+overlap produces at most one catch-up query, so a newer mutation is reconciled rather than dropped.
+
+### BUG-27 — Every monitoring poll reads settings twice
+
+**Severity:** low · **Area:** background/performance · **Status:** Done
+
+`pollStatus()` loads settings for validation and `getClient()` loads them again. Acceptance: one
+settings snapshot must drive validation, client signature, and client creation for the whole poll;
+a test must assert one load per tick.
+
+**Resolved 2026-08-29** — validation, signature and client creation share one settings snapshot;
+tests assert a single settings load per poll.
 
 ### BUG-20 — Monitoring give-up leaves a permanently stale active toolbar
 
@@ -121,11 +204,17 @@ and add deterministic tests for every improvement that remains under our control
 **Reported 2026-08-29** — the captured torrent is handed off, but the visible status changes too
 late for the user to understand that processing has started.
 
+**Resolved 2026-08-29** — hand-off publishes the active working state (`Sending torrent to QNAP…`)
+before contacting the NAS, then starts an immediate catch-up query instead of waiting for the
+30-second alarm. Two zero snapshots separated by at least 30 seconds are required before returning
+to idle. Unit and real-Chromium tests cover immediate visibility, rapid-zero resilience and
+single-flight monitoring.
+
 ---
 
 ### BUG-16 — Interception error badge has no defined lifetime
 
-**Severity:** medium · **Area:** background · **Status:** Backlog
+**Severity:** medium · **Area:** background · **Status:** Done
 **Files:** `src/background/actions.ts`, `src/background/notifier.ts`, `src/background/alarms.ts`
 
 The red `!` after a failed torrent interception has no documented product lifetime. It is unclear

@@ -196,7 +196,6 @@ export async function markInterceptionStarted(): Promise<void> {
       const title = "Sending torrent to QNAP…";
       if (await tryActionUpdate("title", () => chrome.action.setTitle({ title }))) state.title = title;
     }
-
   });
 }
 
@@ -212,24 +211,19 @@ export async function markInterceptionStarted(): Promise<void> {
  */
 export async function markConfigurationProblem(reason: string): Promise<void> {
   await updateState(async (state) => {
-    state.failureRevision += 1;
-    state.failureReason = reason;
+    await applyConfigurationProblem(state, reason);
+  });
+}
 
-    if (state.badgeText !== CONFIG_BADGE) {
-      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
-        state.badgeText = CONFIG_BADGE;
-      }
-    }
-    if (state.badgeColor !== "red") {
-      if (await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR }))) {
-        state.badgeColor = "red";
-      }
-    }
-
-    const title = `QuickGet needs attention\n${reason}`;
-    if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
-      state.title = title;
-    }
+/**
+ * Replace a live toolbar state with an actionable configuration failure. A new
+ * unconfigured installation is deliberately quiet: it has never shown work,
+ * so there is no stale status to correct.
+ */
+export async function markConfigurationProblemAfterActiveState(reason: string): Promise<void> {
+  await updateState(async (state) => {
+    if (state.icon !== "active" && state.badgeText !== CONFIG_BADGE) return;
+    await applyConfigurationProblem(state, reason);
   });
 }
 
@@ -242,9 +236,12 @@ export async function acknowledgeAttention(): Promise<string | null> {
     if (state.badgeText !== CONFIG_BADGE) return null;
 
     const reason = state.failureReason;
-    if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
+    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) return reason;
+
+    state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
     state.failureReason = null;
+    state.errorStreak = 0;
     return reason;
   });
 }
@@ -276,4 +273,27 @@ export async function resetActionState(): Promise<void> {
   await updateState(async (state) => {
     Object.assign(state, DEFAULT_STATE, { icon: "idle" });
   });
+}
+
+async function applyConfigurationProblem(state: ToolbarState, reason: string): Promise<void> {
+  state.failureRevision += 1;
+  state.failureReason = reason;
+
+  if (state.badgeText !== CONFIG_BADGE) {
+    if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
+      state.badgeText = CONFIG_BADGE;
+    }
+  }
+  if (state.badgeColor !== "red") {
+    if (
+      await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: CONFIG_BADGE_COLOR }))
+    ) {
+      state.badgeColor = "red";
+    }
+  }
+
+  const title = `QuickGet needs attention\n${reason}`;
+  if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
+    state.title = title;
+  }
 }

@@ -1,12 +1,17 @@
+import { loadSettings } from "@lib/settings.js";
 import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createTestSettings } from "../../tests/fixtures/settings";
 import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
 import { resetActionState } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
+
+vi.mock("@lib/settings.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@lib/settings.js")>();
+  return { ...actual, loadSettings: vi.fn(actual.loadSettings) };
+});
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
 
@@ -132,7 +137,10 @@ describe("background alarms", () => {
 
   it("gives up polling after repeated failures (unreachable NAS), not forever", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
-    server.use(loginHandler(), http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })),
+    );
 
     // ERROR_LIMIT is 4: the first three failures keep polling, the fourth stops.
     for (let i = 0; i < 3; i += 1) {
@@ -171,6 +179,62 @@ describe("background alarms", () => {
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "3" });
     expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
     expect(alarms["download-monitor"]).toBeDefined(); // alarm still armed
+  });
+
+  it("coalesces overlapping monitor requests into the current poll and one catch-up poll", async () => {
+    let queryHits = 0;
+    let releaseFirstQuery!: () => void;
+    let signalFirstQuery!: () => void;
+    const firstQueryGate = new Promise<void>((resolve) => {
+      releaseFirstQuery = resolve;
+    });
+    const firstQueryReached = new Promise<void>((resolve) => {
+      signalFirstQuery = resolve;
+    });
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, async () => {
+        queryHits += 1;
+        if (queryHits === 1) {
+          signalFirstQuery();
+          await firstQueryGate;
+        }
+        const tasks = queryHits === 1 ? [] : [job(104)];
+        return HttpResponse.json({ error: 0, data: tasks, total: tasks.length });
+      }),
+    );
+
+    const first = ensureMonitoring();
+    await firstQueryReached;
+    const second = ensureMonitoring();
+    const third = ensureMonitoring();
+    releaseFirstQuery();
+    await Promise.all([first, second, third]);
+
+    expect(queryHits).toBe(2);
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "1" });
+  });
+
+  it("replaces a previously active toolbar with attention when settings become invalid", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    await ensureMonitoring();
+    vi.clearAllMocks();
+
+    seedChromeStorage(createTestSettings({ NASaddress: "" }));
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: "#D93025" });
+    expect(alarms["download-monitor"]).toBeUndefined();
+  });
+
+  it("loads one settings snapshot for each monitoring tick", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    vi.mocked(loadSettings).mockClear();
+
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(loadSettings).toHaveBeenCalledTimes(1);
   });
 });
 
