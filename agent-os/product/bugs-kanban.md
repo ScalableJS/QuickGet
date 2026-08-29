@@ -13,6 +13,10 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-20 | Monitoring give-up leaves a permanently stale active toolbar | background | high | Done |
+| BUG-19 | Rapid zero snapshots can clear an active toolbar prematurely | background | high | Done |
+| BUG-18 | Rejected action writes are cached as successfully painted | background | high | Done |
+| BUG-21 | Concurrent monitoring requests can recreate and postpone the alarm | background | medium | Done |
 | BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Done |
 | BUG-15 | Captured torrent status is slow to become visible | background | medium | Backlog |
 | BUG-16 | Interception error badge has no defined lifetime | background | medium | Done |
@@ -34,6 +38,40 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-20 — Monitoring give-up leaves a permanently stale active toolbar
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+After four failed QNAP polls the alarm stopped while the last active count/icon remained visible
+indefinitely. **Resolved 2026-08-29** — sustained monitoring failure now replaces the stale count
+with a persistent attention state explaining that Download Station is unreachable. Opening the
+popup acknowledges it and immediately re-arms reconciliation.
+
+### BUG-19 — Rapid zero snapshots can clear an active toolbar prematurely
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+Two popup snapshots could increment `zeroStreak` within milliseconds and masquerade as two
+30-second confirmations. **Resolved 2026-08-29** — idle requires two confident zeros separated by
+at least 30 seconds; a new interception resets that window. Unit and real-Chromium tests cover the
+rapid-zero and confirmed-stop paths.
+
+### BUG-18 — Rejected action writes are cached as successfully painted
+
+**Severity:** high · **Area:** background · **Status:** Done
+
+Rejected `setBadgeText`, `setTitle`, or `setBadgeBackgroundColor` calls still updated persisted
+state, so the diff guard suppressed retries. **Resolved 2026-08-29** — every action mutation is
+awaited and cached only after success, with reject-once/retry tests for all three APIs.
+
+### BUG-21 — Concurrent monitoring requests can recreate and postpone the alarm
+
+**Severity:** medium · **Area:** background · **Status:** Done
+
+Parallel `armMonitoring()` calls could both observe no alarm and recreate the same named alarm.
+**Resolved 2026-08-29** — same-worker arming is serialized and `alarms.create()` is awaited; a
+gated concurrency test proves one creation.
 
 ### BUG-17 — Context-menu actions are unclear and appear in irrelevant places
 

@@ -4,6 +4,7 @@ import {
   acknowledgeAttention,
   applyBadgeStats,
   markConfigurationProblem,
+  markInterceptionStarted,
   noteMonitoringFailure,
   resetActionState,
 } from "./actions.js";
@@ -14,6 +15,11 @@ const stats = (active: number, extra: Partial<{ all: number; downRate: number; u
   downRate: extra.downRate ?? 0,
   upRate: extra.upRate ?? 0,
 });
+
+const elapseZeroConfirmation = (): void => {
+  const now = Date.now();
+  vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
+};
 
 describe("applyBadgeStats", () => {
   beforeEach(async () => {
@@ -63,6 +69,7 @@ describe("applyBadgeStats", () => {
     vi.clearAllMocks();
 
     await applyBadgeStats(stats(0)); // 1st zero — held
+    elapseZeroConfirmation();
     const result = await applyBadgeStats(stats(0)); // 2nd zero — confirmed idle
 
     expect(result.idleConfirmed).toBe(true);
@@ -91,9 +98,52 @@ describe("applyBadgeStats", () => {
     // Simulate a fresh worker: module globals would be gone, but session storage
     // (and the real toolbar) still hold "3". Two zeros must clear it, not skip it.
     await applyBadgeStats(stats(0));
+    elapseZeroConfirmation();
     await applyBadgeStats(stats(0));
 
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+  });
+
+  it("does not treat two rapid popup snapshots as sustained idle", async () => {
+    await applyBadgeStats(stats(1));
+    await applyBadgeStats(stats(0));
+
+    const result = await applyBadgeStats(stats(0));
+
+    expect(result.idleConfirmed).toBe(false);
+    expect(chrome.action.setBadgeText).not.toHaveBeenLastCalledWith({ text: "" });
+  });
+
+  it("starts a fresh zero-confirmation window for a newly intercepted torrent", async () => {
+    await applyBadgeStats(stats(0));
+    elapseZeroConfirmation();
+
+    await markInterceptionStarted();
+    const result = await applyBadgeStats(stats(0));
+
+    expect(result.idleConfirmed).toBe(false);
+    const stored = await chrome.storage.session.get("qg:toolbarState");
+    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ icon: "active", zeroStreak: 1 }));
+  });
+
+  it("retries rejected badge, title, and color writes on the same snapshot", async () => {
+    vi.mocked(chrome.action.setBadgeText).mockRejectedValueOnce(new Error("badge unavailable"));
+    vi.mocked(chrome.action.setTitle).mockRejectedValueOnce(new Error("title unavailable"));
+    vi.mocked(chrome.action.setBadgeBackgroundColor).mockRejectedValueOnce(new Error("color unavailable"));
+
+    await applyBadgeStats(stats(2));
+    await applyBadgeStats(stats(2));
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledTimes(2);
+    expect(chrome.action.setTitle).toHaveBeenCalledTimes(2);
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repaint an already-red badge for repeated failures", async () => {
+    await markConfigurationProblem("first failure");
+    await markConfigurationProblem("second failure");
+
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledTimes(1);
   });
 
   it("noteMonitoringFailure gives up only after ERROR_LIMIT consecutive failures", async () => {

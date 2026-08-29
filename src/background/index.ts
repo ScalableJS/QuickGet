@@ -99,7 +99,10 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
 
   if (type === ACKNOWLEDGE_ATTENTION_MESSAGE) {
     void acknowledgeAttention()
-      .then((reason) => sendResponse({ reason } satisfies AttentionResponse))
+      .then((reason) => {
+        sendResponse({ reason } satisfies AttentionResponse);
+        if (reason) void ensureMonitoring();
+      })
       .catch((error) => {
         console.error("[QuickGet] could not acknowledge toolbar attention:", error);
         sendResponse({ reason: null } satisfies AttentionResponse);

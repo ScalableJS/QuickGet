@@ -18,12 +18,13 @@ import { findConfigProblem } from "@lib/configHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
-import { applyBadgeStats, noteMonitoringFailure } from "./actions.js";
+import { applyBadgeStats, markMonitoringUnavailable, noteMonitoringFailure } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
 
 let clientCache: { signature: string; client: ApiClient } | null = null;
+let armQueue = Promise.resolve();
 
 async function getClient(): Promise<ApiClient> {
   const settings = await loadSettings();
@@ -42,13 +43,16 @@ async function getClient(): Promise<ApiClient> {
  * armed alarm is a no-op rather than a reset.
  */
 export async function armMonitoring(): Promise<void> {
-  const existing = await chrome.alarms.get(ALARM_NAME);
-  if (!existing) {
-    chrome.alarms.create(ALARM_NAME, {
+  const operation = armQueue.then(async () => {
+    const existing = await chrome.alarms.get(ALARM_NAME);
+    if (existing) return;
+    await chrome.alarms.create(ALARM_NAME, {
       delayInMinutes: CHECK_INTERVAL_MINUTES,
       periodInMinutes: CHECK_INTERVAL_MINUTES,
     });
-  }
+  });
+  armQueue = operation.catch(() => {});
+  await operation;
 }
 
 /**
@@ -106,6 +110,9 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     // Keep the last-known badge/icon. Give up only once failures are sustained,
     // so an unreachable NAS doesn't get polled (and logged) every 30s forever.
     const { giveUp } = await noteMonitoringFailure().catch(() => ({ giveUp: false }));
-    if (giveUp) void chrome.alarms.clear(ALARM_NAME);
+    if (giveUp) {
+      await markMonitoringUnavailable();
+      void chrome.alarms.clear(ALARM_NAME);
+    }
   }
 }

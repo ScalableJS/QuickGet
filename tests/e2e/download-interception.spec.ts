@@ -85,7 +85,7 @@ test("hands the torrent to the NAS and only then cancels the browser download", 
         "qg:toolbarState": {
           badgeText: "",
           icon: "active",
-          colorSet: false,
+          badgeColor: null,
           title: "Sending torrent to QNAP…",
           failureRevision: 0,
           zeroStreak: 0,
@@ -150,6 +150,13 @@ test("returns the toolbar to idle only after completion is confirmed twice", asy
     await expect.poll(() => toolbarState(session.worker)).toMatchObject({ icon: "active", zeroStreak: 1 });
     expect(await actionBadge(session.worker)).toMatchObject({ text: "1" });
 
+    await session.worker.evaluate(async () => {
+      const stored = await chrome.storage.session.get("qg:toolbarState");
+      const state = stored["qg:toolbarState"] as { firstZeroAt: number };
+      await chrome.storage.session.set({
+        "qg:toolbarState": { ...state, firstZeroAt: state.firstZeroAt - 30_000 },
+      });
+    });
     await sendSnapshot(0);
     await expect.poll(() => toolbarState(session.worker)).toMatchObject({ badgeText: "", icon: "idle", zeroStreak: 2 });
     expect(await actionBadge(session.worker)).toMatchObject({ text: "" });
@@ -169,7 +176,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
         "qg:toolbarState": {
           badgeText: "",
           icon: "idle",
-          colorSet: false,
+          badgeColor: null,
           title: "",
           failureReason: null,
           failureRevision: 0,
@@ -185,6 +192,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
       const originalBadge = action.setBadgeText.bind(action);
       const originalIcon = action.setIcon.bind(action);
       const originalColor = action.setBadgeBackgroundColor.bind(action);
+      const originalTitle = action.setTitle.bind(action);
 
       action.setBadgeText = async (details) => {
         action.__qgWrites?.push({ kind: "badge", value: details.text ?? "", at: performance.now() });
@@ -197,6 +205,10 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
       action.setBadgeBackgroundColor = async (details) => {
         action.__qgWrites?.push({ kind: "color", value: String(details.color), at: performance.now() });
         return originalColor(details);
+      };
+      action.setTitle = async (details) => {
+        action.__qgWrites?.push({ kind: "title", value: details.title ?? "", at: performance.now() });
+        return originalTitle(details);
       };
     });
 
@@ -221,6 +233,13 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
     await sendAndWait(1, "1", 0); // decrement
     await sendAndWait(1, "1", 0); // duplicate
     await sendAndWait(0, "1", 1); // first zero: hysteresis, no visual write
+    await session.worker.evaluate(async () => {
+      const stored = await chrome.storage.session.get("qg:toolbarState");
+      const state = stored["qg:toolbarState"] as { firstZeroAt: number };
+      await chrome.storage.session.set({
+        "qg:toolbarState": { ...state, firstZeroAt: state.firstZeroAt - 30_000 },
+      });
+    });
     await sendAndWait(0, "", 2); // confirmed stop
 
     const measurements = await session.worker.evaluate(() => {
@@ -229,9 +248,11 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
           __qgWrites?: Array<{ kind: string; value: string; at: number }>;
         }
       ).__qgWrites ?? [];
+      const firstWriteAt = writes[0]?.at ?? 0;
+      const lastWriteAt = writes[writes.length - 1]?.at ?? 0;
       return {
         writes,
-        elapsedMs: (writes.at(-1)?.at ?? 0) - (writes.at(0)?.at ?? 0),
+        elapsedMs: lastWriteAt - firstWriteAt,
       };
     });
 
@@ -243,6 +264,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
     ]);
     expect(measurements.writes.filter(({ kind }) => kind === "icon")).toHaveLength(2);
     expect(measurements.writes.filter(({ kind }) => kind === "color")).toHaveLength(1);
+    expect(measurements.writes.filter(({ kind }) => kind === "title")).toHaveLength(4);
     expect(measurements.elapsedMs).toBeLessThan(2_000);
 
     console.log("toolbar transition measurements", measurements);

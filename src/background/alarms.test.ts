@@ -6,7 +6,7 @@ import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
 import { resetActionState } from "./actions.js";
-import { ensureMonitoring, handleAlarm } from "./alarms.js";
+import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
 
@@ -124,6 +124,8 @@ describe("background alarms", () => {
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeDefined(); // one zero is not trusted
 
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeUndefined(); // confirmed idle → alarm cleared
   });
@@ -139,6 +141,26 @@ describe("background alarms", () => {
     }
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
     expect(alarms["download-monitor"]).toBeUndefined();
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+  });
+
+  it("serializes concurrent arm requests into one alarm creation", async () => {
+    let releaseGet!: () => void;
+    const getGate = new Promise<void>((resolve) => {
+      releaseGet = resolve;
+    });
+    const get = vi.mocked(chrome.alarms.get);
+    get.mockImplementationOnce(async () => {
+      await getGate;
+      return undefined;
+    });
+
+    const first = armMonitoring();
+    const second = armMonitoring();
+    releaseGet();
+    await Promise.all([first, second]);
+
+    expect(chrome.alarms.create).toHaveBeenCalledTimes(1);
   });
 
   it("ensureMonitoring reflects active status immediately, before the first tick", async () => {
