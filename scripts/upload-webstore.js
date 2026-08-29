@@ -25,6 +25,7 @@ export async function uploadAndPublish({
   logger = console,
 } = {}) {
   const { credentials, extensionId, publisherId } = validateEnv(env);
+  let shouldUpload = true;
 
   const manifestPath = path.join(projectRoot, "manifest.json");
   const manifest = JSON.parse(readFile(manifestPath, "utf8"));
@@ -42,13 +43,25 @@ export async function uploadAndPublish({
   try {
     logger.log("📡 Querying Chrome Web Store for current version...");
     const statusInfo = await fetchStoreStatus({ extensionId, publisherId, token, fetchFn });
-    const storeVersion = extractStoreVersion(statusInfo);
-    logger.log(`🌐 Chrome Web Store version: ${storeVersion || "None (draft doesn't exist yet)"}`);
+    const { publishedVersion, submittedVersion } = extractStoreVersions(statusInfo);
+    logger.log(`🌐 Published Chrome Web Store version: ${publishedVersion || "None"}`);
+    logger.log(`📝 Submitted Chrome Web Store version: ${submittedVersion || "None"}`);
 
-    if (storeVersion && compareVersions(localVersion, storeVersion) <= 0) {
+    if (publishedVersion && compareVersions(localVersion, publishedVersion) <= 0) {
       throw new Error(
-        `Version Conflict: Local version (${localVersion}) is not greater than the store version (${storeVersion}). Please bump the version in manifest.json before deploying.`,
+        `Version Conflict: Local version (${localVersion}) is not greater than the published version (${publishedVersion}). Please bump the version in manifest.json before deploying.`,
       );
+    }
+
+    if (submittedVersion && compareVersions(localVersion, submittedVersion) < 0) {
+      throw new Error(
+        `Version Conflict: Local version (${localVersion}) is older than the submitted version (${submittedVersion}). Please reconcile the draft in the Developer Dashboard.`,
+      );
+    }
+
+    if (submittedVersion === localVersion) {
+      logger.log("⏭️ This version is already uploaded; skipping package upload and retrying publication.");
+      shouldUpload = false;
     }
     logger.log("✅ Version check passed!");
   } catch (error) {
@@ -59,17 +72,20 @@ export async function uploadAndPublish({
   }
 
   // Upload ZIP
-  logger.log("🚀 Uploading package to Chrome Web Store...");
-  const zipBuffer = readFile(zipPath);
-  const uploadResult = await uploadPackage({
-    extensionId,
-    publisherId,
-    token,
-    zipBuffer,
-    fileName: zipFileName,
-    fetchFn,
-  });
-  logger.log("✅ Upload successful!");
+  let uploadResult = { uploadState: "SKIPPED" };
+  if (shouldUpload) {
+    logger.log("🚀 Uploading package to Chrome Web Store...");
+    const zipBuffer = readFile(zipPath);
+    uploadResult = await uploadPackage({
+      extensionId,
+      publisherId,
+      token,
+      zipBuffer,
+      fileName: zipFileName,
+      fetchFn,
+    });
+    logger.log("✅ Upload successful!");
+  }
 
   // Publish
   logger.log("📢 Publishing draft version to the Chrome Web Store...");
@@ -208,13 +224,11 @@ export async function fetchStoreStatus({ extensionId, publisherId, token, fetchF
   return response.json();
 }
 
-export function extractStoreVersion(statusResponse) {
-  return (
-    statusResponse?.publishedItemRevisionStatus?.distributionChannels?.[0]?.crxVersion ||
-    statusResponse?.submittedItemRevisionStatus?.distributionChannels?.[0]?.crxVersion ||
-    statusResponse?.crxVersion ||
-    null
-  );
+export function extractStoreVersions(statusResponse) {
+  return {
+    publishedVersion: statusResponse?.publishedItemRevisionStatus?.distributionChannels?.[0]?.crxVersion || null,
+    submittedVersion: statusResponse?.submittedItemRevisionStatus?.distributionChannels?.[0]?.crxVersion || null,
+  };
 }
 
 export function findZipPackage(projectRoot, readDir = fs.readdirSync) {
@@ -337,6 +351,9 @@ export function formatApiError(status, statusText, bodyText) {
         message = json.error_description ? `${json.error}: ${json.error_description}` : json.error;
       } else if (typeof json.error === "object" && json.error.message) {
         message = json.error.message;
+        if (Array.isArray(json.error.details) && json.error.details.length > 0) {
+          message += ` Details: ${JSON.stringify(json.error.details)}`;
+        }
       }
     } else if (json.message) {
       message = json.message;
