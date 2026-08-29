@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/consistent-type-definitions */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/ban-types */
-
 /**
  * QNAP Download Station schema (inspired by Synology documentation)
  * Structured similar to openapi-typescript output for typed API helpers.
