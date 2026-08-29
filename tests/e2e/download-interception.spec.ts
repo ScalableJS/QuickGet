@@ -158,6 +158,99 @@ test("returns the toolbar to idle only after completion is confirmed twice", asy
   }
 });
 
+test("updates the toolbar once per meaningful start, count change, and confirmed stop", async () => {
+  const session = await launchExtensionPopup(extensionDistPath);
+
+  try {
+    await session.worker.evaluate(async () => {
+      await chrome.action.setBadgeText({ text: "" });
+      await chrome.action.setIcon({ path: { 32: "icons/32_download.png", 128: "icons/128_download.png" } });
+      await chrome.storage.session.set({
+        "qg:toolbarState": {
+          badgeText: "",
+          icon: "idle",
+          colorSet: false,
+          title: "",
+          failureReason: null,
+          failureRevision: 0,
+          zeroStreak: 0,
+          errorStreak: 0,
+        },
+      });
+
+      const action = chrome.action as typeof chrome.action & {
+        __qgWrites?: Array<{ kind: string; value: string; at: number }>;
+      };
+      action.__qgWrites = [];
+      const originalBadge = action.setBadgeText.bind(action);
+      const originalIcon = action.setIcon.bind(action);
+      const originalColor = action.setBadgeBackgroundColor.bind(action);
+
+      action.setBadgeText = async (details) => {
+        action.__qgWrites?.push({ kind: "badge", value: details.text ?? "", at: performance.now() });
+        return originalBadge(details);
+      };
+      action.setIcon = async (details) => {
+        action.__qgWrites?.push({ kind: "icon", value: "paint", at: performance.now() });
+        return originalIcon(details);
+      };
+      action.setBadgeBackgroundColor = async (details) => {
+        action.__qgWrites?.push({ kind: "color", value: String(details.color), at: performance.now() });
+        return originalColor(details);
+      };
+    });
+
+    const sendAndWait = async (active: number, expectedBadge: string, expectedZeroStreak: number) => {
+      await session.page.evaluate((count) => {
+        chrome.runtime.sendMessage({
+          type: "qg:badgeSnapshot",
+          stats: { active: count, all: count, downRate: 0, upRate: 0 },
+        });
+      }, active);
+      await expect.poll(() => toolbarState(session.worker)).toMatchObject({
+        badgeText: expectedBadge,
+        zeroStreak: expectedZeroStreak,
+      });
+    };
+
+    // Repeated snapshots model normal popup + alarm overlap. They must not repaint anything.
+    await sendAndWait(1, "1", 0); // start
+    await sendAndWait(1, "1", 0); // duplicate
+    await sendAndWait(2, "2", 0); // increment
+    await sendAndWait(2, "2", 0); // duplicate
+    await sendAndWait(1, "1", 0); // decrement
+    await sendAndWait(1, "1", 0); // duplicate
+    await sendAndWait(0, "1", 1); // first zero: hysteresis, no visual write
+    await sendAndWait(0, "", 2); // confirmed stop
+
+    const measurements = await session.worker.evaluate(() => {
+      const writes = (
+        chrome.action as typeof chrome.action & {
+          __qgWrites?: Array<{ kind: string; value: string; at: number }>;
+        }
+      ).__qgWrites ?? [];
+      return {
+        writes,
+        elapsedMs: (writes.at(-1)?.at ?? 0) - (writes.at(0)?.at ?? 0),
+      };
+    });
+
+    expect(measurements.writes.filter(({ kind }) => kind === "badge").map(({ value }) => value)).toEqual([
+      "1",
+      "2",
+      "1",
+      "",
+    ]);
+    expect(measurements.writes.filter(({ kind }) => kind === "icon")).toHaveLength(2);
+    expect(measurements.writes.filter(({ kind }) => kind === "color")).toHaveLength(1);
+    expect(measurements.elapsedMs).toBeLessThan(2_000);
+
+    console.log("toolbar transition measurements", measurements);
+  } finally {
+    await session.close();
+  }
+});
+
 test("lets the browser finish the download when the NAS is unreachable", async () => {
   // The regression that started all this: the download used to be cancelled up front, so an
   // offline NAS meant no file and no task. Nothing listens on this port.
