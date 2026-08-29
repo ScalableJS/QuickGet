@@ -13,6 +13,7 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Backlog |
 | BUG-15 | Captured torrent status is slow to become visible | background | medium | Backlog |
 | BUG-16 | Interception error badge has no defined lifetime | background | medium | Backlog |
 | BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
@@ -33,6 +34,31 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-17 — Context-menu actions are unclear and appear in irrelevant places
+
+**Severity:** medium · **Area:** background/UX · **Status:** Backlog
+**Files:** `src/background/menus.ts`, `src/background/menus.test.ts`
+
+Chrome currently registers `Send with QuickGet` for both links and arbitrary selected text, and
+`Send current page with QuickGet` for every page context. The labels do not explain what object
+will be sent, where it will go, or the difference between the two actions. The page action also
+appears away from download links and can be visible on QuickGet's own extension UI, where its
+purpose is especially unclear.
+
+**Required investigation:** enumerate the useful user journeys (torrent link, magnet, direct file
+URL, selected URL and current-page URL); decide whether current-page sending is a real supported
+feature or accidental surface area; test Chrome `documentUrlPatterns`/`targetUrlPatterns` limits;
+exclude extension and unsupported schemes where possible; and replace the labels with explicit
+object/action wording. The menu must not imply that arbitrary page content is sent when the
+implementation only passes `tab.url`, and invalid selected text should not be presented as a
+working action if Chrome cannot conditionally validate it.
+
+**Reported 2026-08-29** — users cannot infer the distinction between `Send with QuickGet` and
+`Send current page with QuickGet`; both appear in unexpectedly broad contexts, including the
+extension itself.
+
+---
 
 ### BUG-15 — Captured torrent status is slow to become visible
 
