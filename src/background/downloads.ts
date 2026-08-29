@@ -23,7 +23,7 @@ import {
 } from "@lib/torrentSender.js";
 
 
-import { clearConfigurationProblem, markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { markConfigurationProblem, markInterceptionStarted } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
 import { clearFailureEpisode, type FailureKind, notifyDirect, notifyFailure } from "./notifier.js";
 
@@ -161,8 +161,8 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
 
     // Chrome recorded the page the download started from — that is exactly the referrer a
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
-    const failureRevisionAtStart = await markInterceptionStarted();
-    await handOffToNas(settings, item.id, url, item.referrer, failureRevisionAtStart);
+    await markInterceptionStarted();
+    await handOffToNas(settings, item.id, url, item.referrer);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     // The claim outlives this worker, so keeping it after a failure would silently bar every
@@ -222,7 +222,6 @@ async function handOffToNas(
   downloadId: number,
   url: string,
   referrer?: string,
-  failureRevisionAtStart = 0,
 ): Promise<void> {
   const paused = await pauseBrowserDownload(downloadId);
   // Written before the hand-off so a worker death mid-flight is recoverable on next start.
@@ -234,7 +233,6 @@ async function handOffToNas(
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
-    await clearConfigurationProblem(failureRevisionAtStart);
     const cancelled = await cancelBrowserDownload(downloadId);
     if (!cancelled && paused) await resumeBrowserDownload(downloadId);
     void ensureMonitoring();

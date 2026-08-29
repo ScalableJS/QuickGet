@@ -5,7 +5,8 @@
 
 import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
 
-import { applyBadgeStats } from "./actions.js";
+import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
+import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { initDownloadInterception } from "./downloads.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
@@ -92,9 +93,19 @@ initDownloadInterception();
 // (the popup) talk to it by message: MONITOR_MESSAGE arms the poll after a
 // mutation; SNAPSHOT_MESSAGE hands over the popup's fresh counts so the badge
 // reflects exactly what the popup shows, and arms the poll for after it closes.
-chrome.runtime.onMessage.addListener((message: unknown) => {
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
   if (typeof message !== "object" || message === null) return;
   const type = (message as { type?: unknown }).type;
+
+  if (type === ACKNOWLEDGE_ATTENTION_MESSAGE) {
+    void acknowledgeAttention()
+      .then((reason) => sendResponse({ reason } satisfies AttentionResponse))
+      .catch((error) => {
+        console.error("[QuickGet] could not acknowledge toolbar attention:", error);
+        sendResponse({ reason: null } satisfies AttentionResponse);
+      });
+    return true;
+  }
 
   if (type === MONITOR_MESSAGE) {
     void ensureMonitoring();

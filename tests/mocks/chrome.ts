@@ -100,6 +100,8 @@ const actionSetTitle = vi.fn();
 const actionSetIcon = vi.fn();
 const runtimeOnInstalledAddListener = vi.fn();
 const contextMenusOnClickedAddListener = vi.fn();
+const contextMenusCreate = vi.fn();
+const contextMenusRemoveAll = vi.fn((callback?: () => void) => callback?.());
 const alarmsOnAlarmAddListener = vi.fn();
 
 /**
@@ -198,6 +200,8 @@ export function resetChromeMockState(): void {
 
   runtimeOnInstalledAddListener.mockClear();
   contextMenusOnClickedAddListener.mockClear();
+  contextMenusCreate.mockClear();
+  contextMenusRemoveAll.mockClear();
   alarmsOnAlarmAddListener.mockClear();
 
   downloadsCancel.mockClear();
@@ -296,6 +300,8 @@ export function installChromeMock(): typeof chrome {
       executeScript: scriptingExecuteScript,
     },
     contextMenus: {
+      create: contextMenusCreate,
+      removeAll: contextMenusRemoveAll,
       onClicked: {
         addListener: contextMenusOnClickedAddListener,
       },

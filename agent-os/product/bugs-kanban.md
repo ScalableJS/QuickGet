@@ -13,9 +13,9 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
-| BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Backlog |
+| BUG-17 | Context-menu actions are unclear and appear in irrelevant places | background/UX | medium | Done |
 | BUG-15 | Captured torrent status is slow to become visible | background | medium | Backlog |
-| BUG-16 | Interception error badge has no defined lifetime | background | medium | Backlog |
+| BUG-16 | Interception error badge has no defined lifetime | background | medium | Done |
 | BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
 | BUG-13 | Toolbar repaint failure aborts the NAS hand-off | background | high | Done |
 | BUG-12 | Parallel toolbar transitions lose the newer failure state | background | high | Done |
@@ -37,7 +37,7 @@ changes. One card per defect, ordered by severity within a column.
 
 ### BUG-17 — Context-menu actions are unclear and appear in irrelevant places
 
-**Severity:** medium · **Area:** background/UX · **Status:** Backlog
+**Severity:** medium · **Area:** background/UX · **Status:** Done
 **Files:** `src/background/menus.ts`, `src/background/menus.test.ts`
 
 Chrome currently registers `Send with QuickGet` for both links and arbitrary selected text, and
@@ -58,11 +58,15 @@ working action if Chrome cannot conditionally validate it.
 `Send current page with QuickGet`; both appear in unexpectedly broad contexts, including the
 extension itself.
 
+**Resolved 2026-08-29** — retained one link-only action named `Send link to Download Station`.
+Removed the page and selected-text actions, restricted the menu to web documents, and reject
+non-HTTP(S)/magnet targets before contacting the NAS.
+
 ---
 
 ### BUG-15 — Captured torrent status is slow to become visible
 
-**Severity:** medium · **Area:** background · **Status:** Backlog
+**Severity:** medium · **Area:** background · **Status:** Done
 **Files:** `src/background/downloads.ts`, `src/background/actions.ts`, `src/background/alarms.ts`
 
 After Chrome captures a torrent, the toolbar/popup can keep showing the previous state for a
@@ -98,6 +102,11 @@ success/failure ordering and stale persisted toolbar state with tests before cha
 
 **Reported 2026-08-29** — the user expected the interception error to remain visible only for a
 bounded time, but the intended behaviour and competing conventions have not been established.
+
+**Resolved 2026-08-29** — product rule: the error has no timer. Its reason is persisted for the
+browser session and the red `!` remains until the popup is opened. Opening the popup atomically
+returns the reason for the top error pill and acknowledges the toolbar alarm; later successful
+handoffs and background polls cannot erase an unread failure.
 
 ---
 

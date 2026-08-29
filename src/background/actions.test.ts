@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyBadgeStats, markConfigurationProblem, noteMonitoringFailure, resetActionState } from "./actions.js";
+import {
+  acknowledgeAttention,
+  applyBadgeStats,
+  markConfigurationProblem,
+  noteMonitoringFailure,
+  resetActionState,
+} from "./actions.js";
 
 const stats = (active: number, extra: Partial<{ all: number; downRate: number; upRate: number }> = {}) => ({
   active,
@@ -125,6 +131,17 @@ describe("applyBadgeStats", () => {
     expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
     expect(chrome.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
     expect(chrome.action.setTitle).not.toHaveBeenCalled();
+  });
+
+  it("keeps the failure until the popup acknowledges it, then returns the reason and clears the alarm", async () => {
+    await markConfigurationProblem("Download Station rejected the torrent");
+    vi.clearAllMocks();
+
+    await expect(acknowledgeAttention()).resolves.toBe("Download Station rejected the torrent");
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+    expect(chrome.action.setTitle).toHaveBeenCalledWith({ title: "" });
+    await expect(acknowledgeAttention()).resolves.toBeNull();
   });
 
   it("does not let an overlapping NAS poll erase a newer red failure", async () => {

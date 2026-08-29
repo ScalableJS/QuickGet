@@ -710,7 +710,7 @@ describe("download interception — configuration is visible", () => {
     expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
   });
 
-  it("clears the fault once a hand-off succeeds", async () => {
+  it("keeps the fault until the user opens the popup even after a later hand-off succeeds", async () => {
     seedChromeStorage(createTestSettings());
     seedChromeSessionStorage({ "qg:toolbarState": { badgeText: "!", title: "old", colorSet: false } });
     mockSuccessfulHandoff();
@@ -718,7 +718,7 @@ describe("download interception — configuration is visible", () => {
 
     await handleDownloadCreated(createDownloadItem({ id: 74 }));
 
-    expect(action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+    expect(action.setBadgeText).not.toHaveBeenCalledWith({ text: "" });
   });
 });
 

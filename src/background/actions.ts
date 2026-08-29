@@ -51,6 +51,7 @@ type ToolbarState = {
   icon: IconState | null;
   colorSet: boolean;
   title: string;
+  failureReason: string | null;
   failureRevision: number;
   zeroStreak: number;
   errorStreak: number;
@@ -62,6 +63,7 @@ const DEFAULT_STATE: ToolbarState = {
   icon: null,
   colorSet: false,
   title: "",
+  failureReason: null,
   failureRevision: 0,
   zeroStreak: 0,
   errorStreak: 0,
@@ -171,12 +173,11 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
 }
 
 /**
- * Publish the real start of a browser-download hand-off immediately. The returned failure
- * revision lets this operation clear only an error that already existed when it started; an
- * older success can never erase a newer failure from a parallel hand-off.
+ * Publish the real start of a browser-download hand-off immediately. An existing attention
+ * badge deliberately remains until the user opens the popup and can read its reason.
  */
-export async function markInterceptionStarted(): Promise<number> {
-  return updateState(async (state) => {
+export async function markInterceptionStarted(): Promise<void> {
+  await updateState(async (state) => {
     // This is an explicit lifecycle event, not a poll. Repaint even when the persisted cache
     // already says active because Chrome's visible action and our cache can drift.
     if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
@@ -188,7 +189,6 @@ export async function markInterceptionStarted(): Promise<number> {
       if (await tryActionUpdate("title", () => chrome.action.setTitle({ title }))) state.title = title;
     }
 
-    return state.failureRevision;
   });
 }
 
@@ -205,6 +205,7 @@ export async function markInterceptionStarted(): Promise<number> {
 export async function markConfigurationProblem(reason: string): Promise<void> {
   await updateState(async (state) => {
     state.failureRevision += 1;
+    state.failureReason = reason;
 
     if (state.badgeText !== CONFIG_BADGE) {
       if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: CONFIG_BADGE }))) {
@@ -222,13 +223,19 @@ export async function markConfigurationProblem(reason: string): Promise<void> {
   });
 }
 
-/** Clear a configuration fault once a request succeeds. */
-export async function clearConfigurationProblem(failureRevisionAtStart: number): Promise<void> {
-  await updateState(async (state) => {
-    if (state.badgeText !== CONFIG_BADGE || state.failureRevision !== failureRevisionAtStart) return;
+/**
+ * Opening the popup is the acknowledgement: return the persisted reason so it can be read in
+ * context, then remove the toolbar alarm. The reason has no timer and survives worker sleeps.
+ */
+export async function acknowledgeAttention(): Promise<string | null> {
+  return updateState(async (state) => {
+    if (state.badgeText !== CONFIG_BADGE) return null;
 
+    const reason = state.failureReason;
     if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
+    state.failureReason = null;
+    return reason;
   });
 }
 

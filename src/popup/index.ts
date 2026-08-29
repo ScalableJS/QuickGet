@@ -10,6 +10,7 @@ import { type DownloadsFeature, initializeDownloads } from "./features/downloads
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
 import { initializeUpload } from "./features/upload";
+import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "../background/attentionMessage.js";
 
 function handleInitializationError(error: unknown): void {
   showStatus(`Popup initialization failed: ${getErrorMessage(error)}`, "error");
@@ -38,6 +39,9 @@ async function runMainInit(): Promise<void> {
   let downloadsFeature: DownloadsFeature | null = null;
 
   try {
+    const attention = await acknowledgeToolbarAttention();
+    if (attention?.reason) showStatus(attention.reason, "error");
+
     const settings = await initializeSettings({
       onVisibilityChange: (visible) => {
         if (visible) {
@@ -62,5 +66,16 @@ async function runMainInit(): Promise<void> {
     });
   } catch (error) {
     handleInitializationError(error);
+  }
+}
+
+async function acknowledgeToolbarAttention(): Promise<AttentionResponse | null> {
+  try {
+    return await chrome.runtime.sendMessage<unknown, AttentionResponse>({
+      type: ACKNOWLEDGE_ATTENTION_MESSAGE,
+    });
+  } catch {
+    // A popup must remain usable if the service worker is still starting or being reloaded.
+    return null;
   }
 }

@@ -15,7 +15,21 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { handleContextMenuClick } from "./menus.js";
+import { createContextMenus, handleContextMenuClick } from "./menus.js";
+
+describe("context-menu registration", () => {
+  it("offers one explicit link action only on web pages", () => {
+    createContextMenus();
+
+    expect(chrome.contextMenus.create).toHaveBeenCalledTimes(1);
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith({
+      id: "quickget-send-link",
+      title: "Send link to Download Station",
+      contexts: ["link"],
+      documentUrlPatterns: ["*://*/*"],
+    });
+  });
+});
 
 describe("context-menu routing", () => {
   beforeEach(() => {
@@ -255,7 +269,7 @@ describe("context-menu torrent handling", () => {
 
     await handleContextMenuClick({
       editable: false,
-      selectionText: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
+      linkUrl: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
       menuItemId: "quickget-send-link",
     });
     await handleContextMenuClick({
@@ -265,6 +279,29 @@ describe("context-menu torrent handling", () => {
     });
 
     expect(calls.addUrl).toBe(2);
+    expect(calls.addTorrent).toBe(0);
+  });
+
+  it("rejects legacy page/selection actions and unsupported schemes before contacting the NAS", async () => {
+    const calls = mockNasUpload();
+
+    await handleContextMenuClick({
+      editable: false,
+      selectionText: "https://downloads.example.org/archive.zip",
+      menuItemId: "quickget-send-link",
+    });
+    await handleContextMenuClick({
+      editable: false,
+      menuItemId: "quickget-send-page",
+      pageUrl: "https://downloads.example.org/archive.zip",
+    });
+    await handleContextMenuClick({
+      editable: false,
+      linkUrl: "chrome-extension://test-extension-id/src/popup/index.html",
+      menuItemId: "quickget-send-link",
+    });
+
+    expect(calls.addUrl).toBe(0);
     expect(calls.addTorrent).toBe(0);
   });
 
