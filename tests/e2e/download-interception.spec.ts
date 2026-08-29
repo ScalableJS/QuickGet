@@ -179,6 +179,16 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
+    // Isolate the synthetic toolbar trace from the popup's real unconfigured refresh. Otherwise
+    // that refresh can finish after the reset below and correctly replace it with BUG-22's
+    // attention state, making the measurement depend on runner timing.
+    await session.page.close();
+    await expect
+      .poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor")))
+      .toBeUndefined();
+    const messagePage = await session.context.newPage();
+    await messagePage.goto(`chrome-extension://${session.extensionId}/manifest.json`);
+
     await session.worker.evaluate(async () => {
       await chrome.action.setBadgeText({ text: "" });
       await chrome.action.setIcon({ path: { 32: "icons/32_download.png", 128: "icons/128_download.png" } });
@@ -223,7 +233,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
     });
 
     const sendAndWait = async (active: number, expectedBadge: string, expectedZeroStreak: number) => {
-      await session.page.evaluate((count) => {
+      await messagePage.evaluate((count) => {
         chrome.runtime.sendMessage({
           type: "qg:badgeSnapshot",
           stats: { active: count, all: count, downRate: 0, upRate: 0 },
