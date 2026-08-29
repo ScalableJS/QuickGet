@@ -2,6 +2,7 @@
   type Variant = "active" | "complete" | "error";
   type Props = {
     value: number;
+    label: string;
     variant?: Variant;
     inline?: boolean;
   };
@@ -12,7 +13,7 @@
     error: "bg-[var(--progress-fill-error)]",
   } satisfies Record<Variant, string>;
 
-  let { value, variant = "active", inline = false }: Props = $props();
+  let { value, label, variant = "active", inline = false }: Props = $props();
 
   const clamped = $derived(Math.max(0, Math.min(100, value)));
 </script>
@@ -23,6 +24,7 @@
     inline ? "w-auto min-w-0 flex-1" : "w-full flex-none",
   ]}
   role="progressbar"
+  aria-label={label}
   aria-valuenow={clamped}
   aria-valuemin={0}
   aria-valuemax={100}

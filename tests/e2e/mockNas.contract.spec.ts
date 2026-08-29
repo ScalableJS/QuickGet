@@ -136,7 +136,7 @@ test("mock NAS returns richer login payload and paged Task/Query response", asyn
     expect(query.data[0]).toMatchObject({
       hash: "hash-paused",
       source_name: "Fedora ISO",
-      state: 3,
+      state: 1,
       total_down: 550,
       down_rate: 0,
       up_rate: 0,

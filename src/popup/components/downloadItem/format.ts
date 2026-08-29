@@ -5,7 +5,9 @@ const SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
 const STATUS_LABELS: Record<string, string> = {
   queued: "Queued",
+  queuedChecking: "Queued for checking",
   downloading: "Downloading",
+  downloadingMetadata: "Downloading metadata",
   seeding: "Seeding",
   paused: "Paused",
   stopped: "Stopped",
@@ -13,6 +15,8 @@ const STATUS_LABELS: Record<string, string> = {
   repairing: "Repairing",
   extracting: "Extracting",
   finishing: "Finishing",
+  moving: "Moving",
+  allocating: "Allocating",
   finished: "Finished",
   error: "Error",
 };
@@ -84,10 +88,14 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const isError = task.status === "error";
   const isActive =
     task.status === "downloading" ||
+    task.status === "downloadingMetadata" ||
+    task.status === "queuedChecking" ||
     task.status === "checking" ||
     task.status === "repairing" ||
     task.status === "extracting" ||
-    task.status === "finishing";
+    task.status === "finishing" ||
+    task.status === "moving" ||
+    task.status === "allocating";
 
   // Seeding/finished tasks have finished downloading — show a full bar and skip
   // the misleading partial percentage QNAP reports for them.

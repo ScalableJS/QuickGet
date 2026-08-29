@@ -13,6 +13,8 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-15 | Captured torrent status is slow to become visible | background | medium | Backlog |
+| BUG-16 | Interception error badge has no defined lifetime | background | medium | Backlog |
 | BUG-14 | Context-menu sends omit working and failure toolbar states | background | medium | Done |
 | BUG-13 | Toolbar repaint failure aborts the NAS hand-off | background | high | Done |
 | BUG-12 | Parallel toolbar transitions lose the newer failure state | background | high | Done |
@@ -31,6 +33,47 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-15 — Captured torrent status is slow to become visible
+
+**Severity:** medium · **Area:** background · **Status:** Backlog
+**Files:** `src/background/downloads.ts`, `src/background/actions.ts`, `src/background/alarms.ts`
+
+After Chrome captures a torrent, the toolbar/popup can keep showing the previous state for a
+noticeable time. Establish a timestamped real-browser trace for `onCreated → pause → AddTorrent →
+Task/Query → chrome.action repaint → popup render` and separate delays owned by QuickGet from
+Download Station visibility lag and Chrome/MV3 scheduling limits.
+
+**Required investigation:** determine whether QuickGet can publish an immediate explicit
+`Sending to NAS`/working state before the NAS task becomes queryable; measure whether status
+changes are skipped by the toolbar state cache, the 30-second alarm cadence, service-worker
+suspension, popup polling, or QNAP eventual consistency. Document unavoidable platform limits
+and add deterministic tests for every improvement that remains under our control.
+
+**Reported 2026-08-29** — the captured torrent is handed off, but the visible status changes too
+late for the user to understand that processing has started.
+
+---
+
+### BUG-16 — Interception error badge has no defined lifetime
+
+**Severity:** medium · **Area:** background · **Status:** Backlog
+**Files:** `src/background/actions.ts`, `src/background/notifier.ts`, `src/background/alarms.ts`
+
+The red `!` after a failed torrent interception has no documented product lifetime. It is unclear
+whether it should persist until explicit acknowledgement, disappear after a timeout, clear after
+the next successful hand-off, or remain until the underlying failure is demonstrably resolved.
+
+**Required investigation:** compare error-state lifecycles in Chrome/Edge downloads, QNAP,
+Synology and established torrent clients; distinguish transient interception failures from
+persistent NAS connectivity/configuration failures; define acknowledgement, timeout and recovery
+rules that do not hide a failure before the user can notice it. Cover MV3 restarts, concurrent
+success/failure ordering and stale persisted toolbar state with tests before changing behaviour.
+
+**Reported 2026-08-29** — the user expected the interception error to remain visible only for a
+bounded time, but the intended behaviour and competing conventions have not been established.
+
+---
 
 ### BUG-14 — Context-menu sends omit working and failure toolbar states
 

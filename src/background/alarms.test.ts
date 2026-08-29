@@ -17,8 +17,7 @@ function loginHandler() {
 }
 
 // Minimal Task/Query job. `state` drives the unified status (104=downloading,
-// 8=finishing, 5=finished). A non-zero down_rate keeps a downloading job out of
-// the "stopped" normalization branch.
+// 3=moving, 5=finished).
 function job(state: number, overrides: Record<string, unknown> = {}) {
   return {
     hash: `H${state}`,
@@ -90,7 +89,7 @@ describe("background alarms", () => {
     server.use(
       loginHandler(),
       // downloading + finishing are in progress; finished is not → badge "2".
-      queryHandler([job(104), job(8), job(5)], () => {
+      queryHandler([job(104), job(3), job(5)], () => {
         queryHits += 1;
       }),
       http.post(`${BASE}/Task/Status`, () => {
@@ -109,7 +108,7 @@ describe("background alarms", () => {
 
   it("keeps the badge active for a finishing task (regression: cleared too early)", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
-    server.use(loginHandler(), queryHandler([job(8)]));
+    server.use(loginHandler(), queryHandler([job(3)]));
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
 

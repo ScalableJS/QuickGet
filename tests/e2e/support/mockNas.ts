@@ -83,18 +83,26 @@ function mapUnifiedStatusToQnapState(status: TaskStatus): number {
   switch (status) {
     case "downloading":
       return 104;
+    case "downloadingMetadata":
+      return 103;
     case "seeding":
       return 100;
     case "paused":
-      return 3;
+      return 1;
     case "stopped":
-      return 102;
+      return 2;
+    case "moving":
+      return 3;
+    case "allocating":
+      return 105;
+    case "queuedChecking":
+      return 101;
     case "checking":
     case "repairing":
-      return 101;
+      return 102;
     case "extracting":
     case "finishing":
-      return 103;
+      return 3;
     case "finished":
       return 5;
     case "error":
@@ -205,19 +213,11 @@ function createTask(name: string, index: number): DownloadJob {
 
 function buildQueryStatus(tasks: DownloadJob[]): DownloadJobsListResponse["status"] {
   const active = tasks.filter((task) => task.activity_time > 0 || task.down_rate > 0 || task.up_rate > 0).length;
-  const downloading = tasks.filter((task) => [2, 6, 104].includes(task.state)).length;
-  const paused = tasks.filter((task) => task.state === 3 || (task.state === 1 && task.progress > 0)).length;
-  const seeding = tasks.filter((task) => [100, 105].includes(task.state)).length;
+  const downloading = tasks.filter((task) => task.state === 104).length;
+  const paused = tasks.filter((task) => task.state === 1).length;
+  const seeding = tasks.filter((task) => task.state === 100).length;
   const completed = tasks.filter((task) => task.state === 5 || task.progress >= 100).length;
-  const stopped = tasks.filter(
-    (task) =>
-      task.state === 102 ||
-      ([2, 6, 104].includes(task.state) &&
-        task.activity_time === 0 &&
-        task.down_rate === 0 &&
-        task.up_rate === 0 &&
-        task.progress < 100),
-  ).length;
+  const stopped = tasks.filter((task) => task.state === 2).length;
 
   return {
     active,
