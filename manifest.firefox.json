@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuickGet Remote",
-  "version": "2.9.0",
+  "version": "2.0.2",
   "description": "QuickGet Remote: QNAP Download Station 5 companion client",
   "default_locale": "en",
   "browser_specific_settings": {
