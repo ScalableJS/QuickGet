@@ -68,7 +68,7 @@ export function installChromeMock(): void {
       ),
     },
     runtime: {
-      getManifest: () => ({ version: "1.0.3" }),
+      getManifest: () => ({ version: "2.0.3" }),
       getURL: (path: string) => path,
       lastError: undefined,
       sendMessage: () => Promise.resolve(),

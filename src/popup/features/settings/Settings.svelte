@@ -398,7 +398,7 @@
 
 </script>
 
-<div class="settings-stack flex flex-col pb-[var(--space-5)]">
+<div class="settings-stack flex flex-col pb-0">
 {#if configProblem}
   <Alert tone="warning">
     {configProblem.summary} Downloads will stay in the browser until this is fixed.
@@ -646,5 +646,5 @@
   </div>
 </footer>
 
-<p class="version-line my-[var(--space-3)] mb-[var(--space-2)] text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
+<p class="version-line mt-[var(--space-1)] mb-0 text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
 </div>
