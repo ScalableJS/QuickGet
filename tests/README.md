@@ -1,77 +1,56 @@
-# Тесты: карта, запуск и обновление
+# Tests: map, running, and updating
 
-Этот документ — рабочий runbook по тестам проекта: какие наборы тестов есть, где лежат ключевые файлы, как безопасно запускать проверки, как обновлять тесты после изменений и как продолжить работу спустя время без повторного исследования репозитория.
+This document is the working runbook for the project's tests: what test suites exist, where
+the key files live, how to run checks safely, how to update tests after a change, and how to
+get back into the project after time away without re-exploring the whole repo.
 
-## 1. Быстрая карта тестов
+## 1. Quick test map
 
 ### Unit / integration (`vitest`)
 
-Запускаются командой `npm test` и покрывают основную логику без браузерного UI.
+Run with `npm test`; cover core logic without a browser UI.
 
-Главные файлы:
-- `src/api/index.test.ts` — transport / middleware / сериализация запросов к API
-- `src/api/client.test.ts` — поведение `ApiClient`, login, query, multipart upload, duplicate handling
-- `src/lib/settings.test.ts` — чтение и сохранение настроек
-- `src/popup/features/downloads/downloadsManager.test.ts` — orchestration списка загрузок
-- `src/popup/features/downloads/downloadsState.test.ts` — состояние и преобразование списка
+Key files:
+- `src/api/index.test.ts` — transport / middleware / API request serialization
+- `src/api/client.test.ts` — `ApiClient` behaviour: login, query, multipart upload, duplicate handling
+- `src/lib/settings.test.ts` — reading and saving settings
+- `src/popup/features/downloads/downloadsManager.test.ts` — download list orchestration
+- `src/popup/features/downloads/downloadsState.test.ts` — list state and transformation
 
-Инфраструктура unit-тестов:
-- `vitest.config.ts` — конфиг vitest
-- `tests/setup.ts` — глобальный setup
-- `tests/msw/server.ts` — MSW server для сетевых моков
-- `tests/mocks/chrome.ts` — mock `chrome.*` API
-- `tests/fixtures/settings.ts` — фабрики тестовых настроек
+Unit-test infrastructure:
+- `vitest.config.ts` — vitest config
+- `tests/setup.ts` — global setup
+- `tests/msw/server.ts` — MSW server for network mocks
+- `tests/mocks/chrome.ts` — `chrome.*` API mocks
+- `tests/fixtures/settings.ts` — test settings factories
 
 ### Mock E2E (`playwright`)
 
-Запускаются локально против встроенного mock NAS и не трогают реальный QNAP.
+Run locally against the built-in mock NAS; never touch a real QNAP.
 
-Главные файлы:
-- `tests/e2e/mockNas.contract.spec.ts` — прямой контракт-тест `mockNas` без UI
-- `tests/e2e/popup.full-cycle.spec.ts` — полный happy-path popup в Chromium extension
-- `tests/e2e/support/mockNas.ts` — локальный mock Download Station API
-- `tests/e2e/support/extension.ts` — запуск extension popup
-- `tests/e2e/support/popup.ts` — UI-хелперы popup
+Key files:
+- `tests/e2e/mockNas.contract.spec.ts` — direct `mockNas` contract test, no UI
+- `tests/e2e/popup.full-cycle.spec.ts` — full popup happy path in a Chromium extension
+- `tests/e2e/support/mockNas.ts` — local mock Download Station API
+- `tests/e2e/support/extension.ts` — launches the extension popup
+- `tests/e2e/support/popup.ts` — popup UI helpers
 - `tests/e2e/support/redactedHttpLog.ts` — redacted request/response log
 
 ### Real NAS E2E (`playwright`, opt-in)
 
-Запускаются только локально при явном включении переменных окружения.
+Run locally only, and only with explicit environment variables set.
 
-Главные файлы:
+Key files:
 - `tests/e2e/popup.real-nas.spec.ts` — read-only smoke + opt-in mutating scenario
-- `tests/e2e/support/e2eEnv.ts` — загрузка env для real NAS
-- `tests/e2e/support/httpCapture.ts` — capture клиентских и сетевых запросов
-- `tests/e2e/support/realNasClient.ts` — cleanup только тестовых задач
-- `tests/e2e/support/torrentFixture.ts` — генерация тестового `.torrent`
-- `tests/e2e/README.md` — более узкие детали только по e2e flow
+- `tests/e2e/support/e2eEnv.ts` — loads env for the real NAS
+- `tests/e2e/support/httpCapture.ts` — captures client and network requests
+- `tests/e2e/support/realNasClient.ts` — cleans up only the suite's own tasks
+- `tests/e2e/support/torrentFixture.ts` — generates a test `.torrent`
+- `tests/e2e/README.md` — narrower detail specific to the e2e flow
 
-## 2. Что запускать чаще всего
+## 2. What to run most often
 
-### Быстрый безопасный цикл перед коммитом
-
-```bash
-npm run typecheck
-npm test
-npm run build
-npm run test:e2e:mock
-```
-
-Это безопасный набор:
-- не использует реальный NAS
-- проверяет типы
-- гоняет unit/integration
-- собирает extension
-- запускает mock e2e
-
-### Если меняли только TS-логику без UI
-
-```bash
-npm run typecheck
-npm test
-```
-
-### Если меняли popup / upload / toolbar / mock NAS
+### Fast, safe cycle before a commit
 
 ```bash
 npm run typecheck
@@ -80,65 +59,88 @@ npm run build
 npm run test:e2e:mock
 ```
 
-### Если нужно запустить только безопасные mock E2E явно
+This safe set:
+- never touches a real NAS
+- typechecks
+- runs unit/integration tests
+- builds the extension
+- runs mock e2e
+
+### If you only changed TS logic, no UI
+
+```bash
+npm run typecheck
+npm test
+```
+
+### If you changed popup / upload / toolbar / mock NAS
+
+```bash
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e:mock
+```
+
+### If you only need to run the safe mock E2E explicitly
 
 ```bash
 npm run test:e2e:mock
 ```
 
-## 3. Где что проверяется
+## 3. Where each area is verified
 
-### Изменения в `src/api/*`
+### Changes in `src/api/*`
 
-Проверять в первую очередь:
+Check first:
 - `src/api/index.test.ts`
 - `src/api/client.test.ts`
 
-Типичные причины обновления тестов:
-- изменился shape request body
-- изменился multipart upload
-- изменился login / SID flow
-- изменился shape `Task/Query`
+Typical reasons to update these tests:
+- the request body shape changed
+- multipart upload changed
+- the login / SID flow changed
+- the `Task/Query` shape changed
 
-### Изменения в нормализации задач (`src/lib/tasks.ts`)
+### Changes in task normalization (`src/lib/tasks.ts`)
 
-Проверять:
+Check:
 - `src/api/client.test.ts`
 - `tests/e2e/mockNas.contract.spec.ts`
 - `tests/e2e/popup.full-cycle.spec.ts`
 
-Типичные причины обновления тестов:
-- новые numeric states у QNAP
-- новые поля raw job
-- изменения в `normalizeQnap()`
+Typical reasons to update these tests:
+- new numeric states from QNAP
+- new raw job fields
+- changes in `normalizeQnap()`
 
-### Изменения в popup UI / списке загрузок / toolbar
+### Changes in the popup UI / download list / toolbar
 
-Проверять:
+Check:
 - `src/popup/features/downloads/downloadsManager.test.ts`
 - `src/popup/features/downloads/downloadsState.test.ts`
 - `tests/e2e/popup.full-cycle.spec.ts`
 
-### Изменения в реальном QNAP payload
+### Changes in the real QNAP payload
 
-Проверять и обновлять:
+Check and update:
 - `tests/e2e/support/mockNas.ts`
 - `src/api/schema.d.ts`
 - `src/lib/tasks.ts`
 - `tests/e2e/mockNas.contract.spec.ts`
 - `src/api/client.test.ts`
 
-## 4. Как обновлять тесты после изменения функциональности
+## 4. How to update tests after a functionality change
 
-### Сценарий A: изменили mock / API contract
+### Scenario A: changed the mock / API contract
 
-1. Обновить `tests/e2e/support/mockNas.ts`
-2. Если поменялся shape ответа — при необходимости обновить `src/api/schema.d.ts`
-3. Если поменялась нормализация — обновить `src/lib/tasks.ts`
-4. Зафиксировать контракт в:
+1. Update `tests/e2e/support/mockNas.ts`
+2. If the response shape changed, update `src/api/schema.d.ts` as needed
+3. If normalization changed, update `src/lib/tasks.ts`
+4. Pin the contract in:
    - `tests/e2e/mockNas.contract.spec.ts`
    - `src/api/client.test.ts`
-5. Запустить:
+5. Run:
 
 ```bash
 npm run typecheck
@@ -147,12 +149,12 @@ npm run build
 npm run test:e2e:mock
 ```
 
-### Сценарий B: изменили popup поведение
+### Scenario B: changed popup behaviour
 
-1. Обновить unit-тесты feature-модуля, если логика находится в `src/popup/features/**`
-2. Обновить `tests/e2e/popup.full-cycle.spec.ts`, если менялся пользовательский сценарий
-3. Если изменились селекторы или структура popup, проверить хелперы в `tests/e2e/support/popup.ts`
-4. Запустить:
+1. Update the feature module's unit tests if the logic lives in `src/popup/features/**`
+2. Update `tests/e2e/popup.full-cycle.spec.ts` if the user scenario changed
+3. If selectors or the popup structure changed, check the helpers in `tests/e2e/support/popup.ts`
+4. Run:
 
 ```bash
 npm run typecheck
@@ -161,15 +163,15 @@ npm run build
 npm run test:e2e:mock
 ```
 
-### Сценарий C: real NAS начал отвечать иначе
+### Scenario C: the real NAS started responding differently
 
-1. Локально прогнать real smoke и при необходимости mutating flow
-2. Сохранить новые captures в `.e2e-artifacts/`
-3. Сравнить новые `.json`/`.log` с текущим `mockNas`
-4. Обновить mock и связанные тесты
-5. Повторить безопасный mock-only прогон
+1. Run the real smoke locally, and the mutating flow if needed
+2. Save the new captures to `.e2e-artifacts/`
+3. Compare the new `.json`/`.log` against the current `mockNas`
+4. Update the mock and related tests
+5. Repeat the safe mock-only run
 
-## 5. Real NAS: как запускать и как не сломать себе окружение
+## 5. Real NAS: how to run it without breaking your environment
 
 ### Read-only smoke
 
@@ -178,10 +180,10 @@ npm run build
 npm run test:e2e:real
 ```
 
-Проверяет только:
-- сохранение настроек
+Only checks:
+- saving settings
 - test connection
-- загрузку списка задач
+- loading the task list
 
 ### Mutating real NAS flow
 
@@ -190,12 +192,12 @@ npm run build
 npm run test:e2e:real:mutating
 ```
 
-Этот сценарий:
-- создаёт только свою тестовую задачу с префиксом `quickget-e2e-`
-- затем удаляет её
-- перед стартом дополнительно делает cleanup задач с этим префиксом
+This scenario:
+- creates only its own test task, prefixed `quickget-e2e-`
+- then deletes it
+- additionally cleans up any leftover tasks with that prefix before starting
 
-### Рекомендуемые локальные переменные
+### Recommended local variables
 
 ```dotenv
 QNAP_E2E_REAL=1
@@ -208,22 +210,23 @@ QNAP_E2E_DEST_DIR=...
 QNAP_E2E_CAPTURE_HTTP=1
 ```
 
-Для mutating flow дополнительно:
+For the mutating flow, additionally:
 
 ```dotenv
 QNAP_E2E_ALLOW_MUTATIONS=1
 ```
 
-### Правила безопасности
+### Safety rules
 
-- использовать отдельный NAS-аккаунт для тестов
-- использовать отдельные test-owned папки для `TEMP_DIR` и `DEST_DIR`
-- не коммитить реальные SID / token / пароли / сырые неотредактированные логи
-- mutating flow запускать только осознанно
+- use a dedicated NAS account for tests
+- use dedicated test-owned folders for `TEMP_DIR` and `DEST_DIR`
+- never commit real SIDs / tokens / passwords / raw unredacted logs
+- only run the mutating flow deliberately
 
-## 6. CI в GitHub Actions
+## 6. CI in GitHub Actions
 
-В репозитории есть workflow `/.github/workflows/ci.yml`, который запускается на `push` и `pull_request` и выполняет безопасный набор проверок:
+The repo has a `/.github/workflows/ci.yml` workflow that runs on `push` and `pull_request` and
+executes the safe set of checks:
 
 ```bash
 npm run typecheck
@@ -232,40 +235,41 @@ npm run build
 npm run test:e2e:mock
 ```
 
-CI не запускает real NAS сценарии и не требует QNAP credentials.
+CI never runs real-NAS scenarios and never requires QNAP credentials.
 
-При падении browser e2e workflow сохраняет `playwright-report/` и `test-results/` как artifacts.
+If the browser e2e job fails, the workflow saves `playwright-report/` and `test-results/` as
+artifacts.
 
-## 7. Как обновлять mock по реальному NAS
+## 7. How to update the mock from the real NAS
 
-Главный цикл обновления такой:
+The main update cycle:
 
-1. Прогнать локально real smoke:
+1. Run the real smoke locally:
 
 ```bash
 npm run build
 npm run test:e2e:real
 ```
 
-2. Если нужен upload/remove capture, прогнать:
+2. If you need an upload/remove capture, run:
 
 ```bash
 npm run build
 npm run test:e2e:real:mutating
 ```
 
-3. Посмотреть артефакты в `.e2e-artifacts/`:
+3. Look at the artifacts in `.e2e-artifacts/`:
 - `real-nas-smoke.log`
 - `real-nas-smoke.json`
 - `real-nas-mutating.log`
 - `real-nas-mutating.json`
 
-4. Сравнить реальные payloads с:
+4. Compare the real payloads against:
 - `tests/e2e/support/mockNas.ts`
 - `src/api/schema.d.ts`
 - `src/lib/tasks.ts`
 
-5. После обновления mock обязательно прогнать:
+5. After updating the mock, always run:
 
 ```bash
 npm run typecheck
@@ -274,39 +278,40 @@ npm run build
 npm run test:e2e:mock
 ```
 
-## 8. Как понять, какой тест упал и куда идти
+## 8. Figuring out which test failed and where to look
 
-### Упал `src/api/client.test.ts`
-Сначала смотреть:
+### `src/api/client.test.ts` failed
+Look first at:
 - `src/api/client.ts`
 - `src/api/index.ts`
 - `src/api/schema.d.ts`
 - `src/lib/tasks.ts`
 
-### Упал `tests/e2e/mockNas.contract.spec.ts`
-Сначала смотреть:
+### `tests/e2e/mockNas.contract.spec.ts` failed
+Look first at:
 - `tests/e2e/support/mockNas.ts`
 - `src/api/schema.d.ts`
 - `src/lib/tasks.ts`
 
-### Упал `tests/e2e/popup.full-cycle.spec.ts`
-Сначала смотреть:
+### `tests/e2e/popup.full-cycle.spec.ts` failed
+Look first at:
 - `tests/e2e/support/mockNas.ts`
 - `tests/e2e/support/popup.ts`
 - `tests/e2e/support/extension.ts`
 - `src/popup/features/**`
 
-### Упал real NAS spec
-Сначала смотреть:
+### A real NAS spec failed
+Look first at:
 - env
-- доступность NAS
-- текущий реальный payload
+- NAS reachability
+- the current real payload
 - `.e2e-artifacts/*.log`
 - `.e2e-artifacts/*.json`
 
-## 9. Минимальный рабочий набор файлов, который стоит помнить
+## 9. Minimum working file set worth remembering
 
-Если нужно быстро вернуться в проект спустя время, почти всегда достаточно начать с этих файлов:
+To get back into the project quickly after time away, starting with these files is almost
+always enough:
 - `package.json`
 - `README.md`
 - `tests/README.md`
@@ -319,20 +324,20 @@ npm run test:e2e:mock
 - `src/lib/tasks.ts`
 - `src/api/schema.d.ts`
 
-## 10. Что уже зафиксировано тестами сейчас
+## 10. What the tests already cover today
 
-Сейчас тесты уже проверяют:
-- login и reuse SID
-- query body serialization (`limit`, `field`, и т.д.)
+The tests currently verify:
+- login and SID reuse
+- query body serialization (`limit`, `field`, etc.)
 - multipart upload (`sid`, `temp`, `move`, `dest_path`, `bt`, `bt_task`)
 - duplicate torrent handling (`24593`)
-- отдельный mock-only contract тест для `mockNas`
-- popup full cycle на mock NAS
+- a dedicated mock-only contract test for `mockNas`
+- popup full cycle against the mock NAS
 - real NAS read-only smoke
-- real NAS mutating flow только для suite-owned torrent
-- contract `mockNas` под более real-like QNAP payload
+- real NAS mutating flow, limited to a suite-owned torrent
+- `mockNas` contract against a more real-like QNAP payload
 
-## 11. Рекомендуемый порядок проверки в PR
+## 11. Recommended check order in a PR
 
 ```bash
 npm run typecheck
@@ -341,6 +346,4 @@ npm run build
 npm run test:e2e:mock
 ```
 
-А real NAS прогоны — только локально и по необходимости.
-
-
+Real NAS runs stay local-only, run only when needed.

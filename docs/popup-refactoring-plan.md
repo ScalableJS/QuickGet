@@ -1,130 +1,130 @@
-# Архитектура popup
+# Popup Architecture
 
-Документ описывает целевую организацию кода popup-расширения — какие модули нужны, как они взаимодействуют и где хранятся общие зависимости. Это не «план работ», а эталон, на который стоит равняться при рефакторинге.
+This document describes the target organization of the popup extension code — what modules are needed, how they interact, and where shared dependencies live. This is not a "work plan" but a reference to align with during refactoring.
 
-## Цели и принципы
+## Goals and principles
 
-- разделить ответственность: UI-компоненты, бизнес-логика фич и общие утилиты;
-- убрать глобальные переменные из `src/popup/index.ts`;
-- переиспользовать уже существующие модули (`@lib/settings`, `@api/client`, рендер `components/downloadItem`);
-- сохранить текущее поведение (включая горячие клавиши, автообновление, копирование логов), но сделать его прозрачным и тестируемым;
-- обеспечить единый слой координации между фичами (например, выбор загрузки должен обновлять тулбар и статус).
+- separate concerns: UI components, feature business logic, and shared utilities;
+- remove global variables from `src/popup/index.ts`;
+- reuse already existing modules (`@lib/settings`, `@api/client`, the `components/downloadItem` render);
+- preserve current behavior (including hotkeys, auto-refresh, log copying), but make it transparent and testable;
+- provide a unified coordination layer between features (e.g. selecting a download should update the toolbar and status).
 
-### Слои
+### Layers
 
-- **Components** — чистые функции/классы, отвечающие только за рендер. Не знают об API, состоянии и побочных эффектах.
-- **Features** — концентрируют бизнес-логику, работают с состоянием, API, DOM-событиями и orchestrate компоненты.
-- **Shared** — общие утилиты, которые могут вызывать все слои (форматирование, morphdom-обёртки, кеш API).
+- **Components** — pure functions/classes responsible only for rendering. They know nothing about API, state, or side effects.
+- **Features** — concentrate business logic, work with state, API, DOM events, and orchestrate components.
+- **Shared** — common utilities callable from any layer (formatting, morphdom wrappers, API cache).
 
-## Структура директорий
+## Directory structure
 
 ```
 src/popup/
-├── index.ts                       # точка входа, координирует фичи
+├── index.ts                       # entry point, coordinates features
 ├── index.html
 ├── index.css
 │
 ├── components/
 │   ├── downloadItem/
-│   │   ├── downloadItem.ts        # готовый рендер элемента загрузки
+│   │   ├── downloadItem.ts        # ready-made download item render
 │   │   ├── downloadItem.stories.ts
 │   │   └── index.ts
 │   ├── statusPill/
-│   │   ├── statusPill.ts          # рендер и API статуса
+│   │   ├── statusPill.ts          # status render and API
 │   │   └── index.ts
-│   └── index.ts                   # единая точка экспорта UI-компонентов
+│   └── index.ts                   # single export point for UI components
 │
 ├── features/
 │   ├── downloads/
-│   │   ├── downloadsManager.ts    # работа с API Download Station
-│   │   ├── downloadsState.ts      # selectedHash, snapshot, observable события
-│   │   ├── downloadsUI.ts         # навешивание обработчиков, morphdom-обновления
-│   │   ├── autoRefresh.ts         # автообновление и синхронизация с тулбаром
+│   │   ├── downloadsManager.ts    # Download Station API interaction
+│   │   ├── downloadsState.ts      # selectedHash, snapshot, observable events
+│   │   ├── downloadsUI.ts         # attaching handlers, morphdom updates
+│   │   ├── autoRefresh.ts         # auto-refresh and toolbar sync
 │   │   └── index.ts
 │   ├── settings/
-│   │   ├── settingsUI.ts           # DOM-логика формы настроек
-│   │   ├── connectionTest.ts       # кнопка проверки подключения
+│   │   ├── settingsUI.ts           # settings form DOM logic
+│   │   ├── connectionTest.ts       # connection test button
 │   │   └── index.ts
 │   ├── toolbar/
 │   │   ├── toolbarActions.ts       # start/stop/remove/add/settings toggle
-│   │   ├── toolbarState.ts         # enable/disable кнопок, подписка на состояние загрузок
+│   │   ├── toolbarState.ts         # enable/disable buttons, subscribe to download state
 │   │   └── index.ts
 │   ├── upload/
-│   │   ├── torrentUpload.ts        # единая точка обработки `<input type=file>`
-│   │   ├── duplicateCheck.ts       # использует snapshot из downloadsState
+│   │   ├── torrentUpload.ts        # single handling point for `<input type=file>`
+│   │   ├── duplicateCheck.ts       # reads snapshot from downloadsState
 │   │   └── index.ts
 │   ├── debug/
-│   │   ├── debugLogger.ts          # добавление/очистка/копирование логов
-│   │   ├── debugUI.ts              # отображение панели и подписка на enableDebug
+│   │   ├── debugLogger.ts          # add/clear/copy logs
+│   │   ├── debugUI.ts              # panel display and enableDebug subscription
 │   │   └── index.ts
-│   └── index.ts                    # публичные init‑методы фич
+│   └── index.ts                    # public init methods of features
 │
 ├── shared/
 │   ├── formatters/
-│   │   ├── speed.ts                # формат скорости
-│   │   ├── time.ts                 # формат ETA (резерв)
-│   │   └── date.ts                 # формат даты (резерв)
+│   │   ├── speed.ts                # speed formatting
+│   │   ├── time.ts                 # ETA formatting (reserved)
+│   │   └── date.ts                 # date formatting (reserved)
 │   ├── dom/
-│   │   ├── morphdom.ts             # обёртки над morphDOMUpdate/List
+│   │   ├── morphdom.ts             # wrappers over morphDOMUpdate/List
 │   │   └── index.ts
 │   └── api/
-│       ├── clientCache.ts          # кеш createApiClient
+│       ├── clientCache.ts          # createApiClient cache
 │       └── index.ts
 │
 └── types/
-    └── popup.types.ts              # локальные типы, которых нет в @lib (если реально нужны)
+    └── popup.types.ts              # local types not present in @lib (if actually needed)
 ```
 
-> Если дополнительный тип уже описан в `src/lib`, используем импорт оттуда. Новый файл в `types/` оправдан, только когда тип доменно относится исключительно к popup.
+> If an additional type is already described in `src/lib`, use the import from there. A new file in `types/` is justified only when the type domain-belongs exclusively to the popup.
 
-## Детализация фич
+## Feature details
 
 ### Downloads
 
-- `downloadsManager` использует `createApiClient` из `@api/client` и кеш из `shared/api/clientCache`. Отвечает за `list`, `start`, `stop`, `remove`.
-- `downloadsState` хранит `selectedHash`, `snapshot` (hashes + normalized names), публикует события (`onSelectionChanged`, `onSnapshotUpdated`). Туда перемещаются глобальные переменные из текущего `index.ts`.
-- `downloadsUI` интегрирует `renderDownloadsList` из `components/downloadItem` (существующий `render/downloads.ts` переносится сюда и реэкспортируется), управляет `morphDOM` и кликами по списку. При обновлении списка запрашивает `downloadsState` и сигнализирует тулбару.
-- `autoRefresh` регулирует интервал обновления, слушает `toolbar` (кнопки Play/Stop/Pause) и сообщает статус (например, для смены подписи на кнопке).
+- `downloadsManager` uses `createApiClient` from `@api/client` and the cache from `shared/api/clientCache`. Responsible for `list`, `start`, `stop`, `remove`.
+- `downloadsState` holds `selectedHash`, `snapshot` (hashes + normalized names), publishes events (`onSelectionChanged`, `onSnapshotUpdated`). The global variables from the current `index.ts` move here.
+- `downloadsUI` integrates `renderDownloadsList` from `components/downloadItem` (the existing `render/downloads.ts` is moved here and re-exported), manages `morphDOM` and list clicks. On list update, it queries `downloadsState` and signals the toolbar.
+- `autoRefresh` regulates the refresh interval, listens to the `toolbar` (Play/Stop/Pause buttons), and reports status (e.g. for changing the button label).
 
-Верхнеуровневый API: `initializeDownloads(options)` возвращает объект с методами `refreshNow`, `getSelectedHash`, `subscribe`.
+Top-level API: `initializeDownloads(options)` returns an object with the methods `refreshNow`, `getSelectedHash`, `subscribe`.
 
 ### Settings
 
-- Сохраняет/читает данные через `@lib/settings`. Локальная логика — только сбор/валидация формы.
-- `settingsUI` отвечает за показ панели, синхронизацию чекбоксов, отключение списка загрузок при открытых настройках.
-- `connectionTest` использует `createApiClient` напрямую (без кеша) и публикует результат через `components/statusPill`.
+- Saves/reads data via `@lib/settings`. Local logic is only form collection/validation.
+- `settingsUI` handles showing the panel, syncing checkboxes, disabling the downloads list while settings are open.
+- `connectionTest` uses `createApiClient` directly (without cache) and publishes the result via `components/statusPill`.
 
 ### Toolbar
 
-- `toolbarActions` реализует текущее поведение: `Play/Stop` работают с выбранным торрентом, `Remove` удаляет через downloadsManager, `Add` открывает `<input>`, `Settings` переключает панель. `Pause` (если нужна) управляет автообновлением, но фактическое наличие кнопки сверяется с HTML.
-- Tooltips/aria-атрибуты в `index.html` должны соответствовать этой логике (если требуется, часть rewording вёрстки).
-- `toolbarState` подписывается на `downloadsState` и автообновление, включает/выключает кнопки, выставляет `aria-disabled`.
+- `toolbarActions` implements current behavior: `Play/Stop` work with the selected torrent, `Remove` deletes via downloadsManager, `Add` opens `<input>`, `Settings` toggles the panel. `Pause` (if needed) controls auto-refresh, but the actual presence of the button is verified against the HTML.
+- Tooltips/aria attributes in `index.html` must match this logic (some markup rewording may be required, if needed).
+- `toolbarState` subscribes to `downloadsState` and auto-refresh, enables/disables buttons, sets `aria-disabled`.
 
 ### Upload
 
-- `torrentUpload` обрабатывает событие `change` у `<input>`. Вызывает `duplicateCheck`, который читает snapshot из `downloadsState`. В случае успеха вызывает `downloadsManager.refresh` по завершении добавления (через экспорт из downloads-фичи, без прямого импорта `listDownloads`).
+- `torrentUpload` handles the `change` event on `<input>`. Calls `duplicateCheck`, which reads the snapshot from `downloadsState`. On success, it calls `downloadsManager.refresh` once the addition completes (via the export from the downloads feature, without a direct `listDownloads` import).
 
 ### Debug
 
-- `debugLogger` хранит массив строк и публичные методы `add`, `clear`, `copy`. Состояние `enabled` берётся из настроек либо переключателя UI.
-- `debugUI` отвечает за дом-узлы `details.debug-section`, обновляет содержимое и слушает чекбокс `enableDebug`. Статус меняется через `downloadsState` и `components/statusPill` (для сообщений «Logs copied», «Logs cleared»).
+- `debugLogger` holds an array of strings and public `add`, `clear`, `copy` methods. The `enabled` state comes from settings or a UI toggle.
+- `debugUI` handles the `details.debug-section` DOM nodes, updates content, and listens to the `enableDebug` checkbox. Status changes go through `downloadsState` and `components/statusPill` (for "Logs copied", "Logs cleared" messages).
 
-## Компоненты
+## Components
 
-- `downloadItem` — остаётся чистым компонентом (уже реализовано). Вызов через `renderDownloadsList` внутри downloadsUI.
-- `statusPill` — новый компонент, инкапсулирует работу с `#status`/`#status-message` и таймер автоскрытия. Экспортирует `showStatus(type)` и `clearStatus()`.
+- `downloadItem` — remains a pure component (already implemented). Called via `renderDownloadsList` inside downloadsUI.
+- `statusPill` — new component, encapsulates work with `#status`/`#status-message` and the auto-hide timer. Exports `showStatus(type)` and `clearStatus()`.
 
-Другие UI-элементы (иконки, кнопки) пока остаются в вёрстке; при появлении сложных блоков их выносим в `components/`.
+Other UI elements (icons, buttons) remain in the markup for now; complex blocks are moved to `components/` as they appear.
 
-## Shared-утилиты
+## Shared utilities
 
-- `formatters/speed.ts` содержит текущую `formatRate`. При необходимости форматов времени/дат добавляем новые файлы, но используем единые функции везде (download item, статус, тулы).
-- `dom/morphdom.ts` предоставляет обёртки `updateElement(target, html, options?)` и `updateList(target, html)`. После переноса обновляем алиасы в `tsconfig.json` / `vite.config.ts`, чтобы `@popup/update/dom` ссылался на новую локацию.
-- `api/clientCache.ts` хранит `clientCache` (ранее глобальная переменная). Экспортирует `getCachedClient()` и `invalidateClientCache()` — вызываем их из settings (после сохранения) и downloads.
+- `formatters/speed.ts` contains the current `formatRate`. Add new files for time/date formatting as needed, but use the same functions everywhere (download item, status, tools).
+- `dom/morphdom.ts` provides the `updateElement(target, html, options?)` and `updateList(target, html)` wrappers. After the move, update aliases in `tsconfig.json` / `vite.config.ts` so `@popup/update/dom` points to the new location.
+- `api/clientCache.ts` holds `clientCache` (formerly a global variable). Exports `getCachedClient()` and `invalidateClientCache()` — call them from settings (after saving) and downloads.
 
-## Координация в `index.ts`
+## Coordination in `index.ts`
 
-Точка входа настраивает DOM и связывает фичи:
+The entry point sets up the DOM and wires the features together:
 
 ```ts
 import { initializeDownloads } from "./features/downloads";
@@ -142,19 +142,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 ```
 
-Каждый `initialize*` возвращает объект с публичными методами (например, `downloads.refreshNow`, `toolbar.disableAutoRefresh`). Это избавляет от прямых импортов между фичами и делает связи явными.
+Each `initialize*` returns an object with public methods (e.g. `downloads.refreshNow`, `toolbar.disableAutoRefresh`). This removes direct imports between features and makes the connections explicit.
 
-## Рекомендации по внедрению
+## Implementation recommendations
 
-- **HTML и ARIA**: выровнять подписи и `aria-label` кнопок тулбара с фактической логикой (start/stop torrent, toggle settings и т.д.).
-- **Storybook**: после переноса компонентов обновить сторисы (`downloadItem`) и добавить новые для `statusPill`.
-- **События**: централизованно прокинуть уведомления (selection change, snapshot change, autoRefresh state) через `downloadsState`, чтобы тулбар и аплоад подписывались, а не читали DOM.
-- **Проверка поведения**: сохранить автообновление, очистку ресурсов в `beforeunload`, копирование логов и работу duplicate check — все эти сценарии должны быть покрыты в новых модулях.
-- **Типы**: перед созданием отдельных интерфейсов убедиться, что аналогов нет в `src/lib`. Новый `types/popup.types.ts` добавлять только для специфичных типов UI.
+- **HTML and ARIA**: align toolbar button labels and `aria-label`s with the actual logic (start/stop torrent, toggle settings, etc.).
+- **Storybook**: after moving components, update the stories (`downloadItem`) and add new ones for `statusPill`.
+- **Events**: centrally propagate notifications (selection change, snapshot change, autoRefresh state) via `downloadsState`, so the toolbar and upload subscribe instead of reading the DOM.
+- **Behavior verification**: preserve auto-refresh, resource cleanup on `beforeunload`, log copying, and duplicate check behavior — all these scenarios must be covered in the new modules.
+- **Types**: before creating separate interfaces, verify there is no equivalent in `src/lib`. Add a new `types/popup.types.ts` only for UI-specific types.
 
-## Ожидаемый результат
+## Expected outcome
 
-- `src/popup/index.ts` — ~80 строк, только инициализация и сбор зависимостей.
-- Остальные файлы — небольшие и тематические (30–100 строк).
-- Любая фича может тестироваться изолированно (mock API, mock DOM).
-- Добавление новых действий или UI-элементов не требует изменения огромного монолитного файла.
+- `src/popup/index.ts` — ~80 lines, only initialization and dependency wiring.
+- Other files — small and topical (30–100 lines).
+- Any feature can be tested in isolation (mock API, mock DOM).
+- Adding new actions or UI elements doesn't require changing a huge monolithic file.

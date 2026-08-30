@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { describe, it } from "node:test";
 import {
   compareVersions,
-  extractStoreVersion,
+  extractStoreVersions,
   fetchServiceAccountToken,
   fetchStoreStatus,
   findZipPackage,
@@ -121,6 +121,20 @@ describe("Chrome Web Store Upload Script", () => {
       assert.equal(formatted, "Publish condition not met");
     });
 
+    it("should retain safe validation details from Google API errors", () => {
+      const formatted = formatApiError(
+        400,
+        "Bad Request",
+        JSON.stringify({
+          error: {
+            message: "Submission requirements are not met",
+            details: [{ reason: "PRIVACY_PRACTICES_INCOMPLETE" }],
+          },
+        }),
+      );
+      assert.match(formatted, /PRIVACY_PRACTICES_INCOMPLETE/);
+    });
+
     it("should fallback to HTTP status when body is non-JSON", () => {
       const formatted = formatApiError(500, "Internal Server Error", "Plain text error");
       assert.equal(formatted, "HTTP 500 Internal Server Error: Plain text error");
@@ -141,28 +155,25 @@ describe("Chrome Web Store Upload Script", () => {
     });
   });
 
-  describe("extractStoreVersion", () => {
-    it("should extract version from published revision", () => {
+  describe("extractStoreVersions", () => {
+    it("should extract published and submitted versions independently", () => {
       const status = {
         publishedItemRevisionStatus: {
           distributionChannels: [{ crxVersion: "2.0.1", deployPercentage: 100 }],
         },
-      };
-      assert.equal(extractStoreVersion(status), "2.0.1");
-    });
-
-    it("should extract version from submitted revision if published is absent", () => {
-      const status = {
         submittedItemRevisionStatus: {
           distributionChannels: [{ crxVersion: "2.0.2", deployPercentage: 100 }],
         },
       };
-      assert.equal(extractStoreVersion(status), "2.0.2");
+      assert.deepEqual(extractStoreVersions(status), {
+        publishedVersion: "2.0.1",
+        submittedVersion: "2.0.2",
+      });
     });
 
-    it("should return null if no version info is present", () => {
-      assert.equal(extractStoreVersion({}), null);
-      assert.equal(extractStoreVersion(null), null);
+    it("should return nulls if no version info is present", () => {
+      assert.deepEqual(extractStoreVersions({}), { publishedVersion: null, submittedVersion: null });
+      assert.deepEqual(extractStoreVersions(null), { publishedVersion: null, submittedVersion: null });
     });
   });
 
@@ -497,6 +508,50 @@ describe("Chrome Web Store Upload Script", () => {
       assert.ok(logs.some((l) => l.includes("pending review")));
     });
 
+    it("should skip upload when the same version is already submitted", async () => {
+      let uploadCalled = false;
+      const mockFetch = async (url) => {
+        if (url.includes("oauth2.googleapis.com")) {
+          return { ok: true, json: async () => ({ access_token: "mock-token" }) };
+        }
+        if (url.includes(":fetchStatus")) {
+          return {
+            ok: true,
+            json: async () => ({
+              publishedItemRevisionStatus: { distributionChannels: [{ crxVersion: "1.0.3" }] },
+              submittedItemRevisionStatus: { distributionChannels: [{ crxVersion: "2.0.1" }] },
+            }),
+          };
+        }
+        if (url.includes(":upload")) {
+          uploadCalled = true;
+          throw new Error("upload should have been skipped");
+        }
+        if (url.includes(":publish")) {
+          return { ok: true, json: async () => ({ itemId: "ext-1", state: "PENDING_REVIEW" }) };
+        }
+        throw new Error(`Unhandled URL: ${url}`);
+      };
+
+      const result = await uploadAndPublish({
+        env: {
+          CHROME_SERVICE_ACCOUNT_JSON: JSON.stringify(sampleCredentials),
+          CHROME_EXTENSION_ID: "ext-123",
+          CHROME_PUBLISHER_ID: "pub-456",
+        },
+        projectRoot: "/fake/root",
+        fetchFn: mockFetch,
+        readFile: (filePath) =>
+          filePath.endsWith("manifest.json") ? JSON.stringify({ version: "2.0.1" }) : Buffer.from("zip"),
+        readDir: () => ["quickget-remote-2.0.1.zip"],
+        logger: { log: () => {}, warn: () => {}, error: () => {} },
+      });
+
+      assert.equal(uploadCalled, false);
+      assert.equal(result.uploadResult.uploadState, "SKIPPED");
+      assert.equal(result.publishResult.state, "PENDING_REVIEW");
+    });
+
     it("should throw on version conflict when localVersion <= storeVersion", async () => {
       const mockLogger = { log: () => {}, warn: () => {}, error: () => {} };
 
@@ -543,7 +598,7 @@ describe("Chrome Web Store Upload Script", () => {
             readDir: mockReadDir,
             logger: mockLogger,
           }),
-        /Version Conflict: Local version \(2\.0\.1\) is not greater than the store version \(2\.0\.1\)/,
+        /Version Conflict: Local version \(2\.0\.1\) is not greater than the published version \(2\.0\.1\)/,
       );
     });
   });

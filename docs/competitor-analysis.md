@@ -1,185 +1,196 @@
-# Конкурентный анализ — Firefox-клиенты QNAP/Synology Download Station
+# Competitive analysis — Firefox clients for QNAP/Synology Download Station
 
-Дата разбора: июнь 2026. Исходники конкурентов выкачаны из AMO как `.xpi` и распакованы
-(`scratchpad/competitors/`). Лицензии — копируем **идеи**, не код.
+Analysis date: June 2026. Competitor sources pulled from AMO as `.xpi` and unpacked
+(`scratchpad/competitors/`). Licenses — we copy **ideas**, not code.
 
-План заимствования фич: см. [feature-roadmap.md](./feature-roadmap.md).
+Feature borrowing plan: see [feature-roadmap.md](./feature-roadmap.md).
 
-## Кто в обзоре
+## Who's in scope
 
-| Аддон | Автор | NAS | Манифест | Версия / обновление | Юзеры | Отзывы | AMO |
+| Add-on | Author | NAS | Manifest | Version / updated | Users | Reviews | AMO |
 |---|---|---|---|---|---|---|---|
-| **SendToQnap** | Frederic Wolff | QNAP | MV2 | 2.7 — мар 2024 (заброшен) | 112 | 5 (5.0★) | [link](https://addons.mozilla.org/firefox/addon/sendtoqnap/) |
-| **Send To QNAP++** | Proƒ. Tomørrøw | QNAP | MV2 | 2.30.15 — апр 2026 (живой) | 15 | 1 (5.0★) | [link](https://addons.mozilla.org/firefox/addon/sendtoqnapplus/) |
-| **Download Station** | Kaakati | Synology | MV3 | 1.0.0 — фев 2026 | 41 | 2 (3.0★) | [link](https://addons.mozilla.org/firefox/addon/download-station-synology/) |
-| **QuickGet Remote** (мы) | — | QNAP DS5 | MV3 | 2.9.0 | — | — | в подготовке |
+| **SendToQnap** | Frederic Wolff | QNAP | MV2 | 2.7 — Mar 2024 (abandoned) | 112 | 5 (5.0★) | [link](https://addons.mozilla.org/firefox/addon/sendtoqnap/) |
+| **Send To QNAP++** | Proƒ. Tomørrøw | QNAP | MV2 | 2.30.15 — Apr 2026 (alive) | 15 | 1 (5.0★) | [link](https://addons.mozilla.org/firefox/addon/sendtoqnapplus/) |
+| **Download Station** | Kaakati | Synology | MV3 | 1.0.0 — Feb 2026 | 41 | 2 (3.0★) | [link](https://addons.mozilla.org/firefox/addon/download-station-synology/) |
+| **QuickGet Remote** (us) | — | QNAP DS5 | MV3 | 2.9.0 | — | — | in prep |
 
 ---
 
-## 1. Технологии (стек)
+## 1. Technology stack
 
-**Вывод: ни один конкурент не использует JS-фреймворк, бандлер или TypeScript. Чистый
-vanilla JS, написанный вручную, без минификации и без сборки.** Мы — единственные на
-Svelte 5 + TS + Vite. Это главный технический отрыв.
+**Conclusion: none of the competitors use a JS framework, bundler, or TypeScript. Pure
+hand-written vanilla JS, no minification, no build step.** We are the only ones on
+Svelte 5 + TS + Vite. This is the main technical lead.
 
-| | Язык | Фреймворк | Бандлер | CSS | Прочее |
+| | Language | Framework | Bundler | CSS | Other |
 |---|---|---|---|---|---|
-| **SendToQnap (Wolff)** | vanilla JS (ES5-стиль, `var`) | нет | нет (raw файлы) | ручной CSS | свой `xmlToJSON.js` (~240 стр.) для парсинга XML `authLogin.cgi`; DOMParser + ActiveXObject-фолбэк (legacy IE) |
-| **Send To QNAP++** | vanilla JS, глобальные `var` через файлы | нет | нет | ручной CSS | ~6.7k строк вручную; фоновые `common.js`+`SendLink.js`; опц. внешний auth-helper (манифест c Google Drive) |
-| **Download Station (Synology)** | vanilla JS, современный (`browser.*`, Promise, модульно) | нет | **есть только для CSS** | **Tailwind CSS** (build output) + self-hosted шрифт Outfit (woff2) | чистый MV3 SW-паттерн; README + `web-ext` dev-flow; нет сорсмапов |
-| **QuickGet Remote (мы)** | **TypeScript** | **Svelte 5 (runes)** | **Vite + @crxjs** | свой CSS | Vitest + Playwright, Biome, генерация иконок, MV3 cross-browser |
+| **SendToQnap (Wolff)** | vanilla JS (ES5-style, `var`) | none | none (raw files) | hand-written CSS | own `xmlToJSON.js` (~240 lines) for parsing `authLogin.cgi` XML; DOMParser + ActiveXObject fallback (legacy IE) |
+| **Send To QNAP++** | vanilla JS, global `var`s across files | none | none | hand-written CSS | ~6.7k lines hand-written; background `common.js`+`SendLink.js`; optional external auth-helper (manifest with Google Drive) |
+| **Download Station (Synology)** | vanilla JS, modern (`browser.*`, Promise, modular) | none | **only for CSS** | **Tailwind CSS** (build output) + self-hosted Outfit font (woff2) | clean MV3 SW pattern; README + `web-ext` dev flow; no source maps |
+| **QuickGet Remote (us)** | **TypeScript** | **Svelte 5 (runes)** | **Vite + @crxjs** | own CSS | Vitest + Playwright, Biome, icon generation, MV3 cross-browser |
 
-Признаки сборки: ни у кого нет `sourceMappingURL`; самые длинные строки 89–200 символов
-(это просто длинные URL, не минификация) → код пишут и коммитят руками. Synology прогоняет
-только Tailwind для CSS, JS не бандлит.
+Build signs: nobody has `sourceMappingURL`; longest lines are 89–200 characters
+(just long URLs, not minification) → code is written and committed by hand. Synology only
+runs Tailwind for CSS, doesn't bundle JS.
 
 ---
 
-## 2. Объём приложения
+## 2. Application size
 
-| Аддон | XPI (сжатый) | Распаковано | JS (строк) | Состав |
+| Add-on | XPI (compressed) | Unpacked | JS (lines) | Composition |
 |---|---|---|---|---|
-| **SendToQnap (Wolff)** | 50 KB | ~136 KB | ~1 575 | 4 JS-файла, 1 popup, 4 иконки |
-| **Send To QNAP++** | 168 KB | ~528 KB | ~6 680 | 5 JS, popup + options(backup/restore), 6 иконок — самый «толстый» по коду |
-| **Download Station (Synology)** | 85 KB | ~164 KB | ~900 | background+content+popup, Tailwind CSS, 2 woff2-шрифта, README |
-| **QuickGet Remote (мы)** | **58 KB** (FF zip) | — | — | Svelte-компоненты компилируются → 4 JS-чанка + CSS (popup-бандл ~37 KB / gzip 11.6 KB) |
+| **SendToQnap (Wolff)** | 50 KB | ~136 KB | ~1,575 | 4 JS files, 1 popup, 4 icons |
+| **Send To QNAP++** | 168 KB | ~528 KB | ~6,680 | 5 JS, popup + options (backup/restore), 6 icons — the "heaviest" by code |
+| **Download Station (Synology)** | 85 KB | ~164 KB | ~900 | background+content+popup, Tailwind CSS, 2 woff2 fonts, README |
+| **QuickGet Remote (us)** | **58 KB** (FF zip) | — | — | Svelte components compile → 4 JS chunks + CSS (popup bundle ~37 KB / gzip 11.6 KB) |
 
-Итог: `++` лидирует по объёму кода (фич-богат, но не сжат), Synology — компактный и
-аккуратный, Wolff — минимальный. Наш подписанный FF-zip (58 KB) сопоставим с Wolff несмотря
-на гораздо больший функционал — за счёт компиляции Svelte и gzip.
+Bottom line: `++` leads in code volume (feature-rich, but not compressed), Synology is
+compact and tidy, Wolff is minimal. Our signed FF zip (58 KB) is comparable to Wolff despite
+much bigger functionality — thanks to Svelte compilation and gzip.
 
 ---
 
-## 3. Лицензии
+## 3. Licenses
 
-| Аддон | Лицензия (AMO) | В пакете | Заметка |
+| Add-on | License (AMO) | In package | Note |
 |---|---|---|---|
-| **SendToQnap (Wolff)** | MPL-2.0 | — | исходники открыты: [github.com/garoloup/SendToQNAP](https://github.com/garoloup/SendToQNAP) |
-| **Send To QNAP++** | MPL-2.0 | — | репозитория нет, только подписанный XPI |
-| **Download Station (Synology)** | MPL-2.0 | README говорит **MIT** | ⚠️ расхождение: листинг AMO — MPL-2.0, README в пакете — MIT |
-| **QuickGet Remote (мы)** | — | **CC-BY-NC-SA-4.0** | у нас **non-commercial** copyleft — заметно строже и нетипичнее для расширения, чем permissive/MPL у конкурентов |
+| **SendToQnap (Wolff)** | MPL-2.0 | — | source open: [github.com/garoloup/SendToQNAP](https://github.com/garoloup/SendToQNAP) |
+| **Send To QNAP++** | MPL-2.0 | — | no repo, only a signed XPI |
+| **Download Station (Synology)** | MPL-2.0 | README says **MIT** | ⚠️ mismatch: AMO listing — MPL-2.0, README in package — MIT |
+| **QuickGet Remote (us)** | — | **CC-BY-NC-SA-4.0** | we have **non-commercial** copyleft — noticeably stricter and more unusual for an extension than the competitors' permissive/MPL licenses |
 
-Все конкуренты под OSS-лицензиями (MPL-2.0 / MIT). Юридически: их код заимствовать нельзя
-без соблюдения лицензии — берём только идеи и реализуем сами.
+All competitors are under OSS licenses (MPL-2.0 / MIT). Legally: their code can't be
+borrowed without complying with the license — we only take ideas and implement ourselves.
 
-Наш `CC-BY-NC-SA-4.0` стоит пересмотреть осознанно: CC-лицензии не предназначены для софта
-(нет patent grant, нечёткие термины для кода), а пункт **NC** запрещает коммерческое
-использование — если когда-нибудь захотим монетизацию или донаты, это нужно учесть.
+Our `CC-BY-NC-SA-4.0` deserves a deliberate reconsideration: CC licenses aren't designed for
+software (no patent grant, ambiguous terms for code), and the **NC** clause bans commercial
+use — if we ever want monetization or donations, this needs to be accounted for.
 
 ---
 
-## 4. Монетизация и донаты
+## 4. Monetization and donations
 
-**Вывод: ни у одного из трёх конкурентов нет монетизации вообще.** Ни донат-ссылок, ни
-спонсоров, ни премиум-тиров, ни лицензионных ключей, ни paywall.
+**Conclusion: none of the three competitors have any monetization.** No donation links, no
+sponsors, no premium tiers, no license keys, no paywall.
 
-Проверено grep'ом по всем исходникам — совпадения оказались ложными:
-- `stripE` → `stripElemPrefix` (опция в `xmlToJSON.js`);
-- `premium` / «Premium account required» → это **строка ошибки QNAP DS API (код 16)** для
-  премиум-аккаунтов файлообменников, а не монетизация расширения.
+Checked via grep across all sources — matches turned out to be false positives:
+- `stripE` → `stripElemPrefix` (an option in `xmlToJSON.js`);
+- `premium` / "Premium account required" → this is a **QNAP DS API error string (code 16)**
+  for premium file-hoster accounts, not extension monetization.
 
-| Аддон | Донаты/спонсоры | Платные функции | Поддержка |
+| Add-on | Donations/sponsors | Paid features | Support |
 |---|---|---|---|
-| **SendToQnap (Wolff)** | нет | нет | email `fredwolff70@gmail.com` |
-| **Send To QNAP++** | нет | нет | email `sendtoqnapplus@gmail.com` |
-| **Download Station (Synology)** | нет | нет | README, без репо/контакта на странице |
+| **SendToQnap (Wolff)** | none | none | email `fredwolff70@gmail.com` |
+| **Send To QNAP++** | none | none | email `sendtoqnapplus@gmail.com` |
+| **Download Station (Synology)** | none | none | README, no repo/contact on the page |
 
-**Стратегический вывод.** Ниша полностью бесплатна и не монетизируется → у авторов мало
-стимула поддерживать (Wolff заброшен с 2024). Это одновременно:
-- **возможность** — рынок недообслужен, выигрывает тот, кто просто делает добротно и
-  регулярно;
-- **сигнал** — ниша не доказала прибыльность; если думать о донатах (Ko-fi / GitHub
-  Sponsors / Buy Me a Coffee), это будет первый прецедент в категории, и нужно сперва снять
-  ограничение NC в лицензии.
-
----
-
-## 5. Отзывы (сжато)
-
-Содержательного фидбэка почти нет — у всех единичные отзывы, жалоб и фич-реквестов
-практически ноль:
-
-- **Wolff** (5×5★, 2020–2022): «It just works!», «truly amazing», «easy configuration».
-  Совет новичку в отзыве: «https-порт по умолчанию 443» → намёк, что **настройка порта/HTTPS
-  путает людей**.
-- **++** (1×5★, янв 2026): «works great».
-- **Synology** (3.0★): один 5★ «Simple. Flawless. Works.», один 1★ — **текст скрыт**,
-  конкретики нет.
-
-Рынок не генерирует пользовательских сигналов → наш дифференциатор не «фичи из отзывов», а
-**полнота, современность и стабильность** (MV3, торренты, DS5, тесты, регулярные релизы).
+**Strategic conclusion.** The niche is entirely free and unmonetized → authors have little
+incentive to maintain it (Wolff abandoned since 2024). This is simultaneously:
+- **an opportunity** — the market is underserved, whoever just does it well and regularly
+  wins;
+- **a signal** — the niche hasn't proven profitable; if we think about donations (Ko-fi /
+  GitHub Sponsors / Buy Me a Coffee), it would be the first precedent in the category, and
+  we'd need to lift the NC restriction in the license first.
 
 ---
 
-## 6. Перехват ссылок, анимация иконки, нотификации (доп. разбор)
+## 5. Reviews (condensed)
 
-### 6.1 Перехват ссылок на авто-закачку
+Almost no substantive feedback — everyone has a handful of reviews, virtually no complaints
+or feature requests:
 
-Две разные философии — и оба «живых» конкурента что-то перехватывают, Wolff нет.
+- **Wolff** (5×5★, 2020–2022): "It just works!", "truly amazing", "easy configuration".
+  A tip for newcomers in a review: "default HTTPS port is 443" → hints that **port/HTTPS
+  setup confuses people**.
+- **++** (1×5★, Jan 2026): "works great".
+- **Synology** (3.0★): one 5★ "Simple. Flawless. Works.", one 1★ — **text hidden**, no
+  specifics.
 
-| Аддон | Перехват? | Механизм |
+The market doesn't generate user signals → our differentiator isn't "features from reviews"
+but **completeness, modernity, and stability** (MV3, torrents, DS5, tests, regular releases).
+
+---
+
+## 6. Link interception, icon animation, notifications (additional analysis)
+
+### 6.1 Link interception for auto-download
+
+Two different philosophies — and both "alive" competitors intercept something, Wolff
+doesn't.
+
+| Add-on | Intercepts? | Mechanism |
 |---|---|---|
-| **Wolff** | ❌ нет | только контекстное меню (правый клик → «Send to QNAP») |
-| **Send To QNAP++** | ✅ да, **перехват загрузок браузера** | (1) `chrome.downloads.onCreated`/`onChanged` — ловит реальные загрузки; порог по размеру (дефолт **500 MB**, настраивается); preflight размера через `HEAD` + `GET Range: bytes=0-0` (читает `content-range`); отменяет загрузку браузера (`downloads.cancel`+`erase`) и пере-отправляет на QNAP. Список доменов-исключений (вайлдкарды). Обход — удержать **Ctrl**. (2) `webNavigation.onCommitted` — ловит переход на прямой файловый URL. Требует permissions `downloads`+`webNavigation`+`cookies`. **Контент-скрипта нет** — магнит-клики так не ловит. |
-| **Synology** | ✅ да, **перехват клика по магниту** | `content.js` на всех страницах, capture-фаза, перехватывает клик по `a[href^="magnet:"]`, `preventDefault` → шлёт магнит на NAS. Тумблер `autoCaptureMagnets`, живое обновление через `storage.onChanged`. Большие файлы НЕ трогает. |
+| **Wolff** | ❌ no | only context menu (right-click → "Send to QNAP") |
+| **Send To QNAP++** | ✅ yes, **browser download interception** | (1) `chrome.downloads.onCreated`/`onChanged` — catches real downloads; size threshold (default **500 MB**, configurable); size preflight via `HEAD` + `GET Range: bytes=0-0` (reads `content-range`); cancels the browser download (`downloads.cancel`+`erase`) and re-sends to QNAP. Domain exclusion list (wildcards). Bypass — hold **Ctrl**. (2) `webNavigation.onCommitted` — catches navigation to a direct file URL. Requires `downloads`+`webNavigation`+`cookies` permissions. **No content script** — doesn't catch magnet clicks this way. |
+| **Synology** | ✅ yes, **magnet click interception** | `content.js` on all pages, capture phase, intercepts clicks on `a[href^="magnet:"]`, `preventDefault` → sends the magnet to the NAS. `autoCaptureMagnets` toggle, live update via `storage.onChanged`. Doesn't touch large files. |
 
-Итого: `++` = тяжёлый перехват загрузок/навигации (мощно, но широкие permission, MV2-стиль). Synology = лёгкий перехват только магнит-кликов (контент-скрипт). У нас сейчас торрент-интерсепт «Chromium-only» — стоит свериться, какой именно из подходов мы реализуем и под MV3.
+Bottom line: `++` = heavy download/navigation interception (powerful, but broad permissions,
+MV2-style). Synology = lightweight magnet-click-only interception (content script). We
+currently have "Chromium-only" torrent interception — worth checking which of these
+approaches we implement and under MV3.
 
-### 6.2 Анимация иконки при активности
+### 6.2 Icon animation during activity
 
-| Аддон | Анимация | Как |
+| Add-on | Animation | How |
 |---|---|---|
-| **Wolff** | ✅ да, самая навороченная | canvas рисует **крутящийся спиннер 30 fps** (`setInterval(…,1000/30)` → `browserAction.setIcon({imageData})`) пока идут загрузки; + `displayProgressIndicator` накладывает прогресс на иконку |
-| **Send To QNAP++** | ❌ нет | меняет статичные иконки (`setIcon({path})`) + текстовый бейдж (`+1`/`Q+`/`dup`/`Err`) |
-| **Synology** | ❌ нет | текстовый бейдж со счётчиком активных, красный фон `#ef4444` |
+| **Wolff** | ✅ yes, the most elaborate | canvas draws a **spinning 30 fps spinner** (`setInterval(…,1000/30)` → `browserAction.setIcon({imageData})`) while downloads are in progress; + `displayProgressIndicator` overlays progress on the icon |
+| **Send To QNAP++** | ❌ no | swaps static icons (`setIcon({path})`) + text badge (`+1`/`Q+`/`dup`/`Err`) |
+| **Synology** | ❌ no | text badge with active count, red background `#ef4444` |
 
-⚠️ **Важно для нас (MV3):** анимированная иконка Wolff возможна только в MV2 (фон-страница с DOM+canvas). В MV3 service worker DOM нет — для рендера иконки нужен `OffscreenCanvas`, это заметно сложнее и батарейно-затратно. Прагматичный путь — **бейдж со счётчиком активных задач (как Synology)**, без анимации; анимацию рассматривать как опциональный «вкусный» апгрейд через OffscreenCanvas.
+⚠️ **Important for us (MV3):** Wolff's animated icon is only possible in MV2 (background
+page with DOM+canvas). In MV3 the service worker has no DOM — rendering the icon needs
+`OffscreenCanvas`, noticeably more complex and battery-costly. Pragmatic path — **a badge
+with the active-task count (like Synology)**, no animation; treat animation as an optional
+"nice-to-have" upgrade via OffscreenCanvas.
 
-### 6.3 Нотификации — что полезного
+### 6.3 Notifications — what's worth taking
 
-| Аддон | Нотификации | Полезное |
+| Add-on | Notifications | Useful bits |
 |---|---|---|
-| **Wolff** | ❌ нет (нет permission `notifications`) | только текст в бейдже |
-| **Send To QNAP++** | ✅ да | (1) **завершение задачи** с дедупом по hash (`qnap_done_${hash}`, FIFO-кап), тумблер `notifyOnComplete`; (2) **перехват крупной загрузки** («файл (размер) → QNAP») |
-| **Synology** | ✅ да, базовые | при добавлении (успех), при **ошибке API** (с кодом), при исключении; уведомления о завершении нет |
+| **Wolff** | ❌ no (no `notifications` permission) | badge text only |
+| **Send To QNAP++** | ✅ yes | (1) **task completion** with dedup by hash (`qnap_done_${hash}`, FIFO cap), `notifyOnComplete` toggle; (2) **large download interception** ("file (size) → QNAP") |
+| **Synology** | ✅ yes, basic | on add (success), on **API error** (with code), on exclusion; no completion notification |
 
-Стоит забрать: **уведомление о завершении задачи с дедупом** (++) — самое ценное; **уведомление об ошибке добавления** (Synology) — полезно для фидбэка; уведомление о перехвате — если будем делать перехват загрузок.
+Worth taking: **task completion notification with dedup** (++) — the most valuable one;
+**add-error notification** (Synology) — useful for feedback; interception notification — if
+we ever build download interception.
 
-## Сводка: где мы впереди и что забрать
+## Summary: where we lead and what to take
 
-**Мы уже впереди по:** MV3 (кроссбраузерно), Svelte 5 + TS, торрент-файлы + magnet + URL,
-тесты (Vitest/Playwright), Biome, валидируемая сборка, фильтры статусов, folder-picker через
+**We're already ahead on:** MV3 (cross-browser), Svelte 5 + TS, torrent files + magnet +
+URL, tests (Vitest/Playwright), Biome, validatable build, status filters, folder picker via
 `Misc/Dir`.
 
-**Что забрать (детали и TODO — в [feature-roadmap.md](./feature-roadmap.md)):**
-1. **F1 — валидация папок** (идея от `++`, но через наш `Misc/Dir`, не File Station) +
-   красный ободок на невалидном поле. ← первоочередное.
-2. **F2 — session hardening** (от Synology): keepalive-alarm, SID в `storage.session`,
-   single-flight авто-релогин.
-3. **F3 — folder routing rules** (флагман от `++`).
-4. **F4 — quick wins**: quick-add, undo на удаление, magnet content-script capture,
-   backup/restore, дедуп уведомлений.
+**What to take (details and TODOs — in [feature-roadmap.md](./feature-roadmap.md)):**
+1. **F1 — folder validation** (idea from `++`, but through our `Misc/Dir`, not File Station)
+   + red outline on an invalid field. ← top priority.
+2. **F2 — session hardening** (from Synology): keepalive alarm, SID in `storage.session`,
+   single-flight auto-relogin.
+3. **F3 — folder routing rules** (flagship feature from `++`).
+4. **F4 — quick wins**: quick-add, undo on delete, magnet content-script capture,
+   backup/restore, notification dedup.
 
-**Чего НЕ повторять:** MV2/`browser_action`, plaintext-пароль, base64 «как защита»,
-внешний auth-helper с Google Drive, глобальные `var`, хардкод числовых стейтов (`state==="5"`).
+**What NOT to repeat:** MV2/`browser_action`, plaintext password, base64 "as protection",
+external auth-helper with Google Drive, global `var`s, hardcoded numeric states
+(`state==="5"`).
 
 ---
 
-## 7. Как крупные игроки решают приватные трекеры (август 2026)
+## 7. How major players handle private trackers (August 2026)
 
-Разбор свежих Chrome-сборок, выкачанных из Web Store и распакованных. Читались
-минифицированные бандлы, поэтому ниже — только то, что подтверждено конкретным фрагментом
-кода; маркетинговые описания не учитывались.
+Analysis of recent Chrome builds pulled from the Web Store and unpacked. Only minified
+bundles were read, so what follows is only what's confirmed by a concrete code fragment;
+marketing descriptions were not considered.
 
-| Расширение | ID | Версия | Разрешения, относящиеся к делу |
+| Extension | ID | Version | Relevant permissions |
 |---|---|---|---|
 | Synology Download Station client | `ebbdkled…` | 4.2.0 | `scripting`, `tabs`, `downloads`, content scripts |
 | Download Master (WestByte) | `dljdacfoj…` | 4.1.0 | `cookies`, `webRequest`, `scripting`, `nativeMessaging` |
-| ASUS Download Master | `fdbepfmlo…` | 1.2.0 | только `storage`, `contextMenus`, `notifications` |
+| ASUS Download Master | `fdbepfmlo…` | 1.2.0 | only `storage`, `contextMenus`, `notifications` |
 
-### Synology: отдаёт NAS голый URL
+### Synology: hands the NAS a bare URL
 
-`InterceptService.transfer` — весь их перехват:
+`InterceptService.transfer` — their entire interception:
 
 ```js
 DownloadService.pause(download.id).pipe(
@@ -188,18 +199,19 @@ DownloadService.pause(download.id).pipe(
   ...error: resume / erase
 ```
 
-Порядок совпадает с нашим (pause → задача на NAS → erase/resume при ошибке), но на NAS
-уходит **`finalUrl`**, а не файл. `source: download.referrer` выглядит как решение проблемы
-хотлинка — это не так: `source` доходит только до `NotificationService.taskCreated(...)` и
-`contextMessage` в тексте ошибки. На запрос он не влияет никак.
+The order matches ours (pause → task on NAS → erase/resume on error), but what reaches the
+NAS is **`finalUrl`**, not the file. `source: download.referrer` looks like a fix for the
+hotlink problem — it isn't: `source` only reaches
+`NotificationService.taskCreated(...)` and the `contextMessage` in the error text. It has no
+effect on the request itself.
 
-Значит на закрытом трекере их NAS получает ту же страницу логина, что получали мы. Обход у
-них ручной: в форме создания задачи есть `<input type="file">` (`torrent_file_label`) — юзер
-сам качает `.torrent` на диск и выбирает файл.
+So on a closed tracker, their NAS gets the same login page we would. Their workaround is
+manual: the task-creation form has an `<input type="file">` (`torrent_file_label`) — the user
+downloads the `.torrent` to disk themselves and picks the file.
 
-### Download Master: куки и referer отдаются загрузчику
+### Download Master: cookies and referer are handed to the downloader
 
-Единственный, кто проблему реально адресует, — но за счёт нативного приложения:
+The only one that actually addresses the problem — but via a native app:
 
 ```js
 EXT.settings.sendCookiesForDM
@@ -209,47 +221,49 @@ EXT.settings.sendCookiesForDM
     { method: "downloadFile", url, referrer, cookies, filename })
 ```
 
-Расширение ничего не качает. Оно собирает куки для домена referrer'а и передаёт
-`url + referrer + cookies` нативному приложению на той же машине, которое уже качает с
-подставленными заголовками. Нам путь закрыт: нужен установленный нативный хост, а качать
-должен NAS.
+The extension downloads nothing itself. It collects cookies for the referrer's domain and
+passes `url + referrer + cookies` to a native app on the same machine, which downloads with
+the headers attached. This path is closed to us: it requires an installed native host, and
+the NAS is supposed to do the downloading.
 
-Показательно, что отправка кук у них — **опция** (`sendCookiesForDM`), выключаемая: отдавать
-сессионные куки внешнему процессу небезопасно.
+Tellingly, sending cookies is an **option** for them (`sendCookiesForDM`), toggleable off:
+handing session cookies to an external process is unsafe.
 
-### ASUS: не решает вовсе
+### ASUS: doesn't solve it at all
 
-Ни `downloads`, ни `scripting`, ни content scripts. Только контекстное меню, отдающее URL
-роутеру. На приватном трекере не работает by design.
+No `downloads`, no `scripting`, no content scripts. Only a context menu handing a URL to the
+router. Doesn't work on a private tracker by design.
 
-### Где мы относительно них
+### Where we stand relative to them
 
-Наш путь — забрать `.torrent` браузером в контексте страницы и залить на NAS файлом
-(`AddTorrent`) — строго сильнее:
+Our approach — grab the `.torrent` in the browser in the page's context and upload it to the
+NAS as a file (`AddTorrent`) — is strictly stronger:
 
-- в отличие от Synology, работает на закрытом трекере без ручного скачивания;
-- в отличие от Download Master, не требует нативного приложения и **не выносит куки за
-  пределы браузера** — запрос выполняется там же, где живёт сессия, наружу уходит только сам
-  торрент-файл;
-- NAS вообще не ходит на трекер, значит не нужны ни его куки, ни его IP в белом списке.
+- unlike Synology, it works on a closed tracker without a manual download;
+- unlike Download Master, it doesn't require a native app and **doesn't move cookies outside
+  the browser** — the request runs where the session lives, only the torrent file itself
+  leaves;
+- the NAS never talks to the tracker at all, so neither its cookies nor its IP need to be
+  allowlisted.
 
-Цена — вкладка с сайтом должна быть открыта. У конкурентов этого ограничения нет просто
-потому, что они этот сценарий не поддерживают.
+The cost — the site's tab has to be open. Competitors don't have this limitation simply
+because they don't support this scenario.
 
-### Что стоит забрать
+### What's worth taking
 
-1. **`chrome.downloads.onDeterminingFilename`** — Synology слушает его наравне с `onCreated`
-   и `onChanged`. Событие даёт итоговое имя файла до записи на диск, то есть распознаёт
-   `.torrent` за непрозрачным эндпоинтом раньше, чем это делаем мы.
-2. **`erase` как альтернатива `cancel`** — у них это настройка (`{ erase, resume }`). Мы
-   всегда оставляем отменённую загрузку в списке; выбор мог бы быть за пользователем.
+1. **`chrome.downloads.onDeterminingFilename`** — Synology listens to it alongside
+   `onCreated` and `onChanged`. The event gives the final filename before it's written to
+   disk, i.e. it recognizes a `.torrent` behind an opaque endpoint earlier than we do.
+2. **`erase` as an alternative to `cancel`** — for them it's a setting (`{ erase, resume }`).
+   We always leave the cancelled download in the list; the choice could be up to the user.
 
-### Дефолтные папки — что делают конкуренты (проверено 2026-08-28)
+### Default folders — what competitors do (checked 2026-08-28)
 
-Повод: стоит ли предзаполнять Temp Folder, раз Download Station без неё отвергает любую задачу.
+Reason for checking: should we pre-fill the Temp Folder, since Download Station rejects any
+task without one.
 
-**QNAP Download Station Manager** (`agbfjhjpdmkibfdlbpjmlmhdkbmcgjpm`, v1.0.8) — прямой
-конкурент на том же NAS. Предзаполняет, причём сразу двумя готовыми профилями:
+**QNAP Download Station Manager** (`agbfjhjpdmkibfdlbpjmlmhdkbmcgjpm`, v1.0.8) — a direct
+competitor on the same NAS. Pre-fills, with two ready-made profiles at once:
 
 ```js
 defaultState: { NasConnectionSettings: { url: "", username: "", password: "", folders: [
@@ -258,28 +272,28 @@ defaultState: { NasConnectionSettings: { url: "", username: "", password: "", fo
 ]}}
 ```
 
-`@DownloadStationTempFiles` — служебная папка, которую создаёт сам Download Station. Префикс
-`Content/` — раскладка конкретного NAS автора, у большинства её нет, так что копировать эти
-пути нельзя. Но сам факт: **разработчик, знающий QNAP, счёл пустое поле неприемлемым**.
+`@DownloadStationTempFiles` — a service folder that Download Station itself creates. The
+`Content/` prefix is that particular author's NAS layout, most people don't have it, so these
+paths can't be copied. But the fact itself stands: **a developer who knows QNAP considered an
+empty field unacceptable**.
 
-Там же видно, что валидацию формы они делают схемой (yup) с `required` на каждое поле, включая
-`tempFolder` — см. UX-2, наш вывод про Valibot остаётся в силе.
+Also visible there: they do form validation with a schema (yup) with `required` on every
+field, including `tempFolder` — see UX-2, our conclusion about Valibot still stands.
 
-**Synology DS client** — `destination: ""` во всех путях. Это не небрежность: у Synology
-destination необязателен, NAS подставляет собственную настройку Download Station. У QNAP
-`temp` обязателен, поэтому их подход нам не переносится.
+**Synology DS client** — `destination: ""` across all paths. This isn't sloppiness: for
+Synology, destination is optional, the NAS substitutes its own Download Station setting. For
+QNAP, `temp` is required, so their approach doesn't transfer to us.
 
-**ASUS Download Master** — `Download` фигурирует в коде как папка по умолчанию.
+**ASUS Download Master** — `Download` appears in the code as the default folder.
 
-**Проверка на живом QTS 5** (`Misc/Dir`, 2026-08-28): общие папки —
+**Check on a live QTS 5** (`Misc/Dir`, 2026-08-28): shared folders —
 `Browser Station, Container, Docker, Download, Movies, Multimedia, Music, Public, Web, home`.
-`Download` присутствует; QNAP создаёт эту share при инициализации NAS.
+`Download` is present; QNAP creates this share when the NAS is initialized.
 
-Отдельно важно: **`temporary: true` стоит у всех десяти папок**. Значит это «пригодна как
-временная», а не «является временной» — автоопределить temp-папку через API нельзя, и дефолт
-действительно необходим.
+Separately important: **`temporary: true` is set on all ten folders**. So it means "suitable
+as a temp folder", not "is a temp folder" — the temp folder can't be auto-detected via the
+API, and a default really is necessary.
 
-**Вывод:** предзаполняем `Download` для обеих папок. Значение резолвится в память, но **не
-записывается** в storage — иначе сегодняшний дефолт застынет как осознанный выбор пользователя,
-ровно та ловушка, в которую раньше попал `torrentInterceptMode`.
-
+**Conclusion:** pre-fill `Download` for both folders. The value resolves in memory but is
+**not written** to storage — otherwise today's default would freeze into a deliberate user
+choice, exactly the trap `torrentInterceptMode` fell into earlier.

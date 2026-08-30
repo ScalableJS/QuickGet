@@ -9,10 +9,10 @@
  */
 
 import type { Settings } from "@lib/config.js";
-import { getErrorMessage } from "@lib/errors.js";
-import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { findConfigProblem } from "@lib/configHealth.js";
 import { recordFailure, recordSuccess } from "@lib/connectionHealth.js";
+import { getErrorMessage } from "@lib/errors.js";
+import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
 import {
   findExistingTask,
@@ -22,8 +22,7 @@ import {
   sendTorrentUrlToNas,
 } from "@lib/torrentSender.js";
 
-
-import { markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { markConfigurationProblem, markInterceptionStarted, markSendNotice } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
 import { clearFailureEpisode, type FailureKind, notifyDirect, notifyFailure } from "./notifier.js";
 
@@ -228,12 +227,7 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
   }
 }
 
-async function handOffToNas(
-  settings: Settings,
-  downloadId: number,
-  url: string,
-  referrer?: string,
-): Promise<void> {
+async function handOffToNas(settings: Settings, downloadId: number, url: string, referrer?: string): Promise<void> {
   // Write intent before touching the browser transfer: if MV3 suspends us in the following
   // await, startup recovery can resume it. A pause which does not happen must not leave a
   // false recovery record behind.
@@ -259,8 +253,15 @@ async function handOffToNas(
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
     // A failed hand-off is exactly the moment the toolbar should stop looking normal: the
-    // download silently stayed in the browser, and nothing else on screen says so.
-    await markConfigurationProblem(getErrorMessage(error));
+    // download silently stayed in the browser, and nothing else on screen says so. But a
+    // tracker login requirement is the user's action to take on the tracker's site, not an
+    // extension/NAS fault — it must not be painted with the same red configuration badge.
+    const failureKind = classifyFailure(error);
+    if (failureKind === "auth") {
+      await markSendNotice(getErrorMessage(error));
+    } else {
+      await markConfigurationProblem(getErrorMessage(error));
+    }
     await recordFailure(error);
     // The hand-off is over and it failed. The claim must not outlive it: the browser is
     // finishing the download itself now, and a later `onChanged` for the same id (or the user
@@ -268,7 +269,7 @@ async function handOffToNas(
     await releaseClaim(downloadId);
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
     await notifyFailure(
-      classifyFailure(error),
+      failureKind,
       "QuickGet needs attention",
       `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`,
       settings.NASaddress,
@@ -313,7 +314,7 @@ async function offerResumeIfStalled(settings: Settings, name: string): Promise<v
 /** Distinguishes failures so an episode of one kind does not silence a different problem. */
 function classifyFailure(error: unknown): FailureKind {
   const message = getErrorMessage(error).toLowerCase();
-  if (message.includes("username or password") || message.includes("rejected the download")) {
+  if (message.includes("username or password") || message.includes("refused the download")) {
     return "auth";
   }
   if (message.includes("failed to fetch") || message.includes("networkerror")) return "unreachable";

@@ -37,6 +37,14 @@ const ACTIVE_ICON_PATH = {
 const CONFIG_BADGE = "!";
 const CONFIG_BADGE_COLOR = "#D93025";
 
+/**
+ * Badge shown when a single send needed something from the user that has nothing to do with
+ * the extension or the NAS connection — e.g. a tracker login. Gray, not red: nothing here is
+ * broken, and it must never be confused with a configuration/connection fault.
+ */
+const NOTICE_BADGE = "i";
+const NOTICE_BADGE_COLOR = "#9AA0A6";
+
 // Consecutive confirmed-zero polls required before the badge clears.
 const ZERO_CONFIRM = 2;
 const ZERO_CONFIRM_MS = 30_000;
@@ -50,7 +58,7 @@ type IconState = "active" | "idle";
 type ToolbarState = {
   badgeText: string;
   icon: IconState | null;
-  badgeColor: "green" | "red" | null;
+  badgeColor: "green" | "red" | "gray" | null;
   title: string;
   failureReason: string | null;
   failureRevision: number;
@@ -212,6 +220,36 @@ export async function markInterceptionStarted(): Promise<void> {
 export async function markConfigurationProblem(reason: string): Promise<void> {
   await updateState(async (state) => {
     await applyConfigurationProblem(state, reason);
+  });
+}
+
+/**
+ * Note that a single send needs the user to do something on the tracker's own site — not an
+ * extension or NAS-connection fault. Uses a gray badge, distinct from the red configuration
+ * `!`, so the two are never visually confused. An existing hard-error state always outranks
+ * this: a real fault must not be papered over by a milder one arriving after it.
+ */
+export async function markSendNotice(reason: string): Promise<void> {
+  await updateState(async (state) => {
+    if (state.badgeText === CONFIG_BADGE) return;
+
+    if (state.badgeText !== NOTICE_BADGE) {
+      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: NOTICE_BADGE }))) {
+        state.badgeText = NOTICE_BADGE;
+      }
+    }
+    if (state.badgeColor !== "gray") {
+      if (
+        await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: NOTICE_BADGE_COLOR }))
+      ) {
+        state.badgeColor = "gray";
+      }
+    }
+
+    const title = `QuickGet: action needed\n${reason}`;
+    if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
+      state.title = title;
+    }
   });
 }
 

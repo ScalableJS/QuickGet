@@ -65,6 +65,15 @@ function mockFailedHandoff(): void {
   );
 }
 
+/**
+ * The tracker itself refuses the .torrent fetch with a 403 — the visitor is not logged in on
+ * that site. This is a transient, user-actionable condition on the tracker, not an extension
+ * malfunction, and must not be conflated with a real hand-off/configuration fault.
+ */
+function mockTrackerAuthFailedHandoff(): void {
+  server.use(http.get(TORRENT_URL, () => HttpResponse.text("Forbidden", { status: 403 })));
+}
+
 describe("download interception", () => {
   let downloads: ReturnType<typeof getChromeDownloadsMock>;
   let notifications: ReturnType<typeof getChromeNotificationsMock>;
@@ -777,6 +786,27 @@ describe("download interception — configuration is visible", () => {
     await handleDownloadCreated(createDownloadItem({ id: 73 }));
 
     expect(action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
+  });
+
+  // TDD: this currently FAILS. classifyFailure() in downloads.ts already recognizes this
+  // exact message as FailureKind "auth" (for the desktop notification), but the badge write
+  // in handOffToNas's catch block calls markConfigurationProblem() unconditionally for every
+  // FailureKind, collapsing a transient tracker-login condition into the same hard "!" /
+  // #D93025 state used for real extension faults (QNAP unreachable, bad credentials). Desired:
+  // a tracker-auth failure must NOT drive the badge into CONFIG_BADGE ("!"). There is no
+  // dedicated neutral/"no access" badge state in actions.ts yet (states are only the idle
+  // icon/empty badge vs. the "!" configuration-problem badge) — so this test expects the
+  // closest existing non-error outcome, an empty badge text, as the placeholder target for the
+  // eventual dedicated state.
+  it("does not raise the hard-error badge when only the tracker refused the download (403)", async () => {
+    seedChromeStorage(createTestSettings());
+    mockTrackerAuthFailedHandoff();
+    const action = getChromeActionMock();
+
+    await handleDownloadCreated(createDownloadItem({ id: 73 }));
+
+    expect(action.setBadgeText).not.toHaveBeenCalledWith({ text: "!" });
+    expect(action.setBadgeBackgroundColor).not.toHaveBeenCalledWith({ color: "#D93025" });
   });
 
   it("keeps the fault until the user opens the popup even after a later hand-off succeeds", async () => {
