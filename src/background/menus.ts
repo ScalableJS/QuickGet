@@ -10,7 +10,7 @@ import { loadSettings } from "@lib/settings.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { ensureMonitoring } from "./alarms.js";
-import { markConfigurationProblem, markInterceptionStarted } from "./actions.js";
+import { markConfigurationProblem } from "./actions.js";
 import { notifyDirect } from "./notifier.js";
 
 /**
@@ -78,7 +78,6 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
   const settings = await loadSettings();
   const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
   console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
-  await markInterceptionStarted();
 
   try {
     if (isTorrentSource(url)) {

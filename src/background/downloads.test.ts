@@ -6,7 +6,6 @@ import {
   createDownloadItem,
   getChromeDownloadsMock,
   getChromeNotificationsMock,
-  getChromeSessionStorageSnapshot,
   getChromeActionMock,
   getChromeScriptingMock,
   getChromeTabsMock,
@@ -20,16 +19,9 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { markConfigurationProblem } from "./actions.js";
-import {
-  handleDeterminingFilename,
-  handleDownloadCreated,
-  recoverAbandonedHandoffs,
-  reserveDownloadForHold,
-} from "./downloads.js";
+import { handleDeterminingFilename, handleDownloadCreated, reserveDownloadForHold } from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
-const ACTIVE_ICON = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
 
 /** Serve the .torrent itself plus the NAS endpoints a successful hand-off needs. */
 function mockSuccessfulHandoff(): { addTorrentCalls: number } {
@@ -103,9 +95,7 @@ describe("download interception", () => {
     it("cancels at the filename stage instead of pausing, so no file is committed", async () => {
       mockSuccessfulHandoff();
 
-      const { held, suggest } = await runWithFilenameHold(
-        createTestSettings({ suppressLocalTorrentFile: true }),
-      );
+      const { held, suggest } = await runWithFilenameHold(createTestSettings({ suppressLocalTorrentFile: true }));
 
       expect(held).toBe(true);
       // The download dies before Chrome can prompt or write; pausing would be too late.
@@ -119,9 +109,7 @@ describe("download interception", () => {
     it("keeps the transactional pause/cancel path when the option is off", async () => {
       mockSuccessfulHandoff();
 
-      const { suggest } = await runWithFilenameHold(
-        createTestSettings({ suppressLocalTorrentFile: false }),
-      );
+      const { suggest } = await runWithFilenameHold(createTestSettings({ suppressLocalTorrentFile: false }));
 
       // Default stays safe: the browser holds the file until the NAS has confirmed it.
       expect(downloads.pause).toHaveBeenCalled();
@@ -162,7 +150,7 @@ describe("download interception", () => {
     expect(downloads.pause).not.toHaveBeenCalled();
   });
 
-  it("cancels the browser download only after the NAS accepted the torrent", async () => {
+  it("removes a successful hand-off from Chrome's download history only after NAS acceptance", async () => {
     seedChromeStorage(createTestSettings());
     const nas = mockSuccessfulHandoff();
 
@@ -171,11 +159,14 @@ describe("download interception", () => {
     expect(nas.addTorrentCalls).toBe(1);
     expect(downloads.pause).toHaveBeenCalledWith(1);
     expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.erase).toHaveBeenCalledWith({ id: 1 });
     expect(downloads.resume).not.toHaveBeenCalled();
 
     const pausedAt = downloads.pause.mock.invocationCallOrder[0];
     const cancelledAt = downloads.cancel.mock.invocationCallOrder[0];
+    const erasedAt = downloads.erase.mock.invocationCallOrder[0];
     expect(pausedAt).toBeLessThan(cancelledAt);
+    expect(cancelledAt).toBeLessThan(erasedAt);
   });
 
   it("continues the NAS hand-off when Chrome cannot repaint the action icon", async () => {
@@ -187,38 +178,6 @@ describe("download interception", () => {
 
     expect(nas.addTorrentCalls).toBe(1);
     expect(downloads.cancel).toHaveBeenCalledWith(1);
-  });
-
-  it("does not let an older working-state write erase a newer parallel failure", async () => {
-    seedChromeStorage(createTestSettings());
-    mockSuccessfulHandoff();
-
-    let releaseRepaint!: () => void;
-    let signalRepaintReached!: () => void;
-    const repaintGate = new Promise<void>((resolve) => {
-      releaseRepaint = resolve;
-    });
-    const repaintReached = new Promise<void>((resolve) => {
-      signalRepaintReached = resolve;
-    });
-    getChromeActionMock().setIcon.mockImplementationOnce(async () => {
-      signalRepaintReached();
-      await repaintGate;
-    });
-
-    const olderSuccess = handleDownloadCreated(createDownloadItem());
-    await repaintReached;
-    const newerFailure = markConfigurationProblem("parallel AddTorrent failed");
-    // Let an implementation without serialization read and write its stale snapshot. A
-    // serialized implementation correctly waits behind the gated working transition.
-    await Promise.resolve();
-    await Promise.resolve();
-    releaseRepaint();
-    await Promise.all([newerFailure, olderSuccess]);
-
-    expect(getChromeSessionStorageSnapshot()["qg:toolbarState"]).toEqual(
-      expect.objectContaining({ badgeText: "!", failureRevision: 1 }),
-    );
   });
 
   it("holds the cancel until AddTorrent actually resolves", async () => {
@@ -283,6 +242,8 @@ describe("download interception", () => {
 
     // The NAS has the torrent, but the browser transfer must not be left hanging paused.
     expect(downloads.resume).toHaveBeenCalledWith(1);
+    // The still-running browser copy is the recovery path, so it must remain in history.
+    expect(downloads.erase).not.toHaveBeenCalled();
   });
 
   it("reports the paused state honestly when the resume also fails", async () => {
@@ -306,6 +267,7 @@ describe("download interception", () => {
 
     expect(downloads.resume).toHaveBeenCalledWith(1);
     expect(downloads.cancel).not.toHaveBeenCalled();
+    expect(downloads.erase).not.toHaveBeenCalled();
   });
 
   it("works from the normal session-credential state, not just a legacy local password", async () => {
@@ -359,119 +321,20 @@ describe("download interception", () => {
     expect(downloads.cancel).toHaveBeenCalledWith(1);
   });
 
-  it("sends a download only once when onCreated and onChanged both recognise it", async () => {
-    seedChromeStorage(createTestSettings());
-    const nas = mockSuccessfulHandoff();
-    const item = createDownloadItem();
-
-    await handleDownloadCreated(item);
-    await handleDownloadCreated(item); // the onChanged path arriving for the same id
-
-    expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalledTimes(1);
-  });
-
   it("sends only once when both listeners fire concurrently", async () => {
-    // Found in E2E, not here: sequential calls are settled by the session marker, but two
-    // concurrent ones both read it as unset and sent the torrent twice. The claim has to be
-    // taken synchronously, before the first await.
+    // Both browser events can identify the same new download before either async path finishes.
+    // The in-memory guard settles that race without persisting task state outside the NAS.
     seedChromeStorage(createTestSettings());
     const nas = mockSuccessfulHandoff();
     const item = createDownloadItem();
 
-    await Promise.all([handleDownloadCreated(item), handleDownloadCreated(item)]);
+    await Promise.all([handleDownloadCreated(item), handleDownloadCreated(item), handleDownloadCreated(item)]);
 
     expect(nas.addTorrentCalls).toBe(1);
     expect(downloads.cancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps the first listener's in-flight ownership while duplicate listeners return", async () => {
-    // A must wait before it persists the durable claim. B sees A's synchronous in-memory
-    // claim and returns. C then proves whether B incorrectly released A's ownership in its
-    // outer finally: only A is allowed to make the NAS hand-off.
-    seedChromeStorage(createTestSettings());
-    const nas = mockSuccessfulHandoff();
-    const item = createDownloadItem({ id: 87 });
-
-    let releaseClaimWrite!: () => void;
-    let signalClaimWriteReached!: () => void;
-    const claimWriteGate = new Promise<void>((resolve) => {
-      releaseClaimWrite = resolve;
-    });
-    const claimWriteReached = new Promise<void>((resolve) => {
-      signalClaimWriteReached = resolve;
-    });
-    const sessionSet = vi.mocked(chrome.storage.session.set);
-    const originalSessionSet = sessionSet.getMockImplementation();
-    sessionSet.mockImplementationOnce(async (items, callback) => {
-      if (Object.getOwnPropertyDescriptor(items, "qg-claimed-87")?.value === true) {
-        signalClaimWriteReached();
-        await claimWriteGate;
-      }
-      originalSessionSet?.(items, callback);
-    });
-
-    const first = handleDownloadCreated(item);
-    await claimWriteReached;
-    await handleDownloadCreated(item);
-    const third = handleDownloadCreated(item);
-
-    // Keep A's claim write blocked through one event-loop turn. The broken ownership release
-    // lets C reach the NAS in that window; a correct one leaves C rejected by A's in-flight
-    // guard without needing timing assumptions about the NAS mock.
-    await new Promise((resolve) => setTimeout(resolve));
-
-    releaseClaimWrite();
-    await Promise.all([first, third]);
-
-    expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("releases a download abandoned by a service worker that died mid-hand-off", async () => {
-    seedChromeSessionStorage({ "qg-pending-7": true, sessionNASpassword: "secret" });
-
-    await recoverAbandonedHandoffs();
-
-    expect(downloads.resume).toHaveBeenCalledWith(7);
-    expect(getChromeSessionStorageSnapshot()["qg-pending-7"]).toBeUndefined();
-    // Unrelated session keys must survive the sweep.
-    expect(getChromeSessionStorageSnapshot().sessionNASpassword).toBe("secret");
-  });
-
-  it("clears the pending marker once the hand-off reached a terminal action", async () => {
-    seedChromeStorage(createTestSettings());
-    mockSuccessfulHandoff();
-
-    await handleDownloadCreated(createDownloadItem());
-
-    expect(getChromeSessionStorageSnapshot()["qg-pending-1"]).toBeUndefined();
-  });
-
-  it("records recovery intent before pausing the browser download", async () => {
-    seedChromeStorage(createTestSettings());
-    mockSuccessfulHandoff();
-
-    await handleDownloadCreated(createDownloadItem({ id: 88 }));
-
-    const pendingWrite = vi
-      .mocked(chrome.storage.session.set)
-      .mock.calls.findIndex(([items]) => Object.getOwnPropertyDescriptor(items, "qg-pending-88")?.value === true);
-    expect(pendingWrite).toBeGreaterThanOrEqual(0);
-    const pendingWriteOrder = vi.mocked(chrome.storage.session.set).mock.invocationCallOrder[pendingWrite];
-    const pauseOrder = downloads.pause.mock.invocationCallOrder[0];
-    expect(pendingWriteOrder).toBeLessThan(pauseOrder);
-  });
-
-  it("removes recovery intent when Chrome cannot pause the browser download", async () => {
-    seedChromeStorage(createTestSettings());
-    mockSuccessfulHandoff();
-    downloads.pause.mockRejectedValueOnce(new Error("download already complete"));
-
-    await handleDownloadCreated(createDownloadItem({ id: 89 }));
-
-    expect(getChromeSessionStorageSnapshot()["qg-pending-89"]).toBeUndefined();
-    expect(chrome.storage.session.remove).toHaveBeenCalledWith("qg-pending-89");
+    const persistedKeys = vi.mocked(chrome.storage.session.set).mock.calls.flatMap(([items]) => Object.keys(items));
+    expect(persistedKeys).not.toContain("qg-pending-1");
+    expect(persistedKeys).not.toContain("qg-claimed-1");
   });
 
   it("leaves the download alone when the NAS address is not configured", async () => {
@@ -515,63 +378,6 @@ describe("download interception", () => {
 describe("download interception — toolbar lifecycle", () => {
   beforeEach(() => {
     seedChromeStorage(createTestSettings());
-  });
-
-  it("shows the green active icon while the accepted interception is still in flight", async () => {
-    let releaseAddTorrent!: () => void;
-    let signalAddTorrentReached!: () => void;
-    const addTorrentGate = new Promise<void>((resolve) => {
-      releaseAddTorrent = resolve;
-    });
-    const addTorrentReached = new Promise<void>((resolve) => {
-      signalAddTorrentReached = resolve;
-    });
-
-    server.use(
-      http.get(TORRENT_URL, () =>
-        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
-          headers: { "content-type": "application/x-bittorrent" },
-        }),
-      ),
-      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
-      ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async () => {
-        signalAddTorrentReached();
-        await addTorrentGate;
-        return HttpResponse.json({ error: 0 });
-      }),
-    );
-
-    const handOff = handleDownloadCreated(createDownloadItem({ id: 90 }));
-    await addTorrentReached;
-
-    const action = getChromeActionMock();
-    expect(action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
-    expect(action.setTitle).toHaveBeenCalledWith({ title: "Sending torrent to QNAP…" });
-
-    releaseAddTorrent();
-    await handOff;
-  });
-
-  it("repaints green even when the persisted cache already says active", async () => {
-    seedChromeSessionStorage({
-      "qg:toolbarState": {
-        badgeText: "",
-        icon: "active",
-        colorSet: false,
-        title: "",
-        failureRevision: 0,
-        zeroStreak: 0,
-        errorStreak: 0,
-      },
-    });
-    mockSuccessfulHandoff();
-    const action = getChromeActionMock();
-
-    await handleDownloadCreated(createDownloadItem({ id: 93 }));
-
-    expect(action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
   });
 
   it("keeps a parallel failure red when an earlier successful hand-off completes afterwards", async () => {
@@ -734,51 +540,6 @@ describe("download interception — page-context fetch", () => {
     expect(notifications.create).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.stringContaining("logged in") }),
     );
-  });
-});
-
-/**
- * The claim marker lives in session storage and so outlives the worker, while the in-memory
- * half of the guard does not. Left behind after a failure it would silently bar every retry —
- * a download that is never intercepted and never explains why.
- */
-describe("download interception — claim lifecycle", () => {
-  beforeEach(() => {
-    seedChromeStorage(createTestSettings());
-  });
-
-  it("releases the claim when the hand-off throws, so a later event can retry", async () => {
-    server.use(
-      http.get(TORRENT_URL, () => {
-        throw new Error("network down");
-      }),
-    );
-
-    await handleDownloadCreated(createDownloadItem({ id: 9 }));
-
-    expect(getChromeSessionStorageSnapshot()["qg-claimed-9"]).toBeUndefined();
-  });
-
-  it("keeps the claim while the hand-off succeeds, so both listeners cannot send it twice", async () => {
-    const nas = mockSuccessfulHandoff();
-
-    await handleDownloadCreated(createDownloadItem({ id: 10 }));
-    await handleDownloadCreated(createDownloadItem({ id: 10 }));
-
-    expect(nas.addTorrentCalls).toBe(1);
-    expect(getChromeSessionStorageSnapshot()["qg-claimed-10"]).toBe(true);
-  });
-
-  it("drops claims left by a dead worker on the next start", async () => {
-    seedChromeSessionStorage({ "qg-claimed-11": true, "qg-claimed-12": true, sessionNASpassword: "secret" });
-
-    await recoverAbandonedHandoffs();
-
-    const snapshot = getChromeSessionStorageSnapshot();
-    expect(snapshot["qg-claimed-11"]).toBeUndefined();
-    expect(snapshot["qg-claimed-12"]).toBeUndefined();
-    // Unrelated session state must survive the sweep.
-    expect(snapshot.sessionNASpassword).toBe("secret");
   });
 });
 

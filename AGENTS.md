@@ -13,7 +13,8 @@ machine-readable standards live in `agent-os/`:
   `roadmap.md` (phases; details in `docs/feature-roadmap.md`), `tech-stack.md`,
   **`bugs-kanban.md` — the single source of truth for open defects**, and
   `settings-ux-kanban.md` — the same kanban convention, scoped to Settings UX work
-  (details in `docs/settings-ux-plan.md`).
+  (details in `docs/settings-ux-plan.md`), and `demo-video-kanban.md` — the promotional
+  recording, scoped to the `demo-video` skill's method.
 - **`agent-os/standards/`** — concise, injectable rules, listed in `index.yml`.
   Read the index first and pull only what the task needs; `/inject-standards` does this
   for you. Commands live in `.claude/commands/agent-os/`, skills in `.agents/skills/`.

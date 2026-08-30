@@ -117,6 +117,8 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
 
   if (type === SNAPSHOT_MESSAGE) {
     const { stats } = message as BadgeSnapshotMessage;
+    // This is the successful Task/Query the popup just rendered. Its empty
+    // result is authoritative for the open app, unlike a lone alarm poll.
     void applyBadgeStats(stats)
       .then(({ active }) => {
         if (active > 0) void armMonitoring();

@@ -2,10 +2,6 @@ import { showStatus } from "@/popup/components";
 
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
-import { refreshSnapshot } from "../downloads/downloadsManager.js";
-import { getSnapshot } from "../downloads/downloadsState.js";
-
-import { checkDuplicate, normalizeFileName } from "./duplicateCheck.js";
 
 interface UploadOptions {
   onDuplicate?: (fileName: string) => void;
@@ -19,19 +15,6 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
   }
 
   showStatus(`Uploading torrent: ${file.name}...`, "info");
-
-  let snapshot = getSnapshot();
-  if (snapshot.names.size === 0 && snapshot.hashes.size === 0) {
-    await refreshSnapshot();
-    snapshot = getSnapshot();
-  }
-
-  const normalizedName = normalizeFileName(file.name);
-  if (checkDuplicate(file.name) || (normalizedName && snapshot.names.has(normalizedName))) {
-    showStatus(`"${file.name}" already exists on Download Station`, "info", { autoHideMs: 2000 });
-    options.onDuplicate?.(file.name);
-    return;
-  }
 
   try {
     const client = await getApiClient();

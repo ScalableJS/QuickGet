@@ -13,6 +13,8 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
+| BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
 | BUG-30 | Intercepted `.torrent` still reaches the disk — no filename-stage suppression | background | medium | In Review |
 | BUG-29 | Tracker-auth send failure is painted as a hard extension error | background | medium | Done |
 | BUG-25 | Losing the worker between pause and pending-marker write strands a browser download | background | high | Done |
@@ -47,6 +49,73 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-32 — Optimistic toolbar paint left dangling references after the badge refactor
+
+**Severity:** high · **Area:** background · **Status:** Done
+**Files:** `src/background/menus.ts`, `src/background/actions.test.ts`,
+`src/background/alarms.test.ts`, `src/background/downloads.test.ts`,
+`src/background/menus.test.ts`, `tests/e2e/download-interception.spec.ts`
+
+The badge refactor that removed idle hysteresis (`zeroStreak`/`firstZeroAt`) and the failure
+budget (`errorStreak`/`ERROR_LIMIT`) deleted `markInterceptionStarted()` and
+`noteMonitoringFailure()` from `actions.ts`, but `menus.ts` still imported and called the
+former. Every context-menu send therefore threw
+`markInterceptionStarted is not a function` and showed "Failed to send with QuickGet" —
+the primary "Send to QuickGet" path was broken, not merely mistyped. `tsc` reported 4 errors
+and 23 unit tests failed.
+
+**Resolved 2026-08-31** — `menus.ts` no longer paints an optimistic active state; it relies on
+`ensureMonitoring()` exactly like the interception path in `downloads.ts`. Tests asserting the
+removed behaviour were retargeted at what the code now guarantees rather than deleted wholesale:
+a single successful zero is authoritative, a failed query flags the toolbar at once, and
+write-coalescing (`["1","2","1",""]`) is still gated. The E2E restart test waited on the
+title `"Sending torrent to QNAP…"` that nothing sets any more, which timed out and let the
+download retry — masking BUG-31's real assertions behind 4 `AddTorrent` calls instead of 1.
+It now waits on the hand-off itself and proves both the single upload and the erased
+`DownloadItem`.
+
+---
+
+### BUG-31 — Successful torrent hand-offs retain a Chrome DownloadItem after restart
+
+**Severity:** high · **Area:** background · **Status:** Done
+**Files:** `src/background/downloads.ts`, `src/background/downloads.test.ts`,
+`tests/e2e/download-interception.spec.ts`
+
+After Download Station accepts an intercepted `.torrent`, the extension cancels the matching
+Chrome transfer but intentionally leaves its `DownloadItem` in Chrome's history. A real Chromium
+profile test closes and reopens the browser, then receives that same record again (`id: 1`,
+`state: "complete"`, original `.torrent` URL). The current run does **not** make a second
+`AddTorrent` request, so persistence is proven but automatic NAS replay is not yet reproduced.
+
+The source code explicitly chose this behaviour: `cancelBrowserDownload()` says it keeps a
+cancelled download in Chrome's list to offer the user Retry. The E2E result shows the overlooked
+fast-download case: the source can already be `complete` before cancel, yet its history entry is
+still retained across a browser restart.
+
+**Decision taken:** do not mutate the browser download before `AddTorrent` succeeds; after
+success, erase its terminal `DownloadItem`.
+Chrome documents that `chrome.downloads.erase({ id })` removes history metadata, not a local file.
+A failed hand-off or a transfer resumed because cancellation failed must remain untouched for
+manual recovery.
+
+**Evidence under test 2026-08-30** — the old implementation deliberately keeps the completed or
+cancelled `DownloadItem` after NAS acceptance. The new unit and real-Chromium E2E regressions
+assert that this entry must be absent. Before the fix, the E2E assertion reproduced the retained
+entry; the evidence review then authorized the remediation described below.
+
+**Implemented 2026-08-30** — after explicit approval, a successful hand-off erases its terminal
+Chrome `DownloadItem`. Failure paths still retain or resume the browser download.
+`downloads.erase()` removes Chrome history metadata only and does not delete a local file.
+No history-wide migration or startup cleanup runs: QuickGet touches only the record belonging
+to the current successful user action.
+
+**Verified 2026-08-30** — unit tests prove `pause → AddTorrent success → cancel → erase` ordering
+and retain history on both failure/recovery paths. A real persistent Chromium profile confirms
+the successful item is absent after a full close/reopen and that no second `AddTorrent` occurs.
+
+---
 
 ### BUG-30 — Intercepted `.torrent` still reaches the disk — no filename-stage suppression
 
@@ -226,6 +295,10 @@ both order and cleanup with tests.
 **Resolved 2026-08-29** — recovery intent is persisted before pause and removed immediately when
 pause does not occur. Tests gate the pause call and assert marker ordering and cleanup.
 
+**Removed 2026-08-30** — this recovery design made Chrome session storage a second source of
+task state. QuickGet no longer persists hand-off intent or performs startup recovery; the NAS
+is the only durable source of truth.
+
 ### BUG-24 — Duplicate listener releases another listener's in-flight ownership
 
 **Severity:** high · **Area:** background · **Status:** Done
@@ -236,7 +309,7 @@ writes its session claim. Acceptance: only the invocation that acquired ownershi
 the in-memory guard; a gated three-listener test must produce one NAS hand-off.
 
 **Resolved 2026-08-29** — ownership is tracked per invocation; rejected listeners cannot delete
-the owner's guard, and failed durable-claim acquisition releases only its own temporary guard.
+the owner's guard. As of 2026-08-30 the guard is in memory only; no durable claim exists.
 
 ### BUG-22 — Invalid settings leave a stale active toolbar
 
@@ -307,6 +380,16 @@ Two popup snapshots could increment `zeroStreak` within milliseconds and masquer
 30-second confirmations. **Resolved 2026-08-29** — idle requires two confident zeros separated by
 at least 30 seconds; a new interception resets that window. Unit and real-Chromium tests cover the
 rapid-zero and confirmed-stop paths.
+
+**Reopened 2026-08-30** — after every task was deleted directly in Download Station, opening the
+popup successfully rendered an empty task list but left the toolbar active for 30–60 seconds. The
+popup's `qg:badgeSnapshot` was treated as an ordinary alarm result, so it entered the same
+hysteresis window intended for a lone background poll.
+
+**Resolved again 2026-08-30** — a completed popup `Task/Query` now explicitly confirms idle and
+clears the toolbar immediately when it contains no active tasks. Alarm polling still requires two
+zeros at least 30 seconds apart, preserving protection against a transient backend result. Unit
+and real-Chromium regression tests cover active → empty-popup-snapshot → idle.
 
 ### BUG-18 — Rejected action writes are cached as successfully painted
 
@@ -707,6 +790,10 @@ download, and a claim implemented as `await get()` then `set()` let both callers
 "unclaimed" and send the torrent twice — visible in E2E as the torrent host being fetched five
 times instead of three. The claim is now taken synchronously from an in-memory set before the
 first await, with the session marker carrying it across restarts.
+
+**Superseded 2026-08-30** — persistent pending/claim markers, startup recovery and the duplicate
+task Resume notification were removed. Only a synchronous in-memory guard remains for
+concurrent `onCreated`/`onChanged` events; it disappears when the operation or worker ends.
 
 ---
 

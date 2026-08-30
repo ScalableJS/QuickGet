@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTestSettings } from "../../tests/fixtures/settings.js";
 import {
-  getChromeActionMock,
   getChromeScriptingMock,
   getChromeSessionStorageSnapshot,
   seedChromeStorage,
@@ -42,41 +41,6 @@ describe("context-menu routing", () => {
         ],
       }),
     );
-  });
-
-  it("publishes the working icon before AddUrl resolves", async () => {
-    let releaseAddUrl!: () => void;
-    let signalAddUrlReached!: () => void;
-    const addUrlGate = new Promise<void>((resolve) => {
-      releaseAddUrl = resolve;
-    });
-    const addUrlReached = new Promise<void>((resolve) => {
-      signalAddUrlReached = resolve;
-    });
-    server.use(
-      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
-      ),
-      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", async () => {
-        signalAddUrlReached();
-        await addUrlGate;
-        return HttpResponse.json({ error: 0 });
-      }),
-    );
-
-    const sending = handleContextMenuClick({
-      editable: false,
-      linkUrl: "https://downloads.example.org/archive.zip",
-      menuItemId: "quickget-send-link",
-    });
-    await addUrlReached;
-
-    expect(getChromeActionMock().setIcon).toHaveBeenCalledWith({
-      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
-    });
-
-    releaseAddUrl();
-    await sending;
   });
 
   it("publishes a red failure state when AddUrl fails", async () => {

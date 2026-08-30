@@ -12,7 +12,7 @@
   import { getErrorMessage } from "@lib/errors.js";
   import type { RoutingMatchType } from "@lib/routingRules.js";
   import { findConfigProblem } from "@lib/configHealth.js";
-  import { clearConnectionHealth, type ConnectionState, readConnectionState, recordFailure, recordSuccess } from "@lib/connectionHealth.js";
+  import { connectionFailure, type ConnectionState, readConnectionState } from "@lib/connectionHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
@@ -363,13 +363,13 @@
       isTesting = true;
       const client = await getApiClient({ settings: $state.snapshot(form) });
       await client.queryTasks({ params: { limit: 1 } });
-      await recordSuccess();
+      const now = Date.now();
+      connection = { configured: true, health: { kind: "ready", lastCheckedAt: now, lastSuccessAt: now } };
       showStatus("Connected to the NAS", "success", { autoHideMs: 2500 });
     } catch (error) {
-      await recordFailure(error);
+      connection = { configured: findConfigProblem(form) === undefined, health: connectionFailure(error) };
       showStatus(getErrorMessage(error), "error");
     } finally {
-      connection = await readConnectionState(form);
       isTesting = false;
     }
   }
@@ -380,7 +380,6 @@
     }
 
     await saveSettings({ NASaddress: "", NASlogin: "", NASpassword: "" });
-    await clearConnectionHealth();
     form = await loadSettings();
     serverUrl = composeServerUrl(form);
     connection = await readConnectionState(form);

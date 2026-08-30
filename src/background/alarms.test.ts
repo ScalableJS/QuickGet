@@ -122,32 +122,26 @@ describe("background alarms", () => {
     expect(alarms["download-monitor"]).toBeDefined(); // still polling
   });
 
-  it("stops monitoring only after sustained idle (hysteresis, not one zero)", async () => {
+  it("stops monitoring on a successful zero — the NAS snapshot is authoritative", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
     server.use(loginHandler(), queryHandler([job(5)])); // finished only — nothing in progress
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
-    expect(alarms["download-monitor"]).toBeDefined(); // one zero is not trusted
 
-    const now = Date.now();
-    vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
-    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
-    expect(alarms["download-monitor"]).toBeUndefined(); // confirmed idle → alarm cleared
+    expect(alarms["download-monitor"]).toBeUndefined(); // idle → alarm cleared
   });
 
-  it("gives up polling after repeated failures (unreachable NAS), not forever", async () => {
+  it("stops polling an unreachable NAS and flags the toolbar", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
     server.use(
       loginHandler(),
       http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })),
     );
 
-    // ERROR_LIMIT is 4: the first three failures keep polling, the fourth stops.
-    for (let i = 0; i < 3; i += 1) {
-      await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
-      expect(alarms["download-monitor"]).toBeDefined();
-    }
+    // A failed query invalidates the displayed state at once: stale counts are
+    // worse than an explicit "unavailable".
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
     expect(alarms["download-monitor"]).toBeUndefined();
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "!" });
   });

@@ -3,8 +3,9 @@
  *
  * Background owns chrome.action. Every update flows through applyBadgeStats(),
  * which keeps the last-known state and writes only on a real change (uBlock
- * style). Idle hysteresis means a single zero never clears the badge — it takes
- * ZERO_CONFIRM consecutive zeros, so a transient NAS hiccup can't blank it.
+ * style). Background polls need two zeroes before clearing, so a transient NAS
+ * hiccup cannot blank the badge. A successful popup snapshot is already what
+ * the user sees, so it may explicitly confirm idle without that delay.
  *
  * The state lives in chrome.storage.session, NOT module globals: MV3 tears the
  * worker down after ~30s idle (≈ our alarm period), and "Any global variables
@@ -45,14 +46,6 @@ const CONFIG_BADGE_COLOR = "#D93025";
 const NOTICE_BADGE = "i";
 const NOTICE_BADGE_COLOR = "#9AA0A6";
 
-// Consecutive confirmed-zero polls required before the badge clears.
-const ZERO_CONFIRM = 2;
-const ZERO_CONFIRM_MS = 30_000;
-
-// Consecutive failed polls before we stop the loop. ~2 min at the 30s period —
-// rides out a brief NAS blip, but doesn't poll a truly unreachable NAS forever.
-const ERROR_LIMIT = 4;
-
 type IconState = "active" | "idle";
 
 type ToolbarState = {
@@ -62,9 +55,6 @@ type ToolbarState = {
   title: string;
   failureReason: string | null;
   failureRevision: number;
-  zeroStreak: number;
-  firstZeroAt: number | null;
-  errorStreak: number;
 };
 
 const STATE_KEY = "qg:toolbarState";
@@ -75,9 +65,6 @@ const DEFAULT_STATE: ToolbarState = {
   title: "",
   failureReason: null,
   failureRevision: 0,
-  zeroStreak: 0,
-  firstZeroAt: null,
-  errorStreak: 0,
 };
 
 // This is a same-worker mutex, not authoritative state. The state itself remains in
@@ -125,12 +112,13 @@ function buildTitle(stats: ProgressSummary): string {
 /**
  * Apply a confident, successful poll to the toolbar — the ONLY function that
  * writes the badge/icon. Diff-guarded and idle-hysteresis'd against the
- * persisted last-known state. Returns whether idle is now confirmed (so the
- * caller can stop polling). Do NOT call on a failed/aborted/skipped poll.
+ * persisted last-known state. A completed popup query can set `confirmIdle`:
+ * its zero is already the list the user sees and should repaint the action at
+ * once. Returns whether idle is now confirmed (so the caller can stop polling).
+ * Do NOT call on a failed/aborted/skipped poll.
  */
 export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active: number; idleConfirmed: boolean }> {
   return updateState(async (state) => {
-    state.errorStreak = 0; // a successful poll resets the failure count
     const needsAttention = state.badgeText === CONFIG_BADGE;
 
     // Refresh the tooltip only when we actually apply a state — during an idle
@@ -144,8 +132,6 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
 
     if (stats.active > 0) {
       if (!needsAttention) await refreshTitle();
-      state.zeroStreak = 0;
-      state.firstZeroAt = null;
       const text = String(stats.active);
       if (!needsAttention && text !== state.badgeText) {
         if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text }))) state.badgeText = text;
@@ -163,16 +149,7 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
       return { active: stats.active, idleConfirmed: false };
     }
 
-    // active === 0 — hold the last badge/icon until the zeros are sustained.
-    const now = Date.now();
-    if (state.firstZeroAt === null) {
-      state.firstZeroAt = now;
-      state.zeroStreak = 1;
-      return { active: 0, idleConfirmed: false };
-    }
-    if (now - state.firstZeroAt < ZERO_CONFIRM_MS) return { active: 0, idleConfirmed: false };
-    state.zeroStreak = ZERO_CONFIRM;
-
+    // A successful NAS snapshot is authoritative, including the first zero.
     if (!needsAttention) await refreshTitle();
     if (!needsAttention && state.badgeText !== "") {
       if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
@@ -183,27 +160,6 @@ export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active:
       }
     }
     return { active: 0, idleConfirmed: true };
-  });
-}
-
-/**
- * Publish the real start of a browser-download hand-off immediately. An existing attention
- * badge deliberately remains until the user opens the popup and can read its reason.
- */
-export async function markInterceptionStarted(): Promise<void> {
-  await updateState(async (state) => {
-    state.zeroStreak = 0;
-    state.firstZeroAt = null;
-    // This is an explicit lifecycle event, not a poll. Repaint even when the persisted cache
-    // already says active because Chrome's visible action and our cache can drift.
-    if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
-      state.icon = "active";
-    }
-
-    if (state.badgeText !== CONFIG_BADGE) {
-      const title = "Sending torrent to QNAP…";
-      if (await tryActionUpdate("title", () => chrome.action.setTitle({ title }))) state.title = title;
-    }
   });
 }
 
@@ -279,26 +235,13 @@ export async function acknowledgeAttention(): Promise<string | null> {
     state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
     state.failureReason = null;
-    state.errorStreak = 0;
     return reason;
   });
 }
 
-/**
- * Record a failed poll. The badge/icon are left untouched (a transient error
- * must never blank the count). Returns giveUp once failures are sustained, so
- * the caller can stop polling an unreachable NAS instead of retrying forever.
- */
-export async function noteMonitoringFailure(): Promise<{ giveUp: boolean }> {
-  return updateState(async (state) => {
-    state.errorStreak += 1;
-    return { giveUp: state.errorStreak >= ERROR_LIMIT };
-  });
-}
-
-/** Monitoring stopped after sustained failures; never leave a cached active count looking live. */
+/** A failed NAS query invalidates the previously displayed task state immediately. */
 export async function markMonitoringUnavailable(): Promise<void> {
-  await markConfigurationProblem("Cannot reach Download Station — displayed task status may be stale.");
+  await markConfigurationProblem("Cannot reach Download Station — task status is unavailable.");
 }
 
 /**

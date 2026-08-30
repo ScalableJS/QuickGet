@@ -19,12 +19,7 @@ import { findConfigProblem } from "@lib/configHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
-import {
-  applyBadgeStats,
-  markConfigurationProblemAfterActiveState,
-  markMonitoringUnavailable,
-  noteMonitoringFailure,
-} from "./actions.js";
+import { applyBadgeStats, markConfigurationProblemAfterActiveState, markMonitoringUnavailable } from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -131,12 +126,7 @@ async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<
     }
   } catch (error) {
     console.error("Monitoring error:", error);
-    // Keep the last-known badge/icon. Give up only once failures are sustained,
-    // so an unreachable NAS doesn't get polled (and logged) every 30s forever.
-    const { giveUp } = await noteMonitoringFailure().catch(() => ({ giveUp: false }));
-    if (giveUp) {
-      await markMonitoringUnavailable();
-      void chrome.alarms.clear(ALARM_NAME);
-    }
+    await markMonitoringUnavailable();
+    void chrome.alarms.clear(ALARM_NAME);
   }
 }
