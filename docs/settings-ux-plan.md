@@ -1,136 +1,139 @@
-# План: форма настроек — валидация, группировка, a11y
+# Plan: settings form — validation, grouping, a11y
 
-Статус: **план, не реализовано**. Составлен после разбора Settings в Storybook
-(`Features/Settings`) и замера того, что в форме есть сейчас.
+Status: **plan, not implemented**. Written after reviewing Settings in Storybook
+(`Features/Settings`) and measuring what's currently in the form.
 
-## Что измерено, а не предположено
+## What was measured, not assumed
 
-| Показатель | Значение |
+| Metric | Value |
 | --- | --- |
-| CSS попапа | 33.7 КБ, **6.5 КБ gzip** |
-| `<fieldset>` / `<legend>` во всём попапе | **0** |
+| Popup CSS | 33.7 KB, **6.5 KB gzip** |
+| `<fieldset>` / `<legend>` across the whole popup | **0** |
 | `aria-describedby` / `aria-invalid` / `aria-errormessage` | **0** |
-| `aria-live` | 0 в форме (статус-пилл рисуется императивно) |
-| Поддержка ошибки в `Field.svelte` | **нет** — только `id`, `label`, `value`, `size` |
+| `aria-live` | 0 in the form (status pill is rendered imperatively) |
+| Error support in `Field.svelte` | **none** — only `id`, `label`, `value`, `size` |
 
-Из этого следуют выводы ниже. Ключевой: проблема формы **не в движке стилей**.
+The conclusions below follow from this. The key one: the form's problem
+**is not the styling engine**.
 
-## Про утилити-CSS (Tailwind и альтернативы)
+## On utility CSS (Tailwind and alternatives)
 
-Запрос был «признанная альтернатива Tailwind для Svelte, почти без роста объёма».
+The request was "a recognized Tailwind alternative for Svelte, with almost no growth in size."
 
-Признанная альтернатива ровно одна — **UnoCSS**: on-demand атомарный движок, нативный для
-Vite, с Tailwind-совместимым пресетом, стабильно даёт CSS меньше Tailwind и собирается в разы
-быстрее ([сравнение 2026](https://www.pkgpulse.com/guides/tailwind-v4-vs-unocss-vs-pandacss-2026),
-[UnoCSS vs Tailwind](https://toolchew.com/en/tailwind-vs-uno/)). PandaCSS — zero-runtime, но
-тяжелее по конфигурации и ориентирован на React. Для Svelte-стека UnoCSS — верный выбор,
-[если утилити-слой нужен](https://www.pkgpulse.com/guides/tailwind-vs-unocss-2026).
+There's exactly one recognized alternative — **UnoCSS**: an on-demand atomic engine, native for
+Vite, with a Tailwind-compatible preset, that consistently produces less CSS than Tailwind and
+builds several times faster ([2026 comparison](https://www.pkgpulse.com/guides/tailwind-v4-vs-unocss-vs-pandacss-2026),
+[UnoCSS vs Tailwind](https://toolchew.com/en/tailwind-vs-uno/)). PandaCSS is zero-runtime, but
+heavier to configure and geared toward React. For a Svelte stack, UnoCSS is the right choice
+[if a utility layer is needed at all](https://www.pkgpulse.com/guides/tailwind-vs-unocss-2026).
 
-**Рекомендация: не вводить ни один из них.** Обоснование:
+**Recommendation: don't introduce either.** Reasoning:
 
-1. **Экономить нечего.** 6.5 КБ gzip на весь попап — утилити-движок такое не улучшит, а на
-   старте добавит собственный препроцессинг в сборку расширения.
-2. **Токены уже есть.** `--space-*`, `--color-*`, `--control-height-*`, светлая и тёмная темы.
-   Утилиты дали бы второй способ выражать то же самое — расхождение, а не порядок.
-3. **Перечисленные боли утилитами не лечатся.** Валидация, подсветка сообщений, группы полей,
-   a11y — это семантика разметки и состояние компонента. `class="border-red-500"` не добавит
-   ни `aria-invalid`, ни связи ошибки с полем.
-4. **Цена высока.** Переписывание scoped-стилей всех компонентов попапа — недели правок с
-   риском регрессий в расширении, которое сейчас чинится по существу.
+1. **There's nothing to save.** 6.5 KB gzip for the whole popup — a utility engine won't improve
+   that, and it would add its own preprocessing step to the extension's build from day one.
+2. **Tokens already exist.** `--space-*`, `--color-*`, `--control-height-*`, light and dark themes.
+   Utilities would give a second way to express the same thing — divergence, not order.
+3. **The listed pain points aren't fixed by utilities.** Validation, message highlighting, field
+   groups, a11y — this is markup semantics and component state. `class="border-red-500"` adds
+   neither `aria-invalid` nor a link between the error and the field.
+4. **The cost is high.** Rewriting the scoped styles of every component in the popup is weeks of
+   changes with regression risk, in an extension that is currently being fixed at the core.
 
-Если утилити-слой всё же понадобится (например, при заметном росте UI), правильный момент —
-отдельная задача, и тогда именно UnoCSS с `presetWrapper`, сосуществующий с токенами, а не
-замена им.
+If a utility layer is ever needed (say, with noticeable UI growth), the right moment is a
+separate task, and then it should be UnoCSS specifically, with `presetWrapper`, coexisting with
+the tokens rather than replacing them.
 
-## Настоящие проблемы формы
+## The form's real problems
 
-### 1. Ошибка не привязана к полю
+### 1. The error isn't tied to the field
 
-Любая ошибка валидации показывается одним глобальным статус-пиллом: *«Fill in Server address,
-Temp Folder before saving»*. Само поле никак не отмечено. Скринридер не узнаёт о проблеме
-вовсе — нет ни `aria-invalid`, ни `aria-describedby`. Пользователю приходится сопоставлять
-текст сообщения с полями глазами.
+Any validation error is shown as a single global status pill: *"Fill in Server address,
+Temp Folder before saving"*. The field itself isn't marked in any way. A screen reader doesn't
+learn about the problem at all — there's neither `aria-invalid` nor `aria-describedby`. The user
+has to visually match the message text to the fields.
 
-### 2. Валидация только по нажатию Save
+### 2. Validation only happens on Save
 
-Форма ничего не проверяет, пока не нажат Save, и проверяет всё разом. Пустая Temp Folder —
-ровно тот случай, который годами оставался незамеченным.
+The form checks nothing until Save is pressed, and then checks everything at once. An empty
+Temp Folder is exactly the kind of case that went unnoticed for years.
 
-### 3. Секции — это `<h2>`, а не группы
+### 3. Sections are `<h2>`, not groups
 
-`Connection`, `Download defaults`, `Routing rules`, `Backup` размечены заголовком и `<div>`.
-Для скринридера это не группы: нельзя перейти «к следующей группе полей», нет связи между
-заголовком и полями. `<fieldset>`/`<legend>` не используется нигде.
+`Connection`, `Download defaults`, `Routing rules`, `Backup` are marked up with a heading and a
+`<div>`. For a screen reader these aren't groups: there's no way to jump "to the next field
+group," and no link between the heading and its fields. `<fieldset>`/`<legend>` is used nowhere.
 
-### 4. Правила роутинга — самое слабое место
+### 4. Routing rules are the weakest spot
 
-Каждое правило — строка из трёх контролов и кнопки удаления, без своей группы и без имени.
-В списке из трёх правил скринридер читает шесть безымянных полей подряд. Удаление ничего не
-объявляет.
+Each rule is a row of three controls plus a delete button, with no group of its own and no name.
+In a list of three rules, a screen reader reads six unnamed fields in a row. Deletion announces
+nothing.
 
-### 5. Статус объявляется неправильно
+### 5. Status is announced incorrectly
 
-Статус-пилл вставляется императивно, без `aria-live`. Сообщения «Settings saved» и об ошибках
-не озвучиваются. Визуально — единственная точка обратной связи для всей формы, независимо от
-того, где произошла ошибка.
+The status pill is inserted imperatively, without `aria-live`. The messages "Settings saved" and
+error messages aren't announced. Visually it's the only feedback point for the whole form,
+regardless of where the error occurred.
 
-### 6. `Field` не умеет состояний
+### 6. `Field` doesn't support states
 
-Ни ошибки, ни подсказки, ни `required` в разметке. Отсюда и всё выше: компонент физически не
-может показать то, чего в нём нет.
+No error, no hint, no `required` in the markup. Everything above follows from this: the
+component physically can't show what isn't in it.
 
-## План
+## Plan
 
-Порядок такой, что каждый шаг самостоятелен и проверяется в Storybook до следующего.
+The order is such that each step is self-contained and can be verified in Storybook before
+moving to the next.
 
-### Шаг 1. `Field` получает состояния
+### Step 1. `Field` gets states
 
-Добавить `error?: string`, `hint?: string`, `required?: boolean`. Компонент сам:
+Add `error?: string`, `hint?: string`, `required?: boolean`. The component itself:
 
-- рендерит `<span id="{id}-error" role="alert">` и `<span id="{id}-hint">`;
-- проставляет `aria-invalid={!!error}` и `aria-describedby` на существующие элементы;
-- красит рамку токеном `--color-error`, **дополняя** текст, а не заменяя его — цвет не может
-  быть единственным носителем смысла (WCAG 1.4.1).
+- renders `<span id="{id}-error" role="alert">` and `<span id="{id}-hint">`;
+- sets `aria-invalid={!!error}` and `aria-describedby` on the existing elements;
+- colors the border with the `--color-error` token, **in addition to** the text, not replacing
+  it — color can't be the sole carrier of meaning (WCAG 1.4.1).
 
-Стоимость: один компонент, ~40 строк. Все существующие вызовы продолжают работать.
+Cost: one component, ~40 lines. All existing call sites keep working.
 
-### Шаг 2. Группы полей
+### Step 2. Field groups
 
-Ввести `FormSection.svelte` на `<fieldset>` + `<legend>`, заменить `<h2 class="section-heading">`.
-Сбросить стилевые дефолты fieldset. Внешне не меняется ничего, для навигации меняется всё.
+Introduce `FormSection.svelte` built on `<fieldset>` + `<legend>`, replacing
+`<h2 class="section-heading">`. Reset fieldset's default styles. Nothing changes visually,
+everything changes for navigation.
 
-### Шаг 3. Валидация в момент, когда она полезна
+### Step 3. Validation at a moment when it's useful
 
-- проверка поля по `blur`, а не только по Save;
-- Save дополнительно переводит фокус на первое поле с ошибкой;
-- обязательные поля берутся из `findConfigProblem()` — источник уже единый, второй список
-  заводить нельзя.
+- validate the field on `blur`, not only on Save;
+- Save additionally moves focus to the first field with an error;
+- required fields are taken from `findConfigProblem()` — the source is already single, a second
+  list must not be created.
 
-### Шаг 4. Живой статус
+### Step 4. Live status
 
-Статус-пилл — в контейнер с `aria-live="polite"` (ошибки — `assertive`). Дальше сообщение о
-сохранении озвучивается само, без правок в местах вызова.
+Move the status pill into a container with `aria-live="polite"` (errors — `assertive`). After
+that, the "saved" message is announced automatically, with no changes at call sites.
 
-### Шаг 5. Правило роутинга как именованная группа
+### Step 5. A routing rule as a named group
 
-Каждое правило — `<fieldset>` с `<legend class="visually-hidden">Rule 1</legend>`; кнопка
-удаления получает `aria-label="Remove rule 1"`. После удаления — сообщение в живой регион.
+Each rule becomes a `<fieldset>` with `<legend class="visually-hidden">Rule 1</legend>`; the
+delete button gets `aria-label="Remove rule 1"`. After deletion — a message in the live region.
 
-### Шаг 6. Проверка
+### Step 6. Verification
 
-- Storybook: истории с ошибками полей и с фокусом на первой ошибке;
-- прогон `axe` по историям (`@storybook/addon-a11y` — единственная новая зависимость, только
-  dev);
-- проход формы с клавиатуры без мыши как приёмка.
+- Storybook: stories with field errors and with focus on the first error;
+- run `axe` against the stories (`@storybook/addon-a11y` — the only new dependency, dev only);
+- a keyboard-only pass through the form as acceptance.
 
-## Чего в плане намеренно нет
+## What's deliberately not in the plan
 
-- **Bits UI / Melt UI.** Признанные headless-примитивы для Svelte 5 с готовым a11y
+- **Bits UI / Melt UI.** Recognized headless primitives for Svelte 5 with built-in a11y
   ([Bits UI](https://github.com/huntabyte/bits-ui), [Melt UI](https://github.com/melt-ui/melt-ui)),
-  но полезны там, где есть сложные виджеты — комбобокс, диалог, меню. В форме настроек таких
-  нет: это инпуты, чекбоксы, один `<select>` и сегментированный контрол. Брать библиотеку ради
-  них — вносить зависимость размером с решаемую задачу. Стоит вернуться к вопросу, если
-  появится нормальный автокомплит для папок NAS.
-- **Замена стилевого движка.** Обоснование выше.
-- **Редизайн раздела Connection** («логин один раз, дальше только Logout»). Обсуждается
-  отдельно, вместе с судьбой мастер-пароля — это смена модели состояния, а не отделка формы.
+  but useful where there are complex widgets — combobox, dialog, menu. There are none of those
+  in the settings form: it's inputs, checkboxes, one `<select>`, and a segmented control. Taking
+  on a library for those would be introducing a dependency the size of the problem it solves.
+  Worth revisiting if a proper autocomplete for NAS folders shows up.
+- **Replacing the styling engine.** Reasoning above.
+- **Redesign of the Connection section** ("log in once, then only Logout"). Discussed
+  separately, together with the fate of the master password — that's a change of state model,
+  not a form finish.

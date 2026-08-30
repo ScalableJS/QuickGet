@@ -1,20 +1,20 @@
-# Кеширующая прослойка с TTL для QNAP Download Station API
+# TTL caching layer for the QNAP Download Station API
 
-Расширение общается с QNAP Download Station всего по двум «горячим» направлениям: хранит активный SID (сессию) и периодически делает POST-запрос `/downloadstation/V4/Task/Query` для списка задач. Оба вызова нужно кешировать, чтобы не перегружать NAS и синхронизировать несколько контекстов (popup, action-иконка, service worker). Поэтому кеширующая прослойка должна быть асинхронной, работать с JSON, поддерживать TTL и легко переиспользоваться вне Chrome. Ниже собраны основные кандидаты и подходы.
+The extension talks to QNAP Download Station over just two "hot" paths: it holds an active SID (session) and periodically makes a POST request to `/downloadstation/V4/Task/Query` for the task list. Both calls need to be cached to avoid overloading the NAS and to keep multiple contexts (popup, action icon, service worker) in sync. So the caching layer needs to be asynchronous, work with JSON, support TTL, and be easy to reuse outside Chrome. Below are the main candidates and approaches.
 
-## IndexedDB / storage-ориентированные решения
+## IndexedDB / storage-oriented solutions
 
-- **`idb-keyval` + `idb-lru`**  
-  Лёгкая обёртка над IndexedDB. Пакет `idb-lru` добавляет TTL (`maxAge`) и ограничение по размеру. Хорошо подходит для простого кэша без лишних зависимостей.
+- **`idb-keyval` + `idb-lru`**
+  A lightweight wrapper over IndexedDB. The `idb-lru` package adds TTL (`maxAge`) and a size limit. Good fit for a simple cache without extra dependencies.
 
-- **`idb-lru-cache`**  
-  Альтернатива предыдущему, реализующая LRU-алгоритм поверх IndexedDB с поддержкой `maxAge`.
+- **`idb-lru-cache`**
+  An alternative to the above, implementing an LRU algorithm on top of IndexedDB with `maxAge` support.
 
-- **`dexie` + плагины (`dexie-observable`, `dexie-live-query`)**  
-  Dexie предоставляет полноценный слой для IndexedDB с транзакциями и реактивными подписками. TTL не встроен, но легко реализуется через поле `expiresAt` и периодическую очистку. Удобно для сложных схем и больших данных.
+- **`dexie` + plugins (`dexie-observable`, `dexie-live-query`)**
+  Dexie provides a full-featured layer over IndexedDB with transactions and reactive subscriptions. TTL isn't built in but is easy to implement via an `expiresAt` field and periodic cleanup. Convenient for complex schemas and large data volumes.
 
-- **`@tanstack/query-core` + `@tanstack/query-persist-client-idb`**  
-  Ядро TanStack Query работает без React, поддерживает `staleTime`/`cacheTime` (TTL). Плагин для IndexedDB обеспечивает персистенцию. Достоинство — тот же подход можно использовать в React/React Native, просто сменив адаптер.
+- **`@tanstack/query-core` + `@tanstack/query-persist-client-idb`**
+  The TanStack Query core works without React and supports `staleTime`/`cacheTime` (TTL). The IndexedDB plugin provides persistence. The advantage: the same approach can be used in React/React Native by simply swapping the adapter.
 
   ```ts
   import { QueryClient } from "@tanstack/query-core";
@@ -31,12 +31,12 @@
       queries: {
         queryFn: ({ queryKey }) => {
           if (queryKey[0] === "downloads") {
-            return queryTasks(); // наш API клиент
+            return queryTasks(); // our API client
           }
           throw new Error("Unknown query");
         },
-        staleTime: 10_000,  // данные считаются свежими 10 секунд
-        cacheTime: 60_000,  // в памяти держим минуту
+        staleTime: 10_000,  // data is considered fresh for 10 seconds
+        cacheTime: 60_000,  // kept in memory for a minute
       },
     },
   });
@@ -49,44 +49,44 @@
   persistQueryClient({
     queryClient,
     persister,
-    maxAge: 60_000, // TTL для записей в IndexedDB
+    maxAge: 60_000, // TTL for entries in IndexedDB
   });
 
-  // где-то в сервис-воркере:
+  // somewhere in the service worker:
   async function getDownloads() {
     return queryClient.fetchQuery({ queryKey: ["downloads"] });
   }
   ```
 
-## In-memory / гибридные варианты
+## In-memory / hybrid options
 
-- **`lru-cache` (npm-пакет)**  
-  Позволяет задавать `ttl`, `ttlResolution` и `allowStale`. Можно держать данные в памяти и синхронизировать с `chrome.storage` или IndexedDB.
+- **`lru-cache` (npm package)**
+  Lets you set `ttl`, `ttlResolution`, and `allowStale`. Data can be kept in memory and synced with `chrome.storage` or IndexedDB.
 
-- **`quick-lru`**  
-  Минималистичная LRU-реализация с `maxAge`. Подходит, если требуется небольшой кэш плюс ручная персистенция.
+- **`quick-lru`**
+  A minimalist LRU implementation with `maxAge`. Suitable when a small cache plus manual persistence is enough.
 
-- **`async-cache-dedupe`**  
-  Асинхронный кэш с дедупликацией и TTL. Удобен, когда важно предотвращать параллельные одинаковые запросы. Можно адаптировать к любому бэкенд-хранилищу.
+- **`async-cache-dedupe`**
+  An asynchronous cache with deduplication and TTL. Useful when it matters to prevent parallel identical requests. Can be adapted to any backend store.
 
-## Обёртки над Chrome Storage
+## Wrappers over Chrome Storage
 
-- **`chrome-storage-cache`**  
-  Простая прослойка с TTL над `chrome.storage.local`. Идеальна для быстрого внедрения в расширение, минимизирует количество POST-запросов.
+- **`chrome-storage-cache`**
+  A simple TTL layer over `chrome.storage.local`. Ideal for quick integration into the extension, minimizes the number of POST requests.
 
-- **`chrome-storage-wrapper`**  
-  Поддерживает поле `expire`, но используется реже. Рассматривать как альтернативу, когда нужна исключительно работа с `chrome.storage`.
+- **`chrome-storage-wrapper`**
+  Supports an `expire` field but is used less often. Consider it an alternative when the requirement is strictly to work with `chrome.storage`.
 
-## Рекомендованный подход
+## Recommended approach
 
-- Если цель — **минимальная интеграция в расширение**: берём `chrome-storage-cache` или `idb-keyval`/`idb-lru`.
-- Если важна **долгосрочная переиспользуемость** в React/нативе: используем `@tanstack/query-core` или `dexie` с кастомным TTL, оборачиваем их в общий `ResourceStore`.
+- If the goal is **minimal integration into the extension**: use `chrome-storage-cache` or `idb-keyval`/`idb-lru`.
+- If **long-term reusability** in React/native matters: use `@tanstack/query-core` or `dexie` with a custom TTL, wrapping them in a shared `ResourceStore`.
 
-В любом случае разумно скрыть выбранную библиотеку за собственным интерфейсом (например, `createResourceStore`), чтобы UI и бизнес-логика не зависели от конкретной реализации и могли мигрировать между проектами.
+Either way, it makes sense to hide the chosen library behind your own interface (e.g., `createResourceStore`), so the UI and business logic don't depend on the specific implementation and can migrate between projects.
 
-## Самописный AsyncStore на базе `idb-keyval`
+## Custom AsyncStore on top of `idb-keyval`
 
-Если не хочется тянуть сторонний кэш, можно написать лёгкую обёртку над `idb-keyval`, поддерживающую промисы, TTL и middleware:
+If you'd rather not pull in a third-party cache, you can write a lightweight wrapper over `idb-keyval` that supports promises, TTL, and middleware:
 
 ```ts
 import { get, set, del } from "idb-keyval";
@@ -132,7 +132,7 @@ export class AsyncStore {
 }
 ```
 
-Использование:
+Usage:
 
 ```ts
 const store = new AsyncStore()
@@ -143,22 +143,22 @@ await store.set("downloads", snapshot, 5_000);
 const cached = await store.get("downloads");
 ```
 
-## SID и retry-логика
+## SID and retry logic
 
-- `store.get("sid")` сначала пытается вернуть значение из стора; если нет — запускает логин.
-- Чтобы избежать гонок, применяется shared-промис (`sidPromise`) — только первая параллельная попытка делает запрос, остальные ждут.
-- После успеха SID сохраняется с TTL (время жизни cookie); при ошибке входа ключ очищается.
-- При ответе NAS с ошибкой авторизации (`401/403`) SID инвалидация выполняется сразу, что заставляет следующий вызов получить новую сессию.
-- Переиспользуемый helper `withRetry(task, { retries: 3, delayMs: 1000 })` гарантирует, что вход выполняется максимум три раза; после этого исключение пробрасывается в UI.
+- `store.get("sid")` first tries to return the value from the store; if there isn't one, it triggers a login.
+- To avoid races, a shared promise (`sidPromise`) is used — only the first parallel attempt makes the request, the rest wait for it.
+- On success the SID is saved with a TTL (the cookie's lifetime); on login failure the key is cleared.
+- When the NAS responds with an authorization error (`401/403`) the SID is invalidated immediately, forcing the next call to obtain a new session.
+- The reusable `withRetry(task, { retries: 3, delayMs: 1000 })` helper guarantees login is attempted at most three times; after that the exception is propagated to the UI.
 
-## Кэш единственного запроса
+## Single-request cache
 
-- «Горячий» вызов — `/downloadstation/V4/Task/Query`. Его можно перехватить middleware до сетевого запроса и вернуть ответ прямо из стора, минуя сеть.
-- Мутации (`addTorrent`, `startTask`, `stopTask`, `removeTask`) вызывают `invalidate("downloads")`, чтобы следующий вызов списка выполнился заново.
-- Идеальный владелец кэша — background service worker: он отвечает за расписание обновлений, распределяет данные между popup/иконкой через `chrome.storage` или `runtime.sendMessage`.
-- Воркер может запускать обновления «по сетке» (0, 5, 10 секунд каждой минуты), создавая `chrome.alarms` с `when = ceil(now/interval)*interval`.
+- The "hot" call is `/downloadstation/V4/Task/Query`. It can be intercepted by middleware before the network request and answered directly from the store, bypassing the network.
+- Mutations (`addTorrent`, `startTask`, `stopTask`, `removeTask`) call `invalidate("downloads")` so the next list call runs fresh.
+- The ideal owner of the cache is the background service worker: it's responsible for the refresh schedule and distributes data between the popup/icon via `chrome.storage` or `runtime.sendMessage`.
+- The worker can run "grid-aligned" refreshes (0, 5, 10 seconds of every minute) by creating `chrome.alarms` with `when = ceil(now/interval)*interval`.
 
-Такой стек закрывает текущие нужды (SID + список задач) и остаётся расширяемым:
+This stack covers current needs (SID + task list) and remains extensible:
 
-- **Если достаточно собственного решения** — используем `AsyncStore` поверх `idb-keyval`: SID и список задач обслуживаются одной прослойкой, дополнительный функционал добавляется через middleware и adapters (например, публикация обновлений в `chrome.storage`).
-- **Если потребуется готовый движок** — тот же интерфейс можно переключить на Dexie или TanStack Query (persisted в IndexedDB), оставив API и потребителей неизменными.
+- **If a homegrown solution is enough** — use `AsyncStore` on top of `idb-keyval`: SID and the task list are served by a single layer, additional functionality is added via middleware and adapters (e.g., publishing updates to `chrome.storage`).
+- **If a ready-made engine is needed later** — the same interface can be switched to Dexie or TanStack Query (persisted in IndexedDB), leaving the API and consumers unchanged.
