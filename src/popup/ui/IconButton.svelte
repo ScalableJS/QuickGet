@@ -10,6 +10,19 @@
     children: Snippet;
   } & HTMLButtonAttributes;
 
+  const layoutClasses = "inline-flex items-center justify-center border border-solid border-transparent rounded-[var(--radius)] leading-none cursor-pointer p-0";
+  const appearanceClasses = "bg-[var(--color-bg-alt)] text-[var(--color-text)]";
+  const transitionClasses =
+    "transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--duration-fast)] ease-out";
+  const hoverClasses = "hover:bg-[var(--color-bg-raised)] hover:border-[var(--color-control-border)]";
+  const activeClasses = "active:bg-[var(--color-primary-subtle)] active:text-[var(--color-primary)] active:translate-y-px";
+  const pressedClasses =
+    "aria-[pressed=true]:bg-[var(--color-primary-subtle)] aria-[pressed=true]:border-[var(--color-primary-visual)] aria-[pressed=true]:text-[var(--color-primary)]";
+  const focusClasses =
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]";
+  const disabledClasses = "disabled:cursor-not-allowed disabled:opacity-45";
+  const iconClasses = "[&>svg]:w-4 [&>svg]:h-4";
+
   const sizeClasses = {
     sm: "w-[var(--control-height-sm)] h-[var(--control-height-sm)]",
     md: "w-[var(--control-height-md)] h-[var(--control-height-md)]",
@@ -22,7 +35,15 @@
   bind:this={el}
   {type}
   class={[
-    "border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--color-bg-alt)] text-[var(--color-text)] text-14px leading-none flex items-center justify-center cursor-pointer p-0 transition-[background,border-color] duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-bg-alt))] hover:border-[var(--color-primary-visual)] aria-[pressed=true]:bg-[color-mix(in_srgb,var(--color-primary)_16%,var(--color-bg-alt))] aria-[pressed=true]:border-[var(--color-primary-visual)] aria-[pressed=true]:text-[var(--color-primary-visual)] aria-[pressed=true]:hover:bg-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-bg-alt))] active:bg-[var(--color-primary)] active:text-[var(--color-text-inverse)] active:border-[var(--color-primary)] disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-[var(--toolbar-disabled-bg)] [&>svg]:w-4 [&>svg]:h-4",
+    layoutClasses,
+    appearanceClasses,
+    transitionClasses,
+    hoverClasses,
+    activeClasses,
+    pressedClasses,
+    focusClasses,
+    disabledClasses,
+    iconClasses,
     sizeClasses[size],
     klass,
   ]}

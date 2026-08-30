@@ -336,3 +336,53 @@ test("leaves the download alone when no NAS credentials are available", async ()
     await mockNas.close();
   }
 });
+
+/**
+ * Cannot be verified here, and skipping is the honest outcome rather than asserting something
+ * weaker and calling it proof.
+ *
+ * `chrome.downloads.onDeterminingFilename` never fires under Playwright's persistent context:
+ * the automation harness assigns each download a target path itself (files land in
+ * `.playwright-artifacts-*`), so the filename-determination stage — the only point where the
+ * transfer can be cancelled before Chrome commits a file — is bypassed entirely. Verified by
+ * probing the running worker: the listener registers, the event never arrives.
+ *
+ * Strict mode therefore has to be checked by hand in a real Chrome profile:
+ *   1. Settings → tick "Don't keep the .torrent file locally".
+ *   2. Chrome Settings → turn ON "Ask where to save each file before downloading".
+ *   3. Click a .torrent link: no "Save as" prompt, no file in Downloads, task on the NAS.
+ */
+test.skip("strict mode leaves no .torrent in the browser when the NAS accepts it", async () => {
+  const mockNas = await startMockNas();
+  // No body delay on purpose: this is the race the permissive path loses. A small .torrent
+  // from localhost would normally reach `complete` before any cancel could bite, so if the
+  // file is still absent here it is the filename-stage cancel that kept it away.
+  const { torrentHost, session } = await startSession();
+
+  try {
+    await seedSettings(session.worker, nasSettings(mockNas.port, { suppressLocalTorrentFile: true }));
+
+    const page = await session.context.newPage();
+    await page.goto(torrentHost.url).catch(() => {
+      // Navigating to an attachment aborts the navigation; the download is what matters.
+    });
+
+    await expect
+      .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), {
+        timeout: 30_000,
+      })
+      .toBe(true);
+
+    // The whole point of the mode: nothing is left for the user to find in Downloads.
+    await expect
+      .poll(() => downloadStates(session.worker), { timeout: 20_000 })
+      .not.toContain("in_progress");
+
+    const states = await downloadStates(session.worker);
+    expect(states).not.toContain("complete");
+  } finally {
+    await session.close();
+    await torrentHost.close();
+    await mockNas.close();
+  }
+});

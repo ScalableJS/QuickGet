@@ -12,11 +12,28 @@
     children: Snippet;
   } & HTMLButtonAttributes;
 
+  const layoutClasses =
+    "inline-flex min-w-[100px] flex-1 items-center justify-center rounded-[var(--radius)] font-600 cursor-pointer";
+  const transitionClasses =
+    "transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--duration-fast)] ease-out";
+  const focusClasses =
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]";
+  const activeClasses = "active:translate-y-px";
+  const disabledClasses = "disabled:cursor-not-allowed disabled:opacity-45";
+
   const variantClasses = {
-    primary:
-      "bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,black)]",
-    secondary:
-      "border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text)] hover:bg-[var(--color-bg)]",
+    primary: [
+      "border border-solid border-transparent",
+      "bg-[var(--color-primary-solid)] text-[var(--color-text-on-primary)]",
+      "hover:bg-[var(--color-primary-solid-hover)]",
+      "active:bg-[var(--color-primary-solid-active)]",
+    ].join(" "),
+    secondary: [
+      "border border-solid border-transparent",
+      "bg-[var(--color-bg-alt)] text-[var(--color-text)]",
+      "hover:border-[var(--color-control-border)] hover:bg-[var(--color-bg-raised)]",
+      "active:bg-[var(--color-primary-subtle)]",
+    ].join(" "),
   } satisfies Record<Variant, string>;
 
   const sizeClasses = {
@@ -38,7 +55,11 @@
 <button
   {type}
   class={[
-    "btn min-w-[100px] flex-1 cursor-pointer rounded-[var(--radius)] border-0 font-500 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55",
+    layoutClasses,
+    transitionClasses,
+    focusClasses,
+    activeClasses,
+    disabledClasses,
     variantClasses[variant],
     sizeClasses[size],
     block && "w-full flex-none",

@@ -116,6 +116,7 @@ const downloadsErase = vi.fn((_query: unknown) => Promise.resolve([]));
 const downloadsSearch = vi.fn((_query: unknown) => Promise.resolve([] as chrome.downloads.DownloadItem[]));
 const downloadsOnCreatedAddListener = vi.fn();
 const downloadsOnChangedAddListener = vi.fn();
+const downloadsOnDeterminingFilenameAddListener = vi.fn();
 
 const notificationsCreate = vi.fn();
 const notificationsClear = vi.fn();
@@ -211,6 +212,7 @@ export function resetChromeMockState(): void {
   downloadsSearch.mockClear();
   downloadsOnCreatedAddListener.mockClear();
   downloadsOnChangedAddListener.mockClear();
+  downloadsOnDeterminingFilenameAddListener.mockClear();
 
   notificationsCreate.mockClear();
   notificationsClear.mockClear();
@@ -281,6 +283,10 @@ export function installChromeMock(): typeof chrome {
       },
       onChanged: {
         addListener: downloadsOnChangedAddListener,
+      },
+      // Chrome-only in production; present here so the strict interception path is testable.
+      onDeterminingFilename: {
+        addListener: downloadsOnDeterminingFilenameAddListener,
       },
     },
     notifications: {

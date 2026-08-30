@@ -19,7 +19,7 @@
 <button
   {type}
   class={[
-    "bg-transparent border-0 text-[var(--color-primary)] cursor-pointer underline p-0 hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)] disabled:opacity-55 disabled:cursor-not-allowed",
+    "rounded-[3px] bg-transparent border-0 text-[var(--color-primary)] cursor-pointer underline p-0 transition-[color,box-shadow] duration-[var(--duration-fast)] hover:text-[var(--color-primary-solid-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:opacity-45 disabled:cursor-not-allowed",
     sizeClasses[size],
     klass,
   ]}

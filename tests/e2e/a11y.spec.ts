@@ -233,9 +233,15 @@ test.describe("accessibility", () => {
       await session.page.getByRole("button", { name: "Edit" }).click();
 
       const intercept = session.page.locator("#torrentInterceptMode");
+      const suppressLocalFile = session.page.getByLabel("Don't keep the .torrent file locally");
       await expect(intercept).toBeChecked();
+      await expect(suppressLocalFile).toBeEnabled();
 
       await intercept.uncheck();
+      await expect(suppressLocalFile).toBeDisabled();
+      await expect(suppressLocalFile).toHaveAccessibleDescription(
+        "Available when sending .torrent downloads to the NAS.",
+      );
       await session.page.click("#save-btn");
 
       // What the background reads is the stored mode, not the checkbox.

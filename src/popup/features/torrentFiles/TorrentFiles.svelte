@@ -94,7 +94,7 @@
   }
 </script>
 
-<div class="torrent-files mt-[6px] p-2 border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--color-bg-alt)]">
+<div class="torrent-files mt-[6px] p-2 rounded-[var(--radius)] bg-[var(--color-bg-alt)]">
   {#if loading}
     <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">Loading files…</p>
   {:else if error}

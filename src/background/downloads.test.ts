@@ -21,7 +21,12 @@ vi.mock("./alarms.js", () => ({
 }));
 
 import { markConfigurationProblem } from "./actions.js";
-import { handleDownloadCreated, recoverAbandonedHandoffs } from "./downloads.js";
+import {
+  handleDeterminingFilename,
+  handleDownloadCreated,
+  recoverAbandonedHandoffs,
+  reserveDownloadForHold,
+} from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
 const ACTIVE_ICON = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
@@ -81,6 +86,55 @@ describe("download interception", () => {
   beforeEach(() => {
     downloads = getChromeDownloadsMock();
     notifications = getChromeNotificationsMock();
+  });
+
+  describe("suppressLocalTorrentFile", () => {
+    /** Put a download through the filename stage the way Chrome would, then hand it over. */
+    async function runWithFilenameHold(settings: ReturnType<typeof createTestSettings>) {
+      const item = createDownloadItem();
+      const suggest = vi.fn();
+      seedChromeStorage(settings);
+      reserveDownloadForHold(item);
+      const held = handleDeterminingFilename(item, suggest);
+      await handleDownloadCreated(item);
+      return { item, suggest, held };
+    }
+
+    it("cancels at the filename stage instead of pausing, so no file is committed", async () => {
+      mockSuccessfulHandoff();
+
+      const { held, suggest } = await runWithFilenameHold(
+        createTestSettings({ suppressLocalTorrentFile: true }),
+      );
+
+      expect(held).toBe(true);
+      // The download dies before Chrome can prompt or write; pausing would be too late.
+      expect(downloads.cancel).toHaveBeenCalled();
+      expect(downloads.pause).not.toHaveBeenCalled();
+      // Released only after the cancel, so the filename stage never stalls on Chromium's
+      // 15s determiner timeout.
+      expect(suggest).toHaveBeenCalled();
+    });
+
+    it("keeps the transactional pause/cancel path when the option is off", async () => {
+      mockSuccessfulHandoff();
+
+      const { suggest } = await runWithFilenameHold(
+        createTestSettings({ suppressLocalTorrentFile: false }),
+      );
+
+      // Default stays safe: the browser holds the file until the NAS has confirmed it.
+      expect(downloads.pause).toHaveBeenCalled();
+      expect(suggest).toHaveBeenCalled();
+    });
+
+    it("does not hold downloads it was never asked to claim", async () => {
+      const suggest = vi.fn();
+      const stranger = createDownloadItem({ id: 4242, url: "https://example.com/report.pdf" });
+
+      expect(handleDeterminingFilename(stranger, suggest)).toBe(false);
+      expect(suggest).not.toHaveBeenCalled();
+    });
   });
 
   it("ignores the download entirely when interception is off", async () => {

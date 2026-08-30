@@ -13,7 +13,7 @@
 <button
   {type}
   class={[
-    "mt-[6px] bg-transparent border border-[var(--color-border)] rounded-[var(--radius)] px-2 py-[2px] text-12px cursor-pointer text-[var(--color-primary)] hover:bg-[var(--color-bg-alt)]",
+    "mt-[6px] inline-flex items-center rounded-[var(--radius)] bg-[var(--color-bg-alt)] border border-solid border-transparent px-2 py-[2px] text-12px font-600 cursor-pointer text-[var(--color-primary)] transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-fast)] hover:bg-[var(--color-bg-raised)] hover:border-[var(--color-control-border)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]",
     klass,
   ]}
   aria-expanded={expanded}

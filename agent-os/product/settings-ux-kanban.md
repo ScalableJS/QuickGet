@@ -30,6 +30,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | **Done** |
 | UX-16 | Settings held things that did not justify being there | ui | M | **Done** |
+| UX-17 | No control over how aggressively a `.torrent` is intercepted | settings | M | In Review |
 
 ---
 
@@ -592,3 +593,61 @@ keeps the stale key harmlessly; nothing reads it.
 Appearance tab held one instant control that Save has nothing to do with — navigation for its
 own sake. It now sits in a header row above the tab list, which leaves two tabs: **Connection**
 (everything a first run needs) and **Advanced** (what most users never open).
+
+---
+
+### UX-17 — No control over how aggressively a `.torrent` is intercepted
+
+**Size:** M · **Area:** settings · **Status:** In Review
+**Files:** `src/lib/config.ts` (`torrentInterceptMode`), `src/popup/features/settings/Settings.svelte`,
+`src/background/downloads.ts`
+**Depends on:** BUG-30 (the mechanism this setting exposes)
+
+`torrentInterceptMode` is `"off" | "always"` today. `"always"` still lets Chrome commit the
+download — so the user can get a "Save as" dialog and a file on disk even though the torrent
+went to the NAS (see BUG-30). There is no way to ask for a *clean* hand-off.
+
+**Proposal:** a third level, surfaced as a checkbox under the existing interception control —
+something like *"Don't save the .torrent file locally"*, off by default.
+
+- **unchecked (default, current behaviour)** — pause → hand off → cancel. Safest: if the NAS
+  is unreachable the browser download simply resumes and the user still gets their file. This
+  stays the default precisely because the failure mode is benign.
+- **checked (full)** — cancel at `onDeterminingFilename` before the file is ever committed,
+  then hand the URL to the NAS. No dialog, no local copy. The cost is that a failed NAS hand-off
+  requires the user to click the link again.
+
+**Why a setting rather than just fixing it:** the aggressive path trades a benign failure mode
+(stray file) for a worse one (a download that appears to hang while the NAS is timing out).
+That is a real trade-off, so it belongs to the user, not to us.
+
+**Open questions to settle before coding:**
+1. Checkbox vs. a three-way radio. A checkbox reads better but hides that these are ordered
+   levels; `torrentInterceptMode` is already a string union, so a third value is cheap.
+2. Chrome-only. Firefox has no `onDeterminingFilename` — hide the control there, or show it
+   disabled with a reason? Leaning: hide, since a dead control is worse than an absent one.
+3. Should the demo recording use this setting, or a build flag? Leaning: the setting — a
+   promo must show shipping behaviour, not a hidden mode (see DEMO-1).
+4. Wording: "don't save locally" describes the effect; "full interception" describes the
+   mechanism. Prefer the effect.
+
+**2026-08-30 — implementation decisions.** Shipped as a separate boolean
+`suppressLocalTorrentFile`, not a third `torrentInterceptMode` value: the mode answers
+*whether* to intercept, this answers *how hard*, and folding them into one enum would have made
+"off + strict" representable but meaningless.
+
+1. **Checkbox, not a radio group** — matches the existing "Send .torrent downloads to the NAS"
+   and "Protect settings" controls, and the two states read as a sentence.
+2. **Hidden on Firefox**, not disabled — gated on `chrome.downloads.onDeterminingFilename`
+   being present. A dead control invites the question "why can't I tick this".
+3. **Nested under its parent**, indented and always visible in Chromium. It is disabled until
+   interception is on and explains that dependency, so the option remains discoverable without
+   looking like an independent setting.
+4. **Wording describes the effect**, per the leaning above: "Don't keep the .torrent file
+   locally", followed by a concise hint: no prompt or local copy; if the NAS cannot accept it,
+   click the link again.
+
+**Defaults:** torrent forwarding starts **on**; strict local-file suppression starts **off**;
+the settings lock starts **off**. See BUG-30 for the mechanism and for the 15-second determiner
+timeout that shaped strict mode. UX-17 remains In Review until BUG-30's strict path is exercised
+in a real Chrome profile.

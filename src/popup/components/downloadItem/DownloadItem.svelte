@@ -53,14 +53,14 @@
 <div
   bind:this={el}
   class={[
-    "download-item flex flex-col [@media(min-width:601px)]:flex-row p-[var(--space-3)] border rounded-[var(--radius)] text-[var(--torrent-text-primary)] transition-[background,border-color] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--color-primary-visual)] focus-visible:outline-offset-2",
+    "download-item flex flex-col [@media(min-width:601px)]:flex-row p-[var(--space-3)] border border-solid rounded-[var(--radius-container)] text-[var(--torrent-text-primary)] transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]",
     task.status === "error"
       ? selected
         ? "border-[var(--download-error-selected-border)] bg-[var(--download-error-selected-bg)]"
         : "border-[var(--download-error-border)] bg-[var(--download-error-bg)]"
       : selected
-        ? "border-[var(--download-selected-border)] bg-[var(--download-selected-bg)]"
-        : "border-[var(--torrent-border)] bg-[var(--torrent-bg)] hover:border-[var(--download-hover-border)] hover:bg-[var(--download-hover-bg)]",
+        ? "border-transparent bg-[var(--download-selected-bg)]"
+        : "border-transparent bg-[var(--torrent-bg)] hover:border-[var(--download-hover-border)] hover:bg-[var(--download-hover-bg)] hover:shadow-[0_6px_16px_rgb(23_32_51_/_10%)]",
     selected && "selected",
     removing && "opacity-60 pointer-events-none removing",
   ]}

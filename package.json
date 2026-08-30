@@ -1,6 +1,6 @@
 {
   "name": "quickget-remote",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Lightweight client for QNAP Download Station 5",
   "type": "module",
   "scripts": {
@@ -20,6 +20,7 @@
     "test:e2e:real": "QNAP_E2E_REAL=1 playwright test tests/e2e/popup.real-nas.spec.ts --grep-invert @mutating",
     "test:e2e:real:mutating": "QNAP_E2E_REAL=1 QNAP_E2E_ALLOW_MUTATIONS=1 playwright test tests/e2e/popup.real-nas.spec.ts --grep @mutating",
     "generate-icons": "node scripts/generate-icons.js",
+    "check:contrast": "node scripts/check-contrast.mjs",
     "typecheck": "tsc --noEmit",
     "check:svelte": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "biome lint .",
@@ -29,7 +30,7 @@
     "check:fix": "biome check --write .",
     "release": "npm run build && rm -f quickget-remote-$npm_package_version.zip && cd dist && npx bestzip ../quickget-remote-$npm_package_version.zip *",
     "package:chrome": "npm run release",
-    "capture:store-assets": "npm run build && playwright test tests/e2e/store-assets.spec.ts && node scripts/generate-store-assets.js",
+    "capture:store-assets": "npm run build && playwright test tests/e2e/store-assets.spec.ts tests/e2e/store-assets-dark.spec.ts && node scripts/generate-store-assets.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "stats:css": "find dist -name '*.css' -exec sh -c 'echo $1; wc -c < $1' _ {} \\;",

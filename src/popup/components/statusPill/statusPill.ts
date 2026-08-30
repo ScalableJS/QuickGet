@@ -7,7 +7,7 @@ const statusClasses = {
 } satisfies Record<StatusType, string>;
 
 const basePillClasses =
-  "status-pill inline-flex items-center border rounded-[var(--radius)] px-[var(--spacing-md)] py-[var(--spacing-xs)]";
+  "status-pill inline-flex items-center border border-solid rounded-[var(--radius)] px-[var(--spacing-md)] py-[var(--spacing-xs)]";
 
 let autoHideTimer: ReturnType<typeof setTimeout> | null = null;
 

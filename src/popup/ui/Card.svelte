@@ -10,7 +10,7 @@
 
   const variantClasses = {
     filled:
-      "bg-[var(--color-bg-alt)] border border-[var(--color-border)] rounded-[var(--radius)] p-[var(--spacing-md)] mb-[var(--spacing-md)]",
+      "bg-[var(--color-bg-raised)] rounded-[var(--radius-container)] shadow-[var(--shadow-card)] p-[var(--spacing-md)] mb-[var(--spacing-md)]",
     plain: "bg-transparent border-0 p-0 mb-0",
   } satisfies Record<Variant, string>;
 

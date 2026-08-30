@@ -39,7 +39,7 @@
 
 <div class="block">
   {#if label}
-    <label for={id} class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">
+    <label for={id} class="block font-600 mb-[var(--spacing-sm)] text-[var(--color-text)]">
       {label}
     </label>
   {/if}
@@ -47,7 +47,7 @@
     {id}
     {type}
     class={[
-      "w-full px-[var(--spacing-sm)] border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]",
+      "w-full px-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
       sizeClasses[size],
       error && "border-[var(--color-error)]",
       klass,

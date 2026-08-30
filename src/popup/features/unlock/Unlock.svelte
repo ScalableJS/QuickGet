@@ -69,7 +69,7 @@
         id="settingsPassword"
         placeholder="Settings password"
         required
-        class="w-full px-3 py-[10px] border border-[var(--color-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] text-[0.95rem] box-border transition-[border-color] duration-150 focus:outline-none focus:border-[var(--color-primary)]"
+        class="w-full px-3 py-[10px] border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] text-[0.95rem] box-border transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]"
         bind:value={settingsPassword}
         disabled={isUnlocking}
         use:focusOnMount

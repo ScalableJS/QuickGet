@@ -100,6 +100,10 @@ export async function loadSettings(): Promise<Settings> {
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
+          suppressLocalTorrentFile: booleanWithDefault(
+            "suppressLocalTorrentFile",
+            DEFAULTS.suppressLocalTorrentFile,
+          ),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };

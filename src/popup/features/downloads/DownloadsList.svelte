@@ -44,7 +44,7 @@
   />
   <IconButton
     size="sm"
-    class="search-toggle bg-transparent text-[var(--text-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)] aria-[expanded=true]:text-[var(--color-text)] aria-[expanded=true]:border-[var(--color-border-strong)] [&>svg]:w-[15px] [&>svg]:h-[15px]"
+    class="search-toggle bg-transparent text-[var(--text-muted)] hover:bg-[var(--color-bg-raised)] hover:text-[var(--color-text)] hover:border-[var(--color-control-border)] aria-[expanded=true]:bg-[var(--color-primary-subtle)] aria-[expanded=true]:text-[var(--color-primary)] aria-[expanded=true]:border-[var(--color-primary-visual)] [&>svg]:w-[15px] [&>svg]:h-[15px]"
     aria-label="Search downloads"
     aria-expanded={searchOpen}
     title="Search downloads"
