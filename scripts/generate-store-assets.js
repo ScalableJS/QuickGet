@@ -9,7 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const projectRoot = path.dirname(path.dirname(__filename));
 const assetsRoot = path.join(projectRoot, "store-assets");
 const cacheRoot = path.join(assetsRoot, ".cache");
+const cacheRootDark = path.join(assetsRoot, ".cache-dark");
 const screenshotsRoot = path.join(assetsRoot, "screenshots");
+const screenshotsRootDark = path.join(assetsRoot, "screenshots-dark");
 const promoRoot = path.join(assetsRoot, "promo");
 const iconPath = path.join(projectRoot, "icons", "128_download.png");
 
@@ -17,18 +19,21 @@ await generateStoreAssets();
 
 async function generateStoreAssets() {
   await fs.mkdir(screenshotsRoot, { recursive: true });
+  await fs.mkdir(screenshotsRootDark, { recursive: true });
   await fs.mkdir(promoRoot, { recursive: true });
 
   await Promise.all([
-    createScreenshot("downloads", "Manage QNAP downloads from Chrome"),
-    createScreenshot("settings", "Connect directly to your QNAP NAS"),
+    createScreenshot("downloads", "Manage QNAP downloads from Chrome", cacheRoot, screenshotsRoot),
+    createScreenshot("settings", "Connect directly to your QNAP NAS", cacheRoot, screenshotsRoot),
+    createScreenshot("downloads", "Manage QNAP downloads from Chrome", cacheRootDark, screenshotsRootDark),
+    createScreenshot("settings", "Connect directly to your QNAP NAS", cacheRootDark, screenshotsRootDark),
     createPromo("small-440x280.png", 440, 280),
     createPromo("marquee-1400x560.png", 1400, 560),
   ]);
 }
 
-async function createScreenshot(name, subtitle) {
-  const image = await sharp(path.join(cacheRoot, `${name}.png`))
+async function createScreenshot(name, subtitle, sourceRoot, outputRoot) {
+  const image = await sharp(path.join(sourceRoot, `${name}.png`))
     .png()
     .toBuffer();
   const metadata = await sharp(image).metadata();
@@ -55,7 +60,7 @@ async function createScreenshot(name, subtitle) {
     .flatten({ background: "#0f172a" })
     .removeAlpha()
     .png()
-    .toFile(path.join(screenshotsRoot, `${name}-1280x800.png`));
+    .toFile(path.join(outputRoot, `${name}-1280x800.png`));
 }
 
 async function createPromo(fileName, width, height) {

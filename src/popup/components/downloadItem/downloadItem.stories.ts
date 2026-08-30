@@ -34,6 +34,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Downloading: Story = { args: { task: task() } };
 
+/** Active multi-file task exposes the compact disclosure control before the file list. */
+export const MultiFile: Story = { args: { task: task({ totalFiles: 3 }) } };
+
 export const Seeding: Story = {
   args: { task: task({ status: "seeding", progress: 100, downSpeedBps: 0, shareRatio: 0.48, etaSec: undefined }) },
 };

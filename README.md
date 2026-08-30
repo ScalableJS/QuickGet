@@ -5,7 +5,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Intercept browser `.torrent` downloads and route them to the NAS. This is enabled by default and can be turned off in Settings. **Experimental (Chrome only):** the browser download is paused while the `.torrent` is re-fetched and handed to the NAS; it is cancelled only once the NAS accepts it, and resumed if the hand-off fails. One-time/signed tracker URLs may not survive the round-trip, in which case the browser download simply continues.
+- Intercept browser `.torrent` downloads and route them to the NAS. This is enabled by default and can be turned off in Settings. The normal hand-off pauses the browser download, cancels it only after the NAS accepts it, and resumes it if sending fails. Chromium also offers an opt-in strict mode that avoids the browser's save prompt and local copy.
 - Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
 - Pick which files inside a multi-file torrent the NAS should download.
 - Route tasks to different NAS folders automatically with rules matched on URL, domain, or task name.
@@ -36,12 +36,20 @@ To load a local build instead:
    - NAS address (IP or hostname)
    - Port number
    - Username and password
-   - HTTPS toggle, temporary directory, and destination directory (optional)
-   - Torrent interception mode (*Off* / *Always*, default: *Always*)
+   - Server URL (`http://` or `https://`), temporary directory, and destination directory
+   - Torrent interception
    - Optional routing rules that send matching tasks to a folder of their own
    - Color theme (*Auto* / *Light* / *Dark*, default: *Auto*, which follows the OS)
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
 4. Close Settings to return to the downloads list; add torrents or manage existing tasks from the toolbar.
+
+### Checkbox defaults
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| **Send .torrent downloads to the NAS** | On | The normal, safe hand-off. If the NAS cannot accept the torrent, Chrome resumes the browser download. |
+| **Don't keep the .torrent file locally** | Off (Chromium only) | Avoids a "Save as" prompt and a local copy. If the NAS cannot accept it, click the link again. It becomes available after torrent forwarding is on. |
+| **Protect settings** | Off | A password is opt-in because it protects only access to the settings screen; background downloads continue either way. |
 
 All configuration values are stored in `chrome.storage.local` and remain on the local browser profile. The extension sends connection credentials, torrent URLs, magnet links, and selected `.torrent` files only to the NAS address configured by the user; it does not use analytics, telemetry, or third-party services. See the [privacy policy](./docs/privacy-policy.md).
 

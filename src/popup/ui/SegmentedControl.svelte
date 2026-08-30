@@ -27,17 +27,24 @@
   let { value = $bindable(), items, label = "Filter", size = "md", compact = false, onActivate }: Props = $props();
 </script>
 
-<div class={["flex gap-[var(--spacing-xs)]", compact ? "flex-none" : "flex-1"]} role="group" aria-label={label}>
+<div
+  class={[
+    "flex gap-[2px] rounded-[var(--radius-container)] bg-[var(--color-bg-alt)] p-[2px]",
+    compact ? "flex-none" : "flex-1",
+  ]}
+  role="group"
+  aria-label={label}
+>
   {#each items as item (item.value)}
     <button
       type="button"
       class={[
-        "inline-flex items-center gap-[var(--spacing-xs)] justify-center px-[var(--spacing-sm)] py-[var(--spacing-xs)] border rounded-[var(--radius)] text-12px cursor-pointer transition-[background,color,border-color] duration-120 hover:text-[var(--color-text)] hover:border-[var(--color-primary-visual)]",
+        "inline-flex items-center gap-[var(--spacing-xs)] justify-center px-[var(--spacing-sm)] py-[var(--spacing-xs)] border-0 rounded-[4px] text-12px font-600 cursor-pointer transition-[background-color,color,box-shadow,transform] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] hover:text-[var(--color-text)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]",
         compact ? "flex-none" : "flex-1",
         sizeClasses[size],
         value === item.value
-          ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-text-inverse)]"
-          : "bg-transparent border-[var(--color-control-border)] text-[var(--text-muted)]",
+          ? "bg-[var(--color-primary-solid)] text-[var(--color-text-on-primary)] shadow-[0_1px_2px_rgb(23_32_51_/_18%)]"
+          : "bg-transparent text-[var(--text-muted)]",
       ]}
       aria-pressed={value === item.value}
       aria-label={item.icon ? item.label : undefined}

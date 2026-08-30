@@ -48,7 +48,7 @@
       id="batch-urls"
       rows="4"
       placeholder={"https://example.com/a.zip\nmagnet:?xt=...\nEach line becomes one task"}
-      class="w-full min-h-[var(--control-height)] p-[var(--spacing-sm)] border border-[var(--color-control-border)] rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
+      class="w-full min-h-[var(--control-height)] p-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]"
       bind:value={raw}
     ></textarea>
     <Alert tone="hint">Each line is treated as an individual URL and creates a task.</Alert>

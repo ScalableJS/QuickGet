@@ -80,6 +80,11 @@ export function installChromeMock(): void {
       setTitle: () => {},
       setIcon: () => {},
     },
+    // Settings exposes the local-file option only in browsers that can hold a download while its
+    // filename is being determined. Storybook represents Chrome, so keep that control reviewable.
+    downloads: {
+      onDeterminingFilename: { addListener: () => {} },
+    },
   };
 
   (globalThis as { chrome?: unknown }).chrome = chromeMock;

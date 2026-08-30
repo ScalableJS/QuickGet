@@ -13,6 +13,7 @@ node_modules/
 dist/
 dist-firefox/
 store-assets/.cache/
+store-assets/.cache-dark/
 build/
 *.zip
 web-ext-artifacts/

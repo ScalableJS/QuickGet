@@ -25,11 +25,11 @@
       {id}
       {disabled}
       bind:checked
-      class="peer appearance-none m-0 w-4 h-4 grid place-content-center rounded-[3px] border border-[var(--color-control-border)] bg-[var(--textbox-bg)] cursor-pointer transition-[background,border-color] duration-150 checked:border-[var(--color-primary)] checked:bg-[var(--color-primary)] focus-visible:outline-none focus-visible:border-[var(--color-primary-visual)] focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
+      class="peer appearance-none m-0 w-4 h-4 grid place-content-center rounded-[4px] border border-solid border-[var(--color-checkbox-border)] bg-[var(--color-bg-raised)] cursor-pointer transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-fast)] hover:border-[var(--color-primary-visual)] active:scale-95 checked:border-[var(--color-primary-solid)] checked:bg-[var(--color-primary-solid)] focus-visible:outline-none focus-visible:border-[var(--color-primary-visual)] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
       {...rest}
     />
     <span
-      class="pointer-events-none absolute inset-0 grid place-content-center opacity-0 peer-checked:opacity-100 [&>svg]:w-3 [&>svg]:h-3 [&>svg]:stroke-[var(--color-text-inverse)] [&>svg]:[stroke-width:3]"
+      class="pointer-events-none absolute inset-0 grid place-content-center opacity-0 peer-checked:opacity-100 [&>svg]:w-3 [&>svg]:h-3 [&>svg]:stroke-[var(--color-text-on-primary)] [&>svg]:[stroke-width:3]"
       aria-hidden="true"
     >
       <Check />

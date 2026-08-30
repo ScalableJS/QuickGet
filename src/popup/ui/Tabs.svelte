@@ -32,7 +32,7 @@
   }
 </script>
 
-<div class="flex gap-[var(--space-1)] border-b border-b-[var(--color-control-border)] mb-[var(--space-3)]" role="tablist" tabindex="-1" onkeydown={onKeydown}>
+<div class="flex gap-[var(--space-1)] border-0 border-b border-solid border-b-[var(--color-control-border)] mb-[var(--space-3)]" role="tablist" tabindex="-1" onkeydown={onKeydown}>
   {#each tabs as tab (tab.id)}
     <button
       type="button"
@@ -42,7 +42,7 @@
       aria-controls={`panel-${tab.id}`}
       tabindex={tab.id === active ? 0 : -1}
       class={[
-        "flex-1 min-w-0 px-[var(--space-1)] py-[var(--space-2)] border-0 border-b-2 bg-transparent text-12px font-600 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis hover:text-[var(--color-text)]",
+        "flex-1 min-w-0 px-[var(--space-1)] py-[var(--space-2)] border-0 border-solid border-b-2 rounded-t-[var(--radius)] bg-transparent text-12px font-600 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis transition-[background-color,color,border-color,box-shadow] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-inset",
         tab.id === active
           ? "text-[var(--color-primary)] border-b-[var(--color-primary)]"
           : "text-[var(--text-secondary)] border-b-transparent",

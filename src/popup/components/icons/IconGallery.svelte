@@ -56,7 +56,7 @@
     <p class="m-0 mb-3 opacity-70 text-13px">Icon + colour both encode state, mirroring desktop torrent clients.</p>
     <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
       {#each statuses as s (s.label)}
-        <div class="flex items-center gap-[10px] p-[10px] border border-[var(--color-border)] rounded-lg">
+        <div class="flex items-center gap-[10px] p-[10px] border border-solid border-[var(--color-border)] rounded-lg">
           <span class={["[&>svg]:w-[22px] [&>svg]:h-[22px]", toneClasses[s.tone]]}><s.Icon /></span>
           <div class="flex flex-col gap-[2px] min-w-0">
             <strong>{s.label}</strong>
@@ -73,7 +73,7 @@
     <p class="m-0 mb-3 opacity-70 text-13px">Task-control row (start/stop/pause), add, and delete (trash = client convention).</p>
     <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
       {#each toolbar as t (t.label)}
-        <div class="flex items-center gap-[10px] p-[10px] border border-[var(--color-border)] rounded-lg">
+        <div class="flex items-center gap-[10px] p-[10px] border border-solid border-[var(--color-border)] rounded-lg">
           <span class="[&>svg]:w-[22px] [&>svg]:h-[22px]"><t.Icon /></span>
           <div class="flex flex-col gap-[2px] min-w-0">
             <strong>{t.label}</strong>

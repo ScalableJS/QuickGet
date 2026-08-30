@@ -6,6 +6,13 @@
  *   - "off"    → do nothing (normal browser download)
  *   - "always" → hand the torrent to the NAS, cancelling the browser download only once
  *                the NAS has accepted it
+ *
+ * `settings.suppressLocalTorrentFile` then chooses *when* the browser copy dies:
+ *   - false (default) → transactional. Pause, hand off, cancel on success / resume on
+ *     failure. A failed hand-off costs nothing: the browser just finishes the download.
+ *   - true (Chrome only) → cancel at the `onDeterminingFilename` stage, before Chrome can
+ *     prompt "Save as" or commit a file. Not transactional — a failed hand-off means the
+ *     user re-clicks — but nothing is left in Downloads.
  */
 
 import type { Settings } from "@lib/config.js";
@@ -34,6 +41,89 @@ const CLAIMED_PREFIX = "qg-claimed-";
 
 const pendingKey = (id: number): string => `${PENDING_PREFIX}${id}`;
 
+/**
+ * Filename decisions briefly deferred, keyed by download id.
+ *
+ * The window this holds open is **short by design**. Chromium's filename determiner has its
+ * own timeout — 15 seconds in current source — after which it stops waiting and finishes the
+ * download into the default folder regardless (crbug 40359474 describes exactly that: the
+ * file lands after 15s with the Save As dialog still open). So the hold must never span the
+ * NAS round-trip; it spans only the local decision "is this ours", after which the download is
+ * cancelled and `suggest()` is called immediately.
+ *
+ * In memory only, and deliberately so: a `suggest` callback cannot be persisted, and if MV3
+ * suspends the worker Chrome continues on its own. `releaseHeldFilename()` must run on every
+ * terminal path, or the download stalls until that timeout fires.
+ */
+const heldFilenames = new Map<number, (suggestion?: chrome.downloads.FilenameSuggestion) => void>();
+
+/**
+ * Ids reserved by `onCreated` purely so `onDeterminingFilename` knows to hold them.
+ *
+ * Separate from `inFlight`, which means "a hand-off owns this". The reservation is taken
+ * synchronously on a *possible* torrent, before settings can say whether we want it at all;
+ * `inFlight` is only taken once that is known. Holding first and deciding after is the only
+ * order that works, because the filename event does not wait for us to make up our mind.
+ */
+const reservedForHold = new Set<number>();
+
+/**
+ * Decide, without awaiting anything, whether this download might be one we take over.
+ * Deliberately permissive: over-reserving costs a released hold, under-reserving costs the
+ * whole feature. Settings are not readable here, so `suppressLocalTorrentFile` is checked
+ * later — a reservation alone never changes what the browser does.
+ */
+function reserveForFilenameHold(item: chrome.downloads.DownloadItem): boolean {
+  if (!chrome.downloads.onDeterminingFilename) return false;
+  const url = item.finalUrl || item.url;
+  if (!/^https?:\/\//i.test(url)) return false;
+  if (!isTorrentSource(url, item.mime, item.filename)) return false;
+  reservedForHold.add(item.id);
+  return true;
+}
+
+/** Drop the reservation and let go of any hold it was covering. */
+function releaseReservation(id: number): void {
+  reservedForHold.delete(id);
+  releaseHeldFilename(id);
+}
+
+/**
+ * Hold a download at the filename stage so `handleDownloadCreated()` can decide its fate
+ * before Chrome commits a file or prompts "Save as".
+ *
+ * Exported for tests: the event never fires under Playwright's persistent context (the
+ * automation harness assigns download paths itself), so this is the only way the strict path
+ * can be exercised at all.
+ */
+export function handleDeterminingFilename(
+  item: chrome.downloads.DownloadItem,
+  suggest: (suggestion?: chrome.downloads.FilenameSuggestion) => void,
+): boolean {
+  // Only hold what a hand-off may claim. Every other download in the browser — and every
+  // torrent when the user has not asked for this — must pass straight through untouched.
+  if (!reservedForHold.has(item.id)) return false;
+  heldFilenames.set(item.id, suggest);
+  return true; // `suggest` runs later, or deliberately never once the NAS has the torrent
+}
+
+/** Reserve an id for holding. Exported for tests; production takes this from `onCreated`. */
+export function reserveDownloadForHold(item: chrome.downloads.DownloadItem): boolean {
+  return reserveForFilenameHold(item);
+}
+
+/** Let a deferred download proceed to disk. Safe to call when nothing is held. */
+function releaseHeldFilename(id: number): void {
+  const suggest = heldFilenames.get(id);
+  if (!suggest) return;
+  heldFilenames.delete(id);
+  try {
+    suggest();
+  } catch (error) {
+    console.warn("[QuickGet] could not release a deferred filename:", error);
+  }
+}
+
 export function initDownloadInterception(): void {
   if (!chrome.downloads?.onCreated) {
     console.warn("[QuickGet] downloads API unavailable — interception disabled");
@@ -41,8 +131,20 @@ export function initDownloadInterception(): void {
   }
 
   chrome.downloads.onCreated.addListener((item) => {
-    void handleDownloadCreated(item);
+    // Reserve the id *synchronously*, before the first await in `handleDownloadCreated()`.
+    // `onDeterminingFilename` can fire while settings are still loading, and it must find the
+    // id already reserved or the download slips through un-held. A reservation that turns out
+    // not to be a torrent is released again below.
+    const reserved = reserveForFilenameHold(item);
+    void handleDownloadCreated(item).finally(() => {
+      if (reserved) releaseReservation(item.id);
+    });
   });
+
+  // Chrome-only (Firefox has never implemented it — Bugzilla 1245652). Without this listener
+  // a `.torrent` is already committed by the time `onCreated` arrives, so a fast one finishes
+  // before the cancel and Chrome may have shown "Save as" on the way.
+  chrome.downloads.onDeterminingFilename?.addListener(handleDeterminingFilename);
 
   // Chrome often does not know the MIME type or the post-redirect URL when the download is
   // created — both are in `DownloadDelta`, so a tracker endpoint that only identifies itself
@@ -161,10 +263,20 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       return;
     }
 
+    // Strict mode: drop the browser transfer at the first moment we know it is ours — before
+    // any toolbar work, and while `onDeterminingFilename` is still holding the file back. Any
+    // later and a small `.torrent` from a fast host has already landed. The hand-off re-fetches
+    // the URL itself, so cancelling first costs a re-download on failure, not the file.
+    const strict = settings.suppressLocalTorrentFile && heldFilenames.has(item.id);
+    if (strict) {
+      await cancelBrowserDownload(item.id);
+      releaseHeldFilename(item.id);
+    }
+
     // Chrome recorded the page the download started from — that is exactly the referrer a
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
     await markInterceptionStarted();
-    await handOffToNas(settings, item.id, url, item.referrer);
+    await handOffToNas(settings, item.id, url, item.referrer, strict);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     // The claim outlives this worker, so keeping it after a failure would silently bar every
@@ -227,12 +339,23 @@ async function handleNotificationButton(notificationId: string): Promise<void> {
   }
 }
 
-async function handOffToNas(settings: Settings, downloadId: number, url: string, referrer?: string): Promise<void> {
+async function handOffToNas(
+  settings: Settings,
+  downloadId: number,
+  url: string,
+  referrer?: string,
+  /** The browser download was already cancelled at the filename stage — nothing to pause. */
+  strict = false,
+): Promise<void> {
   // Write intent before touching the browser transfer: if MV3 suspends us in the following
   // await, startup recovery can resume it. A pause which does not happen must not leave a
   // false recovery record behind.
+  // Permissive (default) still lets the browser hold the file as a safety net, so release any
+  // filename hold before pausing. Strict already cancelled it upstream.
+  if (!strict) releaseHeldFilename(downloadId);
+
   await chrome.storage.session.set({ [pendingKey(downloadId)]: true });
-  const paused = await pauseBrowserDownload(downloadId);
+  const paused = strict ? false : await pauseBrowserDownload(downloadId);
   if (!paused) await chrome.storage.session.remove(pendingKey(downloadId));
 
   try {
@@ -241,8 +364,12 @@ async function handOffToNas(settings: Settings, downloadId: number, url: string,
 
     // The NAS owns the torrent now — only here is it safe to drop the browser's copy. If the
     // cancel itself fails we must not leave the transfer paused: put it back to the browser.
-    const cancelled = await cancelBrowserDownload(downloadId);
-    if (!cancelled && paused) await resumeBrowserDownload(downloadId);
+    // In strict mode the download was already cancelled at the filename stage, so there is
+    // nothing left to cancel and nothing that could have been paused.
+    if (!strict) {
+      const cancelled = await cancelBrowserDownload(downloadId);
+      if (!cancelled && paused) await resumeBrowserDownload(downloadId);
+    }
     void ensureMonitoring();
 
     // Success is silent: the task list is the source of truth and nothing is asked of the user.
@@ -267,14 +394,25 @@ async function handOffToNas(settings: Settings, downloadId: number, url: string,
     // finishing the download itself now, and a later `onChanged` for the same id (or the user
     // retrying) has to be able to take it again.
     await releaseClaim(downloadId);
+    // The browser is keeping this download, so it needs its filename back before anything
+    // else — a resume against a still-deferred download would never produce a file.
+    releaseHeldFilename(downloadId);
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
     await notifyFailure(
       failureKind,
       "QuickGet needs attention",
-      `${getErrorMessage(error)}${rollbackSuffix(paused, resumed)}`,
+      // Strict mode already dropped the browser download to keep it off disk, so there is
+      // nothing to resume — say that plainly instead of implying the file is still coming.
+      `${getErrorMessage(error)}${
+        strict ? " — the browser download was cancelled; click the link again to retry." : rollbackSuffix(paused, resumed)
+      }`,
       settings.NASaddress,
     );
   } finally {
+    // Last resort. Every path above already released or deliberately discarded the hold, but
+    // an unforeseen throw between them would otherwise strand the download at the filename
+    // stage with nothing left to free it — invisible to the user and unrecoverable.
+    releaseHeldFilename(downloadId);
     // A terminal action ran, so there is nothing left for the recovery sweep to release.
     if (paused) await chrome.storage.session.remove(pendingKey(downloadId));
   }

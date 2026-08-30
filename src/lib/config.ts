@@ -22,6 +22,13 @@ export type Settings = {
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
+  /**
+   * Cancel at the filename stage before Chrome can show "Save as" or leave the `.torrent` in
+   * Downloads. The NAS hand-off then re-fetches the URL; if it fails, the user clicks again.
+   * Chrome-only: Firefox has no `downloads.onDeterminingFilename` (Bugzilla 1245652, open since
+   * 2016), and there it is simply ignored. Off by default — see DEFAULTS.
+   */
+  suppressLocalTorrentFile: boolean;
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
@@ -46,6 +53,14 @@ export const DEFAULTS: Settings = {
   NAStempdir: "Download",
   NASdir: "Download",
   torrentInterceptMode: "always",
+  /**
+   * Off by default deliberately. The permissive path (pause → hand off → cancel) fails
+   * benignly: an unreachable NAS just resumes the browser download and the user still gets
+   * their file. Strict mode cancels that fallback before it re-fetches the URL for the NAS, so
+   * a failed hand-off requires a deliberate retry instead. That trade-off stays the user's
+   * choice, not ours.
+   */
+  suppressLocalTorrentFile: false,
   routingRules: [],
   theme: "auto",
 };

@@ -27,6 +27,13 @@
   type Props = { initialTab?: "connection" | "advanced" };
   let { initialTab = "connection" }: Props = $props();
 
+  /**
+   * Whether the browser can hold a download at the filename stage. Chrome can; Firefox has
+   * never implemented `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016),
+   * and offering a switch that silently does nothing there is worse than not offering it.
+   */
+  const supportsFilenameHold = typeof chrome !== "undefined" && Boolean(chrome.downloads?.onDeterminingFilename);
+
   let form = $state<Settings>({ ...DEFAULTS });
 
   let tempStatus = $state<FolderFieldStatus>("idle");
@@ -481,16 +488,47 @@
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
 
-  <div class="form-group form-inline mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-sm)] font-500">
+  <div class="form-group mb-[var(--spacing-md)] flex flex-col gap-[var(--spacing-sm)]">
     <!-- Two states, so a checkbox rather than a two-item select: the setting reads as the
          sentence it is, and needs no menu to discover what the alternative even is. -->
-    <Checkbox
-      id="torrentInterceptMode"
-      checked={form.torrentInterceptMode === "always"}
-      onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
-    >
-      Send .torrent downloads to the NAS
-    </Checkbox>
+    <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500">
+      <Checkbox
+        id="torrentInterceptMode"
+        checked={form.torrentInterceptMode === "always"}
+        onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
+      >
+        Send .torrent downloads to the NAS
+      </Checkbox>
+    </div>
+
+    <!-- A refinement of the setting above, not a peer: kept visible but disabled until
+         interception is on, so its effect stays discoverable while the dependency stays clear.
+         Chrome-only — Firefox has no `downloads.onDeterminingFilename`, so the control is hidden
+         there instead of being shown dead. -->
+    {#if supportsFilenameHold}
+      <div class="ml-[var(--spacing-lg)]">
+        <Checkbox
+          id="suppressLocalTorrentFile"
+          disabled={form.torrentInterceptMode !== "always"}
+          aria-describedby="suppressLocalTorrentFileHint"
+          bind:checked={form.suppressLocalTorrentFile}
+        >
+          Don't keep the .torrent file locally
+        </Checkbox>
+        <div class="mt-[var(--spacing-xs)] ml-[var(--spacing-lg)]">
+          {#if form.torrentInterceptMode === "always"}
+            <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+              QuickGet sends the torrent to the NAS before Chrome saves it — no "Save as" prompt or
+              local copy. If the NAS cannot accept it, click the link again.
+            </p>
+          {:else}
+            <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+              Available when sending .torrent downloads to the NAS.
+            </p>
+          {/if}
+        </div>
+      </div>
+    {/if}
   </div>
   </FormSection>
 </section>

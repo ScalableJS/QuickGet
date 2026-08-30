@@ -20,6 +20,7 @@ export function toRealNasSettings(env: RealNasEnv): Settings {
     NAStempdir: env.tempDir,
     NASdir: env.destDir,
     torrentInterceptMode: "always",
+    suppressLocalTorrentFile: false,
     routingRules: [],
     theme: "auto",
   };

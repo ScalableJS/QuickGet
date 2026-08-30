@@ -20,7 +20,7 @@
 
 <div
   class={[
-    "h-1 bg-[var(--progress-track-active)] rounded-[2px] overflow-hidden",
+    "h-[5px] bg-[var(--progress-track-active)] rounded-full overflow-hidden",
     inline ? "w-auto min-w-0 flex-1" : "w-full flex-none",
   ]}
   role="progressbar"
@@ -29,5 +29,5 @@
   aria-valuemin={0}
   aria-valuemax={100}
 >
-  <div class={["h-full rounded-[2px] transition-[width,background] duration-300", variantClasses[variant]]} style="width: {clamped}%"></div>
+  <div class={["h-full rounded-full transition-[width,background] duration-300", variantClasses[variant]]} style="width: {clamped}%"></div>
 </div>

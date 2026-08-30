@@ -24,13 +24,13 @@
 
 <div class="relative block">
   {#if label}
-    <label for={id} class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">{label}</label>
+    <label for={id} class="block font-600 mb-[var(--spacing-sm)] text-[var(--color-text)]">{label}</label>
   {/if}
   <div class="relative">
     <select
       {id}
       class={[
-        "w-full appearance-none pl-[var(--spacing-sm)] pr-[var(--space-6)] py-0 border border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] cursor-pointer transition-[border-color] duration-200 focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]",
+        "w-full appearance-none pl-[var(--spacing-sm)] pr-[var(--space-6)] py-0 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] cursor-pointer transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
         sizeClasses[size],
         klass,
       ]}

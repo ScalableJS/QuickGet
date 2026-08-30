@@ -50,23 +50,23 @@
         Download Station 5.10.2 numeric states and their QuickGet presentation.
       </p>
     </div>
-    <div class="overflow-x-auto border border-[var(--torrent-border)] rounded-[var(--radius)]">
+    <div class="overflow-x-auto border border-solid border-[var(--torrent-border)] rounded-[var(--radius)]">
       <table class="w-full border-collapse text-left text-12px text-[var(--color-text)]">
         <thead class="bg-[var(--torrent-bg)]">
           <tr>
-            <th class="p-2 border-b border-[var(--torrent-border)]">QNAP code</th>
-            <th class="p-2 border-b border-[var(--torrent-border)]">Download Station</th>
-            <th class="p-2 border-b border-[var(--torrent-border)]">QuickGet status</th>
-            <th class="p-2 border-b border-[var(--torrent-border)]">Tab/group</th>
+            <th class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">QNAP code</th>
+            <th class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">Download Station</th>
+            <th class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">QuickGet status</th>
+            <th class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">Tab/group</th>
           </tr>
         </thead>
         <tbody>
           {#each STATUSES as item (item.status)}
             <tr>
-              <td class="p-2 border-b border-[var(--torrent-border)] font-mono tabular-nums">{item.qnapState}</td>
-              <td class="p-2 border-b border-[var(--torrent-border)]">{item.label}</td>
-              <td class="p-2 border-b border-[var(--torrent-border)] font-mono">{item.status}</td>
-              <td class="p-2 border-b border-[var(--torrent-border)]">{item.group}</td>
+              <td class="p-2 border-0 border-b border-solid border-[var(--torrent-border)] font-mono tabular-nums">{item.qnapState}</td>
+              <td class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">{item.label}</td>
+              <td class="p-2 border-0 border-b border-solid border-[var(--torrent-border)] font-mono">{item.status}</td>
+              <td class="p-2 border-0 border-b border-solid border-[var(--torrent-border)]">{item.group}</td>
             </tr>
           {/each}
         </tbody>

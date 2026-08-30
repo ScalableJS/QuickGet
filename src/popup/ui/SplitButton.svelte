@@ -112,7 +112,7 @@
 
   {#if open}
     <div
-      class="absolute top-full right-0 z-20 mt-[var(--space-1)] min-w-[180px] bg-[var(--menu-bg)] border border-[var(--color-control-border)] rounded-[var(--radius)] shadow-[var(--shadow)] p-[var(--space-1)] flex flex-col"
+      class="absolute top-full right-0 z-20 mt-[var(--space-1)] min-w-[180px] bg-[var(--menu-bg)] border border-solid border-[var(--color-control-border)] rounded-[var(--radius-container)] shadow-[var(--shadow)] p-[var(--space-1)] flex flex-col"
       role="menu"
       tabindex="-1"
       aria-label={menuLabel}
@@ -122,7 +122,7 @@
         <button
           type="button"
           role="menuitem"
-          class="flex items-center gap-[var(--space-2)] min-h-[var(--control-height)] px-[var(--space-2)] py-0 border-0 bg-transparent text-[var(--menu-text)] text-left text-13px cursor-pointer rounded-[var(--radius)] hover:bg-[var(--color-bg-alt)] focus-visible:bg-[var(--color-bg-alt)] focus-visible:outline-none"
+          class="flex items-center gap-[var(--space-2)] min-h-[var(--control-height)] px-[var(--space-2)] py-0 border-0 bg-transparent text-[var(--menu-text)] text-left text-13px cursor-pointer rounded-[var(--radius)] transition-[background-color,color] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
           tabindex={i === activeIndex ? 0 : -1}
           bind:this={itemEls[i]}
           onclick={() => pick(item)}
