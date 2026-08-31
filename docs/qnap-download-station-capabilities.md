@@ -52,7 +52,7 @@ confirmation (RES-3).
 |---|---|---|
 | Choose when creating the task | **yes** | `addUrl(url, { tempFolder, targetFolder })` and `addTorrent` both take a per-task target and only fall back to `settings.NASdir`. The client is already parameterised — what is missing is UI (GAP-6). |
 | Change while the task runs | **no endpoint known** | The typed V4 surface has no "set destination" call. |
-| Change after completion | **no endpoint known** | Likely a File Station operation, outside Download Station's API and outside this extension. |
+| Change after completion | **not via Download Station** | No such call in its API. File Station — a separate API on the same NAS — can move files, but doing so detaches the task from them and breaks seeding. See RES-4 before assuming this is a feature. |
 
 Two traps recorded so they are not rediscovered:
 
@@ -61,9 +61,16 @@ Two traps recorded so they are not rediscovered:
 - **`savepath` does not exist.** It is accepted and silently ignored — the destination travels
   as `temp` + `move` (and `dest_path` for the multipart torrent upload).
 
-The practical consequence: the destination is almost certainly **fixed at creation time**.
-If RES-3 confirms it, say so in the UI rather than leaving users to hunt for a control that
-cannot exist.
+The practical consequence: within Download Station the destination is almost certainly **fixed
+at creation time**. If RES-3 confirms it, say so in the UI rather than leaving users to hunt
+for a control that cannot exist.
+
+**File Station is a real but expensive escape hatch.** It can move the files, but the task
+keeps pointing at the old path, so seeding breaks — which for a private tracker means ratio
+loss, and ratio loss can mean the account. It also requires granting the extension the ability
+to move arbitrary files on the NAS, which is a much broader capability than adding a download.
+We do not use File Station at all today; the comparable open-source client integrates only its
+**read** endpoints and never moves anything. RES-4 decides whether we go further.
 
 ## Verified API facts
 
