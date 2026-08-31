@@ -43,6 +43,28 @@ Station features, configured on the NAS. They are not gaps in the extension. BT 
 particular is widely reported broken by QNAP's own users; wrapping it would inherit their bug
 reports without fixing anything.
 
+## Destination folders — what the API does and does not allow
+
+Read from the typed V4 surface on 2026-08-31; the post-creation half still needs hardware
+confirmation (RES-3).
+
+| Moment | Possible? | Notes |
+|---|---|---|
+| Choose when creating the task | **yes** | `addUrl(url, { tempFolder, targetFolder })` and `addTorrent` both take a per-task target and only fall back to `settings.NASdir`. The client is already parameterised — what is missing is UI (GAP-6). |
+| Change while the task runs | **no endpoint known** | The typed V4 surface has no "set destination" call. |
+| Change after completion | **no endpoint known** | Likely a File Station operation, outside Download Station's API and outside this extension. |
+
+Two traps recorded so they are not rediscovered:
+
+- **`SetFile` is not what its name suggests.** Its fields are `hash`, `index`, `priority`: it
+  chooses *which files inside a torrent to download*, not where they land.
+- **`savepath` does not exist.** It is accepted and silently ignored — the destination travels
+  as `temp` + `move` (and `dest_path` for the multipart torrent upload).
+
+The practical consequence: the destination is almost certainly **fixed at creation time**.
+If RES-3 confirms it, say so in the UI rather than leaving users to hunt for a control that
+cannot exist.
+
 ## Verified API facts
 
 Findings confirmed against a live QTS 5 NAS. These are the ones that have already cost us a

@@ -26,6 +26,8 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-5 | Listing does not claim the maintenance gap left by the segment leader | store | S | Backlog |
 | RES-1 | Verify on a live NAS how `AddUrl` handles a magnet URI | api/research | S | Backlog |
 | RES-2 | Decide whether `ftp://` links are worth supporting | api/research | S | Backlog |
+| RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Backlog |
+| GAP-6 | No choice of destination at send time | popup/background | M | Backlog |
 
 ---
 
@@ -412,6 +414,93 @@ means carrying code, a test and an error path for a case that may never occur.
       branch is a valid outcome and should be recorded as one.
 
 Deliberately **not** doing it speculatively: we do not add code for users we have not met.
+
+---
+
+### RES-3 — Establish what the NAS allows for per-task destination folders
+
+**Size:** M · **Area:** api/research · **Status:** Backlog
+**Blocks:** GAP-6 (and decides whether the "change it later" half exists at all)
+
+A user wants to choose where a download lands: **when sending**, **while it runs**, and
+**after it finishes**. Those are three different questions, and the API answers them very
+differently — this card establishes which are possible before anything is designed.
+
+**What the code already tells us (read 2026-08-31, no NAS needed):**
+
+- **At send time — already supported by our own client, just not exposed.**
+  `client.addUrl(url, { tempFolder, targetFolder })` (`client.ts:127`) takes a per-call
+  target and defaults to `settings.NASdir` only when the caller omits it. `addTorrent`
+  likewise sends `move` and `dest_path`. So the plumbing for "choose per download" exists;
+  what is missing is UI. That is GAP-6, and it does not depend on this research.
+- **After the fact — no endpoint for it.** The full V4 surface we have typed is
+  `Add*`, `Query`, `Start`, `Stop`, `Pause`, `Remove`, `Status`, `GetFile`, `SetFile`,
+  `Misc/Dir`, `Misc/Login`. There is **no "set destination" call**, and `SetFileRequest` is
+  not one: its fields are `hash`, `index`, `priority` — it selects *which files within a
+  torrent to fetch*, not where they go.
+- **`savepath` does not exist and is silently ignored** (`client.ts:129-130`) — a documented
+  trap we already hit once.
+
+**So the honest shape of the feature is probably: choose freely at send time, and after that
+the destination is fixed.** Confirm that on hardware before promising anything:
+
+- [ ] Does any undocumented V4 call change a task's destination after creation? Check what
+      the Download Station web UI itself sends when a user edits a task — if the UI cannot do
+      it either, that settles it.
+- [ ] Can `temp` and `move` differ per task without side effects, or does Download Station
+      expect one temp folder globally?
+- [ ] What happens when `move` names a folder that does not exist or is not writable? Is it a
+      clear error, or an accepted task that fails later? `Misc/Dir` reports `writtable` per
+      entry, so we may be able to prevent this in the picker rather than discover it after.
+- [ ] Does changing the destination of a **completed** task have any meaning, or is moving
+      files then purely a File Station operation and out of scope for us?
+
+**If the answer is "no post-hoc move":** say so in the UI rather than hiding the limit. A
+disabled control with a one-line reason ("Download Station sets the destination when the task
+is created") is better than users hunting for a feature that cannot exist. Record the finding
+in `docs/qnap-download-station-capabilities.md` either way — that document exists precisely so
+this is not re-investigated.
+
+---
+
+### GAP-6 — No choice of destination at send time
+
+**Size:** M · **Area:** popup/background · **Status:** Backlog
+**Files:** `src/popup/features/folderPicker/` (reuse `FolderSelect`);
+`src/background/menus.ts`; `src/api/client.ts` (already parameterised)
+
+Every download goes to the single `NASdir` from Settings. A user with more than one kind of
+download — a film, a distro, a work file — has to open Settings, change the folder, send, and
+change it back. Competitors expose this per download: *NAS Download Manager* lists "Download a
+link to a specific folder" and *Send To QNAP++* ships pattern-based folder routing.
+
+**We are closer to this than it looks.** `addUrl`/`addTorrent` already accept a per-task
+target; only the UI is missing. And we already have the hard part of the UI: `FolderSelect`
+validates a path against the NAS through `Misc/Dir` and knows which folders are writable.
+
+**Note the overlap with F3 (routing rules), which is also unbuilt.** Routing rules answer
+"always send this *kind* of thing here" automatically; this card answers "send *this one*
+there" manually. They are complements, and both use the same per-task target. Whichever is
+built first should expose that plumbing so the second does not rebuild it.
+
+**Acceptance criteria**
+
+- [ ] The send flow offers a destination, pre-filled with the configured default, without
+      making the common case slower — a user who does not care must not gain a step.
+- [ ] The chosen folder is validated before the task is created, using the existing
+      `Misc/Dir` writability check rather than a free-text field.
+- [ ] A per-send choice never silently rewrites the default in Settings.
+- [ ] Context-menu sends are covered too, not just the popup — that is where most sends
+      happen, and it has no UI surface today.
+- [ ] Interception (`handleDownloadCreated`) keeps working with no prompt: a browser-initiated
+      `.torrent` must not start blocking on a dialog.
+
+**The unresolved design question, and it is the whole card:** interception is *automatic*.
+There is no natural moment to ask, and a modal on every download would ruin the feature that
+the demo is built around. Options are a default-with-override (send immediately, offer to
+re-route from the popup — depends on RES-3), a per-send choice only where a UI already exists
+(context menu, popup), or routing rules (F3) doing this without asking at all. **Settle this
+before writing code**; the wrong answer here makes the product worse.
 
 ---
 
