@@ -33,9 +33,6 @@ function downloadStates(worker: Worker): Promise<string[]> {
   return worker.evaluate(async () => (await chrome.downloads.search({})).map((item) => item.state));
 }
 
-function actionTitle(worker: Worker): Promise<string> {
-  return worker.evaluate(() => chrome.action.getTitle({}));
-}
 
 function actionBadge(worker: Worker): Promise<{ text: string; color: chrome.extensionTypes.ColorArray }> {
   return worker.evaluate(async () => ({
@@ -44,10 +41,10 @@ function actionBadge(worker: Worker): Promise<{ text: string; color: chrome.exte
   }));
 }
 
-function toolbarState(worker: Worker): Promise<{ badgeText?: string; icon?: string; zeroStreak?: number }> {
+function toolbarState(worker: Worker): Promise<{ badgeText?: string; icon?: string }> {
   return worker.evaluate(async () => {
     const stored = await chrome.storage.session.get("qg:toolbarState");
-    return (stored["qg:toolbarState"] ?? {}) as { badgeText?: string; icon?: string; zeroStreak?: number };
+    return (stored["qg:toolbarState"] ?? {}) as { badgeText?: string; icon?: string };
   });
 }
 
@@ -65,43 +62,28 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
   };
 }
 
-async function startSession(options: { bodyDelayMs?: number } = {}) {
+async function startSession(options: { bodyDelayMs?: number; userDataDir?: string } = {}) {
   const torrentHost = await startTorrentHost(torrentFixture, options);
   const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-downloads-"));
-  const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+  const session = await launchExtensionPopup(extensionDistPath, {
+    downloadsPath,
+    userDataDir: options.userDataDir,
+  });
   return { torrentHost, session };
 }
 
-test("hands the torrent to the NAS and only then cancels the browser download", async () => {
+test("does not retain an intercepted torrent through a browser restart", async () => {
   const mockNas = await startMockNas();
-  const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS });
+  const userDataDir = await mkdtemp(path.join(tmpdir(), "qg-e2e-restart-profile-"));
+  const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS, userDataDir });
+  let reopenedSession: Awaited<ReturnType<typeof launchExtensionPopup>> | undefined;
 
   try {
     await seedSettings(session.worker, nasSettings(mockNas.port));
-    // Simulate an extension reload that reset Chrome's visible action while the session cache
-    // retained the previous active state. The explicit interception event must repaint anyway.
-    await session.worker.evaluate(() =>
-      chrome.storage.session.set({
-        "qg:toolbarState": {
-          badgeText: "",
-          icon: "active",
-          badgeColor: null,
-          title: "Sending torrent to QNAP…",
-          failureRevision: 0,
-          zeroStreak: 0,
-          errorStreak: 0,
-        },
-      }),
-    );
-
     const page = await session.context.newPage();
     await page.goto(torrentHost.url).catch(() => {
       // Navigating to an attachment aborts the navigation; the download is what matters.
     });
-
-    await expect
-      .poll(() => actionTitle(session.worker), { timeout: 2_000, intervals: [50, 100, 200] })
-      .toBe("Sending torrent to QNAP…");
 
     await expect
       .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), {
@@ -109,28 +91,33 @@ test("hands the torrent to the NAS and only then cancels the browser download", 
       })
       .toBe(true);
 
-    // Measured behaviour, not the one we would have guessed: a small .torrent from a local
-    // host reaches `complete` before the cancel can bite, so Chrome keeps a copy. The
-    // contract we can hold it to is that the transfer is never left hanging — every item
-    // ends up either cancelled (interrupted) or finished, never stuck in progress.
-    await expect
-      .poll(() => downloadStates(session.worker), { timeout: 20_000 })
-      .not.toContain("in_progress");
-
-    const sent = await session.worker.evaluate(async () =>
-      (await chrome.downloads.search({})).every(
-        (item) => item.state === "interrupted" || item.state === "complete",
-      ),
-    );
-    expect(sent).toBe(true);
-  } finally {
+    // Close and reopen the real Chromium profile. The NAS has received exactly one torrent;
+    // a startup path in the extension must not upload it again without a new browser download.
     await session.close();
+    reopenedSession = await launchExtensionPopup(extensionDistPath, { userDataDir });
+    const addTorrentCount = mockNas.requestLog
+      .toJSON()
+      .filter((request) => request.path === "/downloadstation/V4/Task/AddTorrent").length;
+    expect(addTorrentCount).toBe(1);
+
+    // A successful hand-off must leave no DownloadItem in the persistent Chrome profile.
+    const retained = await reopenedSession.worker.evaluate(async () =>
+      (await chrome.downloads.search({})).map((item) => ({
+        filename: item.filename,
+        id: item.id,
+        state: item.state,
+        url: item.finalUrl || item.url,
+      })),
+    );
+    expect(retained).toEqual([]);
+  } finally {
+    await reopenedSession?.close();
     await torrentHost.close();
     await mockNas.close();
   }
 });
 
-test("returns the toolbar to idle only after completion is confirmed twice", async () => {
+test("returns the toolbar to idle as soon as the popup snapshot is empty", async () => {
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
@@ -154,28 +141,17 @@ test("returns the toolbar to idle only after completion is confirmed twice", asy
 
     await sendSnapshot(1);
     await expect.poll(() => actionBadge(session.worker)).toMatchObject({ text: "1" });
-    await expect.poll(() => toolbarState(session.worker)).toMatchObject({ icon: "active", zeroStreak: 0 });
+    await expect.poll(() => toolbarState(session.worker)).toMatchObject({ icon: "active" });
 
     await sendSnapshot(0);
-    await expect.poll(() => toolbarState(session.worker)).toMatchObject({ icon: "active", zeroStreak: 1 });
-    expect(await actionBadge(session.worker)).toMatchObject({ text: "1" });
-
-    await session.worker.evaluate(async () => {
-      const stored = await chrome.storage.session.get("qg:toolbarState");
-      const state = stored["qg:toolbarState"] as { firstZeroAt: number };
-      await chrome.storage.session.set({
-        "qg:toolbarState": { ...state, firstZeroAt: state.firstZeroAt - 30_000 },
-      });
-    });
-    await sendSnapshot(0);
-    await expect.poll(() => toolbarState(session.worker)).toMatchObject({ badgeText: "", icon: "idle", zeroStreak: 2 });
+    await expect.poll(() => toolbarState(session.worker)).toMatchObject({ badgeText: "", icon: "idle" });
     expect(await actionBadge(session.worker)).toMatchObject({ text: "" });
   } finally {
     await session.close();
   }
 });
 
-test("updates the toolbar once per meaningful start, count change, and confirmed stop", async () => {
+test("updates the toolbar once per meaningful NAS count change", async () => {
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
@@ -200,8 +176,6 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
           title: "",
           failureReason: null,
           failureRevision: 0,
-          zeroStreak: 0,
-          errorStreak: 0,
         },
       });
 
@@ -232,7 +206,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
       };
     });
 
-    const sendAndWait = async (active: number, expectedBadge: string, expectedZeroStreak: number) => {
+    const sendAndWait = async (active: number, expectedBadge: string) => {
       await messagePage.evaluate((count) => {
         chrome.runtime.sendMessage({
           type: "qg:badgeSnapshot",
@@ -241,26 +215,17 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
       }, active);
       await expect.poll(() => toolbarState(session.worker)).toMatchObject({
         badgeText: expectedBadge,
-        zeroStreak: expectedZeroStreak,
       });
     };
 
     // Repeated snapshots model normal popup + alarm overlap. They must not repaint anything.
-    await sendAndWait(1, "1", 0); // start
-    await sendAndWait(1, "1", 0); // duplicate
-    await sendAndWait(2, "2", 0); // increment
-    await sendAndWait(2, "2", 0); // duplicate
-    await sendAndWait(1, "1", 0); // decrement
-    await sendAndWait(1, "1", 0); // duplicate
-    await sendAndWait(0, "1", 1); // first zero: hysteresis, no visual write
-    await session.worker.evaluate(async () => {
-      const stored = await chrome.storage.session.get("qg:toolbarState");
-      const state = stored["qg:toolbarState"] as { firstZeroAt: number };
-      await chrome.storage.session.set({
-        "qg:toolbarState": { ...state, firstZeroAt: state.firstZeroAt - 30_000 },
-      });
-    });
-    await sendAndWait(0, "", 2); // confirmed stop
+    await sendAndWait(1, "1"); // start
+    await sendAndWait(1, "1"); // duplicate
+    await sendAndWait(2, "2"); // increment
+    await sendAndWait(2, "2"); // duplicate
+    await sendAndWait(1, "1"); // decrement
+    await sendAndWait(1, "1"); // duplicate
+    await sendAndWait(0, ""); // the first successful NAS zero is authoritative
 
     const measurements = await session.worker.evaluate(() => {
       const writes = (

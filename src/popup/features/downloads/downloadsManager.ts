@@ -43,13 +43,6 @@ export function abortListDownloads(): void {
   }
 }
 
-export async function refreshSnapshot(): Promise<void> {
-  const client = await getApiClient();
-  const raw = await client.queryTasksRaw();
-  const snapshot = buildTaskSnapshot(Array.isArray(raw?.data) ? raw.data : []);
-  updateSnapshot(snapshot);
-}
-
 export async function removeDownload(hash: string, clean = false): Promise<void> {
   const client = await getApiClient();
   await client.removeTask(hash, { clean });

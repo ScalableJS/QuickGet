@@ -9,48 +9,11 @@
 import { createApiClient } from "@api/client.js";
 import type { Settings } from "./config.js";
 import { fetchFromPageContext } from "./tabFetch.js";
-import type { Task, TaskStatus } from "./tasks.js";
 
 export type SendTorrentResult = {
   name: string;
   duplicate: boolean;
 };
-
-/** Statuses where a re-clicked torrent can be resumed instead of re-added. */
-const RESTARTABLE_STATUSES: readonly TaskStatus[] = ["error", "stopped", "paused"];
-
-export function isRestartable(status: TaskStatus): boolean {
-  return RESTARTABLE_STATUSES.includes(status);
-}
-
-/**
- * Find the NAS task that corresponds to a torrent file name (fuzzy match,
- * since the task name on the NAS usually drops the .torrent extension).
- */
-export async function findExistingTask(settings: Settings, torrentName: string): Promise<Task | undefined> {
-  const client = createApiClient({ settings });
-  const { tasks } = await client.queryTasks({ params: { limit: 0 } });
-  const target = normalizeName(torrentName);
-  if (!target) return undefined;
-
-  return tasks.find((task) => {
-    const name = normalizeName(task.name);
-    return name === target || name.includes(target) || target.includes(name);
-  });
-}
-
-/** Resume a paused/stopped/errored task on the NAS. */
-export async function resumeTask(settings: Settings, hash: string): Promise<void> {
-  const client = createApiClient({ settings });
-  await client.startTask(hash);
-}
-
-function normalizeName(value: string): string {
-  return value
-    .replace(/\.torrent$/i, "")
-    .trim()
-    .toLowerCase();
-}
 
 /**
  * Decide whether a download is a torrent source that must be routed to the NAS.

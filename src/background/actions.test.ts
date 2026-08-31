@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  acknowledgeAttention,
-  applyBadgeStats,
-  markConfigurationProblem,
-  markInterceptionStarted,
-  noteMonitoringFailure,
-  resetActionState,
-} from "./actions.js";
+import { acknowledgeAttention, applyBadgeStats, markConfigurationProblem, resetActionState } from "./actions.js";
 
 const stats = (active: number, extra: Partial<{ all: number; downRate: number; upRate: number }> = {}) => ({
   active,
@@ -15,11 +8,6 @@ const stats = (active: number, extra: Partial<{ all: number; downRate: number; u
   downRate: extra.downRate ?? 0,
   upRate: extra.upRate ?? 0,
 });
-
-const elapseZeroConfirmation = (): void => {
-  const now = Date.now();
-  vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
-};
 
 describe("applyBadgeStats", () => {
   beforeEach(async () => {
@@ -52,25 +40,11 @@ describe("applyBadgeStats", () => {
     expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledTimes(1); // colour set once
   });
 
-  it("holds the badge through a single transient zero (hysteresis)", async () => {
+  it("clears the badge on the first successful zero — a NAS snapshot is authoritative", async () => {
     await applyBadgeStats(stats(2));
     vi.clearAllMocks();
 
     const result = await applyBadgeStats(stats(0));
-
-    expect(result.idleConfirmed).toBe(false);
-    expect(chrome.action.setBadgeText).not.toHaveBeenCalled(); // count stays "2"
-    expect(chrome.action.setIcon).not.toHaveBeenCalled();
-    expect(chrome.action.setTitle).not.toHaveBeenCalled(); // tooltip stays consistent with the held count
-  });
-
-  it("clears only after two consecutive zeros", async () => {
-    await applyBadgeStats(stats(2));
-    vi.clearAllMocks();
-
-    await applyBadgeStats(stats(0)); // 1st zero — held
-    elapseZeroConfirmation();
-    const result = await applyBadgeStats(stats(0)); // 2nd zero — confirmed idle
 
     expect(result.idleConfirmed).toBe(true);
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
@@ -79,16 +53,15 @@ describe("applyBadgeStats", () => {
     });
   });
 
-  it("a non-zero poll resets the zero streak (no premature clear)", async () => {
+  it("repaints the active count after an idle period", async () => {
     await applyBadgeStats(stats(2));
-    await applyBadgeStats(stats(0)); // 1st zero
-    await applyBadgeStats(stats(2)); // recovers — streak reset
+    await applyBadgeStats(stats(0));
     vi.clearAllMocks();
 
-    const result = await applyBadgeStats(stats(0)); // back to a *single* zero
+    const result = await applyBadgeStats(stats(3));
 
     expect(result.idleConfirmed).toBe(false);
-    expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "3" });
   });
 
   it("survives a worker restart: state is read from session storage, not memory", async () => {
@@ -96,34 +69,10 @@ describe("applyBadgeStats", () => {
     vi.clearAllMocks();
 
     // Simulate a fresh worker: module globals would be gone, but session storage
-    // (and the real toolbar) still hold "3". Two zeros must clear it, not skip it.
-    await applyBadgeStats(stats(0));
-    elapseZeroConfirmation();
+    // (and the real toolbar) still hold "3".
     await applyBadgeStats(stats(0));
 
     expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
-  });
-
-  it("does not treat two rapid popup snapshots as sustained idle", async () => {
-    await applyBadgeStats(stats(1));
-    await applyBadgeStats(stats(0));
-
-    const result = await applyBadgeStats(stats(0));
-
-    expect(result.idleConfirmed).toBe(false);
-    expect(chrome.action.setBadgeText).not.toHaveBeenLastCalledWith({ text: "" });
-  });
-
-  it("starts a fresh zero-confirmation window for a newly intercepted torrent", async () => {
-    await applyBadgeStats(stats(0));
-    elapseZeroConfirmation();
-
-    await markInterceptionStarted();
-    const result = await applyBadgeStats(stats(0));
-
-    expect(result.idleConfirmed).toBe(false);
-    const stored = await chrome.storage.session.get("qg:toolbarState");
-    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ icon: "active", zeroStreak: 1 }));
   });
 
   it("retries rejected badge, title, and color writes on the same snapshot", async () => {
@@ -144,21 +93,6 @@ describe("applyBadgeStats", () => {
     await markConfigurationProblem("second failure");
 
     expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledTimes(1);
-  });
-
-  it("noteMonitoringFailure gives up only after ERROR_LIMIT consecutive failures", async () => {
-    expect((await noteMonitoringFailure()).giveUp).toBe(false);
-    expect((await noteMonitoringFailure()).giveUp).toBe(false);
-    expect((await noteMonitoringFailure()).giveUp).toBe(false);
-    expect((await noteMonitoringFailure()).giveUp).toBe(true); // 4th
-  });
-
-  it("a successful poll resets the failure streak", async () => {
-    await noteMonitoringFailure();
-    await noteMonitoringFailure();
-    await applyBadgeStats(stats(1)); // success clears errorStreak
-
-    expect((await noteMonitoringFailure()).giveUp).toBe(false); // back to 1, not 3
   });
 
   it("writes a formatted multiline tooltip with rates", async () => {
@@ -212,18 +146,6 @@ describe("applyBadgeStats", () => {
     expect(afterSuccessfulAcknowledgement["qg:toolbarState"]).toEqual(
       expect.objectContaining({ badgeText: "", failureReason: null }),
     );
-  });
-
-  it("resets an exhausted monitoring retry budget only after attention is acknowledged", async () => {
-    await noteMonitoringFailure();
-    await noteMonitoringFailure();
-    await noteMonitoringFailure();
-    await noteMonitoringFailure();
-    await markConfigurationProblem("Cannot reach Download Station");
-
-    await acknowledgeAttention();
-
-    expect((await noteMonitoringFailure()).giveUp).toBe(false);
   });
 
   it("does not let an overlapping NAS poll erase a newer red failure", async () => {

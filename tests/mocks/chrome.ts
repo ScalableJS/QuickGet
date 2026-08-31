@@ -208,8 +208,10 @@ export function resetChromeMockState(): void {
   downloadsCancel.mockClear();
   downloadsPause.mockClear();
   downloadsResume.mockClear();
-  downloadsErase.mockClear();
-  downloadsSearch.mockClear();
+  downloadsErase.mockReset();
+  downloadsErase.mockResolvedValue([]);
+  downloadsSearch.mockReset();
+  downloadsSearch.mockResolvedValue([]);
   downloadsOnCreatedAddListener.mockClear();
   downloadsOnChangedAddListener.mockClear();
   downloadsOnDeterminingFilenameAddListener.mockClear();
@@ -226,6 +228,7 @@ export function getChromeDownloadsMock() {
     cancel: downloadsCancel,
     pause: downloadsPause,
     resume: downloadsResume,
+    erase: downloadsErase,
     search: downloadsSearch,
     onCreatedAddListener: downloadsOnCreatedAddListener,
   };

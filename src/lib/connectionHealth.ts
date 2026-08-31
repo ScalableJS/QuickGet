@@ -13,8 +13,6 @@
 import type { Settings } from "./config.js";
 import { findConfigProblem } from "./configHealth.js";
 
-const KEY = "qg:connectionHealth";
-
 export type HealthKind = "unknown" | "ready" | "unreachable" | "auth-failed";
 
 export type ConnectionHealth = {
@@ -31,35 +29,13 @@ export type ConnectionState = {
 };
 
 export async function readConnectionState(settings: Settings): Promise<ConnectionState> {
-  const stored = await chrome.storage.local.get(KEY);
-  const health = (stored[KEY] as ConnectionHealth | undefined) ?? { kind: "unknown" };
-  return { configured: findConfigProblem(settings) === undefined, health };
+  return { configured: findConfigProblem(settings) === undefined, health: { kind: "unknown" } };
 }
 
-export async function recordSuccess(): Promise<void> {
-  const now = Date.now();
-  await chrome.storage.local.set({
-    [KEY]: { kind: "ready", lastCheckedAt: now, lastSuccessAt: now } satisfies ConnectionHealth,
-  });
-}
-
-export async function recordFailure(error: unknown): Promise<void> {
-  const stored = await chrome.storage.local.get(KEY);
-  const previous = stored[KEY] as ConnectionHealth | undefined;
+/** Describe only the result of the request that just completed; nothing is persisted. */
+export function connectionFailure(error: unknown): ConnectionHealth {
   const detail = error instanceof Error ? error.message : String(error);
-
-  await chrome.storage.local.set({
-    [KEY]: {
-      kind: classify(detail),
-      lastCheckedAt: Date.now(),
-      lastSuccessAt: previous?.lastSuccessAt,
-      detail,
-    } satisfies ConnectionHealth,
-  });
-}
-
-export async function clearConnectionHealth(): Promise<void> {
-  await chrome.storage.local.remove(KEY);
+  return { kind: classify(detail), lastCheckedAt: Date.now(), detail };
 }
 
 /**
