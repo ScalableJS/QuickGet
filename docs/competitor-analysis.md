@@ -155,6 +155,11 @@ Worth taking: **task completion notification with dedup** (++) — the most valu
 **add-error notification** (Synology) — useful for feedback; interception notification — if
 we ever build download interception.
 
+> **Open gaps from this analysis are tracked as cards** in
+> [`../agent-os/product/competitive-gaps-kanban.md`](../agent-os/product/competitive-gaps-kanban.md),
+> together with the user-review evidence gathered on 2026-08-31 and the list of things we
+> deliberately do not copy.
+
 ## Summary: where we lead and what to take
 
 **We're already ahead on:** MV3 (cross-browser), Svelte 5 + TS, torrent files + magnet +
