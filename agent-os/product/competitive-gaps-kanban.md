@@ -24,6 +24,8 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
 | GAP-5 | Listing does not claim the maintenance gap left by the segment leader | store | S | Backlog |
+| RES-1 | Verify on a live NAS how `AddUrl` handles a magnet URI | api/research | S | Backlog |
+| RES-2 | Decide whether `ftp://` links are worth supporting | api/research | S | Backlog |
 
 ---
 
@@ -339,6 +341,80 @@ the listing does not currently say so.
 **Note on the table above:** these figures were read from store listings on one day. They are
 evidence for the *decision*, not content for the listing — do not transcribe them into it.
 
+### RES-1 — Verify on a live NAS how `AddUrl` handles a magnet URI
+
+**Size:** S · **Area:** api/research · **Status:** Backlog
+**Files:** none yet — this card produces findings, not code
+**Blocks:** GAP-1 (the hand-off path it will use)
+
+Magnet reaches Download Station through a **different and much simpler path** than a
+`.torrent`, and confirming its exact behaviour is worth doing before GAP-1 is implemented.
+
+**Why the path differs.** A `.torrent` is a file Chrome has already begun downloading, which
+is why `handleDownloadCreated` has to be transactional — pause, hand off, cancel only on
+success, resume on failure. A magnet is a *string*. There is no `DownloadItem`, nothing to
+pause, nothing to cancel, and nothing to lose if the send fails. So GAP-1 shares only the
+task-submission code with torrent interception, and none of the download-lifecycle races.
+
+**What is already true (verified, do not re-check):**
+
+- `menus.ts:103` already accepts `magnet:` and routes it through `AddUrl`, so sending a magnet
+  from the context menu works today. GAP-1 is about capturing the *click*, not about teaching
+  the extension what a magnet is.
+- `AddUrl` requires **both** `temp` and `move` (`client.ts:127-139`); omitting either is
+  rejected. Verified against a live QTS 5 NAS after it broke once.
+
+**Questions this card answers — on real hardware, not from documentation:**
+
+- [ ] Does `AddUrl` accept a magnet URI with the same `temp`/`move` contract as an HTTP URL,
+      or does it want something different?
+- [ ] What does the task look like in `Task/Query` immediately after submission, before
+      metadata resolves? A magnet has no name until the swarm supplies one — does the popup
+      render a blank row, and for how long?
+- [ ] Does a **v2 / hybrid** magnet (`xt=urn:btmh:`) get accepted or rejected? QNAP documents
+      "BitTorrent / Magnet / DHT" but does not state a libtorrent version or BEP-52 support,
+      so this is unknown and only measurable.
+- [ ] What happens to a magnet whose swarm never resolves — does the task sit forever, and is
+      that distinguishable from a genuine failure in what we display?
+
+**Design consequence to record either way:** validate the **scheme only** (`magnet:`), never
+the `xt` prefix. Hard-coding `urn:btih:` would reject v2 magnets that the NAS may well accept
+— and whether it accepts them is the NAS's business, not ours. We forward a string; we are not
+a BitTorrent client and should not act as a gatekeeper for one.
+
+**Method.** Same as the earlier `AddUrl` verification: submit against the real NAS, read back
+`Task/Query`, record the raw payloads in `docs/` next to the existing API findings. No
+guessing from vendor documentation — it is what got `temp`/`move` wrong the first time.
+
+---
+
+### RES-2 — Decide whether `ftp://` links are worth supporting
+
+**Size:** S · **Area:** api/research · **Status:** Backlog
+**Files:** `src/background/menus.ts` (`isSupportedUrl`)
+
+Download Station accepts HTTP/HTTPS, **FTP/FTPS**, magnet and BitTorrent. Our validator
+(`menus.ts:102-110`) accepts only `magnet:`, `http:` and `https:`, so an `ftp://` link is
+refused with "Only web and magnet links can be sent to Download Station" even though the NAS
+would take it.
+
+The change itself is one line. The question is whether it should be made at all: FTP links in
+a browser are close to extinct — Chrome removed FTP support entirely in version 95 — so an
+`ftp://` anchor is something the browser itself can no longer open. Adding a branch for it
+means carrying code, a test and an error path for a case that may never occur.
+
+**Decide, then act:**
+
+- [ ] Establish whether any real user hits this — an issue, a review, or a concrete site.
+- [ ] If yes: extend `isSupportedUrl` and its unit test, and confirm the NAS accepts the URL
+      form we pass.
+- [ ] If no: close this card as "not needed" and leave the validator alone. Not shipping the
+      branch is a valid outcome and should be recorded as one.
+
+Deliberately **not** doing it speculatively: we do not add code for users we have not met.
+
+---
+
 ## Deliberately not doing
 
 Recorded so they are not re-opened as "gaps":
@@ -351,5 +427,22 @@ Recorded so they are not re-opened as "gaps":
   service-worker wake while adding an async read to every request.
 - **Rename-after-download** (`nas-download-manager` #165). Belongs to the NAS, not to a
   browser extension; Download Station owns the file once the task is handed over.
+- **aria2 (or any second backend).** Proposed as a way to gain aggressive multi-connection
+  downloading and one extension for every link type. Rejected on four grounds, recorded here
+  so it is not re-proposed: it breaks **single purpose**, the most common CWS rejection reason
+  — "send to QNAP Download Station" is one clear purpose, "…or to aria2" is two integrations
+  to justify at review; the audience collapses, since Download Station ships with the NAS
+  while aria2 needs Entware or a container, and anyone who can install it can already type
+  `aria2c -x 16`; the cost is a second API client, a second settings schema, a second task-state
+  model and a doubled e2e matrix; and it is not our product to own — we are a Download Station
+  client, and the right answer to "I want a multi-connection downloader" is aria2 with its own
+  frontend.
+- **Multi-connection / segmented downloading.** Not ours to influence in either direction. We
+  hand the NAS a URL; how many connections it opens is its decision, and no parameter we can
+  send changes it. Whether Download Station segments a single HTTP file is unknown and, for
+  the extension, immaterial.
+- **RSS / broadcatching, download scheduling, bandwidth limits.** Real Download Station
+  features that live on the NAS and are configured there. Reimplementing a NAS control panel
+  in a browser popup is not what this extension is for.
 - **BT search in the popup.** Download Station's own search is widely reported broken by
   QNAP's users; wrapping someone else's broken feature inherits their bug reports.

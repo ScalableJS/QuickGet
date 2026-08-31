@@ -130,6 +130,7 @@ Additional documentation is available in the `docs/` directory:
 - [local-development.md](./docs/local-development.md) — Local development setup
 - [firefox-release-guide.md](./docs/firefox-release-guide.md) — AMO packaging and submission
 - [feature-roadmap.md](./docs/feature-roadmap.md) — Planned work
+- [qnap-download-station-capabilities.md](./docs/qnap-download-station-capabilities.md) — What the NAS supports vs. what this extension exposes; read before adding a source format
 - [competitor-analysis.md](./docs/competitor-analysis.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
 
 Contributor-facing conventions, standards, and the open-defect board live in
