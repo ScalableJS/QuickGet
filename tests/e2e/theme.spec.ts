@@ -21,18 +21,15 @@ test.describe("theme", () => {
     const session = await launchExtensionPopup(extensionDistPath);
 
     try {
-      await session.worker.evaluate(
-        (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        {
-          NASaddress: "127.0.0.1",
-          NASport: String(nas.port),
-          NASlogin: "demo-user",
-          NASpassword: "demo-password",
-          NAStempdir: "Download",
-          NASdir: "Download",
-          theme: "light",
-        } as Record<string, unknown>,
-      );
+      await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {
+        NASaddress: "127.0.0.1",
+        NASport: String(nas.port),
+        NASlogin: "demo-user",
+        NASpassword: "demo-password",
+        NAStempdir: "Download",
+        NASdir: "Download",
+        theme: "light",
+      } as Record<string, unknown>);
 
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();

@@ -40,18 +40,15 @@ test("popup renders the QNAP transition states with their official meaning", asy
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
-    await session.worker.evaluate(
-      (values) => chrome.storage.local.set(values),
-      {
-        NASaddress: "127.0.0.1",
-        NASport: String(mockNas.port),
-        NASsecure: false,
-        NASlogin: "admin",
-        NASpassword: "local-e2e-password",
-        NAStempdir: "Download",
-        NASdir: "Multimedia/Movies",
-      },
-    );
+    await session.worker.evaluate((values) => chrome.storage.local.set(values), {
+      NASaddress: "127.0.0.1",
+      NASport: String(mockNas.port),
+      NASsecure: false,
+      NASlogin: "admin",
+      NASpassword: "local-e2e-password",
+      NAStempdir: "Download",
+      NASdir: "Multimedia/Movies",
+    });
     await session.page.reload({ waitUntil: "domcontentloaded" });
     await waitForPopupReady(session.page);
     await session.page.getByRole("button", { name: "All" }).click();

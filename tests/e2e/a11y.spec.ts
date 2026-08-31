@@ -139,17 +139,11 @@ test.describe("accessibility", () => {
 
       // Then walk away to a tab that does not contain it.
       await session.page.getByRole("tab", { name: "Advanced" }).click();
-      await expect(session.page.getByRole("tab", { name: "Advanced" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
+      await expect(session.page.getByRole("tab", { name: "Advanced" })).toHaveAttribute("aria-selected", "true");
 
       await session.page.click("#save-btn");
 
-      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
+      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute("aria-selected", "true");
       await expect(session.page.locator("#NAStempdir")).toBeFocused();
       await expect(session.page.locator("#NAStempdir")).toHaveAttribute("aria-invalid", "true");
     } finally {
@@ -281,5 +275,4 @@ test.describe("accessibility", () => {
       await nas.close();
     }
   });
-
 });
