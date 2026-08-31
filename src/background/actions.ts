@@ -2,10 +2,10 @@
  * Toolbar action (badge + icon) — single authoritative writer.
  *
  * Background owns chrome.action. Every update flows through applyBadgeStats(),
- * which keeps the last-known state and writes only on a real change (uBlock
- * style). Background polls need two zeroes before clearing, so a transient NAS
- * hiccup cannot blank the badge. A successful popup snapshot is already what
- * the user sees, so it may explicitly confirm idle without that delay.
+ * which keeps only the last rendered toolbar state and writes only on a real
+ * change (uBlock style). Every successful NAS response is authoritative: the
+ * first zero clears the badge immediately, while a failed query shows that the
+ * task status is unavailable instead of retaining a stale count.
  *
  * The state lives in chrome.storage.session, NOT module globals: MV3 tears the
  * worker down after ~30s idle (≈ our alarm period), and "Any global variables
@@ -15,9 +15,8 @@
  * cleared on browser restart — exactly like the toolbar badge itself, so the
  * cached value never drifts from what's actually shown.
  *
- * Callers must invoke applyBadgeStats ONLY for a confident, successful poll —
- * never on an error/abort/skipped refresh (that would be a fake zero); failed
- * polls go through noteMonitoringFailure instead.
+ * Callers must invoke applyBadgeStats ONLY for a successful NAS query — never
+ * on an error/abort/skipped refresh (that would be a fake zero).
  */
 
 import type { ProgressSummary } from "@lib/tasks.js";
@@ -111,10 +110,8 @@ function buildTitle(stats: ProgressSummary): string {
 
 /**
  * Apply a confident, successful poll to the toolbar — the ONLY function that
- * writes the badge/icon. Diff-guarded and idle-hysteresis'd against the
- * persisted last-known state. A completed popup query can set `confirmIdle`:
- * its zero is already the list the user sees and should repaint the action at
- * once. Returns whether idle is now confirmed (so the caller can stop polling).
+ * writes the badge/icon. It is diff-guarded against the persisted last-rendered
+ * state. Returns whether NAS reports idle (so the caller can stop polling).
  * Do NOT call on a failed/aborted/skipped poll.
  */
 export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active: number; idleConfirmed: boolean }> {

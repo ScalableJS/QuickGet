@@ -41,10 +41,10 @@ function actionBadge(worker: Worker): Promise<{ text: string; color: chrome.exte
   }));
 }
 
-function toolbarState(worker: Worker): Promise<{ badgeText?: string; icon?: string; zeroStreak?: number }> {
+function toolbarState(worker: Worker): Promise<{ badgeText?: string; icon?: string }> {
   return worker.evaluate(async () => {
     const stored = await chrome.storage.session.get("qg:toolbarState");
-    return (stored["qg:toolbarState"] ?? {}) as { badgeText?: string; icon?: string; zeroStreak?: number };
+    return (stored["qg:toolbarState"] ?? {}) as { badgeText?: string; icon?: string };
   });
 }
 
@@ -151,7 +151,7 @@ test("returns the toolbar to idle as soon as the popup snapshot is empty", async
   }
 });
 
-test("updates the toolbar once per meaningful start, count change, and confirmed stop", async () => {
+test("updates the toolbar once per meaningful NAS count change", async () => {
   const session = await launchExtensionPopup(extensionDistPath);
 
   try {
@@ -176,8 +176,6 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
           title: "",
           failureReason: null,
           failureRevision: 0,
-          zeroStreak: 0,
-          errorStreak: 0,
         },
       });
 
@@ -227,7 +225,7 @@ test("updates the toolbar once per meaningful start, count change, and confirmed
     await sendAndWait(2, "2"); // duplicate
     await sendAndWait(1, "1"); // decrement
     await sendAndWait(1, "1"); // duplicate
-    await sendAndWait(0, ""); // popup query has already confirmed stop
+    await sendAndWait(0, ""); // the first successful NAS zero is authoritative
 
     const measurements = await session.worker.evaluate(() => {
       const writes = (

@@ -88,26 +88,6 @@ export const WithRoutingRules: Story = {
 /** Interception off — the setting that quietly disabled the feature for whole profiles. */
 export const InterceptionOff: Story = { args: { storage: { ...CONNECTED, torrentInterceptMode: "off" } } };
 
-/** Configured but the NAS is switched off — the settings were never wrong. */
-export const NasUnreachable: Story = {
-  args: {
-    storage: {
-      ...CONNECTED,
-      "qg:connectionHealth": { kind: "unreachable", lastCheckedAt: Date.now(), detail: "Failed to fetch" },
-    },
-  },
-};
-
-/** The NAS rejected the saved credentials — this one really does need the user. */
-export const AuthenticationFailed: Story = {
-  args: {
-    storage: {
-      ...CONNECTED,
-      "qg:connectionHealth": { kind: "auth-failed", lastCheckedAt: Date.now() },
-    },
-  },
-};
-
 /** The settings screen behind its optional password. */
 export const SettingsLocked: Story = {
   args: {

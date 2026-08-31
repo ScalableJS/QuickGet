@@ -16,6 +16,7 @@
  */
 
 import type { Settings } from "@lib/config.js";
+import { performLogin } from "@api/index.js";
 import { findConfigProblem } from "@lib/configHealth.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
@@ -180,8 +181,6 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       return;
     }
     ownsInFlight = true;
-    console.log("[QuickGet] intercepting torrent download", { id: item.id, url });
-
     // No usable NAS: the master password was never entered, storage.session was emptied by a
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes
     // the first case for the message — it reports false in the second, so it cannot be the
@@ -204,6 +203,28 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       );
       return;
     }
+
+    // Configuration only says where the NAS should be; it does not prove the NAS is reachable
+    // now. Verify the connection before touching the browser transfer or fetching the torrent.
+    // This is deliberately a live request, never a persisted "Ready" flag: without a successful
+    // login for this click, QuickGet has not intercepted anything and Chrome continues normally.
+    try {
+      await performLogin(settings);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      console.warn(`[QuickGet] NAS unavailable — leaving the download to the browser: ${message}`);
+      releaseHeldFilename(item.id);
+      await markConfigurationProblem(message);
+      await notifyFailure(
+        classifyConnectionFailure(error),
+        "QuickGet could not reach the NAS",
+        `${message} The .torrent was left to the browser.`,
+        settings.NASaddress,
+      );
+      return;
+    }
+
+    console.log("[QuickGet] intercepting torrent download", { id: item.id, url });
 
     // Strict mode: drop the browser transfer at the first moment we know it is ours — before
     // any toolbar work, and while `onDeterminingFilename` is still holding the file back. Any
@@ -344,6 +365,13 @@ function classifyFailure(error: unknown): FailureKind {
   }
   if (message.includes("failed to fetch") || message.includes("networkerror")) return "unreachable";
   return "handoff";
+}
+
+/** Classify a failed preflight without confusing NAS authentication with tracker authentication. */
+function classifyConnectionFailure(error: unknown): FailureKind {
+  const message = getErrorMessage(error).toLowerCase();
+  if (message.includes("username or password") || message.includes("login failed")) return "not-configured";
+  return "unreachable";
 }
 
 /**

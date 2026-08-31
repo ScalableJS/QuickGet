@@ -68,7 +68,12 @@ function mockFailedHandoff(): void {
  * malfunction, and must not be conflated with a real hand-off/configuration fault.
  */
 function mockTrackerAuthFailedHandoff(): void {
-  server.use(http.get(TORRENT_URL, () => HttpResponse.text("Forbidden", { status: 403 })));
+  server.use(
+    http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+      HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+    ),
+    http.get(TORRENT_URL, () => HttpResponse.text("Forbidden", { status: 403 })),
+  );
 }
 
 describe("download interception", () => {
@@ -345,6 +350,36 @@ describe("download interception", () => {
     expect(downloads.pause).not.toHaveBeenCalled();
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    "does not intercept when a live NAS connection cannot be established (suppressLocalTorrentFile=%s)",
+    async (suppressLocalTorrentFile) => {
+      seedChromeStorage(createTestSettings({ suppressLocalTorrentFile }));
+      const item = createDownloadItem();
+      const suggest = vi.fn();
+      let torrentFetches = 0;
+      server.use(
+        http.get(TORRENT_URL, () => {
+          torrentFetches += 1;
+          return HttpResponse.arrayBuffer(new ArrayBuffer(0));
+        }),
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+          HttpResponse.error(),
+        ),
+      );
+
+      reserveDownloadForHold(item);
+      expect(handleDeterminingFilename(item, suggest)).toBe(true);
+      await handleDownloadCreated(item);
+
+      expect(suggest).toHaveBeenCalledTimes(1);
+      expect(torrentFetches).toBe(0);
+      expect(downloads.pause).not.toHaveBeenCalled();
+      expect(downloads.cancel).not.toHaveBeenCalled();
+      expect(downloads.resume).not.toHaveBeenCalled();
+      expect(downloads.erase).not.toHaveBeenCalled();
+    },
+  );
 
   it("sends the torrent even though a settings password is set", async () => {
     // The settings lock guards the settings screen, never the hand-off. A download starts when
