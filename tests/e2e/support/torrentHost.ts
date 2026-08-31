@@ -1,6 +1,6 @@
 import { once } from "node:events";
-import { createServer, type Server } from "node:http";
 import { readFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
 
 export interface TorrentHostHandle {
   /** URL Chrome should navigate to in order to start a real `.torrent` download. */
