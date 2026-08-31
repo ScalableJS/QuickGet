@@ -204,3 +204,23 @@ Pull requests are preferred to long-lived forks so improvements remain consolida
 ## License
 
 QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE.md).
+
+## Support
+
+QuickGet Remote is free, open source, and has no paid tier — every feature is
+available to everyone, and that will not change.
+
+If it saves you time, you can chip in toward the AI tooling used to build and
+maintain it. This is entirely optional and affects nothing in the extension.
+
+| Network | Address |
+| --- | --- |
+| USDT (TRC-20) | `TQQnvCK37HYW9i6mc8i2C459TpxPp8Vn5V` |
+
+> [!IMPORTANT]
+> Send only on the **TRC-20** network. Transfers made on any other network
+> (ERC-20, BEP-20, TON) will be lost permanently and cannot be recovered.
+
+Please only send what you can comfortably spare — crypto transfers are
+irreversible, and there is no refund mechanism. A star on the repository or a
+bug report is just as welcome.
