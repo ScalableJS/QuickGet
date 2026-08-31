@@ -56,3 +56,6 @@ storybook-static/
 # repomix code dumps
 repomix-output.xml
 dist-dev/
+
+# Demo recording artefacts (video masters, not source)
+demo-output/
