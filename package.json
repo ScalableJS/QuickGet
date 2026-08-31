@@ -36,7 +36,8 @@
     "stats:css": "find dist -name '*.css' -exec sh -c 'echo $1; wc -c < $1' _ {} \\;",
     "prepare": "husky",
     "test:e2e:tracker": "TRACKER_E2E=1 playwright test tests/e2e/private-tracker.real.spec.ts",
-    "tracker:login": "node scripts/tracker-login.mjs"
+    "tracker:login": "node scripts/tracker-login.mjs",
+    "demo:record": "npm run build && E2E_RECORD_DEMO=true playwright test tests/e2e/demo.spec.ts --workers=1"
   },
   "keywords": [
     "qnap",

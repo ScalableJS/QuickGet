@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open Downloads</title>
+    <link rel="stylesheet" href="simple.min.css" />
+    <style>
+      /*
+       * Promo framing, in the same dark gamma as the extension.
+       *
+       * The demo pins the product to its dark theme (a real `theme` setting), so the page matches
+       * it — a light page beside a dark popup put two clashing themes in one frame. The palette is
+       * copied from the product's own dark tokens (`src/popup/styles/tokens.css`) so the two
+       * surfaces sit in one colour family instead of merely both being "dark".
+       *
+       * The page stays a backdrop, not the subject: it is deliberately flatter and lower-contrast
+       * than the popup, so the viewer reads the extension and the badge first.
+       *
+       * simple.min.css flips itself via `prefers-color-scheme`, so the palette is pinned here
+       * rather than left to the recording machine's OS setting.
+       */
+      :root,
+      :root:is(.light, .dark) {
+        color-scheme: dark;
+        --bg: #0b1627;
+        --card: #11233a;
+        --accent-bg: #172b46;
+        --text: #e8eef7;
+        --text-light: #b3c0d0;
+        --accent: #306edc;
+        --accent-hover: #4886f0;
+        --accent-text: #fff;
+        --border: #263e5c;
+      }
+
+      /* Filmed at 1920x1080 on a non-HiDPI display: no supersampling to rescue small text. */
+      html {
+        font-size: 19px;
+      }
+
+      /*
+       * simple.min.css lays `body` out as a two-column grid on wide viewports, which parks the
+       * header in a tinted sidebar and pins the content left — leaving half of a 1920px frame
+       * empty. `!important` is needed because the framework sets the columns inside a min-width
+       * media query.
+       *
+       * Centring is vertical as well as horizontal: at 1920x1080 the viewport is ~993px tall, and
+       * top-aligned content left the bottom third of every frame empty. A flex column puts the
+       * card on the optical centre, which is where the popup opens over it.
+       */
+      body {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        max-width: none;
+        margin: 0;
+        padding: 3rem 2rem;
+        background: linear-gradient(168deg, #0d1a2d 0%, #091425 100%);
+        box-sizing: border-box;
+      }
+
+      /*
+       * simple.min.css gives header/footer their own tinted background and a rule. Over a gradient
+       * those read as grey panels floating on the page — visible in the first screenshot as a band
+       * behind the title. Clear all of it; `!important` because the framework sets them inside a
+       * media query that outranks a plain rule here.
+       */
+      header,
+      footer {
+        width: min(660px, 100%);
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        text-align: center;
+      }
+
+      header {
+        padding: 0 0 1.75rem;
+      }
+
+      header h1 {
+        margin: 0 0 0.5rem;
+        font-size: 2.4rem;
+        letter-spacing: -0.02em;
+      }
+
+      .tagline {
+        color: var(--text-light);
+        margin: 0;
+        font-size: 1.05rem;
+      }
+
+      main {
+        width: min(660px, 100%);
+      }
+
+      /*
+       * The card carries the whole frame, so it gets real padding and a soft shadow instead of a
+       * hairline border — a 1px border reads as noise once the video is encoded.
+       */
+      .download {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 2.5rem 2.75rem;
+        background: var(--card);
+        box-shadow: 0 1px 2px rgb(0 0 0 / 22%), 0 14px 36px rgb(0 0 0 / 28%);
+        text-align: center;
+      }
+
+      .download h2 {
+        margin: 0 0 1rem;
+        font-size: 1.5rem;
+        letter-spacing: -0.01em;
+      }
+
+      .download dl {
+        margin: 0 0 2rem;
+        color: var(--text-light);
+        line-height: 1.7;
+      }
+
+      .download dt {
+        /* Labels are for assistive tech; the metadata reads as plain lines on screen. */
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+
+      .download dd {
+        margin: 0;
+      }
+
+      /* The click target of both the demo and the e2e test — deliberately roomy and unmissable. */
+      #download-torrent {
+        display: inline-block;
+        padding: 1rem 2.25rem;
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 600;
+        font-size: 1.05rem;
+        text-decoration: none;
+        box-shadow: 0 2px 12px rgb(48 110 220 / 34%);
+      }
+
+      #download-torrent:hover,
+      #download-torrent:focus-visible {
+        background: var(--accent-hover);
+      }
+
+      footer {
+        margin-top: 2.25rem;
+        padding: 0;
+        color: var(--text-light);
+        font-size: 0.78rem;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Open Downloads</h1>
+      <p class="tagline">Freely distributable downloads for testing BitTorrent clients.</p>
+    </header>
+
+    <main>
+      <article class="download">
+        <h2>Debian 13.6 — Network Installer</h2>
+        <dl>
+          <dt>Details</dt>
+          <dd>Linux · amd64 · Official project torrent</dd>
+          <dt>License</dt>
+          <dd>Free/Open Source · multiple licenses</dd>
+        </dl>
+        <a id="download-torrent" href="debian-13.6.0-amd64-netinst.iso.torrent">Download .torrent</a>
+      </article>
+    </main>
+
+    <footer>
+      Project names and trademarks belong to their respective owners. No affiliation or
+      endorsement is implied.
+    </footer>
+  </body>
+</html>

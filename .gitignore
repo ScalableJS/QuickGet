@@ -46,6 +46,7 @@ coverage/
 !docs/cache-options.md
 !docs/popup-refactoring-plan.md
 !docs/synology-download-station-analysis.md
+!docs/qnap-download-station-capabilities.md
 !docs/download-interception-bugs.md
 !docs/local-development.md
 !docs/settings-ux-plan.md
@@ -56,3 +57,6 @@ storybook-static/
 # repomix code dumps
 repomix-output.xml
 dist-dev/
+
+# Demo recording artefacts (video masters, not source)
+demo-output/

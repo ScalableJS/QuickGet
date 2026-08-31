@@ -33,7 +33,6 @@ function downloadStates(worker: Worker): Promise<string[]> {
   return worker.evaluate(async () => (await chrome.downloads.search({})).map((item) => item.state));
 }
 
-
 function actionBadge(worker: Worker): Promise<{ text: string; color: chrome.extensionTypes.ColorArray }> {
   return worker.evaluate(async () => ({
     text: await chrome.action.getBadgeText({}),
@@ -125,19 +124,19 @@ test("returns the toolbar to idle as soon as the popup snapshot is empty", async
     // unconfigured refresh finish, then remove that context so BUG-22 cannot correctly replace
     // our synthetic active state with an attention badge mid-assertion.
     await session.page.close();
-    await expect
-      .poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor")))
-      .toBeUndefined();
+    await expect.poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor"))).toBeUndefined();
     const messagePage = await session.context.newPage();
     await messagePage.goto(`chrome-extension://${session.extensionId}/manifest.json`);
 
     const sendSnapshot = (active: number) =>
-      messagePage.evaluate((count) =>
-        chrome.runtime.sendMessage({
-          type: "qg:badgeSnapshot",
-          stats: { active: count, all: count, downRate: 0, upRate: 0 },
-        }),
-      active);
+      messagePage.evaluate(
+        (count) =>
+          chrome.runtime.sendMessage({
+            type: "qg:badgeSnapshot",
+            stats: { active: count, all: count, downRate: 0, upRate: 0 },
+          }),
+        active,
+      );
 
     await sendSnapshot(1);
     await expect.poll(() => actionBadge(session.worker)).toMatchObject({ text: "1" });
@@ -159,9 +158,7 @@ test("updates the toolbar once per meaningful NAS count change", async () => {
     // that refresh can finish after the reset below and correctly replace it with BUG-22's
     // attention state, making the measurement depend on runner timing.
     await session.page.close();
-    await expect
-      .poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor")))
-      .toBeUndefined();
+    await expect.poll(() => session.worker.evaluate(() => chrome.alarms.get("download-monitor"))).toBeUndefined();
     const messagePage = await session.context.newPage();
     await messagePage.goto(`chrome-extension://${session.extensionId}/manifest.json`);
 
@@ -213,9 +210,11 @@ test("updates the toolbar once per meaningful NAS count change", async () => {
           stats: { active: count, all: count, downRate: 0, upRate: 0 },
         });
       }, active);
-      await expect.poll(() => toolbarState(session.worker)).toMatchObject({
-        badgeText: expectedBadge,
-      });
+      await expect
+        .poll(() => toolbarState(session.worker))
+        .toMatchObject({
+          badgeText: expectedBadge,
+        });
     };
 
     // Repeated snapshots model normal popup + alarm overlap. They must not repaint anything.
@@ -228,11 +227,12 @@ test("updates the toolbar once per meaningful NAS count change", async () => {
     await sendAndWait(0, ""); // the first successful NAS zero is authoritative
 
     const measurements = await session.worker.evaluate(() => {
-      const writes = (
-        chrome.action as typeof chrome.action & {
-          __qgWrites?: Array<{ kind: string; value: string; at: number }>;
-        }
-      ).__qgWrites ?? [];
+      const writes =
+        (
+          chrome.action as typeof chrome.action & {
+            __qgWrites?: Array<{ kind: string; value: string; at: number }>;
+          }
+        ).__qgWrites ?? [];
       const firstWriteAt = writes[0]?.at ?? 0;
       const lastWriteAt = writes[writes.length - 1]?.at ?? 0;
       return {
@@ -285,10 +285,7 @@ test("leaves the download alone when no NAS credentials are available", async ()
 
   try {
     // Interception on and the NAS reachable, but the master password was never entered.
-    await seedSettings(
-      session.worker,
-      nasSettings(mockNas.port, { NASpassword: "" }),
-    );
+    await seedSettings(session.worker, nasSettings(mockNas.port, { NASpassword: "" }));
 
     const page = await session.context.newPage();
     await page.goto(torrentHost.url).catch(() => {});
@@ -339,9 +336,7 @@ test.skip("strict mode leaves no .torrent in the browser when the NAS accepts it
       .toBe(true);
 
     // The whole point of the mode: nothing is left for the user to find in Downloads.
-    await expect
-      .poll(() => downloadStates(session.worker), { timeout: 20_000 })
-      .not.toContain("in_progress");
+    await expect.poll(() => downloadStates(session.worker), { timeout: 20_000 }).not.toContain("in_progress");
 
     const states = await downloadStates(session.worker);
     expect(states).not.toContain("complete");

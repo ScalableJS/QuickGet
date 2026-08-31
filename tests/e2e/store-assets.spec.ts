@@ -43,18 +43,15 @@ test("capture Chrome Web Store screenshots with mock NAS data", async () => {
   const { page, worker } = session;
 
   try {
-    await worker.evaluate(
-      (settings) => chrome.storage.local.set(settings),
-      {
-        NASaddress: "127.0.0.1",
-        NASport: String(mockNas.port),
-        NASsecure: false,
-        NASlogin: "demo-user",
-        NASpassword: "demo-password",
-        NAStempdir: "Download",
-        NASdir: "Multimedia/Movies",
-      },
-    );
+    await worker.evaluate((settings) => chrome.storage.local.set(settings), {
+      NASaddress: "127.0.0.1",
+      NASport: String(mockNas.port),
+      NASsecure: false,
+      NASlogin: "demo-user",
+      NASpassword: "demo-password",
+      NAStempdir: "Download",
+      NASdir: "Multimedia/Movies",
+    });
     // Chrome lets the popup grow with its content up to 600px.
     await page.setViewportSize({ width: 450, height: 600 });
     await page.reload({ waitUntil: "domcontentloaded" });

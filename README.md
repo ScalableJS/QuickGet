@@ -5,13 +5,26 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Intercept browser `.torrent` downloads and route them to the NAS. This is enabled by default and can be turned off in Settings. The normal hand-off pauses the browser download, cancels it only after the NAS accepts it, and resumes it if sending fails. Chromium also offers an opt-in strict mode that avoids the browser's save prompt and local copy.
+- Intercept browser `.torrent` downloads and route them to the NAS — on by default, switchable in Settings.
 - Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
 - Pick which files inside a multi-file torrent the NAS should download.
 - Route tasks to different NAS folders automatically with rules matched on URL, domain, or task name.
 - Optionally lock the settings screen behind a password so the NAS connection cannot be read or changed at a shared computer.
 - Validate NAS settings directly from the popup and persist them locally.
 - Operate on Chromium-based browsers and Firefox without additional plugins.
+
+<details>
+<summary>How torrent interception behaves</summary>
+
+The hand-off is transactional: the browser download is paused, the torrent is offered to the
+NAS, and the browser download is cancelled **only** once the NAS has accepted it. If the send
+fails — the NAS is unreachable, credentials are wrong, the URL is single-use — the download
+resumes and the browser finishes it, so the file is never lost.
+
+Chromium additionally offers an opt-in strict mode that suppresses the save prompt and the
+local copy entirely, so an intercepted torrent never touches the disk.
+
+</details>
 
 ## Installation
 
@@ -62,8 +75,8 @@ All configuration values are stored in `chrome.storage.local` and remain on the 
 ### Setup
 
 ```bash
-git clone <repo-url>
-cd SendToQNAP
+git clone https://github.com/ScalableJS/QuickGet.git
+cd QuickGet
 npm install
 ```
 
@@ -85,6 +98,8 @@ npm run check:svelte     # Type-check .svelte files with svelte-check
 npm run format           # Format with Biome
 npm run check            # Biome lint + format check in one pass
 npm run package:chrome   # Zip the Chromium build for the Web Store
+npm run capture:store-assets  # Regenerate the store screenshots and promo tiles
+npm run demo:record      # Record the promo demo (macOS only; see store-assets/README.md)
 npm run generate-icons   # Generate icon set from sources
 npm run storybook        # Start Storybook for component development
 npm run build-storybook  # Build static Storybook
@@ -130,6 +145,7 @@ Additional documentation is available in the `docs/` directory:
 - [local-development.md](./docs/local-development.md) — Local development setup
 - [firefox-release-guide.md](./docs/firefox-release-guide.md) — AMO packaging and submission
 - [feature-roadmap.md](./docs/feature-roadmap.md) — Planned work
+- [qnap-download-station-capabilities.md](./docs/qnap-download-station-capabilities.md) — What the NAS supports vs. what this extension exposes; read before adding a source format
 - [competitor-analysis.md](./docs/competitor-analysis.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
 
 Contributor-facing conventions, standards, and the open-defect board live in
@@ -204,3 +220,62 @@ Pull requests are preferred to long-lived forks so improvements remain consolida
 ## License
 
 QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE.md).
+
+## Roadmap
+
+Planned before the end of the year. Ordered roughly by how much difference each makes to
+everyday use; details and open questions live on the
+[gaps board](./agent-os/product/competitive-gaps-kanban.md).
+
+- **Catch `magnet:` links.** Clicking a magnet currently hands it to whatever desktop
+  application is registered for it. It should reach the NAS like a `.torrent` does.
+- **Make the destination visible for intercepted downloads.** Routing rules and the popup's
+  quick-add already let you choose a folder; a `.torrent` caught automatically does not show
+  where it went.
+- **Say something useful when a NAS update changes the API.** A firmware change can currently
+  look like "no downloads" instead of a problem — that is the failure mode that has broken
+  comparable extensions for months at a time.
+- **Queue links while the NAS is asleep**, instead of falling back to a local download.
+- **Undo a removal**, which today takes effect immediately.
+
+> [!NOTE]
+> RSS, download scheduling, bandwidth limits and torrent search are **not** planned. They are
+> Download Station's own features and are configured on the NAS —
+> [what the NAS supports](./docs/qnap-download-station-capabilities.md) explains the split.
+
+## Feedback and ideas
+
+Bug reports and suggestions are welcome, and small ones are fine:
+
+- **[Report a bug](https://github.com/ScalableJS/QuickGet/issues/new?template=bug_report.yml)** —
+  the form asks for your QTS and Download Station versions, which are usually what explains
+  the problem.
+- **[Suggest an improvement](https://github.com/ScalableJS/QuickGet/issues/new?template=feature_request.yml)** —
+  describing the situation you are in is more useful than describing a control you want; there
+  is often a better answer than the obvious one.
+- **[Browse existing issues](https://github.com/ScalableJS/QuickGet/issues)** before opening a
+  new one, in case it is already being tracked.
+
+> [!WARNING]
+> Redact your NAS address, username and password before pasting logs. The bug form asks you to
+> confirm this, but a pasted log with live credentials is the easiest way to expose your own NAS.
+
+## Support
+
+QuickGet Remote is free, open source, and has no paid tier — every feature is
+available to everyone, and that will not change.
+
+If it saves you time, you can chip in toward the AI tooling used to build and
+maintain it. This is entirely optional and affects nothing in the extension.
+
+| Network | Address |
+| --- | --- |
+| USDT (TRC-20) | `TQQnvCK37HYW9i6mc8i2C459TpxPp8Vn5V` |
+
+> [!IMPORTANT]
+> Send only on the **TRC-20** network. Transfers made on any other network
+> (ERC-20, BEP-20, TON) will be lost permanently and cannot be recovered.
+
+Please only send what you can comfortably spare — crypto transfers are
+irreversible, and there is no refund mechanism. A star on the repository or a
+bug report is just as welcome.

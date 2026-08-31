@@ -45,19 +45,16 @@ test.describe("private tracker (live)", () => {
     });
 
     try {
-      await session.worker.evaluate(
-        (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        {
-          NASaddress: "127.0.0.1",
-          NASport: String(mockNas.port),
-          NASsecure: false,
-          NASlogin: "demo-user",
-          NASpassword: "demo-password",
-          NAStempdir: "Download",
-          NASdir: "Multimedia/Movies",
-          torrentInterceptMode: "always",
-        } as Record<string, unknown>,
-      );
+      await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {
+        NASaddress: "127.0.0.1",
+        NASport: String(mockNas.port),
+        NASsecure: false,
+        NASlogin: "demo-user",
+        NASpassword: "demo-password",
+        NAStempdir: "Download",
+        NASdir: "Multimedia/Movies",
+        torrentInterceptMode: "always",
+      } as Record<string, unknown>);
 
       const page = await session.context.newPage();
       await page.goto(env.topicUrl, { waitUntil: "domcontentloaded" });
@@ -98,12 +95,8 @@ test.describe("private tracker (live)", () => {
         })
         .toBe(true);
 
-      const upload = mockNas.requestLog
-        .toJSON()
-        .find((entry) => entry.path === "/downloadstation/V4/Task/AddTorrent");
-      expect(upload?.requestBody ?? "", "the NAS received HTML instead of a torrent").not.toContain(
-        "<html",
-      );
+      const upload = mockNas.requestLog.toJSON().find((entry) => entry.path === "/downloadstation/V4/Task/AddTorrent");
+      expect(upload?.requestBody ?? "", "the NAS received HTML instead of a torrent").not.toContain("<html");
     } finally {
       await session.close();
       await mockNas.close();

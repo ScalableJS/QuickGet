@@ -10,6 +10,27 @@ import { RedactedHttpLog } from "./redactedHttpLog.js";
 interface MockNasOptions {
   initialTasks?: Array<DownloadJob | Task>;
   removeDelayMs?: number;
+  /**
+   * Opt-in: advance downloading tasks a step on every `Task/Query`, so successive polls return
+   * a rising series instead of the same frozen row.
+   *
+   * Only for the demo recording, where a task created by a real `AddTorrent` would otherwise sit
+   * at 0% with zero speeds for the whole take. This scripts the *backend*, not the UI — the popup
+   * still renders it with production code over the same API — but a spec using it may assert only
+   * that progress is displayed, never that a real transfer is happening. Off by default so
+   * ordinary e2e runs stay deterministic.
+   */
+  progressFixture?: ProgressFixtureOptions;
+}
+
+export interface ProgressFixtureOptions {
+  /** Percentage points added per poll. */
+  stepPercent?: number;
+  /** Reported size, so the byte counters track the percentage instead of staying at zero. */
+  sizeBytes?: number;
+  /** Download rate reported while the task is still running. */
+  downSpeedBps?: number;
+  upSpeedBps?: number;
 }
 
 interface MockNasHandle {
@@ -248,6 +269,39 @@ function buildTaskQueryResponse(tasks: DownloadJob[], rawBody: string): Download
   };
 }
 
+/**
+ * Advances every still-downloading task one step, keeping the byte counters and ETA consistent
+ * with the new percentage so the popup renders a coherent row rather than a mismatched one.
+ * A task reaching 100% flips to seeding and stops accruing, exactly as a real one would.
+ */
+function advanceProgressFixture(tasks: DownloadJob[], fixture: ProgressFixtureOptions): void {
+  const step = fixture.stepPercent ?? 12;
+  const size = fixture.sizeBytes ?? 791_674_880;
+  const downRate = fixture.downSpeedBps ?? 4_200_000;
+  const upRate = fixture.upSpeedBps ?? 52_000;
+
+  // State codes come from `mapUnifiedStatusToQnapState`: 104 downloading, 100 seeding.
+  const DOWNLOADING = 104;
+  const SEEDING = 100;
+
+  for (const task of tasks) {
+    if (task.state !== DOWNLOADING) continue;
+
+    const next = clamp(task.progress + step, 0, 100);
+    task.progress = next;
+    task.size = size;
+    task.total_down = Math.round((size * next) / 100);
+    task.down_rate = next >= 100 ? 0 : downRate;
+    task.up_rate = upRate;
+    task.eta = next >= 100 ? 0 : Math.round((size - task.total_down) / downRate);
+
+    if (next >= 100) {
+      task.state = SEEDING;
+      task.total_up = Math.round(size * 0.05);
+    }
+  }
+}
+
 export async function startMockNas(options: MockNasOptions = {}): Promise<MockNasHandle> {
   const requestLog = new RedactedHttpLog();
   const tasks = (options.initialTasks ?? [createTask("Ubuntu ISO", 1)]).map((task, index) =>
@@ -285,6 +339,7 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
     }
 
     if (path === "/downloadstation/V4/Task/Query" && method === "POST") {
+      if (options.progressFixture) advanceProgressFixture(tasks, options.progressFixture);
       reply(200, buildTaskQueryResponse(tasks, body));
       return;
     }

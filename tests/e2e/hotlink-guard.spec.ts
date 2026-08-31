@@ -30,19 +30,16 @@ test.describe("tracker hotlink guard", () => {
     const session = await launchExtensionPopup(extensionDistPath);
 
     try {
-      await session.worker.evaluate(
-        (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        {
-          NASaddress: "127.0.0.1",
-          NASport: String(nas.port),
-          NASsecure: false,
-          NASlogin: "demo-user",
-          NASpassword: "demo-password",
-          NAStempdir: "Download",
-          NASdir: "Multimedia/Movies",
-          torrentInterceptMode: "always",
-        } as Record<string, unknown>,
-      );
+      await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {
+        NASaddress: "127.0.0.1",
+        NASport: String(nas.port),
+        NASsecure: false,
+        NASlogin: "demo-user",
+        NASpassword: "demo-password",
+        NAStempdir: "Download",
+        NASdir: "Multimedia/Movies",
+        torrentInterceptMode: "always",
+      } as Record<string, unknown>);
 
       // The tab has to be open on the tracker — that is the context the fetch borrows.
       const page = await session.context.newPage();
@@ -66,9 +63,7 @@ test.describe("tracker hotlink guard", () => {
       expect(accepted[0].origin).toBeNull();
       expect(accepted[0].secFetchSite).toBe("same-origin");
 
-      const upload = nas.requestLog
-        .toJSON()
-        .find((entry) => entry.path === "/downloadstation/V4/Task/AddTorrent");
+      const upload = nas.requestLog.toJSON().find((entry) => entry.path === "/downloadstation/V4/Task/AddTorrent");
       expect(upload?.requestBody ?? "", "the NAS received the guard's HTML, not a torrent").not.toContain(
         "Hotlinking is not allowed",
       );
@@ -85,19 +80,16 @@ test.describe("tracker hotlink guard", () => {
     const session = await launchExtensionPopup(extensionDistPath);
 
     try {
-      await session.worker.evaluate(
-        (values) => chrome.storage.local.set(values as Record<string, unknown>),
-        {
-          NASaddress: "127.0.0.1",
-          NASport: String(nas.port),
-          NASsecure: false,
-          NASlogin: "demo-user",
-          NASpassword: "demo-password",
-          NAStempdir: "Download",
-          NASdir: "Multimedia/Movies",
-          torrentInterceptMode: "always",
-        } as Record<string, unknown>,
-      );
+      await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {
+        NASaddress: "127.0.0.1",
+        NASport: String(nas.port),
+        NASsecure: false,
+        NASlogin: "demo-user",
+        NASpassword: "demo-password",
+        NAStempdir: "Download",
+        NASdir: "Multimedia/Movies",
+        torrentInterceptMode: "always",
+      } as Record<string, unknown>);
 
       // No tab on the tracker, so the fetch falls back to the worker and the guard refuses it.
       const refusal = await session.worker.evaluate(async (url) => {
