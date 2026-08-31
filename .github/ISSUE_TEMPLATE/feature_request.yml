@@ -1,0 +1,30 @@
+name: Idea or improvement
+description: Suggest something the extension should do differently
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome, including small ones. It helps most if you describe the situation you
+        are in rather than the control you imagine — the problem usually has more than one
+        solution, and yours may be better than the one we would have picked.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation, and what makes it awkward today.
+      placeholder: I download films and distros to different folders, so before every download I …
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help? (optional)
+      description: If you already have a solution in mind, describe it here.
+  - type: markdown
+    attributes:
+      value: |
+        Some things belong to Download Station itself rather than to this extension — RSS,
+        scheduling, bandwidth limits and its BT search are configured on the NAS. See
+        [what the NAS supports](https://github.com/ScalableJS/QuickGet/blob/env/dev/docs/qnap-download-station-capabilities.md)
+        if you are unsure. Ask anyway if you cannot tell — a wrong guess costs nothing.

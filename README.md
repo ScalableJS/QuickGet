@@ -206,6 +206,42 @@ Pull requests are preferred to long-lived forks so improvements remain consolida
 
 QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE.md).
 
+## Roadmap
+
+Planned before the end of the year. Ordered roughly by how much difference each makes to
+everyday use; details and open questions live on the
+[gaps board](./agent-os/product/competitive-gaps-kanban.md).
+
+- **Catch `magnet:` links.** Clicking a magnet currently hands it to whatever desktop
+  application is registered for it. It should reach the NAS like a `.torrent` does.
+- **Choose the destination per download.** Everything goes to one configured folder today, so
+  sending a film somewhere other than the default means a round trip through Settings.
+- **Say something useful when a NAS update changes the API.** A firmware change can currently
+  look like "no downloads" instead of a problem — that is the failure mode that has broken
+  comparable extensions for months at a time.
+- **Queue links while the NAS is asleep**, instead of falling back to a local download.
+- **Undo a removal**, which today takes effect immediately.
+
+Not planned, so nobody waits for them: RSS, download scheduling, bandwidth limits and torrent
+search. Those belong to Download Station and are configured on the NAS —
+[what the NAS supports](./docs/qnap-download-station-capabilities.md) explains the split.
+
+## Feedback and ideas
+
+Bug reports and suggestions are welcome, and small ones are fine:
+
+- **[Report a bug](https://github.com/ScalableJS/QuickGet/issues/new?template=bug_report.yml)** —
+  the form asks for your QTS and Download Station versions, which are usually what explains
+  the problem.
+- **[Suggest an improvement](https://github.com/ScalableJS/QuickGet/issues/new?template=feature_request.yml)** —
+  describing the situation you are in is more useful than describing a control you want; there
+  is often a better answer than the obvious one.
+- **[Browse existing issues](https://github.com/ScalableJS/QuickGet/issues)** before opening a
+  new one, in case it is already being tracked.
+
+Please redact your NAS address, username and password before pasting logs — the bug form has a
+reminder, but it is worth saying twice.
+
 ## Support
 
 QuickGet Remote is free, open source, and has no paid tier — every feature is
