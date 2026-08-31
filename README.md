@@ -5,13 +5,26 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Intercept browser `.torrent` downloads and route them to the NAS. This is enabled by default and can be turned off in Settings. The normal hand-off pauses the browser download, cancels it only after the NAS accepts it, and resumes it if sending fails. Chromium also offers an opt-in strict mode that avoids the browser's save prompt and local copy.
+- Intercept browser `.torrent` downloads and route them to the NAS — on by default, switchable in Settings.
 - Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
 - Pick which files inside a multi-file torrent the NAS should download.
 - Route tasks to different NAS folders automatically with rules matched on URL, domain, or task name.
 - Optionally lock the settings screen behind a password so the NAS connection cannot be read or changed at a shared computer.
 - Validate NAS settings directly from the popup and persist them locally.
 - Operate on Chromium-based browsers and Firefox without additional plugins.
+
+<details>
+<summary>How torrent interception behaves</summary>
+
+The hand-off is transactional: the browser download is paused, the torrent is offered to the
+NAS, and the browser download is cancelled **only** once the NAS has accepted it. If the send
+fails — the NAS is unreachable, credentials are wrong, the URL is single-use — the download
+resumes and the browser finishes it, so the file is never lost.
+
+Chromium additionally offers an opt-in strict mode that suppresses the save prompt and the
+local copy entirely, so an intercepted torrent never touches the disk.
+
+</details>
 
 ## Installation
 
@@ -62,8 +75,8 @@ All configuration values are stored in `chrome.storage.local` and remain on the 
 ### Setup
 
 ```bash
-git clone <repo-url>
-cd SendToQNAP
+git clone https://github.com/ScalableJS/QuickGet.git
+cd QuickGet
 npm install
 ```
 
@@ -85,6 +98,8 @@ npm run check:svelte     # Type-check .svelte files with svelte-check
 npm run format           # Format with Biome
 npm run check            # Biome lint + format check in one pass
 npm run package:chrome   # Zip the Chromium build for the Web Store
+npm run capture:store-assets  # Regenerate the store screenshots and promo tiles
+npm run demo:record      # Record the promo demo (macOS only; see store-assets/README.md)
 npm run generate-icons   # Generate icon set from sources
 npm run storybook        # Start Storybook for component development
 npm run build-storybook  # Build static Storybook
@@ -214,17 +229,19 @@ everyday use; details and open questions live on the
 
 - **Catch `magnet:` links.** Clicking a magnet currently hands it to whatever desktop
   application is registered for it. It should reach the NAS like a `.torrent` does.
-- **Choose the destination per download.** Everything goes to one configured folder today, so
-  sending a film somewhere other than the default means a round trip through Settings.
+- **Make the destination visible for intercepted downloads.** Routing rules and the popup's
+  quick-add already let you choose a folder; a `.torrent` caught automatically does not show
+  where it went.
 - **Say something useful when a NAS update changes the API.** A firmware change can currently
   look like "no downloads" instead of a problem — that is the failure mode that has broken
   comparable extensions for months at a time.
 - **Queue links while the NAS is asleep**, instead of falling back to a local download.
 - **Undo a removal**, which today takes effect immediately.
 
-Not planned, so nobody waits for them: RSS, download scheduling, bandwidth limits and torrent
-search. Those belong to Download Station and are configured on the NAS —
-[what the NAS supports](./docs/qnap-download-station-capabilities.md) explains the split.
+> [!NOTE]
+> RSS, download scheduling, bandwidth limits and torrent search are **not** planned. They are
+> Download Station's own features and are configured on the NAS —
+> [what the NAS supports](./docs/qnap-download-station-capabilities.md) explains the split.
 
 ## Feedback and ideas
 
@@ -239,8 +256,9 @@ Bug reports and suggestions are welcome, and small ones are fine:
 - **[Browse existing issues](https://github.com/ScalableJS/QuickGet/issues)** before opening a
   new one, in case it is already being tracked.
 
-Please redact your NAS address, username and password before pasting logs — the bug form has a
-reminder, but it is worth saying twice.
+> [!WARNING]
+> Redact your NAS address, username and password before pasting logs. The bug form asks you to
+> confirm this, but a pasted log with live credentials is the easiest way to expose your own NAS.
 
 ## Support
 

@@ -27,7 +27,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | RES-1 | Verify on a live NAS how `AddUrl` handles a magnet URI | api/research | S | Backlog |
 | RES-2 | Decide whether `ftp://` links are worth supporting | api/research | S | Backlog |
 | RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Backlog |
-| GAP-6 | No choice of destination at send time | popup/background | M | Backlog |
+| GAP-6 | Destination choice is missing from the paths that send most downloads | popup/background | S | Backlog |
 | RES-4 | Can File Station move a finished download, and at what cost to seeding? | api/research | M | Backlog |
 
 ---
@@ -464,37 +464,54 @@ this is not re-investigated.
 
 ---
 
-### GAP-6 — No choice of destination at send time
+### GAP-6 — Destination choice is missing from the paths that send most downloads
 
-**Size:** M · **Area:** popup/background · **Status:** Backlog
+**Size:** S · **Area:** popup/background · **Status:** Backlog
 **Files:** `src/popup/features/folderPicker/` (reuse `FolderSelect`);
 `src/background/menus.ts`; `src/api/client.ts` (already parameterised)
 
-Every download goes to the single `NASdir` from Settings. A user with more than one kind of
-download — a film, a distro, a work file — has to open Settings, change the folder, send, and
-change it back. Competitors expose this per download: *NAS Download Manager* lists "Download a
-link to a specific folder" and *Send To QNAP++* ships pattern-based folder routing.
+**This card was originally written as "no choice of destination at send time", which is
+wrong — corrected 2026-08-31 after reading the code.** Two mechanisms already exist:
 
-**We are closer to this than it looks.** `addUrl`/`addTorrent` already accept a per-task
-target; only the UI is missing. And we already have the hard part of the UI: `FolderSelect`
-validates a path against the NAS through `Misc/Dir` and knows which folders are writable.
+- **Routing rules are shipped** (F3, not "unbuilt" as an earlier version of this card said).
+  `resolveDestination` runs in the context-menu path, in `.torrent` interception
+  (`downloads.ts:293`) and in the Chooser pre-fill, matching on URL, domain or task name.
+- **Quick-add in the popup already has a folder picker** — `CreateUrls.svelte` renders a
+  `FolderSelect` seeded with the configured target, and deliberately bypasses rules so an
+  explicit choice wins.
 
-**Note the overlap with F3 (routing rules), which is also unbuilt.** Routing rules answer
-"always send this *kind* of thing here" automatically; this card answers "send *this one*
-there" manually. They are complements, and both use the same per-task target. Whichever is
-built first should expose that plumbing so the second does not rebuild it.
+So the real gap is narrower, and mostly about the automatic path: when a `.torrent` is
+intercepted and no rule matches, it goes to `NASdir` with no opportunity to say otherwise, and
+nothing after the fact can change it (RES-3/RES-4). A user whose download went to the wrong
+folder has no recourse inside the extension.
+
+**What is actually missing**
+
+- [ ] A way to influence the destination of an *intercepted* download, which is the path with
+      no UI at all today.
+- [ ] Somewhere to see which folder a task was sent to, so a wrong destination is noticed
+      before the download finishes rather than after.
+
+**The unresolved design question, and it is the whole card:** interception is *automatic*.
+There is no natural moment to ask, and a modal on every download would ruin the feature the
+demo is built around. Given that routing rules already handle the "always send this kind of
+thing there" case well, the honest options are narrow: surface the chosen folder and let the
+user re-route *before* the task is created (a brief undo-style window), or accept that
+interception follows rules and settings only, and put the effort into making the destination
+visible instead. **Settle this before writing code** — the wrong answer here makes the product
+worse, and the cheapest good answer may be "show, do not ask".
 
 **Acceptance criteria**
 
-- [ ] The send flow offers a destination, pre-filled with the configured default, without
-      making the common case slower — a user who does not care must not gain a step.
-- [ ] The chosen folder is validated before the task is created, using the existing
-      `Misc/Dir` writability check rather than a free-text field.
+- [ ] The destination an intercepted task was given is visible to the user without opening
+      Settings.
+- [ ] Whatever is added does not slow the common case: a user who does not care must not gain
+      a step, and interception must never block on a dialog.
+- [ ] Any folder offered is validated through the existing `Misc/Dir` writability check rather
+      than free text.
 - [ ] A per-send choice never silently rewrites the default in Settings.
-- [ ] Context-menu sends are covered too, not just the popup — that is where most sends
-      happen, and it has no UI surface today.
-- [ ] Interception (`handleDownloadCreated`) keeps working with no prompt: a browser-initiated
-      `.torrent` must not start blocking on a dialog.
+- [ ] Routing rules keep priority where they match; this must not become a second, competing
+      mechanism for the same decision.
 
 **The unresolved design question, and it is the whole card:** interception is *automatic*.
 There is no natural moment to ask, and a modal on every download would ruin the feature that
