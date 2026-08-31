@@ -76,5 +76,9 @@ Use the generated files in `store-assets/`:
 - `screenshots/settings-1280x800.png`
 - `promo/small-440x280.png`
 - `promo/marquee-1400x560.png`
+- `demo/promo-1920x1080.mp4` — upload to YouTube, then paste the watch URL into both the
+  localized and the global promo-video fields (CWS wants the full `watch?v=` form, not `youtu.be`)
+- `demo/promo.en.srt` — the video's subtitles; YouTube ignores the track muxed into the mp4, so
+  add this file to the upload by hand
 
 The screenshots use the mock NAS from the E2E suite and contain no real credentials or user data.

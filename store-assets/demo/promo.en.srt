@@ -1,0 +1,24 @@
+1
+00:00:00,733 --> 00:00:07,267
+Point QuickGet at your QNAP — address, username, password
+
+2
+00:00:07,267 --> 00:00:09,233
+Folders come ready to use — and the .torrent never touches this computer
+
+3
+00:00:09,233 --> 00:00:11,833
+Save — QuickGet checks the connection straight away
+
+4
+00:00:11,833 --> 00:00:14,067
+Open a page with an ordinary .torrent link
+
+5
+00:00:14,067 --> 00:00:18,100
+QuickGet intercepts the torrent and sends it to the NAS — the toolbar icon and badge show the active task
+
+6
+00:00:18,100 --> 00:00:25,267
+The download is running — progress is visible right inside QuickGet
+
