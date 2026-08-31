@@ -79,6 +79,29 @@ which reuses the existing add-task path rather than a second implementation. Gat
 `autoCaptureMagnets` in `DEFAULTS`, read once at injection and updated live via
 `chrome.storage.onChanged`.
 
+**Prior art — the established shape of this, and what it gets wrong**
+
+Mature clients in this category converge on the same minimal approach, and it is simpler than
+the sketch above: a single non-capture `click` listener on `document`, walk up from
+`event.target` to the nearest anchor (bounded depth, ~10, so a deep tree cannot cost a
+traversal on every click), match the href against a list of *download-only protocols* rather
+than hard-coding `magnet:`, hand it off, then `preventDefault()`. The enabled flag is held in
+a module-level variable kept fresh by a settings subscription, so the listener itself does no
+async work.
+
+Two things in that shape are worth deliberately **not** copying:
+
+- **They call `preventDefault()` after firing the send, unconditionally.** If the hand-off
+  fails, the click is already swallowed and the user has nothing. Our transactional
+  interception (`handleDownloadCreated`) sets a higher bar — preserve it here.
+- **A non-capture listener** loses to any page that stops propagation first. Capture phase
+  costs nothing and is strictly more reliable.
+
+Worth taking: the protocol-list generalisation (`magnet:` is not the only download-only
+scheme), and the bounded-depth ancestor walk. Also worth knowing before estimating: their own
+source carries the comment that true protocol handling for extensions does not exist and this
+listener trick is the only option — so there is no cleaner API to go looking for.
+
 **Failure modes**
 
 - **Swallowing a click and then failing** is the worst outcome — the user loses the link with
@@ -150,6 +173,23 @@ stop conflating "not found" with "empty".
 **Do not build a retry.** We cannot pre-empt an unknown API change; the deliverable is
 diagnosis. Turning a silent breakage into an actionable report is the whole value.
 
+**Prior art — two hard-won lessons from clients that survived a firmware break**
+
+- **Namespace the error codes, don't flatten them.** Established clients key vendor errors by
+  API group (`common`, `Auth`, `DownloadStation.Task`, …) rather than one flat table, because
+  the same numeric code means different things per endpoint. Directly relevant here: a
+  `common` code meaning *"the requested API does not exist"* is exactly the signal a firmware
+  update produces, and it is only distinguishable once codes are namespaced. That is a
+  cheaper, earlier detector than shape-sniffing the payload, and the two complement each
+  other — catch the explicit code where the NAS sends one, fall back to envelope detection
+  where it does not.
+- **Do not trust the NAS's own capability declaration.** A client that tried to negotiate by
+  asking the device which API versions it supports found the new firmware *misreporting* its
+  support, and had to fall back to attempting a version and reacting to the
+  unsupported-version error instead. So: probe and react, never believe a declaration. This
+  is the difference between a card that works after the next QTS release and one that repeats
+  a known failure.
+
 **Failure modes**
 
 - A genuinely empty NAS must never warn. This is the regression that would make the feature
@@ -205,6 +245,12 @@ the browser). Drain on the existing `alarms.ts` poll when a poll succeeds; there
 self-arming alarm, so no new timer and no keepalive — this must not become the ping we
 rejected in F2.
 
+**No prior art to lean on (checked 2026-08-31).** The mature open-source client in this
+category implements neither a queue nor any deferred-send mechanism, and the extension that
+advertises offline queuing is closed-source. So there is no established shape to follow here:
+the design below is ours, and the risks in it are unproven rather than known-solved. Budget
+accordingly — this is the card most likely to need a second pass after real use.
+
 **Failure modes**
 
 - **A surprise download hours later** is the failure that makes this feature hated. Pending
@@ -242,6 +288,10 @@ understates it.
       be left ambiguous.
 - [ ] The popup closing mid-window does not strand the task in a half-removed state.
 - [ ] Keyboard reachable and announced to assistive tech; `a11y.spec.ts` covers the popup.
+
+**No prior art (checked 2026-08-31):** no toast-with-action or undo mechanism exists in the
+comparable open-source client — its removals are immediate, like ours. Nothing to copy; the
+infrastructure question below is genuinely ours to answer.
 
 **Open question to settle first:** the popup is destroyed the moment it loses focus, which is
 a hostile environment for a delay-then-commit pattern. Either the delay lives in the service
