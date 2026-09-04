@@ -12,8 +12,16 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       reporter: ["text", "html"],
-      include: ["src/api/**/*.ts", "src/popup/features/downloads/**/*.ts", "src/lib/settings.ts"],
-      exclude: ["src/**/*.stories.ts", "src/**/index.ts", "src/env.d.ts"],
+      include: [
+        "src/api/**/*.ts",
+        "src/background/**/*.ts",
+        "src/content/**/*.ts",
+        "src/lib/**/*.ts",
+        "src/popup/components/**/*.ts",
+        "src/popup/features/**/*.ts",
+        "src/popup/shared/**/*.ts",
+      ],
+      exclude: ["src/**/*.stories.ts", "src/**/*.test.ts", "src/**/index.ts", "src/env.d.ts", "src/**/*.d.ts"],
     },
   },
 });

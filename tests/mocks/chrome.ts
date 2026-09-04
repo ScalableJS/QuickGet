@@ -124,6 +124,7 @@ const notificationsOnButtonClickedAddListener = vi.fn();
 const notificationsOnClosedAddListener = vi.fn();
 
 const runtimeGetURL = vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`);
+const runtimeSendMessage = vi.fn((_message: unknown) => Promise.resolve());
 
 /**
  * Defaults to "no tab on that origin", which makes the page-context fetch fall back to the
@@ -131,6 +132,13 @@ const runtimeGetURL = vi.fn((path: string) => `chrome-extension://test-extension
  */
 const tabsQuery = vi.fn((_query: unknown) => Promise.resolve([] as chrome.tabs.Tab[]));
 const scriptingExecuteScript = vi.fn((_details: unknown) => Promise.resolve([] as { result?: unknown }[]));
+
+export function getChromeRuntimeMock(): {
+  sendMessage: typeof runtimeSendMessage;
+  getURL: typeof runtimeGetURL;
+} {
+  return { sendMessage: runtimeSendMessage, getURL: runtimeGetURL };
+}
 
 export function getChromeTabsMock(): { query: typeof tabsQuery } {
   return { query: tabsQuery };
@@ -146,7 +154,9 @@ export function seedOpenTab(url: string, tabId = 501): void {
 }
 
 /** A `DownloadItem` with only the fields the interception path reads. */
-export function createDownloadItem(overrides: Partial<chrome.downloads.DownloadItem> = {}): chrome.downloads.DownloadItem {
+export function createDownloadItem(
+  overrides: Partial<chrome.downloads.DownloadItem> = {},
+): chrome.downloads.DownloadItem {
   return {
     id: 1,
     url: "https://tracker.example.com/file.torrent",
@@ -221,6 +231,7 @@ export function resetChromeMockState(): void {
   notificationsOnButtonClickedAddListener.mockClear();
   notificationsOnClosedAddListener.mockClear();
   runtimeGetURL.mockClear();
+  runtimeSendMessage.mockClear();
 }
 
 export function getChromeDownloadsMock() {
@@ -274,6 +285,7 @@ export function installChromeMock(): typeof chrome {
         addListener: runtimeOnInstalledAddListener,
       },
       getURL: runtimeGetURL,
+      sendMessage: runtimeSendMessage,
     },
     downloads: {
       cancel: downloadsCancel,

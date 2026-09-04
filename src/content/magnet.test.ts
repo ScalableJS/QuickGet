@@ -68,12 +68,7 @@ describe("magnet content script", () => {
     });
 
     it("rejects modified clicks (Ctrl, Cmd, Shift, Alt)", () => {
-      const modifiers = [
-        { ctrlKey: true },
-        { metaKey: true },
-        { shiftKey: true },
-        { altKey: true },
-      ];
+      const modifiers = [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }];
 
       for (const mod of modifiers) {
         const event = createClickEvent({ button: 0, cancelable: true, isTrusted: true, ...mod });
@@ -201,6 +196,39 @@ describe("magnet content script", () => {
       expect(shadow?.textContent).toContain("NAS offline");
       expect(shadow?.getElementById("qg-open-local")).not.toBeNull();
     });
+    it("handles toast button interactions (dismiss, retry, open local)", () => {
+      const onRetry = vi.fn();
+      showFeedback("error", "Failed to connect", {
+        magnetUri: "magnet:?xt=urn:btih:xyz",
+        onRetry,
+      });
+
+      const host = document.getElementById("quickget-feedback-host");
+      const shadow = host?.shadowRoot;
+
+      const retryBtn = shadow?.getElementById("qg-retry") as HTMLButtonElement | null;
+      expect(retryBtn).not.toBeNull();
+      retryBtn?.click();
+      expect(onRetry).toHaveBeenCalledTimes(1);
+
+      const dismissBtn = shadow?.getElementById("qg-dismiss") as HTMLButtonElement | null;
+      expect(dismissBtn).not.toBeNull();
+      dismissBtn?.click();
+      expect(document.getElementById("quickget-feedback-host")).toBeNull();
+    });
+
+    it("auto-removes success toast after timeout", () => {
+      vi.useFakeTimers();
+      try {
+        showFeedback("success", "Done!");
+        expect(document.getElementById("quickget-feedback-host")).not.toBeNull();
+
+        vi.advanceTimersByTime(2600);
+        expect(document.getElementById("quickget-feedback-host")).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe("initMagnetInterception", () => {
@@ -227,6 +255,55 @@ describe("magnet content script", () => {
         capture: true,
         passive: false,
       });
+
+      cleanup();
+    });
+
+    it("intercepts click and dispatches to chrome.runtime.sendMessage", () => {
+      let clickHandler: ((event: MouseEvent) => void) | undefined;
+      vi.spyOn(document, "addEventListener").mockImplementation((type, listener, options) => {
+        if (type === "click" && (options as { capture?: boolean })?.capture) {
+          clickHandler = listener as (event: MouseEvent) => void;
+        }
+      });
+
+      const sendMessageMock = vi.fn((_msg, cb) => cb?.({ ok: true }));
+      (globalThis as unknown as { chrome: unknown }).chrome = {
+        storage: {
+          local: { get: vi.fn((_keys, cb) => cb({ autoCaptureMagnets: true })) },
+          onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
+        runtime: {
+          sendMessage: sendMessageMock,
+          id: "test-extension-id",
+        },
+      };
+
+      const cleanup = initMagnetInterception();
+      expect(clickHandler).toBeDefined();
+
+      const a = document.createElement("a");
+      a.href = "magnet:?xt=urn:btih:112233&dn=Test";
+      document.body.appendChild(a);
+
+      const event = createClickEvent({
+        button: 0,
+        cancelable: true,
+        isTrusted: true,
+        composedPath: [a, document.body],
+      });
+      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+
+      clickHandler?.(event);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(sendMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "task:add",
+          uri: "magnet:?xt=urn:btih:112233&dn=Test",
+        }),
+        expect.any(Function),
+      );
 
       cleanup();
     });
