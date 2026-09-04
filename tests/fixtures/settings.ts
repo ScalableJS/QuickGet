@@ -11,6 +11,7 @@ export function createTestSettings(overrides: Partial<Settings> = {}): Settings 
     NASdir: "/share/Multimedia/Movies",
     torrentInterceptMode: "always",
     suppressLocalTorrentFile: false,
+    autoCaptureMagnets: false,
     routingRules: [],
     theme: "auto",
     ...overrides,

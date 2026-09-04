@@ -19,7 +19,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 
 | ID | Gap | Area | Size | Status |
 |----|-----|------|------|--------|
-| GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Backlog |
+| GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Done |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -36,9 +36,9 @@ non-features are recorded at the bottom so they are not re-litigated.
 
 ### GAP-1 — `magnet:` clicks are never intercepted
 
-**Size:** M · **Area:** background/content · **Status:** Backlog
-**Files:** new `src/content/magnet.ts`; `manifest.json` + `manifest.firefox.json`;
-`src/lib/config.ts` (`DEFAULTS`); `src/popup/features/settings/Settings.svelte`
+**Size:** M · **Area:** background/content · **Status:** Done (2026-09-04)
+**Files:** `src/content/magnet.ts`; `src/background/magnetHandler.ts`; `manifest.json` + `manifest.firefox.json`;
+`src/lib/config.ts` (`DEFAULTS`); `src/popup/features/settings/Settings.svelte`; `tests/e2e/magnet-interception.spec.ts`
 
 We intercept `.torrent` **files** through the downloads API, but a `magnet:` click never
 reaches that API — the browser hands it straight to an external application. So the single
@@ -64,67 +64,22 @@ opt-in through the setting below.
 
 **Acceptance criteria**
 
-- [ ] With `autoCaptureMagnets` on, a left-click on `<a href="magnet:?xt=...">` sends the URI
+- [x] With `autoCaptureMagnets` on, a left-click on `<a href="magnet:?xt=...">` sends the URI
       to the NAS and no external application is launched.
-- [ ] With the setting off, no listener is attached and the click behaves exactly as today.
-- [ ] Toggling the setting takes effect in already-open tabs without a reload
+- [x] With the setting off, no listener is attached and the click behaves exactly as today.
+- [x] Toggling the setting takes effect in already-open tabs without a reload
       (`chrome.storage.onChanged`).
-- [ ] Modified clicks (middle-click, ⌘/Ctrl-click) and non-primary buttons are left alone.
-- [ ] A magnet click while the NAS is unreachable surfaces the same error path as a
-      `.torrent` hand-off, and does **not** silently swallow the navigation.
-- [ ] Firefox parity is decided explicitly: `manifest.firefox.json` either gains the script
-      or the card records why not.
+- [x] Modified clicks (middle-click, ⌘/Ctrl-click) and non-primary buttons are left alone.
+- [x] A magnet click while the NAS is unreachable surfaces the same error path as a
+      `.torrent` hand-off, and does **not** silently swallow the navigation (isolated Shadow DOM toast feedback with `[Open locally]` and `[Retry]`).
+- [x] Firefox parity is decided explicitly: `manifest.firefox.json` includes `src/content/magnet.ts`.
 
-**Implementation sketch**
-
-Content script at `document_start`, capture-phase listener on `document` (not per-anchor —
-anchors appear dynamically), matching `event.target.closest('a[href^="magnet:"]')`. On a
-plain primary click: `preventDefault()`, then `chrome.runtime.sendMessage` to the worker,
-which reuses the existing add-task path rather than a second implementation. Gate behind
-`autoCaptureMagnets` in `DEFAULTS`, read once at injection and updated live via
-`chrome.storage.onChanged`.
-
-**Prior art — the established shape of this, and what it gets wrong**
-
-Mature clients in this category converge on the same minimal approach, and it is simpler than
-the sketch above: a single non-capture `click` listener on `document`, walk up from
-`event.target` to the nearest anchor (bounded depth, ~10, so a deep tree cannot cost a
-traversal on every click), match the href against a list of *download-only protocols* rather
-than hard-coding `magnet:`, hand it off, then `preventDefault()`. The enabled flag is held in
-a module-level variable kept fresh by a settings subscription, so the listener itself does no
-async work.
-
-Two things in that shape are worth deliberately **not** copying:
-
-- **They call `preventDefault()` after firing the send, unconditionally.** If the hand-off
-  fails, the click is already swallowed and the user has nothing. Our transactional
-  interception (`handleDownloadCreated`) sets a higher bar — preserve it here.
-- **A non-capture listener** loses to any page that stops propagation first. Capture phase
-  costs nothing and is strictly more reliable.
-
-Worth taking: the protocol-list generalisation (`magnet:` is not the only download-only
-scheme), and the bounded-depth ancestor walk. Also worth knowing before estimating: their own
-source carries the comment that true protocol handling for extensions does not exist and this
-listener trick is the only option — so there is no cleaner API to go looking for.
-
-**Failure modes**
-
-- **Swallowing a click and then failing** is the worst outcome — the user loses the link with
-  no feedback. Only `preventDefault()` once the message has been accepted for delivery, and
-  fall back to the default navigation on any error.
-- SPAs that re-render between `closest()` and dispatch.
-- Pages that call `stopPropagation()` in their own capture-phase handler; a capture listener
-  on `document` runs first, but note the ordering assumption.
-- The worker may be asleep — `sendMessage` wakes it, but the response must not be awaited in
-  a way that blocks the click handler.
-
-**Test plan**
-
-- Vitest: the click-eligibility predicate (modifier keys, button index, nested markup) as a
-  pure function, so it is testable without a DOM harness.
-- Playwright e2e alongside `download-interception.spec.ts`: a fixture page with a magnet
-  anchor; assert the mock NAS received the task and no navigation occurred. Add the mirror
-  case with the setting off.
+**Resolution & Implementation Notes (2026-09-04)**
+- Implemented with *Synchronous Cancellation + Compensating Fallback* pattern (consulted with ChatGPT Gateway): DOM event dispatch cannot await promises before calling `preventDefault()`. Cancellation is synchronous in capture phase; failures trigger an isolated Shadow DOM toast (`#quickget-feedback-host`) providing user-initiated fallback to open locally (`window.location.href`) or retry.
+- Security: Enforces `event.isTrusted === true` to block synthetic script clicks from untrusted origins.
+- Robust traversal: Uses `event.composedPath()` to support nested elements, icons, and Web Components / open Shadow DOM.
+- Reuses existing routing rules engine (`classifyUrl`, `resolveDestination`) to preserve destination folder mapping.
+- Full E2E coverage via mock NAS (`tests/e2e/magnet-interception.spec.ts`) and unit tests (`magnet.test.ts`, `magnetHandler.test.ts`). Existing `.torrent` flow completely unaffected.
 
 ### GAP-2 — A NAS firmware change reads as "no downloads", not as a fault
 

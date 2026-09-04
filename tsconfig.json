@@ -21,7 +21,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Path alias */
+    /* Path aliases. Kept in sync by hand with aliases.config.ts, which feeds Vite,
+       Vitest and Storybook — TypeScript cannot read that file. */
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
@@ -32,6 +33,5 @@
     }
   },
   "include": ["src", "tests"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["node_modules", "dist"]
 }

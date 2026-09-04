@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Magnet Interception Test Fixture</title>
+</head>
+<body>
+  <h1>QuickGet Magnet Test Fixture</h1>
+
+  <section>
+    <h2>Direct Magnet Link</h2>
+    <a id="magnet-simple" href="magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Ubuntu+ISO">Direct Magnet</a>
+  </section>
+
+  <section>
+    <h2>Nested Element Magnet Link</h2>
+    <a id="magnet-nested" href="magnet:?xt=urn:btih:abcdef0123456789abcdef0123456789abcdef01&dn=Nested+Arch">
+      <span>
+        <svg width="16" height="16" viewBox="0 0 24 24"><title>Magnet Icon</title><path d="M0 0h24v24H0z"/></svg>
+        Download Nested
+      </span>
+    </a>
+  </section>
+
+  <section>
+    <h2>Normal HTTP Link</h2>
+    <a id="normal-link" href="https://example.com/test.zip">Normal Link</a>
+  </section>
+
+  <section>
+    <h2>Open Shadow DOM Magnet Link</h2>
+    <div id="shadow-host"></div>
+  </section>
+
+  <section>
+    <h2>Dynamic SPA Magnet Link</h2>
+    <button id="add-dynamic-btn" type="button">Add Dynamic Magnet</button>
+    <div id="dynamic-container"></div>
+  </section>
+
+  <script>
+    // Set up Shadow DOM
+    const shadowHost = document.getElementById("shadow-host");
+    if (shadowHost) {
+      const root = shadowHost.attachShadow({ mode: "open" });
+      root.innerHTML = '<a id="magnet-shadow" href="magnet:?xt=urn:btih:1111111111222222222233333333334444444444&dn=Shadow+Debian">Shadow Magnet</a>';
+    }
+
+    // Dynamic link generation
+    document.getElementById("add-dynamic-btn")?.addEventListener("click", () => {
+      const container = document.getElementById("dynamic-container");
+      const a = document.createElement("a");
+      a.id = "magnet-dynamic";
+      a.href = "magnet:?xt=urn:btih:2222222222333333333344444444445555555555&dn=Dynamic+Fedora";
+      a.textContent = "Dynamic Fedora Magnet";
+      container?.appendChild(a);
+    });
+
+    // Record last click details in page context
+    window.lastClick = null;
+    document.addEventListener("click", (e) => {
+      window.lastClick = {
+        defaultPrevented: e.defaultPrevented,
+        isTrusted: e.isTrusted,
+        button: e.button,
+      };
+    });
+  </script>
+</body>
+</html>

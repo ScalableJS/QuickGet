@@ -1,11 +1,24 @@
 import { resolve } from "node:path";
-import { crx } from "@crxjs/vite-plugin";
+import { crx, type ManifestV3Export } from "@crxjs/vite-plugin";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
-import { defineConfig } from "vite";
-import chromeManifest from "./manifest.json";
-import firefoxManifest from "./manifest.firefox.json";
+import { defineConfig, type PluginOption } from "vite";
+
+import { alias } from "./aliases.config";
+import chromeManifestJson from "./manifest.json";
+import firefoxManifestJson from "./manifest.firefox.json";
+
+/** The plain-object arm of `ManifestV3Export`; the plugin also accepts a promise or a function. */
+type Manifest = Extract<ManifestV3Export, { manifest_version: number }>;
+
+/**
+ * Importing a manifest from JSON widens every string literal to `string`, which stops matching the
+ * literal unions crxjs uses — the Gecko data-collection permissions above all. Narrowing here is
+ * what keeps both manifests checked against the plugin's own shape.
+ */
+const chromeManifest = chromeManifestJson as Manifest;
+const firefoxManifest = firefoxManifestJson as Manifest;
 
 const isStorybook = process.argv.some((arg) => arg.includes("storybook") || arg.includes("build-storybook"));
 const isFirefox = process.env.BROWSER_TARGET === "firefox";
@@ -20,17 +33,17 @@ const isFirefox = process.env.BROWSER_TARGET === "firefox";
  */
 const isDevBuild = process.env.DEV_UNPACKED === "1";
 
-const manifest = isFirefox
+const manifest: Manifest = isFirefox
   ? firefoxManifest
   : isDevBuild
     ? devManifest(chromeManifest)
     : chromeManifest;
 
-function devManifest(base: typeof chromeManifest): typeof chromeManifest {
+function devManifest(base: Manifest): Manifest {
   const { key: _key, ...rest } = base;
-  return { ...rest, name: `${base.name} (dev)` } as typeof chromeManifest;
+  return { ...rest, name: `${base.name} (dev)` };
 }
-const plugins = [UnoCSS(), svelte(), Icons({ compiler: "svelte" })];
+const plugins: PluginOption[] = [UnoCSS(), svelte(), Icons({ compiler: "svelte" })];
 if (!isStorybook) {
   plugins.push(crx({ manifest }));
 }
@@ -44,13 +57,6 @@ export default defineConfig({
       },
     },
   },
-  resolve: {
-    alias: {
-      "@": resolve(__dirname, "./src"),
-      "@api": resolve(__dirname, "./src/api"),
-      "@lib": resolve(__dirname, "./src/lib"),
-      "@ui": resolve(__dirname, "./src/popup/ui"),
-    },
-  },
+  resolve: { alias },
   plugins,
 });

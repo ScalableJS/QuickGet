@@ -1,7 +1,11 @@
 name: CI
 
 on:
+  # `env/prod` is covered by deploy.yml, which runs the same gates before publishing;
+  # without this filter every push there would run the whole suite twice.
   push:
+    branches-ignore:
+      - env/prod
   pull_request:
 
 permissions:

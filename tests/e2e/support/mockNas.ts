@@ -425,6 +425,74 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       return;
     }
 
+    if (path === "/downloadstation/V4/Task/AddUrl" && method === "POST") {
+      const sid = readFormValue(body, "sid");
+      if (!sid) {
+        reply(400, { error: 1001, reason: "Missing sid" });
+        return;
+      }
+
+      const url = readFormValue(body, "url");
+      if (!url) {
+        reply(200, { error: 1, reason: "url" });
+        return;
+      }
+
+      const temp = readFormValue(body, "temp");
+      if (!temp) {
+        reply(200, { error: 1, reason: "temp" });
+        return;
+      }
+
+      const move = readFormValue(body, "move");
+      if (!move) {
+        reply(200, { error: 1, reason: "move" });
+        return;
+      }
+
+      let taskName = "url-download";
+      if (url.startsWith("magnet:")) {
+        try {
+          const parsed = new URL(url);
+          taskName = parsed.searchParams.get("dn") || "Magnet Task";
+        } catch {
+          taskName = "Magnet Task";
+        }
+      } else {
+        try {
+          const parsed = new URL(url);
+          const segment = parsed.pathname.split("/").filter(Boolean).pop();
+          if (segment) taskName = segment;
+        } catch {
+          taskName = "download";
+        }
+      }
+
+      const nextIndex = tasks.length + 1;
+      const task = toRawQnapJob(
+        {
+          id: `hash-${nextIndex}`,
+          name: taskName,
+          status: "downloading",
+          progress: 0,
+          sizeBytes: 0,
+          downloadedBytes: 0,
+          uploadedBytes: 0,
+          downSpeedBps: 0,
+          upSpeedBps: 0,
+          etaSec: 0,
+          hash: `hash-${nextIndex}`,
+          priority: 1,
+          seeds: { connected: 0 },
+          peers: { connected: 0 },
+        },
+        nextIndex,
+      );
+      tasks.push(task);
+      reply(200, { status: 0, error: 0 });
+      return;
+    }
+
     if (
       [
         "/downloadstation/V4/Task/AddTorrent",

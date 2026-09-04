@@ -6,12 +6,6 @@
   "description": "Send links and torrents to QNAP Download Station from Chrome.",
   "default_locale": "en",
   "minimum_chrome_version": "120",
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "{708b365a-e88a-4d47-96e9-195082468c9d}",
-      "strict_min_version": "121"
-    }
-  },
   "icons": {
     "32": "icons/32_download.png",
     "48": "icons/48_download.png",
@@ -41,6 +35,14 @@
     "service_worker": "src/background/index.ts",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/magnet.ts"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "options_ui": {
     "page": "src/popup/index.html",
     "open_in_tab": false

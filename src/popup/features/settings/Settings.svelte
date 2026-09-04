@@ -528,6 +528,21 @@
         </div>
       </div>
     {/if}
+
+    <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500 mt-[var(--spacing-sm)]">
+      <Checkbox
+        id="autoCaptureMagnets"
+        aria-describedby="autoCaptureMagnetsHint"
+        bind:checked={form.autoCaptureMagnets}
+      >
+        Intercept magnet link clicks
+      </Checkbox>
+    </div>
+    <div class="ml-[var(--spacing-lg)]">
+      <p id="autoCaptureMagnetsHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+        Send clicked magnet: links directly to QNAP Download Station instead of launching an external app.
+      </p>
+    </div>
   </div>
   </FormSection>
 </section>

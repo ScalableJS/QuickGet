@@ -37,7 +37,7 @@ export async function loadSettings(): Promise<Settings> {
           return fallback;
         };
 
-        const booleanWithDefault = (key: keyof Settings, fallback: boolean): boolean => {
+        const booleanWithDefault = (key: keyof Settings, fallback: boolean, persist = true): boolean => {
           const raw = localItems[key];
           if (typeof raw === "boolean") {
             return raw;
@@ -47,7 +47,9 @@ export async function loadSettings(): Promise<Settings> {
             if (normalized === "true" || normalized === "1") return true;
             if (normalized === "false" || normalized === "0") return false;
           }
-          (missing as Record<string, unknown>)[key] = fallback;
+          if (persist) {
+            (missing as Record<string, unknown>)[key] = fallback;
+          }
           return fallback;
         };
 
@@ -103,6 +105,11 @@ export async function loadSettings(): Promise<Settings> {
           suppressLocalTorrentFile: booleanWithDefault(
             "suppressLocalTorrentFile",
             DEFAULTS.suppressLocalTorrentFile,
+          ),
+          autoCaptureMagnets: booleanWithDefault(
+            "autoCaptureMagnets",
+            DEFAULTS.autoCaptureMagnets,
+            false,
           ),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
