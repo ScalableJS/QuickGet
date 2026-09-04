@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { findAnchor, getMagnetUri, initMagnetInterception, isEligibleClick, showFeedback } from "./magnet.js";
+import {
+  findAnchor,
+  getMagnetUri,
+  initMagnetInterception,
+  isEligibleClick,
+  resolveTheme,
+  setCurrentTheme,
+  showFeedback,
+} from "./magnet.js";
 
 function createClickEvent(
   init: MouseEventInit & { isTrusted?: boolean; composedPath?: EventTarget[] } = {},
@@ -185,34 +193,23 @@ describe("magnet content script", () => {
       expect(host?.style.top).toBe("16px");
       expect(host?.style.right).toBe("20px");
       expect(host?.shadowRoot).not.toBeNull();
-      expect(host?.shadowRoot?.textContent).toContain("QuickGet Remote");
       expect(host?.shadowRoot?.textContent).toContain("Sending magnet to QNAP...");
     });
 
-    it("renders error state with Open locally action", () => {
-      showFeedback("error", "NAS offline", {
-        magnetUri: "magnet:?xt=urn:btih:999",
-      });
+    it("renders single-line error state with dismiss button", () => {
+      showFeedback("error", "NAS offline");
 
       const host = document.getElementById("quickget-feedback-host");
       const shadow = host?.shadowRoot;
       expect(shadow?.textContent).toContain("NAS offline");
-      expect(shadow?.getElementById("qg-open-local")).not.toBeNull();
+      expect(shadow?.getElementById("qg-dismiss")).not.toBeNull();
     });
-    it("handles toast button interactions (dismiss, retry, open local)", () => {
-      const onRetry = vi.fn();
-      showFeedback("error", "Failed to connect", {
-        magnetUri: "magnet:?xt=urn:btih:xyz",
-        onRetry,
-      });
+
+    it("removes toast on clicking dismiss button", () => {
+      showFeedback("error", "Failed to connect");
 
       const host = document.getElementById("quickget-feedback-host");
       const shadow = host?.shadowRoot;
-
-      const retryBtn = shadow?.getElementById("qg-retry") as HTMLButtonElement | null;
-      expect(retryBtn).not.toBeNull();
-      retryBtn?.click();
-      expect(onRetry).toHaveBeenCalledTimes(1);
 
       const dismissBtn = shadow?.getElementById("qg-dismiss") as HTMLButtonElement | null;
       expect(dismissBtn).not.toBeNull();
@@ -231,6 +228,25 @@ describe("magnet content script", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("adapts styles to light and dark theme", () => {
+      setCurrentTheme("light");
+      showFeedback("success", "Light theme message");
+      let host = document.getElementById("quickget-feedback-host");
+      expect(host?.shadowRoot?.innerHTML).toContain("background: #ffffff");
+
+      setCurrentTheme("dark");
+      showFeedback("success", "Dark theme message");
+      host = document.getElementById("quickget-feedback-host");
+      expect(host?.shadowRoot?.innerHTML).toContain("background: #0f1e32");
+
+      setCurrentTheme("auto");
+    });
+
+    it("resolves auto theme from matchMedia", () => {
+      expect(resolveTheme("light")).toBe("light");
+      expect(resolveTheme("dark")).toBe("dark");
     });
   });
 

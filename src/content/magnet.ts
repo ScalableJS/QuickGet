@@ -73,14 +73,25 @@ export function getMagnetUri(event: MouseEvent): string | null {
 
 let toastTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
+let currentTheme: "auto" | "light" | "dark" = "auto";
+
+export function setCurrentTheme(theme: "auto" | "light" | "dark"): void {
+  currentTheme = theme;
+}
+
+export function resolveTheme(theme: "auto" | "light" | "dark"): "light" | "dark" {
+  if (theme === "auto") {
+    return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return theme;
+}
+
 /**
  * Render isolated in-page feedback for magnet link interception.
  */
-export function showFeedback(
-  state: "loading" | "success" | "error",
-  message: string,
-  options?: { magnetUri?: string; onRetry?: () => void },
-): void {
+export function showFeedback(state: "loading" | "success" | "error", message: string): void {
   if (typeof document === "undefined" || !document.body) return;
 
   if (toastTimeoutId) {
@@ -104,6 +115,16 @@ export function showFeedback(
   if (!shadow) {
     shadow = host.attachShadow({ mode: "open" });
   }
+
+  const isDark = resolveTheme(currentTheme) === "dark";
+  const bg = isDark ? "#0f1e32" : "#ffffff";
+  const border = isDark ? "#263e5e" : "#d6dce5";
+  const text = isDark ? "#f1f5f9" : "#172033";
+  const dismissColor = isDark ? "#728197" : "#8a99ad";
+  const dismissHover = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
+  const shadowStyle = isDark
+    ? "0 10px 24px -4px rgba(0, 0, 0, 0.45), 0 4px 8px -2px rgba(0, 0, 0, 0.3)"
+    : "0 10px 24px -4px rgba(23, 32, 51, 0.14), 0 4px 8px -2px rgba(23, 32, 51, 0.08)";
 
   const iconSvg =
     state === "loading"
@@ -132,49 +153,19 @@ export function showFeedback(
       }
       .toast {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 270px;
-        max-width: 380px;
-        padding: 12px 14px;
-        background: #0f1e32;
-        color: #e8eef7;
-        border: 1px solid #263e5e;
+        align-items: center;
+        gap: 9px;
+        min-width: 220px;
+        max-width: 420px;
+        padding: 9px 12px;
+        background: ${bg};
+        color: ${text};
+        border: 1px solid ${border};
         border-radius: 8px;
-        box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 4px 10px -2px rgba(0, 0, 0, 0.3);
+        box-shadow: ${shadowStyle};
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 13px;
         line-height: 1.4;
-      }
-      .header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        color: #728197;
-        padding-bottom: 2px;
-      }
-      .btn-dismiss {
-        background: transparent;
-        border: none;
-        color: #728197;
-        font-size: 14px;
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        border-radius: 3px;
-      }
-      .btn-dismiss:hover {
-        color: #e8eef7;
-        background: rgba(255, 255, 255, 0.08);
-      }
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
       }
       .status-icon {
         flex-shrink: 0;
@@ -182,57 +173,29 @@ export function showFeedback(
       .msg {
         flex: 1;
         font-size: 13px;
-        color: #f1f5f9;
+        font-weight: 500;
+        color: ${text};
         word-break: break-word;
       }
-      .actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 4px;
-        justify-content: flex-end;
-      }
-      .actions button {
-        border-radius: 5px;
-        padding: 5px 11px;
-        font-size: 12px;
+      .btn-dismiss {
+        background: transparent;
+        border: none;
+        color: ${dismissColor};
+        font-size: 14px;
         cursor: pointer;
-        font-weight: 500;
-        transition: background 0.15s, border-color 0.15s;
+        padding: 2px 4px;
+        line-height: 1;
+        border-radius: 4px;
       }
-      .btn-local {
-        background: #306edc;
-        border: 1px solid #3a82f7;
-        color: #ffffff;
-      }
-      .btn-local:hover {
-        background: #255fc6;
-      }
-      .btn-retry {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #e8eef7;
-      }
-      .btn-retry:hover {
-        background: rgba(255, 255, 255, 0.16);
+      .btn-dismiss:hover {
+        color: ${text};
+        background: ${dismissHover};
       }
     </style>
     <div class="toast" role="alert">
-      <div class="header">
-        <span>QuickGet Remote</span>
-        <button id="qg-dismiss" class="btn-dismiss" type="button" title="Close" aria-label="Close">✕</button>
-      </div>
-      <div class="row">
-        ${iconSvg}
-        <span class="msg">${message}</span>
-      </div>
-      ${
-        state === "error"
-          ? `<div class="actions">
-              <button id="qg-open-local" class="btn-local" type="button">Open locally</button>
-              ${options?.onRetry ? '<button id="qg-retry" class="btn-retry" type="button">Retry</button>' : ""}
-            </div>`
-          : ""
-      }
+      ${iconSvg}
+      <span class="msg">${message}</span>
+      <button id="qg-dismiss" class="btn-dismiss" type="button" title="Close" aria-label="Close">✕</button>
     </div>
   `;
 
@@ -241,25 +204,14 @@ export function showFeedback(
     host?.remove();
   });
 
-  if (state === "error") {
-    const openLocalBtn = shadow.getElementById("qg-open-local");
-    openLocalBtn?.addEventListener("click", () => {
-      if (options?.magnetUri) {
-        window.location.href = options.magnetUri;
-      }
-      host?.remove();
-    });
-
-    const retryBtn = shadow.getElementById("qg-retry");
-    retryBtn?.addEventListener("click", () => {
-      if (options?.onRetry) {
-        options.onRetry();
-      }
-    });
-  } else if (state === "success") {
+  if (state === "success") {
     toastTimeoutId = setTimeout(() => {
       host?.remove();
     }, 2500);
+  } else if (state === "error") {
+    toastTimeoutId = setTimeout(() => {
+      host?.remove();
+    }, 4000);
   }
 }
 
@@ -285,10 +237,7 @@ function sendMagnetToWorker(uri: string): void {
         inFlightUris.delete(uri);
         const lastErr = chrome.runtime.lastError;
         if (lastErr) {
-          showFeedback("error", `Could not contact QuickGet: ${lastErr.message}`, {
-            magnetUri: uri,
-            onRetry: () => sendMagnetToWorker(uri),
-          });
+          showFeedback("error", `Could not contact QuickGet: ${lastErr.message}`);
           return;
         }
 
@@ -296,18 +245,12 @@ function sendMagnetToWorker(uri: string): void {
           showFeedback("success", "Added to QNAP Download Station");
         } else {
           const err = response?.error || "NAS rejected the link";
-          showFeedback("error", `Failed to send to QNAP: ${err}`, {
-            magnetUri: uri,
-            onRetry: () => sendMagnetToWorker(uri),
-          });
+          showFeedback("error", `Failed to send to QNAP: ${err}`);
         }
       });
     } catch (error) {
       inFlightUris.delete(uri);
-      showFeedback("error", `Extension error: ${String(error)}`, {
-        magnetUri: uri,
-        onRetry: () => sendMagnetToWorker(uri),
-      });
+      showFeedback("error", `Extension error: ${String(error)}`);
     }
   };
 
@@ -344,16 +287,23 @@ export function initMagnetInterception(): () => void {
   };
 
   try {
-    chrome.storage.local.get("autoCaptureMagnets", (items) => {
+    chrome.storage.local.get(["autoCaptureMagnets", "theme"], (items) => {
       const enabled =
         typeof items?.autoCaptureMagnets === "boolean" ? items.autoCaptureMagnets : DEFAULTS.autoCaptureMagnets;
+      if (items?.theme && ["auto", "light", "dark"].includes(items.theme as string)) {
+        currentTheme = items.theme as "auto" | "light" | "dark";
+      }
       updateListener(enabled);
     });
 
     const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string): void => {
-      if (areaName === "local" && "autoCaptureMagnets" in changes) {
-        const next = Boolean(changes.autoCaptureMagnets.newValue);
-        updateListener(next);
+      if (areaName === "local") {
+        if ("autoCaptureMagnets" in changes) {
+          updateListener(Boolean(changes.autoCaptureMagnets.newValue));
+        }
+        if ("theme" in changes && changes.theme.newValue) {
+          currentTheme = changes.theme.newValue as "auto" | "light" | "dark";
+        }
       }
     };
 
