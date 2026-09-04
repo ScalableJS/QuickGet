@@ -182,7 +182,10 @@ describe("magnet content script", () => {
 
       const host = document.getElementById("quickget-feedback-host");
       expect(host).not.toBeNull();
+      expect(host?.style.top).toBe("16px");
+      expect(host?.style.right).toBe("20px");
       expect(host?.shadowRoot).not.toBeNull();
+      expect(host?.shadowRoot?.textContent).toContain("QuickGet Remote");
       expect(host?.shadowRoot?.textContent).toContain("Sending magnet to QNAP...");
     });
 

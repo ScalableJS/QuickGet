@@ -18,9 +18,7 @@ export type MagnetMessage = {
   pageUrl: string;
 };
 
-export type MagnetResponse =
-  | { ok: true; deduped?: boolean }
-  | { ok: false; error: string; code?: string };
+export type MagnetResponse = { ok: true; deduped?: boolean } | { ok: false; error: string; code?: string };
 
 const inFlightUris = new Set<string>();
 
@@ -96,8 +94,8 @@ export function showFeedback(
     host.id = "quickget-feedback-host";
     host.style.position = "fixed";
     host.style.zIndex = "2147483647";
-    host.style.bottom = "24px";
-    host.style.right = "24px";
+    host.style.top = "16px";
+    host.style.right = "20px";
     host.style.pointerEvents = "auto";
     document.body.appendChild(host);
   }
@@ -107,32 +105,85 @@ export function showFeedback(
     shadow = host.attachShadow({ mode: "open" });
   }
 
-  const bg = state === "error" ? "#7f1d1d" : state === "success" ? "#14532d" : "#1e293b";
-  const border = state === "error" ? "#ef4444" : state === "success" ? "#22c55e" : "#475569";
-  const icon = state === "loading" ? "⏳" : state === "success" ? "✓" : "⚠";
+  const iconSvg =
+    state === "loading"
+      ? `<svg class="status-icon spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+           <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+         </svg>`
+      : state === "success"
+        ? `<svg class="status-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <circle cx="12" cy="12" r="10" stroke="#22c55e" stroke-width="2" fill="rgba(34, 197, 94, 0.12)"></circle>
+             <path d="m9 12 2 2 4-4"></path>
+           </svg>`
+        : `<svg class="status-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2" fill="rgba(239, 68, 68, 0.12)"></circle>
+             <line x1="12" y1="8" x2="12" y2="12"></line>
+             <line x1="12" y1="16" x2="12.01" y2="16"></line>
+           </svg>`;
 
   shadow.innerHTML = `
     <style>
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .spin {
+        animation: spin 0.85s linear infinite;
+      }
       .toast {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        min-width: 260px;
+        min-width: 270px;
         max-width: 380px;
-        padding: 12px 16px;
-        background: ${bg};
-        color: #f8fafc;
-        border: 1px solid ${border};
+        padding: 12px 14px;
+        background: #0f1e32;
+        color: #e8eef7;
+        border: 1px solid #263e5e;
         border-radius: 8px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), 0 4px 10px -2px rgba(0, 0, 0, 0.3);
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 13px;
         line-height: 1.4;
       }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #728197;
+        padding-bottom: 2px;
+      }
+      .btn-dismiss {
+        background: transparent;
+        border: none;
+        color: #728197;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 0 2px;
+        line-height: 1;
+        border-radius: 3px;
+      }
+      .btn-dismiss:hover {
+        color: #e8eef7;
+        background: rgba(255, 255, 255, 0.08);
+      }
       .row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+      }
+      .status-icon {
+        flex-shrink: 0;
+      }
+      .msg {
+        flex: 1;
+        font-size: 13px;
+        color: #f1f5f9;
+        word-break: break-word;
       }
       .actions {
         display: flex;
@@ -140,50 +191,57 @@ export function showFeedback(
         margin-top: 4px;
         justify-content: flex-end;
       }
-      button {
-        background: rgba(255, 255, 255, 0.15);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        border-radius: 4px;
-        padding: 4px 10px;
+      .actions button {
+        border-radius: 5px;
+        padding: 5px 11px;
         font-size: 12px;
         cursor: pointer;
         font-weight: 500;
-      }
-      button:hover {
-        background: rgba(255, 255, 255, 0.25);
+        transition: background 0.15s, border-color 0.15s;
       }
       .btn-local {
-        background: #2563eb;
-        border-color: #3b82f6;
+        background: #306edc;
+        border: 1px solid #3a82f7;
+        color: #ffffff;
       }
       .btn-local:hover {
-        background: #1d4ed8;
+        background: #255fc6;
+      }
+      .btn-retry {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #e8eef7;
+      }
+      .btn-retry:hover {
+        background: rgba(255, 255, 255, 0.16);
       }
     </style>
     <div class="toast" role="alert">
+      <div class="header">
+        <span>QuickGet Remote</span>
+        <button id="qg-dismiss" class="btn-dismiss" type="button" title="Close" aria-label="Close">✕</button>
+      </div>
       <div class="row">
-        <span>${icon}</span>
-        <span style="flex: 1;">${message}</span>
+        ${iconSvg}
+        <span class="msg">${message}</span>
       </div>
       ${
         state === "error"
           ? `<div class="actions">
               <button id="qg-open-local" class="btn-local" type="button">Open locally</button>
-              ${options?.onRetry ? '<button id="qg-retry" type="button">Retry</button>' : ""}
-              <button id="qg-dismiss" type="button">✕</button>
+              ${options?.onRetry ? '<button id="qg-retry" class="btn-retry" type="button">Retry</button>' : ""}
             </div>`
           : ""
       }
     </div>
   `;
 
-  if (state === "error") {
-    const dismissBtn = shadow.getElementById("qg-dismiss");
-    dismissBtn?.addEventListener("click", () => {
-      host?.remove();
-    });
+  const dismissBtn = shadow.getElementById("qg-dismiss");
+  dismissBtn?.addEventListener("click", () => {
+    host?.remove();
+  });
 
+  if (state === "error") {
     const openLocalBtn = shadow.getElementById("qg-open-local");
     openLocalBtn?.addEventListener("click", () => {
       if (options?.magnetUri) {
@@ -235,7 +293,7 @@ function sendMagnetToWorker(uri: string): void {
         }
 
         if (response?.ok) {
-          showFeedback("success", "✓ Added to QNAP Download Station");
+          showFeedback("success", "Added to QNAP Download Station");
         } else {
           const err = response?.error || "NAS rejected the link";
           showFeedback("error", `Failed to send to QNAP: ${err}`, {
@@ -288,16 +346,11 @@ export function initMagnetInterception(): () => void {
   try {
     chrome.storage.local.get("autoCaptureMagnets", (items) => {
       const enabled =
-        typeof items?.autoCaptureMagnets === "boolean"
-          ? items.autoCaptureMagnets
-          : DEFAULTS.autoCaptureMagnets;
+        typeof items?.autoCaptureMagnets === "boolean" ? items.autoCaptureMagnets : DEFAULTS.autoCaptureMagnets;
       updateListener(enabled);
     });
 
-    const storageListener = (
-      changes: { [key: string]: chrome.storage.StorageChange },
-      areaName: string,
-    ): void => {
+    const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string): void => {
       if (areaName === "local" && "autoCaptureMagnets" in changes) {
         const next = Boolean(changes.autoCaptureMagnets.newValue);
         updateListener(next);
