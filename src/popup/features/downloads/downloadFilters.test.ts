@@ -18,6 +18,7 @@ const task = (name: string, status: Task["status"]): Task => ({
 describe("downloadFilters", () => {
   it("separates working tasks from completed, stopped, and failed tasks", () => {
     expect(isInProgress("downloading")).toBe(true);
+    expect(isInProgress("seeding")).toBe(true);
     expect(isInProgress("paused")).toBe(true);
     expect(isInProgress("stopped")).toBe(false);
     expect(isInProgress("error")).toBe(false);

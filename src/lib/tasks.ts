@@ -55,6 +55,7 @@ export const IN_PROGRESS_STATUSES: readonly TaskStatus[] = [
   "finishing",
   "moving",
   "allocating",
+  "seeding",
 ];
 
 export function isInProgress(status: TaskStatus): boolean {

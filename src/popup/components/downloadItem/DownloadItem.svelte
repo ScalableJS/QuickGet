@@ -112,6 +112,9 @@
           {/if}
           <ArrowUp aria-hidden="true" />
           <span>{view.uploadSpeedText}</span>
+          {#if view.etaText}
+            <span>• ETA: {view.etaText}</span>
+          {/if}
         {:else}
           <ArrowDown aria-hidden="true" />
           <span>{view.downloadSpeedText}</span>

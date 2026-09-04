@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "QuickGet Remote",
-  "version": "2.1.0",
-  "description": "QuickGet Remote: QNAP Download Station 5 companion client",
+  "name": "QuickGet Remote for QNAP",
+  "version": "2.2.0",
+  "description": "Send links and torrents to QNAP Download Station from Firefox.",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {

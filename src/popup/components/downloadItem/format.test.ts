@@ -41,25 +41,45 @@ describe("getDownloadItemView", () => {
     expect(view.speedLabel).toContain("ETA 3m 40s");
   });
 
-  it("handles seeding / complete task view", () => {
+  it("handles seeding task view with quota progress and ETA", () => {
     const task = makeTask({
       status: "seeding",
-      progress: 100,
+      progress: 25,
       downSpeedBps: 0,
       upSpeedBps: 2_097_152, // 2 MB/s
-      etaSec: 0,
-      shareRatio: 1.5,
+      etaSec: 1341,
+      shareRatio: 0.25,
     });
     const view = getDownloadItemView(task);
 
     expect(view.statusLabel).toBe("Seeding");
     expect(view.isDownloadComplete).toBe(true);
-    expect(view.progressVariant).toBe("complete");
-    expect(view.etaText).toBe("");
-    expect(view.ratioText).toBe("1.50");
+    expect(view.progressVariant).toBe("seeding");
+    expect(view.progress).toBe(25);
+    expect(view.etaText).toBe("22m 21s");
+    expect(view.ratioText).toBe("0.25");
     expect(view.speedLabel).toContain("Uploaded");
-    expect(view.speedLabel).toContain("ratio 1.50");
+    expect(view.speedLabel).toContain("ratio 0.25");
     expect(view.speedLabel).toContain("upload speed 2.0 MB/s");
+    expect(view.speedLabel).toContain("seeding ETA 22m 21s");
+  });
+
+  it("handles finished task view with complete 100% progress and no ETA", () => {
+    const task = makeTask({
+      status: "finished",
+      progress: 100,
+      downSpeedBps: 0,
+      upSpeedBps: 0,
+      etaSec: 0,
+      shareRatio: 1.5,
+    });
+    const view = getDownloadItemView(task);
+
+    expect(view.statusLabel).toBe("Finished");
+    expect(view.isDownloadComplete).toBe(true);
+    expect(view.progressVariant).toBe("complete");
+    expect(view.progress).toBe(100);
+    expect(view.etaText).toBe("");
   });
 
   it("handles error task view", () => {

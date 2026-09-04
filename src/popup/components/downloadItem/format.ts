@@ -75,7 +75,7 @@ export type DownloadItemView = {
   speedLabel: string;
   addedText: string;
   progress: number;
-  progressVariant: "active" | "complete" | "error";
+  progressVariant: "active" | "complete" | "error" | "seeding";
 };
 
 /**
@@ -83,8 +83,10 @@ export type DownloadItemView = {
  * and the Storybook stories.
  */
 export function getDownloadItemView(task: Task): DownloadItemView {
-  const progress = Math.max(0, Math.min(100, Math.round(task.progress)));
-  const isComplete = task.status === "finished" || task.status === "seeding" || progress >= 100;
+  const rawProgress = Math.max(0, Math.min(100, Math.round(task.progress)));
+  const isSeeding = task.status === "seeding";
+  const isFinished = task.status === "finished";
+  const isDownloadComplete = isSeeding || isFinished;
   const isError = task.status === "error";
   const isActive =
     task.status === "downloading" ||
@@ -97,22 +99,23 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     task.status === "moving" ||
     task.status === "allocating";
 
-  // Seeding/finished tasks have finished downloading — show a full bar and skip
-  // the misleading partial percentage QNAP reports for them.
-  const isDownloadComplete = task.status === "seeding" || task.status === "finished";
+  // Finished tasks are complete. Seeding tasks display actual quota progress (0..100%).
+  const progress = isFinished ? 100 : rawProgress;
   const ratioText = task.shareRatio !== undefined && Number.isFinite(task.shareRatio) ? task.shareRatio.toFixed(2) : "";
 
-  const etaText = isDownloadComplete ? "" : formatETA(task.etaSec);
+  // For seeding, etaSec represents remaining seeding time until quota is reached.
+  const etaText = isFinished ? "" : formatETA(task.etaSec);
   const downloadSpeedText = formatSpeed(task.downSpeedBps);
   const uploadSpeedText = formatSpeed(task.upSpeedBps);
   const uploadedText = formatBytes(task.uploadedBytes);
   const speedLabel = isDownloadComplete
-    ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}`
+    ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}${etaText ? `; seeding ETA ${etaText}` : ""}`
     : `Download speed ${downloadSpeedText}; upload speed ${uploadSpeedText}${etaText ? `; ETA ${etaText}` : ""}`;
 
-  let progressVariant: "active" | "complete" | "error" = "active";
+  let progressVariant: "active" | "complete" | "error" | "seeding" = "active";
   if (isError) progressVariant = "error";
-  else if (isComplete) progressVariant = "complete";
+  else if (isSeeding) progressVariant = "seeding";
+  else if (isFinished || progress >= 100) progressVariant = "complete";
   else if (isActive) progressVariant = "active";
 
   return {
@@ -126,7 +129,7 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     etaText,
     speedLabel,
     addedText: formatAddedDate(task.addedAt),
-    progress: isComplete ? 100 : progress,
+    progress,
     progressVariant,
   };
 }
