@@ -3,9 +3,9 @@ import { formatRate } from "./speed.js";
 
 describe("formatRate", () => {
   it("formats zero and negative speeds", () => {
-    expect(formatRate(0)).toBe("0 B/s");
-    expect(formatRate(-10)).toBe("0 B/s");
-    expect(formatRate(NaN)).toBe("0 B/s");
+    expect(formatRate(0)).toBe("0 KB/s");
+    expect(formatRate(-10)).toBe("0 KB/s");
+    expect(formatRate(NaN)).toBe("0 KB/s");
   });
 
   it("never outputs more than 3 digits across all scales", () => {
@@ -24,7 +24,10 @@ describe("formatRate", () => {
   });
 
   it("formats specific scales cleanly without unnecessary .0 for values >= 100", () => {
-    expect(formatRate(500)).toBe("500 B/s");
+    expect(formatRate(10)).toBe("0.1 KB/s");
+    expect(formatRate(100)).toBe("0.1 KB/s");
+    expect(formatRate(500)).toBe("0.5 KB/s");
+    expect(formatRate(999)).toBe("1.0 KB/s");
     expect(formatRate(1024)).toBe("1.0 KB/s");
     expect(formatRate(102400)).toBe("100 KB/s");
     expect(formatRate(524288)).toBe("512 KB/s");

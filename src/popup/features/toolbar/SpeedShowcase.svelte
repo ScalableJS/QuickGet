@@ -3,11 +3,14 @@
   import { formatRate } from "../../shared/formatters";
 
   const speedTestCases: { label: string; bytes: number }[] = [
-    { label: "Zero", bytes: 0 },
-    { label: "1 digit bytes", bytes: 5 },
-    { label: "2 digits bytes", bytes: 50 },
-    { label: "3 digits bytes", bytes: 500 },
-    { label: "Boundary 999 B/s", bytes: 999 },
+    { label: "Zero (0 KB/s)", bytes: 0 },
+    { label: "Micro traffic 5 B/s (-> 0.1 KB/s)", bytes: 5 },
+    { label: "Micro traffic 50 B/s (-> 0.1 KB/s)", bytes: 50 },
+    { label: "100 B/s (-> 0.1 KB/s)", bytes: 100 },
+    { label: "300 B/s (-> 0.3 KB/s)", bytes: 307 },
+    { label: "500 B/s (-> 0.5 KB/s)", bytes: 512 },
+    { label: "800 B/s (-> 0.8 KB/s)", bytes: 819 },
+    { label: "Boundary 999 B/s (-> 1.0 KB/s)", bytes: 999 },
     { label: "Boundary 1000 B/s (-> 1.0 KB/s)", bytes: 1000 },
     { label: "Boundary 1023 B/s (-> 1.0 KB/s)", bytes: 1023 },
     { label: "1.0 KB/s", bytes: 1024 },

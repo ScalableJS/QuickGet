@@ -45,7 +45,7 @@
       ? value
       : bytes !== undefined
         ? formatRate(bytes)
-        : "0B/s"
+        : "0 KB/s"
   );
 
   let downSpeed = $derived(resolveSpeed(down));
