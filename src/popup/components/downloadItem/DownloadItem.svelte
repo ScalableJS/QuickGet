@@ -4,24 +4,38 @@
   import ArrowUpToLine from "~icons/lucide/arrow-up-to-line";
   import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
 
+  import type { TaskPriorityAction } from "@api/client.js";
   import type { Task } from "@lib/tasks.js";
   import { DisclosureButton, ProgressBar } from "@ui";
   import TorrentFiles from "../../features/torrentFiles/TorrentFiles.svelte";
   import { getDownloadItemView } from "./format.js";
   import StatusIcon from "./StatusIcon.svelte";
 
+  const REORDERABLE_STATUSES = new Set([
+    "downloading",
+    "downloadingMetadata",
+    "queued",
+    "queuedChecking",
+    "checking",
+    "allocating",
+  ]);
+
   let {
     task,
     selectedHash = null,
     removing = false,
+    menuOpen = false,
+    onToggleMenu,
     onToggle,
     onPriority,
   }: {
     task: Task;
     selectedHash?: string | null;
     removing?: boolean;
+    menuOpen?: boolean;
+    onToggleMenu?: (hash: string, open: boolean) => void;
     onToggle: (hash: string) => void;
-    onPriority?: (hash: string, priority: "top" | "up" | "down") => Promise<void> | void;
+    onPriority?: (hash: string, priority: TaskPriorityAction) => Promise<void> | void;
   } = $props();
 
   const view = $derived(getDownloadItemView(task));
@@ -41,26 +55,61 @@
     if (selected) el?.focus({ preventScroll: false });
   });
 
-  // Priority reordering applies to active and queued downloads in the NAS queue.
-  const canReorder = $derived(
-    task.status === "downloading" ||
-      task.status === "downloadingMetadata" ||
-      task.status === "queued" ||
-      task.status === "queuedChecking" ||
-      task.status === "checking" ||
-      task.status === "allocating",
-  );
-  let menuOpen = $state(false);
+  // Priority reordering applies strictly to active and queued downloads in the NAS queue with a valid hash.
+  const canReorder = $derived(Boolean(task.hash) && REORDERABLE_STATUSES.has(task.status));
+
+  let triggerBtnEl = $state<HTMLButtonElement>();
+  let itemEls = $state<HTMLButtonElement[]>([]);
+  let activeIndex = $state(0);
   let isUpdatingPriority = $state(false);
 
-  async function handleSetPriority(priority: "top" | "up" | "down"): Promise<void> {
-    menuOpen = false;
-    if (!onPriority || isUpdatingPriority) return;
+  function openMenu(): void {
+    if (!task.hash || !onToggleMenu) return;
+    onToggleMenu(task.hash, true);
+    activeIndex = 0;
+    queueMicrotask(() => itemEls[0]?.focus());
+  }
+
+  function closeMenu(focusTrigger = true): void {
+    if (task.hash && onToggleMenu) {
+      onToggleMenu(task.hash, false);
+    }
+    if (focusTrigger) {
+      triggerBtnEl?.focus();
+    }
+  }
+
+  async function handleSetPriority(priority: TaskPriorityAction): Promise<void> {
+    closeMenu(true);
+    if (!onPriority || isUpdatingPriority || !task.hash) return;
     try {
       isUpdatingPriority = true;
-      await onPriority(view.hash, priority);
+      await onPriority(task.hash, priority);
     } finally {
       isUpdatingPriority = false;
+    }
+  }
+
+  function onMenuKeydown(e: KeyboardEvent): void {
+    const count = 3;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % count;
+      itemEls[activeIndex]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + count) % count;
+      itemEls[activeIndex]?.focus();
+    } else if (e.key === "Escape" || e.key === "Tab") {
+      closeMenu(true);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      activeIndex = 0;
+      itemEls[0]?.focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      activeIndex = count - 1;
+      itemEls[activeIndex]?.focus();
     }
   }
 
@@ -75,14 +124,6 @@
     toggle();
   }
 </script>
-
-<svelte:window
-  onclick={(e) => {
-    if (menuOpen && e.target instanceof Element && !e.target.closest(".priority-menu-container")) {
-      menuOpen = false;
-    }
-  }}
-/>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 <div
@@ -131,8 +172,9 @@
         {#if canReorder && onPriority}
           <div class="priority-menu-container relative inline-flex items-center">
             <button
+              bind:this={triggerBtnEl}
               type="button"
-              class="priority-menu-btn inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)] transition-colors"
+              class="priority-menu-btn inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)] transition-colors"
               aria-label="Queue priority options"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
@@ -140,7 +182,15 @@
               disabled={isUpdatingPriority}
               onclick={(e) => {
                 e.stopPropagation();
-                menuOpen = !menuOpen;
+                menuOpen ? closeMenu(false) : openMenu();
+              }}
+              onkeydown={(e) => {
+                if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                  if (!menuOpen) {
+                    e.preventDefault();
+                    openMenu();
+                  }
+                }
               }}
             >
               <EllipsisVertical class="w-3.5 h-3.5" />
@@ -152,35 +202,36 @@
                 tabindex="-1"
                 aria-label="Queue priority options"
                 onclick={(e) => e.stopPropagation()}
-                onkeydown={(e) => {
-                  if (e.key === "Escape") {
-                    e.stopPropagation();
-                    menuOpen = false;
-                  }
-                }}
+                onkeydown={onMenuKeydown}
               >
                 <button
+                  bind:this={itemEls[0]}
                   type="button"
                   role="menuitem"
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex={activeIndex === 0 ? 0 : -1}
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
                   onclick={() => handleSetPriority("top")}
                 >
                   <ArrowUpToLine class="w-3.5 h-3.5 text-[var(--color-primary-visual)] flex-none" />
                   <span>Move to top</span>
                 </button>
                 <button
+                  bind:this={itemEls[1]}
                   type="button"
                   role="menuitem"
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex={activeIndex === 1 ? 0 : -1}
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
                   onclick={() => handleSetPriority("up")}
                 >
                   <ArrowUp class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />
                   <span>Move up</span>
                 </button>
                 <button
+                  bind:this={itemEls[2]}
                   type="button"
                   role="menuitem"
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex={activeIndex === 2 ? 0 : -1}
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
                   onclick={() => handleSetPriority("down")}
                 >
                   <ArrowDown class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />

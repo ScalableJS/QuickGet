@@ -23,6 +23,7 @@ export type DownloadStationStatus = components["schemas"]["DownloadStationStatus
 type GetFileRequest = components["schemas"]["GetFileRequest"];
 type SetFileRequest = components["schemas"]["SetFileRequest"];
 type SetTaskPriorityRequest = components["schemas"]["SetTaskPriorityRequest"];
+export type TaskPriorityAction = components["schemas"]["SetTaskPriorityRequest"]["priority"];
 export type TorrentFile = components["schemas"]["TorrentFile"];
 
 export type QueryTasksResult = {
@@ -396,7 +397,7 @@ export class ApiClient {
   /**
    * Set task queue priority (top, up, down) in Download Station.
    */
-  async setTaskPriority(hash: string, priority: "top" | "up" | "down"): Promise<void> {
+  async setTaskPriority(hash: string, priority: TaskPriorityAction): Promise<void> {
     const body = withEmptySid<SetTaskPriorityRequest>({ hash, priority });
     const { data, error } = await this.client.POST("/downloadstation/V4/Task/Priority", {
       body,

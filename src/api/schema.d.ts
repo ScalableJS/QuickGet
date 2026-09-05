@@ -3,6 +3,8 @@
  * Structured similar to openapi-typescript output for typed API helpers.
  */
 
+export type TaskPriorityAction = "top" | "up" | "down";
+
 export interface components {
   schemas: {
     BaseResponse: {
@@ -94,7 +96,7 @@ export interface components {
       hash: string;
     };
     SetTaskPriorityRequest: components["schemas"]["ModifyTaskRequest"] & {
-      priority: "top" | "up" | "down";
+      priority: TaskPriorityAction;
     };
     RemoveTaskRequest: components["schemas"]["ModifyTaskRequest"] & {
       clean?: 0 | 1;

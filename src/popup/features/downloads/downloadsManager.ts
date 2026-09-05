@@ -1,4 +1,4 @@
-import type { QueryTasksResult, TorrentFile } from "@api/client.js";
+import type { QueryTasksResult, TaskPriorityAction, TorrentFile } from "@api/client.js";
 
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
@@ -87,7 +87,7 @@ export async function setTorrentFiles(
   return client.setTaskFiles(hash, selections);
 }
 
-export async function setTaskPriority(hash: string, priority: "top" | "up" | "down"): Promise<void> {
+export async function setTaskPriority(hash: string, priority: TaskPriorityAction): Promise<void> {
   const client = await getApiClient();
   await client.setTaskPriority(hash, priority);
 }

@@ -53,27 +53,23 @@
       <IconSettings />
     {/if}
   </IconButton>
-  {#if toolbarView.isIdle}
-    <span
-      id="status-speed"
-      class="status-speed inline-flex items-center gap-[var(--space-1)] text-11px font-500 text-[var(--color-text-muted)] px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] select-none"
-      aria-label="NAS transfer idle"
-    >
-      Idle
-    </span>
-  {:else}
-    <span
-      id="status-speed"
-      class="status-speed inline-flex items-center gap-[var(--space-1)] text-11px font-500 text-[var(--color-text-secondary)] px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3 select-none"
-      aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
-      aria-live="off"
-    >
-      <ArrowDown aria-hidden="true" class="text-[var(--color-primary-visual)]" />
-      <span>{toolbarView.statusDownloadSpeed}</span>
-      <ArrowUp aria-hidden="true" class="text-[var(--progress-fill-seeding)]" />
-      <span>{toolbarView.statusUploadSpeed}</span>
-    </span>
-  {/if}
+  <span
+    id="status-speed"
+    class="status-speed inline-flex items-center justify-center gap-[var(--space-1)] min-w-[52px] text-11px font-500 px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3"
+    aria-label={toolbarView.isIdle
+      ? "NAS transfer idle"
+      : `Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
+    aria-live="off"
+  >
+    {#if toolbarView.isIdle}
+      <span class="text-[var(--color-text-muted)]">Idle</span>
+    {:else}
+      <ArrowDown aria-hidden="true" class="text-[var(--color-primary-visual)] flex-none" />
+      <span class="text-[var(--color-text-secondary)]">{toolbarView.statusDownloadSpeed}</span>
+      <ArrowUp aria-hidden="true" class="text-[var(--progress-fill-seeding)] flex-none" />
+      <span class="text-[var(--color-text-secondary)]">{toolbarView.statusUploadSpeed}</span>
+    {/if}
+  </span>
 </div>
 <div class="toolbar-actions flex items-center justify-center gap-[var(--spacing-xs)]">
   <IconButton
