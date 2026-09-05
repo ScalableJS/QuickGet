@@ -73,7 +73,7 @@ test("popup renders the QNAP transition states with their official meaning", asy
 
     // Verify rich card telemetry: swarm metrics and byte progress (BUG-35, BUG-36)
     const downloadCard = session.page.locator(".download-item").filter({ hasText: "Downloading task" });
-    await expect(downloadCard).toContainText("S 12 · P 4");
+    await expect(downloadCard).toContainText("S12 P4");
     await expect(downloadCard).toContainText("420 B / 1000 B");
 
     // Verify error taxonomy (BUG-37)

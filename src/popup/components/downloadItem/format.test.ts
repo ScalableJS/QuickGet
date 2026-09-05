@@ -177,7 +177,7 @@ describe("getDownloadItemView", () => {
       seeds: { connected: 15, total: 30 },
       peers: { connected: 5, total: 10 },
     }));
-    expect(activeObjView.swarmText).toBe("S 15 · P 5");
+    expect(activeObjView.swarmText).toBe("S15 P5");
 
     // Active download with zeros
     const zeroSwarm = getDownloadItemView(makeTask({
@@ -185,15 +185,15 @@ describe("getDownloadItemView", () => {
       seeds: { connected: 0 },
       peers: { connected: 0 },
     }));
-    expect(zeroSwarm.swarmText).toBe("S 0 · P 0");
+    expect(zeroSwarm.swarmText).toBe("S0 P0");
 
-    // Active download with seeds undefined and peers present: only P is shown (not fake S 0)
+    // Active download with seeds undefined and peers present: only P is shown (not fake S0)
     const peersOnly = getDownloadItemView(makeTask({
       status: "downloading",
       seeds: undefined,
       peers: { connected: 4 },
     }));
-    expect(peersOnly.swarmText).toBe("P 4");
+    expect(peersOnly.swarmText).toBe("P4");
 
     // Seeding: peers connected > 0
     const seedingView = getDownloadItemView(makeTask({
@@ -201,14 +201,14 @@ describe("getDownloadItemView", () => {
       seeds: { connected: 0 },
       peers: { connected: 4 },
     }));
-    expect(seedingView.swarmText).toBe("P 4");
+    expect(seedingView.swarmText).toBe("P4");
 
     // Seeding: peers connected = 0 (actively seeding, 0 leechers)
     const seedingZero = getDownloadItemView(makeTask({
       status: "seeding",
       peers: { connected: 0 },
     }));
-    expect(seedingZero.swarmText).toBe("P 0");
+    expect(seedingZero.swarmText).toBe("P0");
 
     // Seeding: peers unknown (undefined)
     const seedingUnknown = getDownloadItemView(makeTask({

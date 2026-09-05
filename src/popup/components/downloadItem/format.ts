@@ -101,16 +101,16 @@ function formatTaskSize(downloadedBytes: number, sizeBytes: number, isComplete: 
 function formatSwarm(task: Task): string {
   if (task.status === "seeding") {
     const peers = task.peers?.connected;
-    return peers !== undefined ? `P ${peers}` : "";
+    return peers !== undefined ? `P${peers}` : "";
   }
   if (task.status === "downloading" || task.status === "downloadingMetadata") {
     const seeds = task.seeds?.connected;
     const peers = task.peers?.connected;
     const parts = [
-      seeds !== undefined ? `S ${seeds}` : "",
-      peers !== undefined ? `P ${peers}` : "",
+      seeds !== undefined ? `S${seeds}` : "",
+      peers !== undefined ? `P${peers}` : "",
     ].filter(Boolean);
-    return parts.join(" · ");
+    return parts.join(" ");
   }
   return "";
 }

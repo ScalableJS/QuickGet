@@ -425,6 +425,29 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       return;
     }
 
+    if (path === "/downloadstation/V4/Task/Priority" && method === "POST") {
+      const sid = readFormValue(body, "sid");
+      if (!sid) {
+        reply(400, { error: 1001, reason: "Missing sid" });
+        return;
+      }
+      const hash = readFormValue(body, "hash");
+      const priority = readFormValue(body, "priority");
+      const index = tasks.findIndex((item) => item.hash === hash);
+      if (index >= 0 && priority) {
+        const [task] = tasks.splice(index, 1);
+        if (priority === "top") {
+          tasks.unshift(task);
+        } else if (priority === "up") {
+          tasks.splice(Math.max(0, index - 1), 0, task);
+        } else if (priority === "down") {
+          tasks.splice(Math.min(tasks.length, index + 1), 0, task);
+        }
+      }
+      reply(200, { error: 0 });
+      return;
+    }
+
     if (path === "/downloadstation/V4/Task/AddUrl" && method === "POST") {
       const sid = readFormValue(body, "sid");
       if (!sid) {

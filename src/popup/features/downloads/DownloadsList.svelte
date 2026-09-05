@@ -1,12 +1,13 @@
 <script lang="ts">
   import type { TaskPriorityAction } from "@api/client.js";
   import Search from "~icons/lucide/search";
+  import { flip } from "svelte/animate";
   import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
   import { isReorderableStatus } from "@lib/tasks.js";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
   import { showStatus } from "../../components/index.js";
   import { listDownloads, setTaskPriority } from "./downloadsManager.js";
-  import { filterDownloads, isInProgress, type DownloadFilter } from "./downloadFilters.js";
+  import { filterDownloads, isInProgress, reorderTasks, type DownloadFilter } from "./downloadFilters.js";
   import type { downloadsView } from "./downloadsView.svelte.js";
 
   let {
@@ -27,6 +28,16 @@
   }
 
   async function handlePriority(hash: string, priority: TaskPriorityAction): Promise<void> {
+    const originalTasks = [...view.tasks];
+    view.tasks = reorderTasks(view.tasks, hash, priority);
+
+    const actionLabels: Record<TaskPriorityAction, string> = {
+      top: "Moved to top",
+      up: "Moved up",
+      down: "Moved down",
+    };
+    showStatus(actionLabels[priority], "info", { autoHideMs: 2000 });
+
     try {
       await setTaskPriority(hash, priority);
       const result = await listDownloads();
@@ -34,6 +45,7 @@
         view.tasks = result.tasks;
       }
     } catch (error) {
+      view.tasks = originalTasks;
       const message = error instanceof Error ? error.message : "Failed to update priority";
       showStatus(message, "error", { autoHideMs: 3000 });
     }
@@ -101,17 +113,19 @@
   {#if visibleTasks.length === 0}
     <EmptyState>{emptyMessage}</EmptyState>
   {:else}
-    {#each visibleTasks as task (task.id)}
-      <DownloadItem
-        {task}
-        selectedHash={view.selectedHash}
-        removing={view.removingHash === (task.hash ?? task.id)}
-        menuOpen={activeMenuHash === task.hash}
-        {canReorderQueue}
-        onToggleMenu={handleToggleMenu}
-        {onToggle}
-        onPriority={handlePriority}
-      />
+    {#each visibleTasks as task (task.hash ?? task.id)}
+      <div animate:flip={{ duration: 180 }}>
+        <DownloadItem
+          {task}
+          selectedHash={view.selectedHash}
+          removing={view.removingHash === (task.hash ?? task.id)}
+          menuOpen={activeMenuHash === task.hash}
+          {canReorderQueue}
+          onToggleMenu={handleToggleMenu}
+          {onToggle}
+          onPriority={handlePriority}
+        />
+      </div>
     {/each}
   {/if}
 </div>
