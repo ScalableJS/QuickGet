@@ -55,7 +55,7 @@
   </IconButton>
   <span
     id="status-speed"
-    class="status-speed inline-flex items-center justify-center gap-[var(--space-1)] min-w-[52px] text-11px font-500 px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3"
+    class="status-speed inline-flex items-center justify-center gap-[var(--space-1)] w-[128px] text-11px font-500 px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3 flex-none"
     aria-label={toolbarView.isIdle
       ? "NAS transfer idle"
       : `Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
@@ -65,9 +65,9 @@
       <span class="text-[var(--color-text-muted)]">Idle</span>
     {:else}
       <ArrowDown aria-hidden="true" class="text-[var(--color-primary-visual)] flex-none" />
-      <span class="text-[var(--color-text-secondary)]">{toolbarView.statusDownloadSpeed}</span>
+      <span class="text-[var(--color-text-secondary)] min-w-[44px] text-right">{toolbarView.statusDownloadSpeed}</span>
       <ArrowUp aria-hidden="true" class="text-[var(--progress-fill-seeding)] flex-none" />
-      <span class="text-[var(--color-text-secondary)]">{toolbarView.statusUploadSpeed}</span>
+      <span class="text-[var(--color-text-secondary)] min-w-[44px] text-right">{toolbarView.statusUploadSpeed}</span>
     {/if}
   </span>
 </div>

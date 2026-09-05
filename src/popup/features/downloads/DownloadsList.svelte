@@ -2,6 +2,7 @@
   import type { TaskPriorityAction } from "@api/client.js";
   import Search from "~icons/lucide/search";
   import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
+  import { isReorderableStatus } from "@lib/tasks.js";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
   import { showStatus } from "../../components/index.js";
   import { listDownloads, setTaskPriority } from "./downloadsManager.js";
@@ -40,6 +41,10 @@
 
   const inProgressCount = $derived(view.tasks.filter((task) => isInProgress(task.status)).length);
   const visibleTasks = $derived(filterDownloads(view.tasks, filter, query));
+  const canReorderQueue = $derived(
+    view.tasks.length > 1 &&
+      view.tasks.filter((task) => Boolean(task.hash) && isReorderableStatus(task.status)).length > 1,
+  );
 
   const emptyMessage = $derived(
     query.trim()
@@ -102,6 +107,7 @@
         selectedHash={view.selectedHash}
         removing={view.removingHash === (task.hash ?? task.id)}
         menuOpen={activeMenuHash === task.hash}
+        {canReorderQueue}
         onToggleMenu={handleToggleMenu}
         {onToggle}
         onPriority={handlePriority}

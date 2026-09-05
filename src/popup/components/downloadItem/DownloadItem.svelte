@@ -5,26 +5,18 @@
   import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
 
   import type { TaskPriorityAction } from "@api/client.js";
-  import type { Task } from "@lib/tasks.js";
+  import { isReorderableStatus, type Task } from "@lib/tasks.js";
   import { DisclosureButton, ProgressBar } from "@ui";
   import TorrentFiles from "../../features/torrentFiles/TorrentFiles.svelte";
   import { getDownloadItemView } from "./format.js";
   import StatusIcon from "./StatusIcon.svelte";
-
-  const REORDERABLE_STATUSES = new Set([
-    "downloading",
-    "downloadingMetadata",
-    "queued",
-    "queuedChecking",
-    "checking",
-    "allocating",
-  ]);
 
   let {
     task,
     selectedHash = null,
     removing = false,
     menuOpen = false,
+    canReorderQueue = false,
     onToggleMenu,
     onToggle,
     onPriority,
@@ -33,6 +25,7 @@
     selectedHash?: string | null;
     removing?: boolean;
     menuOpen?: boolean;
+    canReorderQueue?: boolean;
     onToggleMenu?: (hash: string, open: boolean) => void;
     onToggle: (hash: string) => void;
     onPriority?: (hash: string, priority: TaskPriorityAction) => Promise<void> | void;
@@ -55,8 +48,10 @@
     if (selected) el?.focus({ preventScroll: false });
   });
 
-  // Priority reordering applies strictly to active and queued downloads in the NAS queue with a valid hash.
-  const canReorder = $derived(Boolean(task.hash) && REORDERABLE_STATUSES.has(task.status));
+  // Priority reordering applies only when multiple tasks exist in the queue and this task is active/queued.
+  const canReorder = $derived(
+    canReorderQueue && Boolean(task.hash) && isReorderableStatus(task.status),
+  );
 
   let triggerBtnEl = $state<HTMLButtonElement>();
   let itemEls = $state<HTMLButtonElement[]>([]);
@@ -92,16 +87,19 @@
 
   function onMenuKeydown(e: KeyboardEvent): void {
     const count = 3;
-    if (e.key === "ArrowDown") {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
       activeIndex = (activeIndex + 1) % count;
       itemEls[activeIndex]?.focus();
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       activeIndex = (activeIndex - 1 + count) % count;
       itemEls[activeIndex]?.focus();
-    } else if (e.key === "Escape" || e.key === "Tab") {
+    } else if (e.key === "Escape") {
+      e.preventDefault();
       closeMenu(true);
+    } else if (e.key === "Tab") {
+      closeMenu(false);
     } else if (e.key === "Home") {
       e.preventDefault();
       activeIndex = 0;
@@ -174,7 +172,7 @@
             <button
               bind:this={triggerBtnEl}
               type="button"
-              class="priority-menu-btn inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)] transition-colors"
+              class="priority-menu-btn inline-flex items-center justify-center w-6 h-6 rounded-[var(--radius)] bg-transparent hover:bg-[var(--color-bg-raised)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] border border-transparent hover:border-[var(--color-control-border)] aria-[expanded=true]:bg-[var(--color-bg-raised)] aria-[expanded=true]:border-[var(--color-control-border)] aria-[expanded=true]:text-[var(--color-primary-visual)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
               aria-label="Queue priority options"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
@@ -185,7 +183,7 @@
                 menuOpen ? closeMenu(false) : openMenu();
               }}
               onkeydown={(e) => {
-                if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                if (e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") {
                   if (!menuOpen) {
                     e.preventDefault();
                     openMenu();
@@ -197,7 +195,7 @@
             </button>
             {#if menuOpen}
               <div
-                class="priority-menu absolute right-0 top-full mt-1 z-30 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] py-1 min-w-[130px] flex flex-col text-12px"
+                class="priority-menu absolute right-0 top-full mt-1 z-30 flex items-center p-0.5 bg-[var(--menu-bg)] border border-[var(--color-control-border)] rounded-[var(--radius)] shadow-[var(--shadow)]"
                 role="menu"
                 tabindex="-1"
                 aria-label="Queue priority options"
@@ -208,34 +206,39 @@
                   bind:this={itemEls[0]}
                   type="button"
                   role="menuitem"
-                  tabindex={activeIndex === 0 ? 0 : -1}
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex="-1"
+                  title="Move to top"
+                  aria-label="Move to top"
+                  class="flex items-center justify-center w-7 h-7 rounded-[4px] border-0 bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-primary-visual)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none transition-colors cursor-pointer"
                   onclick={() => handleSetPriority("top")}
                 >
-                  <ArrowUpToLine class="w-3.5 h-3.5 text-[var(--color-primary-visual)] flex-none" />
-                  <span>Move to top</span>
+                  <ArrowUpToLine class="w-4 h-4 text-[var(--color-primary-visual)]" />
                 </button>
+                <div class="w-px h-3.5 bg-[var(--color-control-border)] opacity-40 mx-0.5"></div>
                 <button
                   bind:this={itemEls[1]}
                   type="button"
                   role="menuitem"
-                  tabindex={activeIndex === 1 ? 0 : -1}
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex="-1"
+                  title="Move up"
+                  aria-label="Move up"
+                  class="flex items-center justify-center w-7 h-7 rounded-[4px] border-0 bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none transition-colors cursor-pointer"
                   onclick={() => handleSetPriority("up")}
                 >
-                  <ArrowUp class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />
-                  <span>Move up</span>
+                  <ArrowUp class="w-4 h-4" />
                 </button>
+                <div class="w-px h-3.5 bg-[var(--color-control-border)] opacity-40 mx-0.5"></div>
                 <button
                   bind:this={itemEls[2]}
                   type="button"
                   role="menuitem"
-                  tabindex={activeIndex === 2 ? 0 : -1}
-                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] focus-visible:bg-[var(--color-bg-hover)] focus-visible:outline-none text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  tabindex="-1"
+                  title="Move down"
+                  aria-label="Move down"
+                  class="flex items-center justify-center w-7 h-7 rounded-[4px] border-0 bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none transition-colors cursor-pointer"
                   onclick={() => handleSetPriority("down")}
                 >
-                  <ArrowDown class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />
-                  <span>Move down</span>
+                  <ArrowDown class="w-4 h-4" />
                 </button>
               </div>
             {/if}

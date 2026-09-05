@@ -68,6 +68,23 @@ export function isCompleted(status: TaskStatus): boolean {
   return status === "finished" || status === "seeding";
 }
 
+/**
+ * Statuses for tasks that can have their queue priority changed.
+ * Only queued, active download, checking or allocating tasks participate in download queue ordering.
+ */
+export const REORDERABLE_STATUSES: readonly TaskStatus[] = [
+  "downloading",
+  "downloadingMetadata",
+  "queued",
+  "queuedChecking",
+  "checking",
+  "allocating",
+];
+
+export function isReorderableStatus(status: TaskStatus): boolean {
+  return REORDERABLE_STATUSES.includes(status);
+}
+
 export type ProgressSummary = {
   active: number;
   all: number;
