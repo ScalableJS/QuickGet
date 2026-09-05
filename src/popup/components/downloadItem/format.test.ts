@@ -129,4 +129,152 @@ describe("getDownloadItemView", () => {
     expect(getDownloadItemView(makeTask({ progress: -10 })).progress).toBe(0);
     expect(getDownloadItemView(makeTask({ progress: 150 })).progress).toBe(100);
   });
+
+  it("formats sizeText for in-progress vs completed tasks", () => {
+    // In-progress: "900.0 MB / 1.9 GB" (scaleBytes 900M -> 858.3 MB, 2G -> 1.9 GB)
+    const activeView = getDownloadItemView(makeTask({
+      status: "downloading",
+      downloadedBytes: 900_000_000,
+      sizeBytes: 2_000_000_000,
+    }));
+    expect(activeView.sizeText).toBe("858.3 MB / 1.9 GB");
+
+    // Completed: full download shows total size
+    const completedView = getDownloadItemView(makeTask({
+      status: "finished",
+      downloadedBytes: 2_000_000_000,
+      sizeBytes: 2_000_000_000,
+    }));
+    expect(completedView.sizeText).toBe("1.9 GB");
+
+    // Completed: selective download shows actual downloaded volume
+    const selectiveCompleted = getDownloadItemView(makeTask({
+      status: "finished",
+      downloadedBytes: 2_200_000_000,
+      sizeBytes: 22_600_000_000,
+    }));
+    expect(selectiveCompleted.sizeText).toBe("2.0 GB");
+
+    // Zero total size with positive downloaded bytes
+    const unknownTotalView = getDownloadItemView(makeTask({
+      sizeBytes: 0,
+      downloadedBytes: 500_000_000,
+    }));
+    expect(unknownTotalView.sizeText).toBe("476.8 MB");
+
+    // Zero size & zero downloaded
+    const unknownView = getDownloadItemView(makeTask({
+      sizeBytes: 0,
+      downloadedBytes: 0,
+    }));
+    expect(unknownView.sizeText).toBe("");
+  });
+
+  it("formats swarmText for active torrents, seeding, and finished", () => {
+    // Active download with seeds & peers (objects)
+    const activeObjView = getDownloadItemView(makeTask({
+      status: "downloading",
+      seeds: { connected: 15, total: 30 },
+      peers: { connected: 5, total: 10 },
+    }));
+    expect(activeObjView.swarmText).toBe("S 15 · P 5");
+
+    // Active download with zeros
+    const zeroSwarm = getDownloadItemView(makeTask({
+      status: "downloading",
+      seeds: { connected: 0 },
+      peers: { connected: 0 },
+    }));
+    expect(zeroSwarm.swarmText).toBe("S 0 · P 0");
+
+    // Active download with seeds undefined and peers present: only P is shown (not fake S 0)
+    const peersOnly = getDownloadItemView(makeTask({
+      status: "downloading",
+      seeds: undefined,
+      peers: { connected: 4 },
+    }));
+    expect(peersOnly.swarmText).toBe("P 4");
+
+    // Seeding: peers connected > 0
+    const seedingView = getDownloadItemView(makeTask({
+      status: "seeding",
+      seeds: { connected: 0 },
+      peers: { connected: 4 },
+    }));
+    expect(seedingView.swarmText).toBe("P 4");
+
+    // Seeding: peers connected = 0 (actively seeding, 0 leechers)
+    const seedingZero = getDownloadItemView(makeTask({
+      status: "seeding",
+      peers: { connected: 0 },
+    }));
+    expect(seedingZero.swarmText).toBe("P 0");
+
+    // Seeding: peers unknown (undefined)
+    const seedingUnknown = getDownloadItemView(makeTask({
+      status: "seeding",
+      peers: undefined,
+    }));
+    expect(seedingUnknown.swarmText).toBe("");
+
+    // Queued or checking: swarm telemetry suppressed
+    const queuedView = getDownloadItemView(makeTask({
+      status: "queued",
+      seeds: { connected: 10 },
+      peers: { connected: 5 },
+    }));
+    expect(queuedView.swarmText).toBe("");
+
+    // Finished or paused: swarm telemetry hidden
+    const finishedView = getDownloadItemView(makeTask({
+      status: "finished",
+      seeds: { connected: 10 },
+      peers: { connected: 5 },
+    }));
+    expect(finishedView.swarmText).toBe("");
+  });
+
+  it("formats error taxonomy for QNAP error codes and messages", () => {
+    // Disk full
+    const diskFullView = getDownloadItemView(makeTask({
+      status: "error",
+      errorCode: 20488,
+    }));
+    expect(diskFullView.errorDetail).toBe("Not enough disk space on NAS");
+
+    // Duplicate
+    const duplicateView = getDownloadItemView(makeTask({
+      status: "error",
+      errorCode: 8196,
+    }));
+    expect(duplicateView.errorDetail).toBe("Torrent already added on NAS");
+
+    // Folder missing
+    const folderView = getDownloadItemView(makeTask({
+      status: "error",
+      errorCode: 4096,
+    }));
+    expect(folderView.errorDetail).toBe("Destination folder not found");
+
+    // Explicit error message
+    const customView = getDownloadItemView(makeTask({
+      status: "error",
+      errorMessage: "Connection timed out",
+    }));
+    expect(customView.errorDetail).toBe("Connection timed out");
+
+    // Unknown error code fallback
+    const unknownView = getDownloadItemView(makeTask({
+      status: "error",
+      errorCode: 99999,
+    }));
+    expect(unknownView.errorDetail).toBe("Error 99999");
+
+    // Generic error fallback
+    const fallbackView = getDownloadItemView(makeTask({
+      status: "error",
+    }));
+    expect(fallbackView.errorDetail).toBe("Download failed");
+  });
 });
+

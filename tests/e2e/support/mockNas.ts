@@ -180,7 +180,7 @@ function toRawQnapJob(input: DownloadJob | Task, index: number): DownloadJob {
     done: totalDown,
     down_rate: downRate,
     down_size: totalDown,
-    error: input.status === "error" ? 1 : 0,
+    error: input.errorCode ?? (input.status === "error" ? 1 : 0),
     eta: input.etaSec ?? (input.status === "finished" ? 0 : -1),
     finish_time: input.status === "finished" ? createdAtText : "",
     hash: input.hash ?? `hash-${index}`,

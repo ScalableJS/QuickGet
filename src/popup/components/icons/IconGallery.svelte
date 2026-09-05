@@ -5,7 +5,10 @@
   import CircleCheck from "~icons/lucide/circle-check";
   import CircleStop from "~icons/lucide/circle-stop";
   import Clock from "~icons/lucide/clock";
+  import FolderInput from "~icons/lucide/folder-input";
+  import HardDrive from "~icons/lucide/hard-drive";
   import LoaderCircle from "~icons/lucide/loader-circle";
+  import Magnet from "~icons/lucide/magnet";
   import PackageOpen from "~icons/lucide/package-open";
   import Pause from "~icons/lucide/pause";
   import Play from "~icons/lucide/play";
@@ -19,13 +22,17 @@
   // Project icon set — lucide, bundled at build time (CSP-safe, no runtime API).
   const statuses = [
     { label: "downloading", name: "arrow-down", tone: "blue", Icon: ArrowDown, why: "download direction" },
+    { label: "downloadingMetadata", name: "magnet", tone: "blue", Icon: Magnet, why: "fetching torrent metadata" },
     { label: "seeding", name: "arrow-up", tone: "green", Icon: ArrowUp, why: "upload or seed direction" },
     { label: "queued", name: "clock", tone: "muted", Icon: Clock, why: "waiting in queue" },
+    { label: "queuedChecking", name: "clock", tone: "muted", Icon: Clock, why: "waiting in check queue" },
     { label: "paused", name: "pause", tone: "muted", Icon: Pause, why: "user-paused" },
     { label: "stopped", name: "circle-stop", tone: "muted", Icon: CircleStop, why: "stopped" },
     { label: "checking", name: "scan-line", tone: "blue", Icon: ScanLine, why: "verifying data" },
+    { label: "allocating", name: "hard-drive", tone: "blue", Icon: HardDrive, why: "allocating disk space" },
+    { label: "moving", name: "folder-input", tone: "blue", Icon: FolderInput, why: "moving to target folder" },
     { label: "repairing", name: "wrench", tone: "orange", Icon: Wrench, why: "repairing" },
-    { label: "extracting", name: "package-open", tone: "muted", Icon: PackageOpen, why: "unpacking archive" },
+    { label: "extracting", name: "package-open", tone: "blue", Icon: PackageOpen, why: "unpacking archive (active)" },
     { label: "finishing", name: "loader-circle", tone: "blue", Icon: LoaderCircle, why: "finalizing/moving" },
     { label: "finished", name: "circle-check", tone: "green", Icon: CircleCheck, why: "complete" },
     { label: "error", name: "triangle-alert", tone: "red", Icon: TriangleAlert, why: "error (red)" },

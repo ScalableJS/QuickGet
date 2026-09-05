@@ -63,6 +63,58 @@ function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+export const QNAP_ERROR_MESSAGES = {
+  4096: "Destination folder not found",
+  4097: "Destination folder access denied",
+  8196: "Torrent already added on NAS",
+  12288: "URL protocol not supported",
+  12289: "Download connection failed",
+  12290: "Host not found (DNS error)",
+  16384: "Invalid magnet link format",
+  16385: "Torrent file not found",
+  16386: "Invalid or corrupt torrent file",
+  20488: "Not enough disk space on NAS",
+} as const satisfies Readonly<Record<number, string>>;
+
+export function formatError(errorCode?: number, customMessage?: string): string {
+  if (errorCode && QNAP_ERROR_MESSAGES[errorCode as keyof typeof QNAP_ERROR_MESSAGES]) {
+    return QNAP_ERROR_MESSAGES[errorCode as keyof typeof QNAP_ERROR_MESSAGES];
+  }
+  if (customMessage) return customMessage;
+  if (errorCode) return `Error ${errorCode}`;
+  return "Download failed";
+}
+
+function formatTaskSize(downloadedBytes: number, sizeBytes: number, isComplete: boolean): string {
+  if (isComplete) {
+    return formatBytes(downloadedBytes > 0 ? downloadedBytes : sizeBytes);
+  }
+  if (sizeBytes <= 0) {
+    return downloadedBytes > 0 ? formatBytes(downloadedBytes) : "";
+  }
+  if (downloadedBytes > 0 && downloadedBytes < sizeBytes) {
+    return `${formatBytes(downloadedBytes)} / ${formatBytes(sizeBytes)}`;
+  }
+  return formatBytes(sizeBytes);
+}
+
+function formatSwarm(task: Task): string {
+  if (task.status === "seeding") {
+    const peers = task.peers?.connected;
+    return peers !== undefined ? `P ${peers}` : "";
+  }
+  if (task.status === "downloading" || task.status === "downloadingMetadata") {
+    const seeds = task.seeds?.connected;
+    const peers = task.peers?.connected;
+    const parts = [
+      seeds !== undefined ? `S ${seeds}` : "",
+      peers !== undefined ? `P ${peers}` : "",
+    ].filter(Boolean);
+    return parts.join(" · ");
+  }
+  return "";
+}
+
 export type DownloadItemView = {
   hash: string;
   statusLabel: string;
@@ -76,6 +128,9 @@ export type DownloadItemView = {
   addedText: string;
   progress: number;
   progressVariant: "active" | "complete" | "error" | "seeding";
+  sizeText: string;
+  swarmText: string;
+  errorDetail: string;
 };
 
 /**
@@ -83,7 +138,7 @@ export type DownloadItemView = {
  * and the Storybook stories.
  */
 export function getDownloadItemView(task: Task): DownloadItemView {
-  const rawProgress = Math.max(0, Math.min(100, Math.round(task.progress)));
+  const rawProgress = Number.isFinite(task.progress) ? Math.max(0, Math.min(100, Math.round(task.progress))) : 0;
   const isSeeding = task.status === "seeding";
   const isFinished = task.status === "finished";
   const isDownloadComplete = isSeeding || isFinished;
@@ -108,6 +163,10 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const downloadSpeedText = formatSpeed(task.downSpeedBps);
   const uploadSpeedText = formatSpeed(task.upSpeedBps);
   const uploadedText = formatBytes(task.uploadedBytes);
+  const sizeText = formatTaskSize(task.downloadedBytes, task.sizeBytes, isDownloadComplete);
+  const swarmText = formatSwarm(task);
+  const errorDetail = isError ? formatError(task.errorCode, task.errorMessage) : "";
+
   const speedLabel = isDownloadComplete
     ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}${etaText ? `; seeding ETA ${etaText}` : ""}`
     : `Download speed ${downloadSpeedText}; upload speed ${uploadSpeedText}${etaText ? `; ETA ${etaText}` : ""}`;
@@ -131,5 +190,8 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     addedText: formatAddedDate(task.addedAt),
     progress,
     progressVariant,
+    sizeText,
+    swarmText,
+    errorDetail,
   };
 }

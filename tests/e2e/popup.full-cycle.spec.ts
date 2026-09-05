@@ -22,8 +22,9 @@ test("popup renders the QNAP transition states with their official meaning", asy
     { name: "Moving task", status: "moving" },
     { name: "Allocating task", status: "allocating" },
     { name: "Seeding task", status: "seeding" },
+    { name: "Error disk full task", status: "error", errorCode: 20488 },
   ] as const;
-  const initialTasks: Task[] = statuses.map(({ name, status }, index) => ({
+  const initialTasks: Task[] = statuses.map(({ name, status, ...rest }, index) => ({
     id: `status-${index}`,
     hash: `status-${index}`,
     name,
@@ -34,6 +35,9 @@ test("popup renders the QNAP transition states with their official meaning", asy
     uploadedBytes: 0,
     downSpeedBps: status === "downloading" ? 100 : 0,
     upSpeedBps: 0,
+    seeds: status === "downloading" ? { connected: 12, total: 30 } : undefined,
+    peers: status === "downloading" ? { connected: 4, total: 10 } : undefined,
+    errorCode: "errorCode" in rest ? (rest.errorCode as number) : undefined,
     source: "qnap",
   }));
   const mockNas = await startMockNas({ initialTasks });
@@ -62,9 +66,19 @@ test("popup renders the QNAP transition states with their official meaning", asy
         moving: "Moving",
         allocating: "Allocating",
         seeding: "Seeding",
+        error: "Not enough disk space on NAS",
       }[status];
       await expect(session.page.locator(".download-item").filter({ hasText: name })).toContainText(expected);
     }
+
+    // Verify rich card telemetry: swarm metrics and byte progress (BUG-35, BUG-36)
+    const downloadCard = session.page.locator(".download-item").filter({ hasText: "Downloading task" });
+    await expect(downloadCard).toContainText("S 12 · P 4");
+    await expect(downloadCard).toContainText("420 B / 1000 B");
+
+    // Verify error taxonomy (BUG-37)
+    const errorCard = session.page.locator(".download-item").filter({ hasText: "Error disk full task" });
+    await expect(errorCard).toContainText("Not enough disk space on NAS");
   } finally {
     await session.close();
     await mockNas.close();

@@ -74,63 +74,99 @@
   onkeydown={handleKey}
 >
   <div class="download-info flex-1 min-w-0 w-full flex flex-col gap-[var(--spacing-xs)]">
-    <p
-      class={[
-        "download-name m-0 font-500 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
-        task.status === "error" ? "text-[var(--torrent-text-error)]" : "text-[var(--torrent-text-primary)]",
-      ]}
-      title={task.name}
-    >
-      {task.name}
-    </p>
-    {#if view.addedText}
-      <p class="download-added m-0 text-12px text-[var(--color-text-secondary)]">Added {view.addedText}</p>
-    {/if}
-    <div class="download-meta flex items-center gap-[var(--spacing-sm)] min-w-0">
-      <span
+    <div class="flex items-center justify-between gap-2 min-w-0">
+      <p
         class={[
-          "download-status inline-flex items-center gap-[var(--space-1)] min-w-0 text-12px whitespace-nowrap",
-          task.status === "error" ? "text-[var(--torrent-text-error)]" : "text-[var(--torrent-text-secondary)]",
+          "download-name m-0 font-500 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
+          task.status === "error" ? "text-[var(--torrent-text-error)]" : "text-[var(--torrent-text-primary)]",
         ]}
+        title={task.name}
       >
-        {view.statusLabel}:
-      </span>
-      <span
-        class={[
-          "download-speed inline-flex items-center gap-[var(--space-1)] text-12px text-right flex-none whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3 [&>svg]:flex-none",
-          task.status === "error"
-            ? "text-[var(--torrent-text-error)]"
-            : "text-[var(--torrent-text-secondary)]",
-        ]}
-        aria-label={view.speedLabel}
-      >
-        {#if view.isDownloadComplete}
-          <ArrowUp aria-hidden="true" />
-          <span>{view.uploadedText}</span>
-          {#if view.ratioText}
-            <span>• ratio {view.ratioText}</span>
-          {/if}
-          <ArrowUp aria-hidden="true" />
-          <span>{view.uploadSpeedText}</span>
-          {#if view.etaText}
-            <span>• ETA: {view.etaText}</span>
-          {/if}
-        {:else}
-          <ArrowDown aria-hidden="true" />
-          <span>{view.downloadSpeedText}</span>
-          <ArrowUp aria-hidden="true" />
-          <span>{view.uploadSpeedText}</span>
-          {#if view.etaText}
-            <span>• ETA: {view.etaText}</span>
-          {/if}
-        {/if}
-      </span>
+        {task.name}
+      </p>
+      {#if view.swarmText}
+        <span
+          class="download-swarm text-11px text-[var(--color-text-secondary)] tabular-nums flex-none"
+          title="Seeds & Peers in swarm"
+        >
+          {view.swarmText}
+        </span>
+      {/if}
     </div>
+
     <div class="progress-container flex items-center gap-[var(--spacing-sm)] w-full">
       <span class="progress-icon text-12px leading-none flex-none inline-flex items-center justify-center" aria-label={view.statusLabel}>
         <StatusIcon status={task.status} />
       </span>
       <ProgressBar value={view.progress} label={`${view.statusLabel} progress`} variant={view.progressVariant} inline />
+      <span class="text-11px text-[var(--color-text-secondary)] tabular-nums flex-none min-w-[28px] text-right">
+        {view.progress}%
+      </span>
+    </div>
+
+    <div class="download-meta flex items-center justify-between gap-2 min-w-0 text-12px">
+      {#if task.status === "error"}
+        <span class="download-status min-w-0 flex-1 text-[var(--torrent-text-error)] font-500 truncate" title={view.errorDetail}>
+          {view.errorDetail}
+        </span>
+        {#if view.sizeText}
+          <span class="text-[var(--color-text-secondary)] tabular-nums flex-none">{view.sizeText}</span>
+        {/if}
+      {:else}
+        <div class="flex items-center gap-1.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--torrent-text-secondary)]">
+          <span
+            class={[
+              "download-status font-500 flex-none",
+              task.status === "seeding"
+                ? "text-[var(--progress-fill-seeding)]"
+                : task.status === "downloading"
+                  ? "text-[var(--color-primary-visual)]"
+                  : "text-[var(--torrent-text-primary)]",
+            ]}
+          >
+            {view.statusLabel}
+          </span>
+
+          {#if view.sizeText}
+            <span class="text-[var(--color-text-muted)]">•</span>
+            <span class="tabular-nums flex-none">{view.sizeText}</span>
+          {/if}
+
+          {#if task.status === "seeding"}
+            {#if task.upSpeedBps > 0}
+              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="inline-flex items-center gap-0.5 text-[var(--progress-fill-seeding)] font-500 tabular-nums">
+                <ArrowUp aria-hidden="true" />
+                <span>{view.uploadSpeedText}</span>
+              </span>
+            {/if}
+            {#if view.etaText}
+              <span class="text-[var(--color-text-muted)]">•</span>
+              <span>ETA: {view.etaText}</span>
+            {/if}
+            {#if view.ratioText}
+              <span class="text-[var(--color-text-muted)]">•</span>
+              <span>Ratio {view.ratioText}</span>
+            {/if}
+          {:else if !view.isDownloadComplete}
+            {#if task.downSpeedBps > 0}
+              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="inline-flex items-center gap-0.5 text-[var(--color-primary-visual)] font-500 tabular-nums">
+                <ArrowDown aria-hidden="true" />
+                <span>{view.downloadSpeedText}</span>
+              </span>
+            {/if}
+            {#if view.etaText}
+              <span class="text-[var(--color-text-muted)]">•</span>
+              <span>{view.etaText}</span>
+            {/if}
+          {/if}
+        </div>
+
+        {#if view.addedText && !view.swarmText}
+          <span class="text-11px text-[var(--color-text-muted)] flex-none">{view.addedText}</span>
+        {/if}
+      {/if}
     </div>
     {#if canChooseFiles}
       <DisclosureButton

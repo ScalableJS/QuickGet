@@ -14,9 +14,9 @@ changes. One card per defect, ordered by severity within a column.
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
-| BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Backlog |
-| BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Backlog |
-| BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Backlog |
+| BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
+| BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
+| BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Done |
 | BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | low | Backlog |
 | BUG-39 | Toolbar badge background poll fetches full task list instead of lightweight `Task/Status` | background/perf | low | Backlog |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
@@ -88,8 +88,8 @@ tasks, preventing users from seeing remaining seed time or seeding quota complet
 
 ### BUG-35 — Peer and seed counts provided by NAS are never displayed in the popup
 
-**Severity:** medium · **Area:** popup/UX · **Status:** Backlog
-**Files:** `src/api/types.ts`, `src/popup/components/downloadItem/format.ts`,
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/components/downloadItem/format.ts`,
 `src/popup/components/downloadItem/DownloadItem.svelte`
 
 QNAP Download Station V4 returns `peers` and `seeds` counts for torrent tasks in `Task/Query`.
@@ -97,14 +97,16 @@ Currently, the popup displays transfer speed and ETA, but completely omits peer 
 When a torrent is stalled or slow (0 KB/s), users cannot tell whether the swarm has 0 seeds or is
 simply negotiating connections.
 
-**Proposed fix:** Expose `peers` and `seeds` in `Task`, format them in `format.ts` (e.g. `Seeds: 12 • Peers: 4`),
-and render them in `DownloadItem` for active and seeding torrent tasks.
+**Resolved 2026-09-05** —
+1. `src/popup/components/downloadItem/format.ts`: Added `formatSwarm()` formatting swarm telemetry (`S 12 · P 4` for active torrents, `P 4` for seeding).
+2. `src/popup/components/downloadItem/DownloadItem.svelte`: Rendered compact monospace tabular telemetry in top card row next to the task name.
+3. Unit tests in `format.test.ts` and Storybook stories (`DownloadingActive`, `DownloadingStalled`, `SeedingQuota`).
 
 ---
 
 ### BUG-36 — Download payload size and progress in bytes (`done` / `size`) are hidden during download
 
-**Severity:** medium · **Area:** popup/UX · **Status:** Backlog
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
 **Files:** `src/popup/components/downloadItem/format.ts`,
 `src/popup/components/downloadItem/DownloadItem.svelte`
 
@@ -113,23 +115,28 @@ total file size, but never shows the actual downloaded volume in bytes (`done` o
 Users cannot see "1.2 GB / 3.8 GB", which is the standard indicator in modern torrent clients
 (Transmission, qBittorrent, Synology DS).
 
-**Proposed fix:** Pass `done` bytes to `getDownloadItemView` and render formatted downloaded/total
-bytes (`formatBytes(done)} / ${formatBytes(size)}`) in the secondary task metadata line.
+**Resolved 2026-09-05** —
+1. `src/popup/components/downloadItem/format.ts`: Added `formatTaskSize()` displaying `done / size` (e.g. `16.6 GB / 22.6 GB`) for active downloads and clean total size for completed/seeding tasks.
+2. `src/popup/components/downloadItem/DownloadItem.svelte`: Rendered in the secondary metadata row with monospace tabular nums.
+3. Unit tests in `format.test.ts` and Storybook stories.
 
 ---
 
 ### BUG-37 — Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason
 
-**Severity:** medium · **Area:** popup/UX · **Status:** Backlog
-**Files:** `src/api/types.ts`, `src/popup/components/downloadItem/format.ts`,
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/components/downloadItem/format.ts`,
 `src/popup/components/downloadItem/DownloadItem.svelte`
 
 When a task fails (QNAP state `2` / `error`), Download Station provides an integer `error` code
 (e.g., duplicate hash, out of disk space, network connection timeout, invalid torrent metadata,
 target path permission error). QuickGet displays only a generic red "Error" badge without detail.
 
-**Proposed fix:** Map QNAP error codes to friendly descriptive explanations in `format.ts` and
-display them in an error tooltip or subtitle in `DownloadItem`.
+**Resolved 2026-09-05** —
+1. `src/lib/tasks.ts`: Extracted `errorCode` from QNAP task payload in `normalizeQnap`.
+2. `src/popup/components/downloadItem/format.ts`: Created `QNAP_ERROR_MESSAGES` mapping known QNAP error integers (20488 disk full, 8196 duplicate torrent, 4096 missing destination folder, 12288-12290 network/DNS errors).
+3. `src/popup/components/downloadItem/DownloadItem.svelte`: Replaced generic error with human-readable error explanation in coral text and card styling.
+4. Unit tests in `format.test.ts` and Storybook stories (`ErrorDiskFull`, `ErrorDuplicate`, `ErrorFolderNotFound`).
 
 ---
 

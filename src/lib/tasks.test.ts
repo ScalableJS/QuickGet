@@ -110,6 +110,37 @@ describe("QNAP task status contract", () => {
       expect(task?.name).toBe("task");
     });
 
+    it("extracts errorCode and errorMessage from QNAP task payload and ignores 0", () => {
+      const [diskFull] = normalizeTasks("qnap", {
+        data: [{ hash: "1", source_name: "Disk Full", state: 4, error: 20488, error_msg: "Not enough disk space" }],
+      });
+      expect(diskFull?.errorCode).toBe(20488);
+      expect(diskFull?.errorMessage).toBe("Not enough disk space");
+
+      const [normalTask] = normalizeTasks("qnap", {
+        data: [{ hash: "2", source_name: "Normal", state: 104, error: 0 }],
+      });
+      expect(normalTask?.errorCode).toBeUndefined();
+      expect(normalTask?.errorMessage).toBeUndefined();
+    });
+
+    it("normalizes downloadedBytes from done, down_size, or total_down", () => {
+      const [doneTask] = normalizeTasks("qnap", {
+        data: [{ hash: "1", source_name: "T1", done: 500_000 }],
+      });
+      expect(doneTask?.downloadedBytes).toBe(500_000);
+
+      const [downSizeTask] = normalizeTasks("qnap", {
+        data: [{ hash: "2", source_name: "T2", down_size: 750_000 }],
+      });
+      expect(downSizeTask?.downloadedBytes).toBe(750_000);
+
+      const [totalDownTask] = normalizeTasks("qnap", {
+        data: [{ hash: "3", source_name: "T3", total_down: 1_250_000 }],
+      });
+      expect(totalDownTask?.downloadedBytes).toBe(1_250_000);
+    });
+
     it("returns empty array for invalid or empty input structures", () => {
       expect(normalizeTasks("qnap", null)).toEqual([]);
       expect(normalizeTasks("qnap", undefined)).toEqual([]);
