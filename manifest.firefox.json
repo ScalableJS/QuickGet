@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuickGet Remote for QNAP",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Send links and torrents to QNAP Download Station from Firefox.",
   "default_locale": "en",
   "browser_specific_settings": {
