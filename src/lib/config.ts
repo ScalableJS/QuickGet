@@ -29,6 +29,11 @@ export type Settings = {
    * 2016), and there it is simply ignored. Off by default — see DEFAULTS.
    */
   suppressLocalTorrentFile: boolean;
+  /**
+   * Automatically intercept clicks on magnet: links and forward them to QNAP Download Station
+   * via AddUrl instead of launching an external BitTorrent application. Off by default (opt-in).
+   */
+  autoCaptureMagnets: boolean;
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
@@ -61,6 +66,7 @@ export const DEFAULTS: Settings = {
    * choice, not ours.
    */
   suppressLocalTorrentFile: false,
+  autoCaptureMagnets: false,
   routingRules: [],
   theme: "auto",
 };

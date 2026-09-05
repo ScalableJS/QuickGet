@@ -17,7 +17,7 @@ export type TaskStatus =
   | "finished"
   | "error";
 
-export interface Task {
+export type Task = {
   id: string;
   name: string;
   status: TaskStatus;
@@ -35,8 +35,10 @@ export interface Task {
   addedAt?: number;
   priority?: number;
   totalFiles?: number; // file count inside the torrent (for the file-selection dialog)
+  errorCode?: number;
+  errorMessage?: string;
   source?: Vendor;
-}
+};
 
 /**
  * Statuses that count as "in progress" — work the NAS is still doing. Mirrors
@@ -55,6 +57,7 @@ export const IN_PROGRESS_STATUSES: readonly TaskStatus[] = [
   "finishing",
   "moving",
   "allocating",
+  "seeding",
 ];
 
 export function isInProgress(status: TaskStatus): boolean {
@@ -63,6 +66,23 @@ export function isInProgress(status: TaskStatus): boolean {
 
 export function isCompleted(status: TaskStatus): boolean {
   return status === "finished" || status === "seeding";
+}
+
+/**
+ * Statuses for tasks that can have their queue priority changed.
+ * Only queued, active download, checking or allocating tasks participate in download queue ordering.
+ */
+export const REORDERABLE_STATUSES: readonly TaskStatus[] = [
+  "downloading",
+  "downloadingMetadata",
+  "queued",
+  "queuedChecking",
+  "checking",
+  "allocating",
+];
+
+export function isReorderableStatus(status: TaskStatus): boolean {
+  return REORDERABLE_STATUSES.includes(status);
 }
 
 export type ProgressSummary = {
@@ -262,6 +282,10 @@ const normalizeQnap = (input: unknown): Task => {
   const downloaded = readNumber(task.total_down ?? task.done ?? task.down_size ?? task.completed, 0);
   const uploaded = readNumber(task.total_up ?? task.up_size ?? task.uploaded_size ?? task.uploaded, 0);
 
+  const rawError = parseNumber(task.error);
+  const errorCode = rawError !== undefined && rawError !== 0 ? rawError : undefined;
+  const errorMessage = typeof task.error_msg === "string" && task.error_msg ? task.error_msg : undefined;
+
   const created = task.create_time ?? task.created ?? task.added_time ?? task.start_time ?? null;
 
   const addedAt =
@@ -318,6 +342,8 @@ const normalizeQnap = (input: unknown): Task => {
     addedAt,
     priority: parseNumber(task.priority),
     totalFiles: parseNumber(task.total_files),
+    errorCode,
+    errorMessage,
     source: "qnap",
   };
 };

@@ -223,25 +223,27 @@ QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE
 
 ## Roadmap
 
-Planned before the end of the year. Ordered roughly by how much difference each makes to
-everyday use; details and open questions live on the
-[gaps board](./agent-os/product/competitive-gaps-kanban.md).
+Prioritized by user impact and clarity, keeping the extension fast, lightweight, and focused. Detailed specs and discussion live on the [competitive gaps board](./agent-os/product/competitive-gaps-kanban.md).
 
-- **Catch `magnet:` links.** Clicking a magnet currently hands it to whatever desktop
-  application is registered for it. It should reach the NAS like a `.torrent` does.
-- **Make the destination visible for intercepted downloads.** Routing rules and the popup's
-  quick-add already let you choose a folder; a `.torrent` caught automatically does not show
-  where it went.
-- **Say something useful when a NAS update changes the API.** A firmware change can currently
-  look like "no downloads" instead of a problem — that is the failure mode that has broken
-  comparable extensions for months at a time.
-- **Queue links while the NAS is asleep**, instead of falling back to a local download.
-- **Undo a removal**, which today takes effect immediately.
+### Phase 1 — Rich Status & Diagnostics (Quick Wins)
+- **Downloaded volume (`done / size`):** Display actual transferred volume (e.g. `17.8 / 24.3 GB`) instead of only an opaque percentage bar.
+- **Actionable error messages:** Translate QNAP error codes (disk full, folder missing, duplicate task, corrupt torrent) into clear explanations with recovery advice.
+- **Swarm telemetry (`seeds / peers`):** Compact `S 12 · P 4` indicators on active torrents so users can immediately diagnose stalled downloads.
+- **Global NAS transfer rates:** Real-time combined speeds (`↓ 24.8 MB/s  ↑ 3.1 MB/s`) in the popup header via `Task/Status`.
+
+### Phase 2 — High Value Task Controls
+- **Safe task removal dialog:** Single delete action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`).
+- **Quick speed limit throttle:** Speedometer icon in the header opening a preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) via `Config/Set`.
+- **Queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) directly from the card's `⋮` overflow menu (`Task/Priority`).
+- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via the `⋮` menu (`Task/GetTorrentFile`).
+
+### Phase 3 — Advanced Settings & Diagnostics
+- **Client emulation for private trackers:** Select client identity (`peer_mode`: Transmission 2.94, Deluge, uTorrent) in `Settings → Advanced` to bypass tracker blacklists.
+- **Default seeding limits:** Configure default share ratio and seeding duration limits for new tasks directly from Settings.
+- **Target destination folder:** Surface the destination path on the NAS within task details.
 
 > [!NOTE]
-> RSS, download scheduling, bandwidth limits and torrent search are **not** planned. They are
-> Download Station's own features and are configured on the NAS —
-> [what the NAS supports](./docs/qnap-download-station-capabilities.md) explains the split.
+> In-popup torrent discovery (`Addon/Search`), RSS automation, filehost accounts, and complex 24x7 schedule matrices are deliberately kept out of the popup to preserve a fast, clean, and reliable remote-download client.
 
 ## Feedback and ideas
 

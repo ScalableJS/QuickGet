@@ -18,40 +18,41 @@ Open defects are tracked separately in `bugs-kanban.md`.
 - Settings backup / restore, master-password encryption of the NAS credential.
 - MIT license, Chrome Web Store listing and automated publish workflow (F5).
 - v1.0.2 published; Firefox packaging via `web-ext`.
+- Download interception stabilized and made transactional; strict no-local-file mode.
+- Magnet link auto-capture (`autoCaptureMagnets`) shipped in v2.2.0 with synchronous capture cancellation and in-page toast feedback.
+- Seeding quota progress and dedicated emerald theme shipped in v2.2.0.
 
-## Phase 1 — Stabilise download interception (current)
+## Phase 1 — Rich Status & Diagnostics (Quick Wins)
 
-The interception feature is shipped but defective; see `bugs-kanban.md` and
-`docs/download-interception-bugs.md`.
+High-value, zero-clutter enhancements to task clarity based on live QNAP API capabilities:
 
-- Make the NAS hand-off transactional so a failed send never destroys the browser download.
-- Guard the locked / empty-credential state in the background, not only in the popup.
-- Restore the intended default and stop persisting behavioural defaults on read.
-- Close the test gap: `chrome.downloads` mock, `src/background/downloads.test.ts`, and an
-  E2E spec driving a real download through the mock NAS.
+- **Downloaded payload size (`done / size`):** Display actual downloaded volume (e.g. `17.8 / 24.3 GB`) rather than an opaque percentage (BUG-36).
+- **Human-readable error taxonomy:** Translate QNAP integer failure codes (e.g. 20488 disk full, 4096 folder missing, 8196 duplicate) into friendly, actionable explanations (BUG-37).
+- **Conditional swarm health (`seeds / peers`):** Render `S 12 · P 4` compactly for active BitTorrent tasks, clarifying stalled downloads (BUG-35).
+- **Global NAS transfer rates in header:** Real-time combined `↓ 24.8 MB/s  ↑ 3.1 MB/s` in the popup header via `Task/Status` (GAP-7).
 
-## Phase 2 — Follow-ups on shipped features
+## Phase 2 — High Value Task Controls
 
-Carried over from `docs/feature-roadmap.md`, none of them blocking:
+Contextual task actions exposed through clean interactions without bloating the primary card:
 
-- Parent-listing cache for folder validation (`folderCache.ts`).
-- E2E for the blocked-save red-ring path, and for a routing rule producing the correct `move`.
-- Rule reorder in the editor; gate save on an invalid rule destination.
+- **Safe task removal dialog:** Single trash action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`) (GAP-8).
+- **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
+- **Task queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) via the card's `⋮` overflow menu (`Task/Priority`) (GAP-10).
+- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11).
 
-## Phase 3 — Deliberately deferred
+## Phase 3 — Advanced Settings & Diagnostics
 
-Recorded so they are not re-proposed. Rationale in `docs/feature-roadmap.md`:
+Enthusiast configurations housed strictly within `Settings → Advanced`:
 
-- **Magnet content-script capture** (opt-in) — the one real remaining feature gap; needs an
-  `<all_urls>` content script, so it must be explicitly opt-in.
-- **Undo on remove** — removal is an immediate NAS call; needs new UI infrastructure.
-- **Completion notifications** — conflicts with the deliberate idle self-disarm design.
-- **SID persistence in `storage.session`** — marginal benefit, consciously skipped.
-- **Keepalive alarm** — rejected on battery and privacy grounds.
-- **Intercepting anything beyond `.torrent`** — out of scope for the product.
+- **Client emulation for private trackers:** Switch `bt.peer_mode` between Transmission 2.94, Deluge, and uTorrent to bypass tracker client blacklists (GAP-12).
+- **Default seeding limits:** Configure default share ratio and time limits for Download Station via `Config/Set` (GAP-13).
+- **Task destination folder visibility:** Contextual display of target NAS path (BUG-38).
+- **Background polling optimization:** Migrate badge monitoring from `Task/Query` to lightweight `Task/Status` (BUG-39).
 
-## Phase 4 — Store presentation
+## Deliberately Out of Scope
 
-Final polish before a wider release (F7): refreshed screenshots and store assets, aligned
-README feature list, consistent short description across `manifest*.json` and both stores,
-AMO listing licence and data-disclosure checklist.
+- **In-popup torrent search (`Addon/Search`):** Discovery plugins break frequently, clutter the popup, and present store policy risks.
+- **RSS automation & rule management (`Rss/*`):** Best managed in the native QTS desktop console.
+- **Filehost premium accounts (`Account/*`):** Third-party credentials management is outside core extension goals.
+- **24x7 Schedule matrix (`schedule0..6`):** 168-hour calendar grid is unworkable in a 380px extension popup.
+- **Drag-and-Drop queue sorting:** QNAP API only supports relative shifts; simulated drag-and-drop triggers API flooding and race conditions.

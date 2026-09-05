@@ -1,12 +1,9 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type { StorybookConfig } from "@storybook/svelte-vite";
 import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
 import { mergeConfig, type UserConfig } from "vite";
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+import { alias } from "../aliases.config.js";
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|ts|svelte)"],
@@ -20,15 +17,7 @@ const config: StorybookConfig = {
 
   async viteFinal(baseConfig) {
     const overrides: UserConfig = {
-      resolve: {
-        alias: {
-          "@": resolve(projectRoot, "src"),
-          "@api": resolve(projectRoot, "src/api"),
-          "@lib": resolve(projectRoot, "src/lib"),
-          "@ui": resolve(projectRoot, "src/popup/ui"),
-          "@types": resolve(projectRoot, "src/types"),
-        },
-      },
+      resolve: { alias },
       plugins: [UnoCSS(), Icons({ compiler: "svelte" })],
     };
 

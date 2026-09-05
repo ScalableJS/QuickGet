@@ -180,7 +180,7 @@ function toRawQnapJob(input: DownloadJob | Task, index: number): DownloadJob {
     done: totalDown,
     down_rate: downRate,
     down_size: totalDown,
-    error: input.status === "error" ? 1 : 0,
+    error: input.errorCode ?? (input.status === "error" ? 1 : 0),
     eta: input.etaSec ?? (input.status === "finished" ? 0 : -1),
     finish_time: input.status === "finished" ? createdAtText : "",
     hash: input.hash ?? `hash-${index}`,
@@ -422,6 +422,97 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       const index = tasks.findIndex((item) => item.hash === hash);
       if (index >= 0) tasks.splice(index, 1);
       reply(200, { error: 0 });
+      return;
+    }
+
+    if (path === "/downloadstation/V4/Task/Priority" && method === "POST") {
+      const sid = readFormValue(body, "sid");
+      if (!sid) {
+        reply(400, { error: 1001, reason: "Missing sid" });
+        return;
+      }
+      const hash = readFormValue(body, "hash");
+      const priority = readFormValue(body, "priority");
+      const index = tasks.findIndex((item) => item.hash === hash);
+      if (index >= 0 && priority) {
+        const [task] = tasks.splice(index, 1);
+        if (priority === "top") {
+          tasks.unshift(task);
+        } else if (priority === "up") {
+          tasks.splice(Math.max(0, index - 1), 0, task);
+        } else if (priority === "down") {
+          tasks.splice(Math.min(tasks.length, index + 1), 0, task);
+        }
+      }
+      reply(200, { error: 0 });
+      return;
+    }
+
+    if (path === "/downloadstation/V4/Task/AddUrl" && method === "POST") {
+      const sid = readFormValue(body, "sid");
+      if (!sid) {
+        reply(400, { error: 1001, reason: "Missing sid" });
+        return;
+      }
+
+      const url = readFormValue(body, "url");
+      if (!url) {
+        reply(200, { error: 1, reason: "url" });
+        return;
+      }
+
+      const temp = readFormValue(body, "temp");
+      if (!temp) {
+        reply(200, { error: 1, reason: "temp" });
+        return;
+      }
+
+      const move = readFormValue(body, "move");
+      if (!move) {
+        reply(200, { error: 1, reason: "move" });
+        return;
+      }
+
+      let taskName = "url-download";
+      if (url.startsWith("magnet:")) {
+        try {
+          const parsed = new URL(url);
+          taskName = parsed.searchParams.get("dn") || "Magnet Task";
+        } catch {
+          taskName = "Magnet Task";
+        }
+      } else {
+        try {
+          const parsed = new URL(url);
+          const segment = parsed.pathname.split("/").filter(Boolean).pop();
+          if (segment) taskName = segment;
+        } catch {
+          taskName = "download";
+        }
+      }
+
+      const nextIndex = tasks.length + 1;
+      const task = toRawQnapJob(
+        {
+          id: `hash-${nextIndex}`,
+          name: taskName,
+          status: "downloading",
+          progress: 0,
+          sizeBytes: 0,
+          downloadedBytes: 0,
+          uploadedBytes: 0,
+          downSpeedBps: 0,
+          upSpeedBps: 0,
+          etaSec: 0,
+          hash: `hash-${nextIndex}`,
+          priority: 1,
+          seeds: { connected: 0 },
+          peers: { connected: 0 },
+        },
+        nextIndex,
+      );
+      tasks.push(task);
+      reply(200, { status: 0, error: 0 });
       return;
     }
 

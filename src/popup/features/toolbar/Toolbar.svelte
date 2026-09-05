@@ -8,10 +8,8 @@
   import IconFile from "~icons/lucide/file";
   import IconLink from "~icons/lucide/link";
   import IconTrash from "~icons/lucide/trash-2";
-  import ArrowDown from "~icons/lucide/arrow-down";
-  import ArrowUp from "~icons/lucide/arrow-up";
 
-  import { IconButton, SplitButton } from "@ui";
+  import { IconButton, SpeedTelemetry, SplitButton } from "@ui";
 
   import { toolbarView } from "./toolbarView.svelte.js";
 
@@ -36,7 +34,7 @@
 {#snippet linkIcon()}<IconLink />{/snippet}
 {#snippet trashIcon()}<IconTrash />{/snippet}
 
-<div class="toolbar-left flex items-center gap-[var(--spacing-sm)] text-12px text-[var(--color-text-secondary)]">
+<div class="toolbar-left flex-none flex items-center gap-[var(--spacing-sm)] text-12px text-[var(--color-text-secondary)]">
   <IconButton
     size="sm"
     id="toolbar-settings"
@@ -53,19 +51,18 @@
       <IconSettings />
     {/if}
   </IconButton>
-  <span
-    id="status-speed"
-    class="status-speed inline-flex items-center gap-[var(--space-1)] font-mono text-12px font-500 text-[var(--color-text-secondary)] px-[6px] py-[2px] bg-[var(--color-bg-alt)] rounded-[3px] whitespace-nowrap tabular-nums [&>svg]:w-3 [&>svg]:h-3"
-    aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
-    aria-live="off"
-  >
-    <ArrowDown aria-hidden="true" />
-    {toolbarView.statusDownloadSpeed}
-    <ArrowUp aria-hidden="true" />
-    {toolbarView.statusUploadSpeed}
-  </span>
+  {#if !toolbarView.isIdle}
+    <SpeedTelemetry
+      id="status-speed"
+      class="status-speed py-0.5"
+      down={toolbarView.statusDownloadSpeed}
+      up={toolbarView.statusUploadSpeed}
+      aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
+      aria-live="off"
+    />
+  {/if}
 </div>
-<div class="toolbar-actions flex items-center justify-center gap-[var(--spacing-xs)]">
+<div class="toolbar-actions flex-none flex items-center justify-end gap-[var(--spacing-xs)]">
   <IconButton
     size="sm"
     id="toolbar-play"

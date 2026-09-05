@@ -87,7 +87,9 @@
   --download-error-selected-border: #c42a72;
 
   --progress-track-active: #3a82f733;
+  --progress-track-seeding: #05966926;
   --progress-fill-complete: var(--color-success);
+  --progress-fill-seeding: #059669;
   --progress-fill-error: var(--color-error);
   --status-success-bg: #dff7e9;
   --status-success-border: #55b985;
@@ -159,7 +161,9 @@
   --download-error-selected-border: #ff9dc2;
 
   --progress-track-active: #82b3ff3d;
+  --progress-track-seeding: #34d39926;
   --progress-fill-complete: var(--color-success);
+  --progress-fill-seeding: #34d399;
   --progress-fill-error: var(--color-error);
   --status-success-bg: #123c30;
   --status-success-border: #42b77d;

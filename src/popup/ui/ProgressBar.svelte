@@ -1,5 +1,5 @@
 <script lang="ts">
-  type Variant = "active" | "complete" | "error";
+  type Variant = "active" | "complete" | "error" | "seeding";
   type Props = {
     value: number;
     label: string;
@@ -11,6 +11,14 @@
     active: "bg-[var(--color-primary-visual)]",
     complete: "bg-[var(--progress-fill-complete)]",
     error: "bg-[var(--progress-fill-error)]",
+    seeding: "bg-[var(--progress-fill-seeding)]",
+  } satisfies Record<Variant, string>;
+
+  const trackClasses = {
+    active: "bg-[var(--progress-track-active)]",
+    complete: "bg-[var(--progress-track-active)]",
+    error: "bg-[var(--progress-track-active)]",
+    seeding: "bg-[var(--progress-track-seeding)]",
   } satisfies Record<Variant, string>;
 
   let { value, label, variant = "active", inline = false }: Props = $props();
@@ -20,7 +28,8 @@
 
 <div
   class={[
-    "h-[5px] bg-[var(--progress-track-active)] rounded-full overflow-hidden",
+    "h-[5px] rounded-full overflow-hidden",
+    trackClasses[variant],
     inline ? "w-auto min-w-0 flex-1" : "w-full flex-none",
   ]}
   role="progressbar"

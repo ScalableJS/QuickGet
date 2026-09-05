@@ -10,7 +10,9 @@ import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attenti
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { initDownloadInterception } from "./downloads.js";
 import { createContextMenus, handleContextMenuClick } from "./menus.js";
+import { handleMagnetAdd } from "./magnetHandler.js";
 import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./monitorMessage.js";
+import { getErrorMessage } from "@lib/errors.js";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -113,6 +115,18 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   if (type === MONITOR_MESSAGE) {
     void ensureMonitoring();
     return;
+  }
+
+  if (type === "task:add") {
+    const { uri } = message as { uri?: unknown };
+    if (typeof uri !== "string" || !uri.startsWith("magnet:")) {
+      sendResponse({ ok: false, error: "Invalid magnet URI" });
+      return;
+    }
+    void handleMagnetAdd(uri)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+    return true;
   }
 
   if (type === SNAPSHOT_MESSAGE) {

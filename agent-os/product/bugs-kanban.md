@@ -13,6 +13,12 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
+| BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
+| BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
+| BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Done |
+| BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | low | Backlog |
+| BUG-39 | Toolbar badge background poll fetches full task list instead of lightweight `Task/Status` | background/perf | low | Backlog |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
@@ -50,6 +56,120 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-34 — Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics
+
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/styles/tokens.css`, `src/popup/ui/ProgressBar.svelte`,
+`src/popup/components/downloadItem/format.ts`, `src/popup/components/downloadItem/DownloadItem.svelte`
+
+When a download completes and enters QNAP state 100 (`seeding`), `isInProgress()` evaluates to
+false because `seeding` was previously classified under `isCompleted()`. The task immediately disappeared
+from the default "In progress" popup tab, creating the perception that the download hung or failed
+without result.
+
+Live NAS investigation (2026-09-04) confirmed that QNAP Download Station V4 emits active seeding
+lifecycle metrics:
+- `progress`: 0–100% of the configured seeding quota (`share_time` or `share_ratio`).
+- `eta`: Remaining seeding time in seconds until the quota is satisfied (e.g. 1370s for a 30m limit).
+- `activity_time`: Elapsed seeding duration in seconds.
+- `total_up` / `up_rate` / `share`: Uploaded volume, current speed, and actual share ratio.
+
+Previously, `format.ts` unconditionally forced `progress` to 100% and cleared `etaText` for `seeding`
+tasks, preventing users from seeing remaining seed time or seeding quota completion progress.
+
+**Resolved 2026-09-04** —
+1. `src/lib/tasks.ts`: Included `"seeding"` in `IN_PROGRESS_STATUSES` so active seeding tasks remain visible in the "In progress" tab and contribute to active task counts until quota or manual stop.
+2. `src/popup/styles/tokens.css` & `src/popup/ui/ProgressBar.svelte`: Added dedicated emerald/mint design tokens (`--progress-track-seeding`, `--progress-fill-seeding`) and a `"seeding"` variant for `ProgressBar` to visually distinguish seeding quota progress from active download progress.
+3. `src/popup/components/downloadItem/format.ts` & `DownloadItem.svelte`: Preserved `task.progress` and formatted seeding remaining ETA (`view.etaText`) into the status line (`• ETA: 22m 21s`).
+4. Unit tests in `format.test.ts` and `downloadFilters.test.ts` verified against live NAS payload snapshots.
+
+---
+
+### BUG-35 — Peer and seed counts provided by NAS are never displayed in the popup
+
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/components/downloadItem/format.ts`,
+`src/popup/components/downloadItem/DownloadItem.svelte`
+
+QNAP Download Station V4 returns `peers` and `seeds` counts for torrent tasks in `Task/Query`.
+Currently, the popup displays transfer speed and ETA, but completely omits peer and seed metrics.
+When a torrent is stalled or slow (0 KB/s), users cannot tell whether the swarm has 0 seeds or is
+simply negotiating connections.
+
+**Resolved 2026-09-05** —
+1. `src/popup/components/downloadItem/format.ts`: Added `formatSwarm()` formatting swarm telemetry (`S 12 · P 4` for active torrents, `P 4` for seeding).
+2. `src/popup/components/downloadItem/DownloadItem.svelte`: Rendered compact monospace tabular telemetry in top card row next to the task name.
+3. Unit tests in `format.test.ts` and Storybook stories (`DownloadingActive`, `DownloadingStalled`, `SeedingQuota`).
+
+---
+
+### BUG-36 — Download payload size and progress in bytes (`done` / `size`) are hidden during download
+
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/popup/components/downloadItem/format.ts`,
+`src/popup/components/downloadItem/DownloadItem.svelte`
+
+While a task is actively downloading, `DownloadItem` displays the percentage progress bar and the
+total file size, but never shows the actual downloaded volume in bytes (`done` or `down` from QNAP API).
+Users cannot see "1.2 GB / 3.8 GB", which is the standard indicator in modern torrent clients
+(Transmission, qBittorrent, Synology DS).
+
+**Resolved 2026-09-05** —
+1. `src/popup/components/downloadItem/format.ts`: Added `formatTaskSize()` displaying `done / size` (e.g. `16.6 GB / 22.6 GB`) for active downloads and clean total size for completed/seeding tasks.
+2. `src/popup/components/downloadItem/DownloadItem.svelte`: Rendered in the secondary metadata row with monospace tabular nums.
+3. Unit tests in `format.test.ts` and Storybook stories.
+
+---
+
+### BUG-37 — Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason
+
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/components/downloadItem/format.ts`,
+`src/popup/components/downloadItem/DownloadItem.svelte`
+
+When a task fails (QNAP state `2` / `error`), Download Station provides an integer `error` code
+(e.g., duplicate hash, out of disk space, network connection timeout, invalid torrent metadata,
+target path permission error). QuickGet displays only a generic red "Error" badge without detail.
+
+**Resolved 2026-09-05** —
+1. `src/lib/tasks.ts`: Extracted `errorCode` from QNAP task payload in `normalizeQnap`.
+2. `src/popup/components/downloadItem/format.ts`: Created `QNAP_ERROR_MESSAGES` mapping known QNAP error integers (20488 disk full, 8196 duplicate torrent, 4096 missing destination folder, 12288-12290 network/DNS errors).
+3. `src/popup/components/downloadItem/DownloadItem.svelte`: Replaced generic error with human-readable error explanation in coral text and card styling.
+4. Unit tests in `format.test.ts` and Storybook stories (`ErrorDiskFull`, `ErrorDuplicate`, `ErrorFolderNotFound`).
+
+---
+
+### BUG-38 — Destination NAS path (`path` / `move`) is omitted from task details
+
+**Severity:** low · **Area:** popup/UX · **Status:** Backlog
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`,
+`src/popup/components/downloadItem/format.ts`
+
+QNAP returns destination directories `move` (final destination folder) and `temp` (temporary staging).
+Users managing multi-folder setups or custom routing rules cannot see where a download was placed
+directly from the popup.
+
+**Proposed fix:** Display the target folder path (e.g., `/Download/Torrents`) as secondary information
+or within an expandable task details section.
+
+---
+
+### BUG-39 — Toolbar badge background poll fetches full task list instead of lightweight `Task/Status`
+
+**Severity:** low · **Area:** background/perf · **Status:** Backlog
+**Files:** `src/background/alarms.ts`, `src/background/actions.ts`, `src/api/client.ts`
+
+The periodic background monitoring alarm polls `/downloadstation/V4/Task/Query` with a limit of 100
+tasks on every interval, fetching the entire list of tasks and all 38 fields per task just to count
+active tasks for the extension badge. QNAP provides a dedicated, lightweight `/downloadstation/V4/Task/Status`
+endpoint that returns summary counts directly (`total`, `downloading`, `seeding`, `paused`, `error`)
+with minimal CPU and network overhead on both the browser and the NAS.
+
+**Proposed fix:** Implement `client.getTaskStatus()` and migrate badge count monitoring to use
+`Task/Status`, reserving `Task/Query` for when the popup UI is actively open.
+
+---
 
 ### BUG-33 — Torrent interception starts before a live NAS connection is established
 

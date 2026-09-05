@@ -14,8 +14,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  // Mock restoration is handled by `restoreMocks` in vitest.config.ts.
   server.resetHandlers();
-  vi.restoreAllMocks();
 
   const apiModule = await import("@/popup/shared/api");
   apiModule.invalidateClientCache?.();

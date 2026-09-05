@@ -24,6 +24,7 @@
   function sample(status: TaskStatus): Task {
     const downloading = status === "downloading";
     const seeding = status === "seeding";
+    const error = status === "error";
     return {
       id: status,
       hash: status,
@@ -31,12 +32,15 @@
       status,
       progress: status === "finished" || seeding ? 100 : 42,
       sizeBytes: 2_400_000_000,
-      downloadedBytes: 1_000_000_000,
+      downloadedBytes: status === "finished" || seeding ? 2_400_000_000 : 1_008_000_000,
       uploadedBytes: 620_000_000,
       downSpeedBps: downloading ? 12_000_000 : 0,
       upSpeedBps: seeding ? 800_000 : 0,
       shareRatio: seeding ? 0.48 : undefined,
       etaSec: downloading ? 2400 : undefined,
+      seeds: downloading ? { connected: 18, total: 30 } : undefined,
+      peers: downloading ? { connected: 7, total: 15 } : seeding ? { connected: 4, total: 10 } : undefined,
+      errorCode: error ? 20488 : undefined,
       source: "qnap",
     };
   }

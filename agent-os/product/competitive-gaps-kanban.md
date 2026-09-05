@@ -19,7 +19,15 @@ non-features are recorded at the bottom so they are not re-litigated.
 
 | ID | Gap | Area | Size | Status |
 |----|-----|------|------|--------|
-| GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Backlog |
+| GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Done |
+| GAP-7 | Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`) | popup/ui | S | Done |
+| GAP-8 | Safe task removal dialog with optional data cleanup (`clean: 1 | 0`) | popup/ui | S | Rejected |
+| GAP-9 | Quick speed throttle popover in header (presets: Unlimited, 1, 2, 5 MB/s) | popup/ui | M | Backlog |
+| GAP-10 | Task queue priority management in `⋮` menu (Top, Up, Down) | popup/ui | S | Done |
+| GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Deferred |
+| GAP-12 | Private tracker client emulation (`peer_mode`: Transmission, Deluge) | settings/api | S | Backlog |
+| GAP-13 | Default seeding time and share ratio limits in Settings | settings/api | S | Backlog |
+| RES-5 | Direct file download interception (Shift-click, size threshold, auth/cookie challenges) | background/content | L | Backlog |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -36,9 +44,9 @@ non-features are recorded at the bottom so they are not re-litigated.
 
 ### GAP-1 — `magnet:` clicks are never intercepted
 
-**Size:** M · **Area:** background/content · **Status:** Backlog
-**Files:** new `src/content/magnet.ts`; `manifest.json` + `manifest.firefox.json`;
-`src/lib/config.ts` (`DEFAULTS`); `src/popup/features/settings/Settings.svelte`
+**Size:** M · **Area:** background/content · **Status:** Done (2026-09-04)
+**Files:** `src/content/magnet.ts`; `src/background/magnetHandler.ts`; `manifest.json` + `manifest.firefox.json`;
+`src/lib/config.ts` (`DEFAULTS`); `src/popup/features/settings/Settings.svelte`; `tests/e2e/magnet-interception.spec.ts`
 
 We intercept `.torrent` **files** through the downloads API, but a `magnet:` click never
 reaches that API — the browser hands it straight to an external application. So the single
@@ -64,67 +72,22 @@ opt-in through the setting below.
 
 **Acceptance criteria**
 
-- [ ] With `autoCaptureMagnets` on, a left-click on `<a href="magnet:?xt=...">` sends the URI
+- [x] With `autoCaptureMagnets` on, a left-click on `<a href="magnet:?xt=...">` sends the URI
       to the NAS and no external application is launched.
-- [ ] With the setting off, no listener is attached and the click behaves exactly as today.
-- [ ] Toggling the setting takes effect in already-open tabs without a reload
+- [x] With the setting off, no listener is attached and the click behaves exactly as today.
+- [x] Toggling the setting takes effect in already-open tabs without a reload
       (`chrome.storage.onChanged`).
-- [ ] Modified clicks (middle-click, ⌘/Ctrl-click) and non-primary buttons are left alone.
-- [ ] A magnet click while the NAS is unreachable surfaces the same error path as a
-      `.torrent` hand-off, and does **not** silently swallow the navigation.
-- [ ] Firefox parity is decided explicitly: `manifest.firefox.json` either gains the script
-      or the card records why not.
+- [x] Modified clicks (middle-click, ⌘/Ctrl-click) and non-primary buttons are left alone.
+- [x] A magnet click while the NAS is unreachable surfaces the same error path as a
+      `.torrent` hand-off, and does **not** silently swallow the navigation (isolated Shadow DOM toast feedback with `[Open locally]` and `[Retry]`).
+- [x] Firefox parity is decided explicitly: `manifest.firefox.json` includes `src/content/magnet.ts`.
 
-**Implementation sketch**
-
-Content script at `document_start`, capture-phase listener on `document` (not per-anchor —
-anchors appear dynamically), matching `event.target.closest('a[href^="magnet:"]')`. On a
-plain primary click: `preventDefault()`, then `chrome.runtime.sendMessage` to the worker,
-which reuses the existing add-task path rather than a second implementation. Gate behind
-`autoCaptureMagnets` in `DEFAULTS`, read once at injection and updated live via
-`chrome.storage.onChanged`.
-
-**Prior art — the established shape of this, and what it gets wrong**
-
-Mature clients in this category converge on the same minimal approach, and it is simpler than
-the sketch above: a single non-capture `click` listener on `document`, walk up from
-`event.target` to the nearest anchor (bounded depth, ~10, so a deep tree cannot cost a
-traversal on every click), match the href against a list of *download-only protocols* rather
-than hard-coding `magnet:`, hand it off, then `preventDefault()`. The enabled flag is held in
-a module-level variable kept fresh by a settings subscription, so the listener itself does no
-async work.
-
-Two things in that shape are worth deliberately **not** copying:
-
-- **They call `preventDefault()` after firing the send, unconditionally.** If the hand-off
-  fails, the click is already swallowed and the user has nothing. Our transactional
-  interception (`handleDownloadCreated`) sets a higher bar — preserve it here.
-- **A non-capture listener** loses to any page that stops propagation first. Capture phase
-  costs nothing and is strictly more reliable.
-
-Worth taking: the protocol-list generalisation (`magnet:` is not the only download-only
-scheme), and the bounded-depth ancestor walk. Also worth knowing before estimating: their own
-source carries the comment that true protocol handling for extensions does not exist and this
-listener trick is the only option — so there is no cleaner API to go looking for.
-
-**Failure modes**
-
-- **Swallowing a click and then failing** is the worst outcome — the user loses the link with
-  no feedback. Only `preventDefault()` once the message has been accepted for delivery, and
-  fall back to the default navigation on any error.
-- SPAs that re-render between `closest()` and dispatch.
-- Pages that call `stopPropagation()` in their own capture-phase handler; a capture listener
-  on `document` runs first, but note the ordering assumption.
-- The worker may be asleep — `sendMessage` wakes it, but the response must not be awaited in
-  a way that blocks the click handler.
-
-**Test plan**
-
-- Vitest: the click-eligibility predicate (modifier keys, button index, nested markup) as a
-  pure function, so it is testable without a DOM harness.
-- Playwright e2e alongside `download-interception.spec.ts`: a fixture page with a magnet
-  anchor; assert the mock NAS received the task and no navigation occurred. Add the mirror
-  case with the setting off.
+**Resolution & Implementation Notes (2026-09-04)**
+- Implemented with *Synchronous Cancellation + Compensating Fallback* pattern (consulted with ChatGPT Gateway): DOM event dispatch cannot await promises before calling `preventDefault()`. Cancellation is synchronous in capture phase; failures trigger an isolated Shadow DOM toast (`#quickget-feedback-host`) providing user-initiated fallback to open locally (`window.location.href`) or retry.
+- Security: Enforces `event.isTrusted === true` to block synthetic script clicks from untrusted origins.
+- Robust traversal: Uses `event.composedPath()` to support nested elements, icons, and Web Components / open Shadow DOM.
+- Reuses existing routing rules engine (`classifyUrl`, `resolveDestination`) to preserve destination folder mapping.
+- Full E2E coverage via mock NAS (`tests/e2e/magnet-interception.spec.ts`) and unit tests (`magnet.test.ts`, `magnetHandler.test.ts`). Existing `.torrent` flow completely unaffected.
 
 ### GAP-2 — A NAS firmware change reads as "no downloads", not as a fault
 
@@ -568,6 +531,149 @@ full disk or a misfiled download; the reason to refuse is that we would be handi
 extension the ability to move files anywhere on the NAS. Weigh both before writing code, and
 record the decision either way.
 
+### GAP-7 — Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`)
+
+**Size:** S · **Area:** popup/ui · **Status:** Done (2026-09-05)
+**Files:** `src/popup/features/toolbar/Toolbar.svelte`, `src/popup/features/toolbar/toolbarView.svelte.ts`, `src/popup/features/downloads/downloadsUI.ts`, `src/api/client.ts` (`getStatus`)
+
+When opening the popup, users currently see individual task speeds, but have no quick visibility
+into the total bandwidth consumed by the NAS across all active downloads and background uploads.
+
+**Competitor precedent:** Transmission Easy Client and Synology Download Station show combined
+download/upload rates directly in the header (`↓ 12.4 MB/s  ↑ 1.2 MB/s`).
+
+**Acceptance criteria:**
+- [x] Header displays total `down_rate` and `up_rate` while tasks are active with semantic arrow colors.
+- [x] Displays compact `Idle` text when all rates are 0 B/s.
+- [x] Polled only while popup UI is open; does not wake background worker unnecessarily.
+
+---
+
+### GAP-8 — Safe task removal dialog with optional data cleanup (`clean: 1 | 0`)
+
+**Size:** S · **Area:** popup/ui · **Status:** Rejected (2026-09-05)
+**Files:** N/A
+
+**Decision (2026-09-05):** Rejected by product direction. Task removal should remove only the task from Download Station's queue by default. Adding extra confirmation dialogs and disk-cleanup checkboxes clutters the interface for marginal value. File deletion belongs in QTS File Station or storage management.
+
+---
+
+### GAP-9 — Quick speed throttle popover in header (presets: Unlimited, 1, 2, 5 MB/s)
+
+**Size:** M · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/features/toolbar/`, `src/api/client.ts` (`Config/Get`, `Config/Set`)
+
+When the NAS saturates the local network connection, users need an instant way to throttle download/upload
+speeds without logging into QTS or navigating through deep settings tabs.
+
+**Design rule:** Do NOT use a continuous slider (sliders have poor keyboard UX and massive ranges).
+Use a speedometer icon in the header that opens a compact popover with discrete presets:
+- Unlimited (`0`)
+- 512 KB/s
+- 1 MB/s
+- 2 MB/s
+- 5 MB/s
+- 10 MB/s
+- Custom...
+
+**Acceptance criteria:**
+- [ ] Speedometer icon in header indicates active limit state (subtle accent dot when throttled).
+- [ ] Click opens popover with download and upload limit dropdowns.
+- [ ] Network request (`Config/Set`) is sent only upon explicit selection/apply, preventing API hammering.
+
+---
+
+### GAP-10 — Task queue priority management in `⋮` menu (Top, Up, Down)
+
+**Size:** S · **Area:** popup/ui · **Status:** Done (2026-09-05)
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/popup/features/downloads/downloadsManager.ts`, `src/api/client.ts` (`Task/Priority`), `src/api/schema.d.ts`
+
+QNAP Download Station V4 provides `Task/Priority` (`top`, `up`, `down`). Currently, QuickGet does not
+expose queue reordering, forcing users to open QTS if a download needs to be prioritized immediately.
+
+**Design rule:** Do NOT add row arrows (`↑ ↓`) directly to each card (causes visual clutter).
+Do NOT implement drag-and-drop (API does not support arbitrary indexing; simulating it triggers racing requests).
+Place actions inside the card's `⋮` overflow menu:
+- *Move to top* (`priority: "top"`)
+- *Move up* (`priority: "up"`)
+- *Move down* (`priority: "down"`)
+
+**Acceptance criteria:**
+- [x] Priority actions placed in card's `⋮` menu.
+- [x] Disabled state when task is already at top or bottom, or when task is finished/stopped.
+- [x] Immediate UI refresh on completion.
+
+---
+
+### GAP-11 — Export `.torrent` file back from NAS via `⋮` menu
+
+**Size:** S · **Area:** popup/ui · **Status:** Deferred (2026-09-05)
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/api/client.ts` (`Task/GetTorrentFile`)
+
+QNAP Download Station stores the bencoded `.torrent` file for every task and serves it via
+`V4/Task/GetTorrentFile?hash=...&sid=...`. Users occasionally need to export an active or completed torrent file.
+
+**Decision (2026-09-05):** Deferred as low priority / niche demand to avoid complicating the `⋮` action menu.
+
+---
+
+### RES-5 — Direct file download interception (Shift-click, size threshold, auth/cookie challenges)
+
+**Size:** L · **Area:** background/content · **Status:** Backlog
+**Files:** `src/background/downloads.ts`, `src/content/`, `src/lib/config.ts`, `src/api/client.ts` (`AddUrl`)
+
+Expanding interception from BitTorrent (`.torrent` and `magnet:`) to general file downloads (ISO, ZIP, MKV, DMG, etc.) sent directly to QNAP Download Station via `AddUrl`.
+
+**Competitor precedent:** *Send To QNAP++* offers "Large download interception" based on file size and extension filters.
+
+**Core Research Dimensions & Architectural Questions:**
+1. **Trigger Modes:**
+   - **Shift + Click (Non-intrusive modifier):** User holds Shift while clicking a download link; a content script captures the event, calls `preventDefault()`, and immediately sends the URL to the NAS without downloading locally.
+   - **Size-based threshold:** Uses `chrome.downloads.onCreated` and inspects `item.fileSize` (e.g. `> 500 MB` or `> 1 GB`). Triggers prompt or auto-hand-off.
+   - **Extension-based filtering:** Evaluates URL/filename against configurable extensions (`.iso`, `.mkv`, `.zip`, `.tar.gz`).
+2. **Technical Barriers to Solve:**
+   - *Session Cookies & Private Auth:* Chrome's `downloads.onCreated` exposes the URL, but not session cookies. If a file is downloaded behind a login session (Google Drive, MEGA, private cloud, intranet), QNAP DS `AddUrl` will receive HTTP 401/403 or an HTML login page. Can we detect auth requirements or pass cookies safely?
+   - *Ephemeral & Signed URLs:* AWS S3 and Cloudflare pre-signed URLs often have a 30–60s expiration window. If Download Station queues the task and waits for a free slot, the URL may expire before the transfer starts.
+   - *Transactional Rollback:* Like `.torrent` interception, browser downloads must pause, attempt the NAS hand-off, and cancel locally only if the NAS returns HTTP 200 / `error: 0`; on failure, the browser download must seamlessly resume.
+3. **Investigation Steps:**
+   - Phase 1: Prototype Shift+Click content script capture on public direct links (e.g. Ubuntu ISOs).
+   - Phase 2: Test `AddUrl` against various authenticated services to document exact failure modes.
+   - Phase 3: Evaluate UX affordances (toast with undo/cancel vs explicit confirmation prompt).
+
+---
+
+### GAP-12 — Private tracker client emulation (`peer_mode`: Transmission, Deluge)
+
+**Size:** S · **Area:** settings/api · **Status:** Backlog
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/lib/config.ts`, `src/api/client.ts`
+
+Private trackers (Rutracker, Gazelle, etc.) frequently blacklist Download Station's default `libtorrent`
+peer ID. QNAP Download Station V4 natively includes client emulation in `Config.Set`:
+- `0`: Libtorrent default
+- `1`: Deluge 1.3.12 (`DE`)
+- `2`: Transmission 2.94 (`TR`)
+- `3`: uTorrent Mac 1.8.7 (`UM`)
+
+**Design rule:** Lives strictly in `Settings → Advanced`, never in the popup list.
+
+**Acceptance criteria:**
+- [ ] Dropdown in Settings allowing selection of client emulation mode.
+- [ ] Applied to NAS via `Config/Set` (`bt.peer_mode`).
+
+---
+
+### GAP-13 — Default seeding time and share ratio limits in Settings
+
+**Size:** S · **Area:** settings/api · **Status:** Backlog
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/lib/config.ts`, `src/api/client.ts`
+
+Download Station configures seeding stopping conditions via `bt.share_time` (minutes) and
+`bt.share_ratio` (ratio limit). Currently, users must configure these directly on the NAS.
+
+**Acceptance criteria:**
+- [ ] Settings inputs for default seeding duration (minutes, `-1` for unlimited) and share ratio limit.
+- [ ] Reads current values via `Config/Get` and saves via `Config/Set`.
+
 ---
 
 ## Deliberately not doing
@@ -596,8 +702,13 @@ Recorded so they are not re-opened as "gaps":
   hand the NAS a URL; how many connections it opens is its decision, and no parameter we can
   send changes it. Whether Download Station segments a single HTTP file is unknown and, for
   the extension, immaterial.
-- **RSS / broadcatching, download scheduling, bandwidth limits.** Real Download Station
-  features that live on the NAS and are configured there. Reimplementing a NAS control panel
-  in a browser popup is not what this extension is for.
-- **BT search in the popup.** Download Station's own search is widely reported broken by
-  QNAP's users; wrapping someone else's broken feature inherits their bug reports.
+- **BT search in the popup (`Addon/Search`).** Download Station's own search plugins (TPB, 1337x, KickAss)
+  frequently break due to domain changes; wrapping external discovery into a 380px popup creates
+  clutter, requires heavy search result UI, and poses Web Store review risks. The extension is an
+  efficient remote downloader, not a torrent discovery engine.
+- **RSS automation and channel management (`Rss/*`).** Managing feeds, regex filters, and auto-download
+  rules requires a full desktop console; belongs in the native QTS web interface.
+- **Filehost premium accounts (`Account/*`).** Managing 3rd party hoster credentials is out of scope.
+- **24x7 Schedule grid editor (`schedule0..6`).** Rendering a 168-slot matrix in a popup is an anti-pattern.
+- **Drag-and-Drop queue sorting.** QNAP API only supports relative `top`/`up`/`down` movements; drag-and-drop
+  would hammer the daemon with racing requests. Priority is handled via the `⋮` menu instead.

@@ -3,6 +3,8 @@
  * Structured similar to openapi-typescript output for typed API helpers.
  */
 
+export type TaskPriorityAction = "top" | "up" | "down";
+
 export interface components {
   schemas: {
     BaseResponse: {
@@ -92,6 +94,9 @@ export interface components {
     ModifyTaskRequest: {
       sid: string;
       hash: string;
+    };
+    SetTaskPriorityRequest: components["schemas"]["ModifyTaskRequest"] & {
+      priority: TaskPriorityAction;
     };
     RemoveTaskRequest: components["schemas"]["ModifyTaskRequest"] & {
       clean?: 0 | 1;
@@ -276,6 +281,22 @@ export interface paths {
       };
     };
   };
+  "/downloadstation/V4/Task/Priority": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["SetTaskPriorityRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["BaseResponse"];
+          };
+        };
+      };
+    };
+  };
   "/downloadstation/V4/Task/AddTorrent": {
     post: {
       requestBody: {
@@ -405,6 +426,7 @@ export type operations = {
   getStatus: paths["/downloadstation/V4/Task/Status"]["post"];
   getTaskFiles: paths["/downloadstation/V4/Task/GetFile"]["post"];
   setTaskFile: paths["/downloadstation/V4/Task/SetFile"]["post"];
+  setTaskPriority: paths["/downloadstation/V4/Task/Priority"]["post"];
 };
 
 export type ApiResponse<T extends keyof operations> = operations[T]["responses"][200]["content"]["application/json"];

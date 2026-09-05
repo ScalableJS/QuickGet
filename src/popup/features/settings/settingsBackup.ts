@@ -15,6 +15,7 @@ const PORTABLE_KEYS = [
   "NAStempdir",
   "NASdir",
   "torrentInterceptMode",
+  "autoCaptureMagnets",
   "routingRules",
   "theme",
 ] as const;
@@ -73,6 +74,9 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.torrentInterceptMode === "string" && (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)) {
     result.torrentInterceptMode = source.torrentInterceptMode as Settings["torrentInterceptMode"];
   }
+  if (typeof source.autoCaptureMagnets === "boolean") {
+    result.autoCaptureMagnets = source.autoCaptureMagnets;
+  }
   if (typeof source.theme === "string" && (THEME_MODES as readonly string[]).includes(source.theme)) {
     result.theme = source.theme as Settings["theme"];
   }
@@ -100,6 +104,7 @@ const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
   NAStempdir: "Temp Folder",
   NASdir: "Target Folder",
   torrentInterceptMode: "Interception mode",
+  autoCaptureMagnets: "Magnet capture",
   routingRules: "Routing rules",
   theme: "Theme",
 };
