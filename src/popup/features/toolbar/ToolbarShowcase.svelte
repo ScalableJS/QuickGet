@@ -6,14 +6,22 @@
     hasSelection = false,
     settingsExpanded = false,
     isIdle = false,
-  }: { hasSelection?: boolean; settingsExpanded?: boolean; isIdle?: boolean } = $props();
+    downloadSpeed,
+    uploadSpeed,
+  }: {
+    hasSelection?: boolean;
+    settingsExpanded?: boolean;
+    isIdle?: boolean;
+    downloadSpeed?: string;
+    uploadSpeed?: string;
+  } = $props();
 
   $effect(() => {
     toolbarView.hasSelection = hasSelection;
     toolbarView.settingsExpanded = settingsExpanded;
     toolbarView.isIdle = isIdle;
-    toolbarView.statusDownloadSpeed = isIdle ? "0 B/s" : "12.0 MB/s";
-    toolbarView.statusUploadSpeed = isIdle ? "0 B/s" : "0.8 MB/s";
+    toolbarView.statusDownloadSpeed = isIdle ? "0 B/s" : (downloadSpeed ?? "12.0 MB/s");
+    toolbarView.statusUploadSpeed = isIdle ? "0 B/s" : (uploadSpeed ?? "0.8 MB/s");
   });
 
   const noop = (): void => {};

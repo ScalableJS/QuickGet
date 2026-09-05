@@ -288,8 +288,8 @@
           {#if task.status === "seeding"}
             {#if task.upSpeedBps > 0}
               <span class="text-[var(--color-text-muted)]">•</span>
-              <span class="inline-flex items-center gap-0.5 text-[var(--progress-fill-seeding)] font-500 tabular-nums">
-                <ArrowUp aria-hidden="true" />
+              <span class="inline-flex items-center text-[var(--progress-fill-seeding)] font-500 tabular-nums">
+                <ArrowUp aria-hidden="true" class="flex-none" />
                 <span>{view.uploadSpeedText}</span>
               </span>
             {/if}
@@ -304,8 +304,8 @@
           {:else if !view.isDownloadComplete}
             {#if task.downSpeedBps > 0}
               <span class="text-[var(--color-text-muted)]">•</span>
-              <span class="inline-flex items-center gap-0.5 text-[var(--color-primary-visual)] font-500 tabular-nums">
-                <ArrowDown aria-hidden="true" />
+              <span class="inline-flex items-center text-[var(--color-primary-visual)] font-500 tabular-nums">
+                <ArrowDown aria-hidden="true" class="flex-none" />
                 <span>{view.downloadSpeedText}</span>
               </span>
             {/if}

@@ -1,6 +1,6 @@
 import type { Task } from "@lib/tasks.js";
+import { formatRate } from "../../shared/formatters/index.js";
 
-const SPEED_UNITS = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"] as const;
 const SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,7 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function formatSpeed(bytes: number): string {
-  return scaleUnit(bytes, SPEED_UNITS);
+  return formatRate(bytes);
 }
 
 function formatBytes(bytes: number): string {

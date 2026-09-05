@@ -56,14 +56,16 @@
   {#if !toolbarView.isIdle}
     <span
       id="status-speed"
-      class="status-speed inline-flex items-center gap-1.5 text-11px font-500 px-2 py-0.5 bg-[var(--color-bg-raised)] border border-[var(--color-control-border)] rounded-[var(--radius)] select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3 flex-none"
+      class="status-speed inline-flex items-center gap-2 text-11px font-500 py-0.5 select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3 flex-none"
       aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
       aria-live="off"
     >
-      <ArrowDown aria-hidden="true" class="text-[var(--color-primary-visual)] flex-none" />
-      <span class="text-[var(--color-text)] min-w-[36px] text-right">{toolbarView.statusDownloadSpeed}</span>
-      <ArrowUp aria-hidden="true" class="text-[var(--progress-fill-seeding)] flex-none" />
-      <span class="text-[var(--color-text-secondary)] min-w-[36px] text-right">{toolbarView.statusUploadSpeed}</span>
+      <span class="inline-flex items-center text-[var(--color-primary-visual)]">
+        <ArrowDown aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text)] tabular-nums">{toolbarView.statusDownloadSpeed}</span>
+      </span>
+      <span class="inline-flex items-center text-[var(--progress-fill-seeding)]">
+        <ArrowUp aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text-secondary)] tabular-nums">{toolbarView.statusUploadSpeed}</span>
+      </span>
     </span>
   {/if}
 </div>
