@@ -1,6 +1,5 @@
 <script lang="ts">
-  import ArrowDown from "~icons/lucide/arrow-down";
-  import ArrowUp from "~icons/lucide/arrow-up";
+  import { SpeedTelemetry } from "@ui";
   import { formatRate } from "../../shared/formatters";
 
   const speedTestCases: { label: string; bytes: number }[] = [
@@ -9,27 +8,27 @@
     { label: "2 digits bytes", bytes: 50 },
     { label: "3 digits bytes", bytes: 500 },
     { label: "Boundary 999 B/s", bytes: 999 },
-    { label: "Boundary 1000 B/s (-> 1.0 KB/s)", bytes: 1000 },
-    { label: "Boundary 1023 B/s (-> 1.0 KB/s)", bytes: 1023 },
-    { label: "1.0 KB/s", bytes: 1024 },
-    { label: "1.5 KB/s", bytes: 1536 },
-    { label: "10.0 KB/s", bytes: 10240 },
-    { label: "12.5 KB/s", bytes: 12800 },
-    { label: "100 KB/s (no .0)", bytes: 102400 },
-    { label: "512 KB/s", bytes: 524288 },
-    { label: "1.0 MB/s", bytes: 1048576 },
-    { label: "5.0 MB/s", bytes: 5242880 },
-    { label: "15.2 MB/s", bytes: 15938355 },
-    { label: "Boundary 99.9 MB/s", bytes: 104752742 },
-    { label: "100 MB/s (no .0)", bytes: 104857600 },
-    { label: "125 MB/s", bytes: 131072000 },
-    { label: "500 MB/s", bytes: 524288000 },
-    { label: "1.0 GB/s", bytes: 1073741824 },
-    { label: "1.2 GB/s", bytes: 1288490188 },
+    { label: "Boundary 1000 B/s (-> 1.0KB/s)", bytes: 1000 },
+    { label: "Boundary 1023 B/s (-> 1.0KB/s)", bytes: 1023 },
+    { label: "1.0KB/s", bytes: 1024 },
+    { label: "1.5KB/s", bytes: 1536 },
+    { label: "10.0KB/s", bytes: 10240 },
+    { label: "12.5KB/s", bytes: 12800 },
+    { label: "100KB/s (no .0)", bytes: 102400 },
+    { label: "512KB/s", bytes: 524288 },
+    { label: "1.0MB/s", bytes: 1048576 },
+    { label: "5.0MB/s", bytes: 5242880 },
+    { label: "15.2MB/s", bytes: 15938355 },
+    { label: "Boundary 99.9MB/s", bytes: 104752742 },
+    { label: "100MB/s (no .0)", bytes: 104857600 },
+    { label: "125MB/s", bytes: 131072000 },
+    { label: "500MB/s", bytes: 524288000 },
+    { label: "1.0GB/s", bytes: 1073741824 },
+    { label: "1.2GB/s", bytes: 1288490188 },
   ];
 
   function getDigitCount(formatted: string): number {
-    const valuePart = formatted.split(" ")[0] ?? "";
+    const valuePart = formatted.split(/[A-Za-z]/)[0] ?? "";
     return valuePart.replace(/[^0-9]/g, "").length;
   }
 </script>
@@ -77,22 +76,12 @@
               </span>
             </td>
             <td class="py-1 px-2 whitespace-nowrap">
-              <!-- Toolbar header compact speed rendering: no border, zero gap between arrow and number -->
-              <span class="inline-flex items-center gap-1.5 text-11px font-500 py-0.5 select-none tabular-nums whitespace-nowrap [&>svg]:w-3 [&>svg]:h-3">
-                <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)]">
-                  <ArrowDown aria-hidden="true" class="flex-none" /><span>{formatted}</span>
-                </span>
-                <span class="inline-flex items-center whitespace-nowrap text-[var(--progress-fill-seeding)]">
-                  <ArrowUp aria-hidden="true" class="flex-none" /><span>{formatted}</span>
-                </span>
-              </span>
+              <!-- Toolbar header compact speed rendering via SpeedTelemetry element -->
+              <SpeedTelemetry down={formatted} up={formatted} />
             </td>
             <td class="py-1 px-2 whitespace-nowrap">
-              <!-- DownloadItem card speed rendering: zero gap between arrow and number -->
-              <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)] text-11px font-500 tabular-nums [&>svg]:w-3 [&>svg]:h-3">
-                <ArrowDown aria-hidden="true" class="flex-none" />
-                <span>{formatted}</span>
-              </span>
+              <!-- DownloadItem card speed rendering via SpeedTelemetry element -->
+              <SpeedTelemetry direction="down" value={formatted} class="text-11px font-500" />
             </td>
           </tr>
         {/each}

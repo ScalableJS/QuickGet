@@ -13,6 +13,7 @@ export { default as ProgressBar } from "./ProgressBar.svelte";
 export { default as SearchField } from "./SearchField.svelte";
 export { default as SegmentedControl } from "./SegmentedControl.svelte";
 export { default as Select } from "./Select.svelte";
+export { default as SpeedTelemetry } from "./SpeedTelemetry.svelte";
 export { default as SplitButton } from "./SplitButton.svelte";
 export { default as Tabs } from "./Tabs.svelte";
 export type { ControlSize } from "./controlSize.js";

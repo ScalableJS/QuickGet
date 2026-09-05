@@ -20,8 +20,8 @@
     toolbarView.hasSelection = hasSelection;
     toolbarView.settingsExpanded = settingsExpanded;
     toolbarView.isIdle = isIdle;
-    toolbarView.statusDownloadSpeed = isIdle ? "0 B/s" : (downloadSpeed ?? "12.0 MB/s");
-    toolbarView.statusUploadSpeed = isIdle ? "0 B/s" : (uploadSpeed ?? "0.8 MB/s");
+    toolbarView.statusDownloadSpeed = isIdle ? "0B/s" : (downloadSpeed ?? "12.0MB/s");
+    toolbarView.statusUploadSpeed = isIdle ? "0B/s" : (uploadSpeed ?? "0.8MB/s");
   });
 
   const noop = (): void => {};

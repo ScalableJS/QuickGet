@@ -6,7 +6,7 @@
 
   import type { TaskPriorityAction } from "@api/client.js";
   import { isReorderableStatus, type Task } from "@lib/tasks.js";
-  import { DisclosureButton, ProgressBar } from "@ui";
+  import { DisclosureButton, ProgressBar, SpeedTelemetry } from "@ui";
   import TorrentFiles from "../../features/torrentFiles/TorrentFiles.svelte";
   import { getDownloadItemView } from "./format.js";
   import StatusIcon from "./StatusIcon.svelte";
@@ -288,10 +288,7 @@
           {#if task.status === "seeding"}
             {#if task.upSpeedBps > 0}
               <span class="text-[var(--color-text-muted)]">•</span>
-              <span class="inline-flex items-center text-[var(--progress-fill-seeding)] font-500 tabular-nums">
-                <ArrowUp aria-hidden="true" class="flex-none" />
-                <span>{view.uploadSpeedText}</span>
-              </span>
+              <SpeedTelemetry direction="up" value={view.uploadSpeedText} class="font-500" />
             {/if}
             {#if view.etaText}
               <span class="text-[var(--color-text-muted)]">•</span>
@@ -304,10 +301,7 @@
           {:else if !view.isDownloadComplete}
             {#if task.downSpeedBps > 0}
               <span class="text-[var(--color-text-muted)]">•</span>
-              <span class="inline-flex items-center text-[var(--color-primary-visual)] font-500 tabular-nums">
-                <ArrowDown aria-hidden="true" class="flex-none" />
-                <span>{view.downloadSpeedText}</span>
-              </span>
+              <SpeedTelemetry direction="down" value={view.downloadSpeedText} class="font-500" />
             {/if}
             {#if view.etaText}
               <span class="text-[var(--color-text-muted)]">•</span>

@@ -32,12 +32,12 @@ describe("getDownloadItemView", () => {
     expect(view.isDownloadComplete).toBe(false);
     expect(view.progress).toBe(45);
     expect(view.progressVariant).toBe("active");
-    expect(view.downloadSpeedText).toBe("5.0 MB/s");
-    expect(view.uploadSpeedText).toBe("1.0 MB/s");
+    expect(view.downloadSpeedText).toBe("5.0MB/s");
+    expect(view.uploadSpeedText).toBe("1.0MB/s");
     expect(view.uploadedText).toBe("143.1 MB");
     expect(view.ratioText).toBe("0.17");
     expect(view.etaText).toBe("3m 40s");
-    expect(view.speedLabel).toContain("Download speed 5.0 MB/s");
+    expect(view.speedLabel).toContain("Download speed 5.0MB/s");
     expect(view.speedLabel).toContain("ETA 3m 40s");
   });
 
@@ -60,7 +60,7 @@ describe("getDownloadItemView", () => {
     expect(view.ratioText).toBe("0.25");
     expect(view.speedLabel).toContain("Uploaded");
     expect(view.speedLabel).toContain("ratio 0.25");
-    expect(view.speedLabel).toContain("upload speed 2.0 MB/s");
+    expect(view.speedLabel).toContain("upload speed 2.0MB/s");
     expect(view.speedLabel).toContain("seeding ETA 22m 21s");
   });
 

@@ -8,10 +8,8 @@
   import IconFile from "~icons/lucide/file";
   import IconLink from "~icons/lucide/link";
   import IconTrash from "~icons/lucide/trash-2";
-  import ArrowDown from "~icons/lucide/arrow-down";
-  import ArrowUp from "~icons/lucide/arrow-up";
 
-  import { IconButton, SplitButton } from "@ui";
+  import { IconButton, SpeedTelemetry, SplitButton } from "@ui";
 
   import { toolbarView } from "./toolbarView.svelte.js";
 
@@ -54,19 +52,14 @@
     {/if}
   </IconButton>
   {#if !toolbarView.isIdle}
-    <span
+    <SpeedTelemetry
       id="status-speed"
-      class="status-speed inline-flex items-center gap-2 text-11px font-500 py-0.5 select-none tabular-nums whitespace-nowrap [&>svg]:w-3 [&>svg]:h-3 flex-none"
+      class="status-speed py-0.5"
+      down={toolbarView.statusDownloadSpeed}
+      up={toolbarView.statusUploadSpeed}
       aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
       aria-live="off"
-    >
-      <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)]">
-        <ArrowDown aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text)] tabular-nums">{toolbarView.statusDownloadSpeed}</span>
-      </span>
-      <span class="inline-flex items-center whitespace-nowrap text-[var(--progress-fill-seeding)]">
-        <ArrowUp aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text-secondary)] tabular-nums">{toolbarView.statusUploadSpeed}</span>
-      </span>
-    </span>
+    />
   {/if}
 </div>
 <div class="toolbar-actions flex-none flex items-center justify-end gap-[var(--spacing-xs)]">

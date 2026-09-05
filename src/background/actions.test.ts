@@ -102,8 +102,8 @@ describe("applyBadgeStats", () => {
     const title = calls[calls.length - 1]?.[0].title;
     expect(title).toContain("Active: 1");
     expect(title).toContain("Total: 6");
-    expect(title).toContain("Download: 1.2 MB/s");
-    expect(title).toContain("Upload: 410 KB/s");
+    expect(title).toContain("Download: 1.2MB/s");
+    expect(title).toContain("Upload: 410KB/s");
   });
 
   it("keeps an error badge red while another task is successfully active", async () => {

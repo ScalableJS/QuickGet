@@ -1,5 +1,5 @@
 export function formatRate(bytesPerSecond: number): string {
-  if (!Number.isFinite(bytesPerSecond) || bytesPerSecond <= 0) return "0 B/s";
+  if (!Number.isFinite(bytesPerSecond) || bytesPerSecond <= 0) return "0B/s";
   const units = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"];
   let value = bytesPerSecond;
   let unit = 0;
@@ -19,5 +19,5 @@ export function formatRate(bytesPerSecond: number): string {
   } else if (formatted.endsWith(".0") && parseFloat(formatted) >= 100) {
     formatted = parseFloat(formatted).toFixed(0);
   }
-  return `${formatted} ${units[unit]}`;
+  return `${formatted}${units[unit]}`;
 }
