@@ -20,6 +20,13 @@ non-features are recorded at the bottom so they are not re-litigated.
 | ID | Gap | Area | Size | Status |
 |----|-----|------|------|--------|
 | GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Done |
+| GAP-7 | Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`) | popup/ui | S | Backlog |
+| GAP-8 | Safe task removal dialog with optional data cleanup (`clean: 1 | 0`) | popup/ui | S | Backlog |
+| GAP-9 | Quick speed throttle popover in header (presets: Unlimited, 1, 2, 5 MB/s) | popup/ui | M | Backlog |
+| GAP-10 | Task queue priority management in `⋮` menu (Top, Up, Down) | popup/ui | S | Backlog |
+| GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Backlog |
+| GAP-12 | Private tracker client emulation (`peer_mode`: Transmission, Deluge) | settings/api | S | Backlog |
+| GAP-13 | Default seeding time and share ratio limits in Settings | settings/api | S | Backlog |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -523,6 +530,142 @@ full disk or a misfiled download; the reason to refuse is that we would be handi
 extension the ability to move files anywhere on the NAS. Weigh both before writing code, and
 record the decision either way.
 
+### GAP-7 — Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`)
+
+**Size:** S · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/features/toolbar/Toolbar.svelte`, `src/popup/features/toolbar/toolbarView.ts`, `src/api/client.ts` (`getStatus`)
+
+When opening the popup, users currently see individual task speeds, but have no quick visibility
+into the total bandwidth consumed by the NAS across all active downloads and background uploads.
+
+**Competitor precedent:** Transmission Easy Client and Synology Download Station show combined
+download/upload rates directly in the header (`↓ 12.4 MB/s  ↑ 1.2 MB/s`).
+
+**Acceptance criteria:**
+- [ ] Header displays total `down_rate` and `up_rate` from `Task/Status` while tasks are active.
+- [ ] Displays compact `Idle` text when all rates are 0 B/s.
+- [ ] Polled only while popup UI is open (~1-2s interval); does not wake background worker unnecessarily.
+
+---
+
+### GAP-8 — Safe task removal dialog with optional data cleanup (`clean: 1 | 0`)
+
+**Size:** S · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/popup/features/downloads/downloadsManager.ts`, `src/api/client.ts` (`removeTask`)
+
+Currently, clicking Remove on a task immediately calls `Task/Remove` with `clean: 0` (or default).
+Users cannot delete the downloaded payload from the NAS disk without logging into QTS File Station,
+nor do they have a safety confirmation against accidental single-click deletions.
+
+**Design rule:** Do NOT show two adjacent trash buttons (`🗑` and `🗑🔥`). Use a single removal action
+that opens a clear confirmation dialog:
+```text
+Remove “Ubuntu.iso”?
+☐ Also delete downloaded files from NAS
+[Cancel]                     [Remove]
+```
+
+**Acceptance criteria:**
+- [ ] Single confirmation dialog with checkbox (unchecked by default to prevent accidental data loss).
+- [ ] When checkbox is checked, button text changes to "Delete task and files" and passes `clean: 1`.
+- [ ] When unchecked, passes `clean: 0` (task removed from DS queue, files preserved on disk).
+
+---
+
+### GAP-9 — Quick speed throttle popover in header (presets: Unlimited, 1, 2, 5 MB/s)
+
+**Size:** M · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/features/toolbar/`, `src/api/client.ts` (`Config/Get`, `Config/Set`)
+
+When the NAS saturates the local network connection, users need an instant way to throttle download/upload
+speeds without logging into QTS or navigating through deep settings tabs.
+
+**Design rule:** Do NOT use a continuous slider (sliders have poor keyboard UX and massive ranges).
+Use a speedometer icon in the header that opens a compact popover with discrete presets:
+- Unlimited (`0`)
+- 512 KB/s
+- 1 MB/s
+- 2 MB/s
+- 5 MB/s
+- 10 MB/s
+- Custom...
+
+**Acceptance criteria:**
+- [ ] Speedometer icon in header indicates active limit state (subtle accent dot when throttled).
+- [ ] Click opens popover with download and upload limit dropdowns.
+- [ ] Network request (`Config/Set`) is sent only upon explicit selection/apply, preventing API hammering.
+
+---
+
+### GAP-10 — Task queue priority management in `⋮` menu (Top, Up, Down)
+
+**Size:** S · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/api/client.ts` (`Task/Priority`)
+
+QNAP Download Station V4 provides `Task/Priority` (`top`, `up`, `down`). Currently, QuickGet does not
+expose queue reordering, forcing users to open QTS if a download needs to be prioritized immediately.
+
+**Design rule:** Do NOT add row arrows (`↑ ↓`) directly to each card (causes visual clutter).
+Do NOT implement drag-and-drop (API does not support arbitrary indexing; simulating it triggers racing requests).
+Place actions inside the card's `⋮` overflow menu:
+- *Move to top*
+- *Move up*
+- *Move down*
+
+**Acceptance criteria:**
+- [ ] Priority actions placed in card's `⋮` menu.
+- [ ] Disabled state when task is already at top or bottom.
+- [ ] Immediate UI refresh on completion.
+
+---
+
+### GAP-11 — Export `.torrent` file back from NAS via `⋮` menu
+
+**Size:** S · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/api/client.ts` (`Task/GetTorrentFile`)
+
+QNAP Download Station stores the bencoded `.torrent` file for every task and serves it via
+`V4/Task/GetTorrentFile?hash=...&sid=...`. Users often need to export an active or completed torrent file
+to seed on another device, back up metadata, or share with peers.
+
+**Acceptance criteria:**
+- [ ] "Download .torrent" action available in task's `⋮` overflow menu.
+- [ ] Triggers browser download saving `<task-name>.torrent`.
+
+---
+
+### GAP-12 — Private tracker client emulation (`peer_mode`: Transmission, Deluge)
+
+**Size:** S · **Area:** settings/api · **Status:** Backlog
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/lib/config.ts`, `src/api/client.ts`
+
+Private trackers (Rutracker, Gazelle, etc.) frequently blacklist Download Station's default `libtorrent`
+peer ID. QNAP Download Station V4 natively includes client emulation in `Config.Set`:
+- `0`: Libtorrent default
+- `1`: Deluge 1.3.12 (`DE`)
+- `2`: Transmission 2.94 (`TR`)
+- `3`: uTorrent Mac 1.8.7 (`UM`)
+
+**Design rule:** Lives strictly in `Settings → Advanced`, never in the popup list.
+
+**Acceptance criteria:**
+- [ ] Dropdown in Settings allowing selection of client emulation mode.
+- [ ] Applied to NAS via `Config/Set` (`bt.peer_mode`).
+
+---
+
+### GAP-13 — Default seeding time and share ratio limits in Settings
+
+**Size:** S · **Area:** settings/api · **Status:** Backlog
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/lib/config.ts`, `src/api/client.ts`
+
+Download Station configures seeding stopping conditions via `bt.share_time` (minutes) and
+`bt.share_ratio` (ratio limit). Currently, users must configure these directly on the NAS.
+
+**Acceptance criteria:**
+- [ ] Settings inputs for default seeding duration (minutes, `-1` for unlimited) and share ratio limit.
+- [ ] Reads current values via `Config/Get` and saves via `Config/Set`.
+
 ---
 
 ## Deliberately not doing
@@ -551,8 +694,13 @@ Recorded so they are not re-opened as "gaps":
   hand the NAS a URL; how many connections it opens is its decision, and no parameter we can
   send changes it. Whether Download Station segments a single HTTP file is unknown and, for
   the extension, immaterial.
-- **RSS / broadcatching, download scheduling, bandwidth limits.** Real Download Station
-  features that live on the NAS and are configured there. Reimplementing a NAS control panel
-  in a browser popup is not what this extension is for.
-- **BT search in the popup.** Download Station's own search is widely reported broken by
-  QNAP's users; wrapping someone else's broken feature inherits their bug reports.
+- **BT search in the popup (`Addon/Search`).** Download Station's own search plugins (TPB, 1337x, KickAss)
+  frequently break due to domain changes; wrapping external discovery into a 380px popup creates
+  clutter, requires heavy search result UI, and poses Web Store review risks. The extension is an
+  efficient remote downloader, not a torrent discovery engine.
+- **RSS automation and channel management (`Rss/*`).** Managing feeds, regex filters, and auto-download
+  rules requires a full desktop console; belongs in the native QTS web interface.
+- **Filehost premium accounts (`Account/*`).** Managing 3rd party hoster credentials is out of scope.
+- **24x7 Schedule grid editor (`schedule0..6`).** Rendering a 168-slot matrix in a popup is an anti-pattern.
+- **Drag-and-Drop queue sorting.** QNAP API only supports relative `top`/`up`/`down` movements; drag-and-drop
+  would hammer the daemon with racing requests. Priority is handled via the `⋮` menu instead.
