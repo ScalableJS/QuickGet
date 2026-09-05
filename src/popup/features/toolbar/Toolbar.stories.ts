@@ -23,27 +23,27 @@ export const ActiveTransfer: Story = { args: { hasSelection: false, settingsExpa
 
 /** Low speed bytes transfer (<= 3 digits). */
 export const LowSpeedTransfer: Story = {
-  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "500B/s", uploadSpeed: "45B/s" },
+  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "500 B/s", uploadSpeed: "45 B/s" },
 };
 
-/** High speed transfer (e.g. 125MB/s, 15.2MB/s, strictly <= 3 digits). */
+/** High speed transfer (e.g. 125 MB/s, 15.2 MB/s, strictly <= 3 digits). */
 export const HighSpeedTransfer: Story = {
-  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "125MB/s", uploadSpeed: "15.2MB/s" },
+  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "125 MB/s", uploadSpeed: "15.2 MB/s" },
 };
 
 /** Gigabit connection transfer. */
 export const GigabitSpeedTransfer: Story = {
-  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "1.1GB/s", uploadSpeed: "100MB/s" },
+  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "1.1 GB/s", uploadSpeed: "100 MB/s" },
 };
 
-/** Download only — upload is 0B/s. */
+/** Download only — upload is 0 B/s. */
 export const DownloadOnly: Story = {
-  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "12.5MB/s", uploadSpeed: "0B/s" },
+  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "12.5 MB/s", uploadSpeed: "0 B/s" },
 };
 
-/** Upload only — download is 0B/s. */
+/** Upload only — download is 0 B/s. */
 export const UploadOnly: Story = {
-  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "0B/s", uploadSpeed: "8.4MB/s" },
+  args: { hasSelection: false, settingsExpanded: false, isIdle: false, downloadSpeed: "0 B/s", uploadSpeed: "8.4 MB/s" },
 };
 
 /** A download is selected → start/stop/pause/remove enabled. */

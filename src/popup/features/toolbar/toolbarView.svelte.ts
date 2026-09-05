@@ -11,7 +11,7 @@ export const toolbarView = $state<{
 }>({
   hasSelection: false,
   settingsExpanded: false,
-  statusDownloadSpeed: "0B/s",
-  statusUploadSpeed: "0B/s",
+  statusDownloadSpeed: "0 B/s",
+  statusUploadSpeed: "0 B/s",
   isIdle: true,
 });
