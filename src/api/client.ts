@@ -22,6 +22,7 @@ type StatusRequest = components["schemas"]["StatusRequest"];
 export type DownloadStationStatus = components["schemas"]["DownloadStationStatus"];
 type GetFileRequest = components["schemas"]["GetFileRequest"];
 type SetFileRequest = components["schemas"]["SetFileRequest"];
+type SetTaskPriorityRequest = components["schemas"]["SetTaskPriorityRequest"];
 export type TorrentFile = components["schemas"]["TorrentFile"];
 
 export type QueryTasksResult = {
@@ -390,6 +391,25 @@ export class ApiClient {
     }
 
     throw new Error(`Set file failed: ${getErrorMessage(payload)}`);
+  }
+
+  /**
+   * Set task queue priority (top, up, down) in Download Station.
+   */
+  async setTaskPriority(hash: string, priority: "top" | "up" | "down"): Promise<void> {
+    const body = withEmptySid<SetTaskPriorityRequest>({ hash, priority });
+    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Priority", {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+
+    const payload = data ?? error;
+    if (!isSuccessResponse(payload)) {
+      throw new Error(`Set task priority failed: ${getErrorMessage(payload)}`);
+    }
   }
 
   async listDir(path = ""): Promise<DirEntry[]> {

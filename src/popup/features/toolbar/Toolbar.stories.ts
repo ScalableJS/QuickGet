@@ -15,11 +15,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** Nothing selected → task controls disabled (only Settings + Add are usable). */
-export const Idle: Story = { args: { hasSelection: false, settingsExpanded: false } };
+/** Idle transfer state — no download/upload active. */
+export const Idle: Story = { args: { hasSelection: false, settingsExpanded: false, isIdle: true } };
+
+/** Active transfer speeds — download & upload speeds visible. */
+export const ActiveTransfer: Story = { args: { hasSelection: false, settingsExpanded: false, isIdle: false } };
 
 /** A download is selected → start/stop/pause/remove enabled. */
-export const WithSelection: Story = { args: { hasSelection: true, settingsExpanded: false } };
+export const WithSelection: Story = { args: { hasSelection: true, settingsExpanded: false, isIdle: false } };
 
 /** Settings panel open → settings button pressed/expanded. */
-export const SettingsOpen: Story = { args: { hasSelection: false, settingsExpanded: true } };
+export const SettingsOpen: Story = { args: { hasSelection: false, settingsExpanded: true, isIdle: false } };

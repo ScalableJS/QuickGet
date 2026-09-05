@@ -20,13 +20,14 @@ non-features are recorded at the bottom so they are not re-litigated.
 | ID | Gap | Area | Size | Status |
 |----|-----|------|------|--------|
 | GAP-1 | `magnet:` clicks are never intercepted | background/content | M | Done |
-| GAP-7 | Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`) | popup/ui | S | Backlog |
-| GAP-8 | Safe task removal dialog with optional data cleanup (`clean: 1 | 0`) | popup/ui | S | Backlog |
+| GAP-7 | Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`) | popup/ui | S | Done |
+| GAP-8 | Safe task removal dialog with optional data cleanup (`clean: 1 | 0`) | popup/ui | S | Rejected |
 | GAP-9 | Quick speed throttle popover in header (presets: Unlimited, 1, 2, 5 MB/s) | popup/ui | M | Backlog |
-| GAP-10 | Task queue priority management in `⋮` menu (Top, Up, Down) | popup/ui | S | Backlog |
-| GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Backlog |
+| GAP-10 | Task queue priority management in `⋮` menu (Top, Up, Down) | popup/ui | S | Done |
+| GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Deferred |
 | GAP-12 | Private tracker client emulation (`peer_mode`: Transmission, Deluge) | settings/api | S | Backlog |
 | GAP-13 | Default seeding time and share ratio limits in Settings | settings/api | S | Backlog |
+| RES-5 | Direct file download interception (Shift-click, size threshold, auth/cookie challenges) | background/content | L | Backlog |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -532,8 +533,8 @@ record the decision either way.
 
 ### GAP-7 — Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`)
 
-**Size:** S · **Area:** popup/ui · **Status:** Backlog
-**Files:** `src/popup/features/toolbar/Toolbar.svelte`, `src/popup/features/toolbar/toolbarView.ts`, `src/api/client.ts` (`getStatus`)
+**Size:** S · **Area:** popup/ui · **Status:** Done (2026-09-05)
+**Files:** `src/popup/features/toolbar/Toolbar.svelte`, `src/popup/features/toolbar/toolbarView.svelte.ts`, `src/popup/features/downloads/downloadsUI.ts`, `src/api/client.ts` (`getStatus`)
 
 When opening the popup, users currently see individual task speeds, but have no quick visibility
 into the total bandwidth consumed by the NAS across all active downloads and background uploads.
@@ -542,33 +543,18 @@ into the total bandwidth consumed by the NAS across all active downloads and bac
 download/upload rates directly in the header (`↓ 12.4 MB/s  ↑ 1.2 MB/s`).
 
 **Acceptance criteria:**
-- [ ] Header displays total `down_rate` and `up_rate` from `Task/Status` while tasks are active.
-- [ ] Displays compact `Idle` text when all rates are 0 B/s.
-- [ ] Polled only while popup UI is open (~1-2s interval); does not wake background worker unnecessarily.
+- [x] Header displays total `down_rate` and `up_rate` while tasks are active with semantic arrow colors.
+- [x] Displays compact `Idle` text when all rates are 0 B/s.
+- [x] Polled only while popup UI is open; does not wake background worker unnecessarily.
 
 ---
 
 ### GAP-8 — Safe task removal dialog with optional data cleanup (`clean: 1 | 0`)
 
-**Size:** S · **Area:** popup/ui · **Status:** Backlog
-**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/popup/features/downloads/downloadsManager.ts`, `src/api/client.ts` (`removeTask`)
+**Size:** S · **Area:** popup/ui · **Status:** Rejected (2026-09-05)
+**Files:** N/A
 
-Currently, clicking Remove on a task immediately calls `Task/Remove` with `clean: 0` (or default).
-Users cannot delete the downloaded payload from the NAS disk without logging into QTS File Station,
-nor do they have a safety confirmation against accidental single-click deletions.
-
-**Design rule:** Do NOT show two adjacent trash buttons (`🗑` and `🗑🔥`). Use a single removal action
-that opens a clear confirmation dialog:
-```text
-Remove “Ubuntu.iso”?
-☐ Also delete downloaded files from NAS
-[Cancel]                     [Remove]
-```
-
-**Acceptance criteria:**
-- [ ] Single confirmation dialog with checkbox (unchecked by default to prevent accidental data loss).
-- [ ] When checkbox is checked, button text changes to "Delete task and files" and passes `clean: 1`.
-- [ ] When unchecked, passes `clean: 0` (task removed from DS queue, files preserved on disk).
+**Decision (2026-09-05):** Rejected by product direction. Task removal should remove only the task from Download Station's queue by default. Adding extra confirmation dialogs and disk-cleanup checkboxes clutters the interface for marginal value. File deletion belongs in QTS File Station or storage management.
 
 ---
 
@@ -599,8 +585,8 @@ Use a speedometer icon in the header that opens a compact popover with discrete 
 
 ### GAP-10 — Task queue priority management in `⋮` menu (Top, Up, Down)
 
-**Size:** S · **Area:** popup/ui · **Status:** Backlog
-**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/api/client.ts` (`Task/Priority`)
+**Size:** S · **Area:** popup/ui · **Status:** Done (2026-09-05)
+**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/popup/features/downloads/downloadsManager.ts`, `src/api/client.ts` (`Task/Priority`), `src/api/schema.d.ts`
 
 QNAP Download Station V4 provides `Task/Priority` (`top`, `up`, `down`). Currently, QuickGet does not
 expose queue reordering, forcing users to open QTS if a download needs to be prioritized immediately.
@@ -608,29 +594,51 @@ expose queue reordering, forcing users to open QTS if a download needs to be pri
 **Design rule:** Do NOT add row arrows (`↑ ↓`) directly to each card (causes visual clutter).
 Do NOT implement drag-and-drop (API does not support arbitrary indexing; simulating it triggers racing requests).
 Place actions inside the card's `⋮` overflow menu:
-- *Move to top*
-- *Move up*
-- *Move down*
+- *Move to top* (`priority: "top"`)
+- *Move up* (`priority: "up"`)
+- *Move down* (`priority: "down"`)
 
 **Acceptance criteria:**
-- [ ] Priority actions placed in card's `⋮` menu.
-- [ ] Disabled state when task is already at top or bottom.
-- [ ] Immediate UI refresh on completion.
+- [x] Priority actions placed in card's `⋮` menu.
+- [x] Disabled state when task is already at top or bottom, or when task is finished/stopped.
+- [x] Immediate UI refresh on completion.
 
 ---
 
 ### GAP-11 — Export `.torrent` file back from NAS via `⋮` menu
 
-**Size:** S · **Area:** popup/ui · **Status:** Backlog
+**Size:** S · **Area:** popup/ui · **Status:** Deferred (2026-09-05)
 **Files:** `src/popup/components/downloadItem/DownloadItem.svelte`, `src/api/client.ts` (`Task/GetTorrentFile`)
 
 QNAP Download Station stores the bencoded `.torrent` file for every task and serves it via
-`V4/Task/GetTorrentFile?hash=...&sid=...`. Users often need to export an active or completed torrent file
-to seed on another device, back up metadata, or share with peers.
+`V4/Task/GetTorrentFile?hash=...&sid=...`. Users occasionally need to export an active or completed torrent file.
 
-**Acceptance criteria:**
-- [ ] "Download .torrent" action available in task's `⋮` overflow menu.
-- [ ] Triggers browser download saving `<task-name>.torrent`.
+**Decision (2026-09-05):** Deferred as low priority / niche demand to avoid complicating the `⋮` action menu.
+
+---
+
+### RES-5 — Direct file download interception (Shift-click, size threshold, auth/cookie challenges)
+
+**Size:** L · **Area:** background/content · **Status:** Backlog
+**Files:** `src/background/downloads.ts`, `src/content/`, `src/lib/config.ts`, `src/api/client.ts` (`AddUrl`)
+
+Expanding interception from BitTorrent (`.torrent` and `magnet:`) to general file downloads (ISO, ZIP, MKV, DMG, etc.) sent directly to QNAP Download Station via `AddUrl`.
+
+**Competitor precedent:** *Send To QNAP++* offers "Large download interception" based on file size and extension filters.
+
+**Core Research Dimensions & Architectural Questions:**
+1. **Trigger Modes:**
+   - **Shift + Click (Non-intrusive modifier):** User holds Shift while clicking a download link; a content script captures the event, calls `preventDefault()`, and immediately sends the URL to the NAS without downloading locally.
+   - **Size-based threshold:** Uses `chrome.downloads.onCreated` and inspects `item.fileSize` (e.g. `> 500 MB` or `> 1 GB`). Triggers prompt or auto-hand-off.
+   - **Extension-based filtering:** Evaluates URL/filename against configurable extensions (`.iso`, `.mkv`, `.zip`, `.tar.gz`).
+2. **Technical Barriers to Solve:**
+   - *Session Cookies & Private Auth:* Chrome's `downloads.onCreated` exposes the URL, but not session cookies. If a file is downloaded behind a login session (Google Drive, MEGA, private cloud, intranet), QNAP DS `AddUrl` will receive HTTP 401/403 or an HTML login page. Can we detect auth requirements or pass cookies safely?
+   - *Ephemeral & Signed URLs:* AWS S3 and Cloudflare pre-signed URLs often have a 30–60s expiration window. If Download Station queues the task and waits for a free slot, the URL may expire before the transfer starts.
+   - *Transactional Rollback:* Like `.torrent` interception, browser downloads must pause, attempt the NAS hand-off, and cancel locally only if the NAS returns HTTP 200 / `error: 0`; on failure, the browser download must seamlessly resume.
+3. **Investigation Steps:**
+   - Phase 1: Prototype Shift+Click content script capture on public direct links (e.g. Ubuntu ISOs).
+   - Phase 2: Test `AddUrl` against various authenticated services to document exact failure modes.
+   - Phase 3: Evaluate UX affordances (toast with undo/cancel vs explicit confirmation prompt).
 
 ---
 

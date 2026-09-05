@@ -176,6 +176,40 @@ describe("ApiClient", () => {
     expect(taskAndFiles.get("clean")).toBe("1");
   });
 
+  it("updates task queue priority (top, up, down)", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    const bodies: string[] = [];
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Priority", async ({ request }) => {
+        bodies.push(await request.text());
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await client.setTaskPriority("task-123", "top");
+    await client.setTaskPriority("task-456", "up");
+    await client.setTaskPriority("task-789", "down");
+
+    expect(bodies).toHaveLength(3);
+    const first = new URLSearchParams(bodies[0]);
+    expect(first.get("hash")).toBe("task-123");
+    expect(first.get("priority")).toBe("top");
+
+    const second = new URLSearchParams(bodies[1]);
+    expect(second.get("hash")).toBe("task-456");
+    expect(second.get("priority")).toBe("up");
+
+    const third = new URLSearchParams(bodies[2]);
+    expect(third.get("hash")).toBe("task-789");
+    expect(third.get("priority")).toBe("down");
+  });
+
   it("adds multiple URLs as separate tasks with temp/move and per-URL results", async () => {
     const settings = createTestSettings();
     const client = createApiClient({ settings, fetchFn: fetch });

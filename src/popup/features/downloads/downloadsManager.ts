@@ -86,3 +86,8 @@ export async function setTorrentFiles(
   const client = await getApiClient();
   return client.setTaskFiles(hash, selections);
 }
+
+export async function setTaskPriority(hash: string, priority: "top" | "up" | "down"): Promise<void> {
+  const client = await getApiClient();
+  await client.setTaskPriority(hash, priority);
+}

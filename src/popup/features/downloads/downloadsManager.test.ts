@@ -8,7 +8,7 @@ const sharedApiMock = vi.hoisted(() => ({
 vi.mock("../../shared/api", () => sharedApiMock);
 
 import type { Task } from "@lib/tasks.js";
-import { abortListDownloads, listDownloads, pauseTorrent } from "./downloadsManager.js";
+import { abortListDownloads, listDownloads, pauseTorrent, setTaskPriority } from "./downloadsManager.js";
 import { getSnapshot, updateSnapshot } from "./downloadsState.js";
 
 async function flushMicrotasks(): Promise<void> {
@@ -134,5 +134,14 @@ describe("downloadsManager", () => {
 
     await expect(pauseTorrent("hash-123")).rejects.toThrow(/network down/);
     expect(stopTask).not.toHaveBeenCalled();
+  });
+
+  it("delegates setTaskPriority to api client", async () => {
+    const clientSetPriority = vi.fn().mockResolvedValue(undefined);
+    sharedApiMock.getApiClient.mockResolvedValue({ setTaskPriority: clientSetPriority } as never);
+
+    await setTaskPriority("hash-top", "top");
+
+    expect(clientSetPriority).toHaveBeenCalledWith("hash-top", "top");
   });
 });

@@ -5,13 +5,15 @@
   let {
     hasSelection = false,
     settingsExpanded = false,
-  }: { hasSelection?: boolean; settingsExpanded?: boolean } = $props();
+    isIdle = false,
+  }: { hasSelection?: boolean; settingsExpanded?: boolean; isIdle?: boolean } = $props();
 
   $effect(() => {
     toolbarView.hasSelection = hasSelection;
     toolbarView.settingsExpanded = settingsExpanded;
-    toolbarView.statusDownloadSpeed = "12.0 MB/s";
-    toolbarView.statusUploadSpeed = "0.8 MB/s";
+    toolbarView.isIdle = isIdle;
+    toolbarView.statusDownloadSpeed = isIdle ? "0 B/s" : "12.0 MB/s";
+    toolbarView.statusUploadSpeed = isIdle ? "0 B/s" : "0.8 MB/s";
   });
 
   const noop = (): void => {};

@@ -93,6 +93,9 @@ export interface components {
       sid: string;
       hash: string;
     };
+    SetTaskPriorityRequest: components["schemas"]["ModifyTaskRequest"] & {
+      priority: "top" | "up" | "down";
+    };
     RemoveTaskRequest: components["schemas"]["ModifyTaskRequest"] & {
       clean?: 0 | 1;
     };
@@ -276,6 +279,22 @@ export interface paths {
       };
     };
   };
+  "/downloadstation/V4/Task/Priority": {
+    post: {
+      requestBody: {
+        content: {
+          "application/x-www-form-urlencoded": components["schemas"]["SetTaskPriorityRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["BaseResponse"];
+          };
+        };
+      };
+    };
+  };
   "/downloadstation/V4/Task/AddTorrent": {
     post: {
       requestBody: {
@@ -405,6 +424,7 @@ export type operations = {
   getStatus: paths["/downloadstation/V4/Task/Status"]["post"];
   getTaskFiles: paths["/downloadstation/V4/Task/GetFile"]["post"];
   setTaskFile: paths["/downloadstation/V4/Task/SetFile"]["post"];
+  setTaskPriority: paths["/downloadstation/V4/Task/Priority"]["post"];
 };
 
 export type ApiResponse<T extends keyof operations> = operations[T]["responses"][200]["content"]["application/json"];

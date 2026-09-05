@@ -21,6 +21,7 @@ function updateStatusSpeed(tasks: Task[]): void {
   const totalUp = tasks.reduce((sum, task) => sum + (task.upSpeedBps || 0), 0);
   toolbarView.statusDownloadSpeed = formatRate(totalDown);
   toolbarView.statusUploadSpeed = formatRate(totalUp);
+  toolbarView.isIdle = totalDown === 0 && totalUp === 0;
 }
 
 function ensureElements(): void {

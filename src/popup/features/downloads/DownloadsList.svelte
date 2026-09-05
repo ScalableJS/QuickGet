@@ -2,6 +2,7 @@
   import Search from "~icons/lucide/search";
   import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
+  import { listDownloads, setTaskPriority } from "./downloadsManager.js";
   import { filterDownloads, isInProgress, type DownloadFilter } from "./downloadFilters.js";
   import type { downloadsView } from "./downloadsView.svelte.js";
 
@@ -16,6 +17,14 @@
   let filter = $state<DownloadFilter>("in-progress");
   let searchOpen = $state(false);
   let query = $state("");
+
+  async function handlePriority(hash: string, priority: "top" | "up" | "down"): Promise<void> {
+    await setTaskPriority(hash, priority);
+    const result = await listDownloads();
+    if (!result.skipped) {
+      view.tasks = result.tasks;
+    }
+  }
 
   const inProgressCount = $derived(view.tasks.filter((task) => isInProgress(task.status)).length);
   const visibleTasks = $derived(filterDownloads(view.tasks, filter, query));
@@ -68,7 +77,13 @@
     <EmptyState>{emptyMessage}</EmptyState>
   {:else}
     {#each visibleTasks as task (task.id)}
-      <DownloadItem {task} selectedHash={view.selectedHash} removing={view.removingHash === (task.hash ?? task.id)} {onToggle} />
+      <DownloadItem
+        {task}
+        selectedHash={view.selectedHash}
+        removing={view.removingHash === (task.hash ?? task.id)}
+        {onToggle}
+        onPriority={handlePriority}
+      />
     {/each}
   {/if}
 </div>

@@ -1,6 +1,8 @@
 <script lang="ts">
   import ArrowDown from "~icons/lucide/arrow-down";
   import ArrowUp from "~icons/lucide/arrow-up";
+  import ArrowUpToLine from "~icons/lucide/arrow-up-to-line";
+  import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
 
   import type { Task } from "@lib/tasks.js";
   import { DisclosureButton, ProgressBar } from "@ui";
@@ -13,11 +15,13 @@
     selectedHash = null,
     removing = false,
     onToggle,
+    onPriority,
   }: {
     task: Task;
     selectedHash?: string | null;
     removing?: boolean;
     onToggle: (hash: string) => void;
+    onPriority?: (hash: string, priority: "top" | "up" | "down") => Promise<void> | void;
   } = $props();
 
   const view = $derived(getDownloadItemView(task));
@@ -37,6 +41,29 @@
     if (selected) el?.focus({ preventScroll: false });
   });
 
+  // Priority reordering applies to active and queued downloads in the NAS queue.
+  const canReorder = $derived(
+    task.status === "downloading" ||
+      task.status === "downloadingMetadata" ||
+      task.status === "queued" ||
+      task.status === "queuedChecking" ||
+      task.status === "checking" ||
+      task.status === "allocating",
+  );
+  let menuOpen = $state(false);
+  let isUpdatingPriority = $state(false);
+
+  async function handleSetPriority(priority: "top" | "up" | "down"): Promise<void> {
+    menuOpen = false;
+    if (!onPriority || isUpdatingPriority) return;
+    try {
+      isUpdatingPriority = true;
+      await onPriority(view.hash, priority);
+    } finally {
+      isUpdatingPriority = false;
+    }
+  }
+
   function toggle(): void {
     if (removing) return;
     onToggle(view.hash);
@@ -48,6 +75,14 @@
     toggle();
   }
 </script>
+
+<svelte:window
+  onclick={(e) => {
+    if (menuOpen && e.target instanceof Element && !e.target.closest(".priority-menu-container")) {
+      menuOpen = false;
+    }
+  }}
+/>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 <div
@@ -84,14 +119,78 @@
       >
         {task.name}
       </p>
-      {#if view.swarmText}
-        <span
-          class="download-swarm text-11px text-[var(--color-text-secondary)] tabular-nums flex-none"
-          title="Seeds & Peers in swarm"
-        >
-          {view.swarmText}
-        </span>
-      {/if}
+      <div class="flex items-center gap-1.5 flex-none">
+        {#if view.swarmText}
+          <span
+            class="download-swarm text-11px text-[var(--color-text-secondary)] tabular-nums"
+            title="Seeds & Peers in swarm"
+          >
+            {view.swarmText}
+          </span>
+        {/if}
+        {#if canReorder && onPriority}
+          <div class="priority-menu-container relative inline-flex items-center">
+            <button
+              type="button"
+              class="priority-menu-btn inline-flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)] transition-colors"
+              aria-label="Queue priority options"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              title="Queue priority"
+              disabled={isUpdatingPriority}
+              onclick={(e) => {
+                e.stopPropagation();
+                menuOpen = !menuOpen;
+              }}
+            >
+              <EllipsisVertical class="w-3.5 h-3.5" />
+            </button>
+            {#if menuOpen}
+              <div
+                class="priority-menu absolute right-0 top-full mt-1 z-30 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] py-1 min-w-[130px] flex flex-col text-12px"
+                role="menu"
+                tabindex="-1"
+                aria-label="Queue priority options"
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => {
+                  if (e.key === "Escape") {
+                    e.stopPropagation();
+                    menuOpen = false;
+                  }
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  onclick={() => handleSetPriority("top")}
+                >
+                  <ArrowUpToLine class="w-3.5 h-3.5 text-[var(--color-primary-visual)] flex-none" />
+                  <span>Move to top</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  onclick={() => handleSetPriority("up")}
+                >
+                  <ArrowUp class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />
+                  <span>Move up</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--color-bg-hover)] text-[var(--color-text)] text-left cursor-pointer transition-colors"
+                  onclick={() => handleSetPriority("down")}
+                >
+                  <ArrowDown class="w-3.5 h-3.5 text-[var(--color-text-secondary)] flex-none" />
+                  <span>Move down</span>
+                </button>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div class="progress-container flex items-center gap-[var(--spacing-sm)] w-full">
