@@ -15,13 +15,13 @@
     { label: "1.5 KB/s", bytes: 1536 },
     { label: "10.0 KB/s", bytes: 10240 },
     { label: "12.5 KB/s", bytes: 12800 },
-    { label: "100 KB/s (3 digits, no .0)", bytes: 102400 },
+    { label: "100 KB/s (no .0)", bytes: 102400 },
     { label: "512 KB/s", bytes: 524288 },
     { label: "1.0 MB/s", bytes: 1048576 },
     { label: "5.0 MB/s", bytes: 5242880 },
     { label: "15.2 MB/s", bytes: 15938355 },
     { label: "Boundary 99.9 MB/s", bytes: 104752742 },
-    { label: "100 MB/s (3 digits, no .0)", bytes: 104857600 },
+    { label: "100 MB/s (no .0)", bytes: 104857600 },
     { label: "125 MB/s", bytes: 131072000 },
     { label: "500 MB/s", bytes: 524288000 },
     { label: "1.0 GB/s", bytes: 1073741824 },
@@ -34,23 +34,32 @@
   }
 </script>
 
-<div class="p-4 bg-[var(--color-bg)] text-[var(--color-text)] font-sans max-w-[650px] space-y-4">
+<svelte:head>
+  <style>
+    body {
+      width: 100% !important;
+      max-width: 100% !important;
+      max-height: none !important;
+    }
+  </style>
+</svelte:head>
+
+<div class="p-4 bg-[var(--color-bg)] text-[var(--color-text)] font-sans space-y-3 max-w-[800px]">
   <div>
-    <h2 class="text-16px font-600 m-0 mb-1">Speed Telemetry & Format Matrix</h2>
-    <p class="text-12px text-[var(--color-text-secondary)] m-0">
-      Demonstrates zero-gap icon rendering, no borders, and strict cap to at most 3 digits across all scales.
+    <h2 class="text-14px font-600 m-0 mb-1">Speed Telemetry & Format Matrix</h2>
+    <p class="text-11px text-[var(--color-text-secondary)] m-0 leading-tight">
+      Zero-gap icons, borderless header, and strictly ≤ 3 digits across all scales.
     </p>
   </div>
 
-  <div class="border border-[var(--color-control-border)] rounded-[var(--radius)] overflow-hidden">
-    <table class="w-full text-12px border-collapse">
+  <div class="border border-[var(--color-control-border)] rounded-[var(--radius)] overflow-x-auto">
+    <table class="w-full text-11px border-collapse">
       <thead>
         <tr class="bg-[var(--color-bg-alt)] text-left border-b border-[var(--color-control-border)]">
-          <th class="p-2 font-600">Case</th>
-          <th class="p-2 font-600">Formatted</th>
-          <th class="p-2 font-600">Digits</th>
-          <th class="p-2 font-600">Toolbar Header Style</th>
-          <th class="p-2 font-600">Card Item Style</th>
+          <th class="py-1.5 px-2 font-600 whitespace-nowrap">Format & Case</th>
+          <th class="py-1.5 px-1.5 font-600 whitespace-nowrap text-center">Digits</th>
+          <th class="py-1.5 px-2 font-600 whitespace-nowrap">Header Preview</th>
+          <th class="py-1.5 px-2 font-600 whitespace-nowrap">Card</th>
         </tr>
       </thead>
       <tbody>
@@ -58,27 +67,29 @@
           {@const formatted = formatRate(item.bytes)}
           {@const digits = getDigitCount(formatted)}
           <tr class="border-b border-[var(--color-control-border)] last:border-0 hover:bg-[var(--bg-hover)]">
-            <td class="p-2 text-[var(--color-text-secondary)]">{item.label}</td>
-            <td class="p-2 font-mono font-600 tabular-nums">{formatted}</td>
-            <td class="p-2">
-              <span class={["px-1.5 py-0.5 rounded text-10px font-600", digits <= 3 ? "bg-[var(--status-success-bg)] text-[var(--color-success)]" : "bg-[var(--status-error-bg)] text-[var(--color-error)]"]}>
-                {digits} {digits === 1 ? "digit" : "digits"}
+            <td class="py-1 px-2 whitespace-nowrap">
+              <span class="font-mono font-600 text-11px tabular-nums">{formatted}</span>
+              <span class="text-10px text-[var(--color-text-muted)] block leading-tight">{item.label}</span>
+            </td>
+            <td class="py-1 px-1.5 text-center whitespace-nowrap">
+              <span class={["px-1 py-0.5 rounded text-9px font-600", digits <= 3 ? "bg-[var(--status-success-bg)] text-[var(--color-success)]" : "bg-[var(--status-error-bg)] text-[var(--color-error)]"]}>
+                {digits}d
               </span>
             </td>
-            <td class="p-2">
+            <td class="py-1 px-2 whitespace-nowrap">
               <!-- Toolbar header compact speed rendering: no border, zero gap between arrow and number -->
-              <span class="inline-flex items-center gap-2 text-11px font-500 py-0.5 select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3">
-                <span class="inline-flex items-center text-[var(--color-primary-visual)]">
+              <span class="inline-flex items-center gap-1.5 text-11px font-500 py-0.5 select-none tabular-nums whitespace-nowrap [&>svg]:w-3 [&>svg]:h-3">
+                <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)]">
                   <ArrowDown aria-hidden="true" class="flex-none" /><span>{formatted}</span>
                 </span>
-                <span class="inline-flex items-center text-[var(--progress-fill-seeding)]">
+                <span class="inline-flex items-center whitespace-nowrap text-[var(--progress-fill-seeding)]">
                   <ArrowUp aria-hidden="true" class="flex-none" /><span>{formatted}</span>
                 </span>
               </span>
             </td>
-            <td class="p-2">
+            <td class="py-1 px-2 whitespace-nowrap">
               <!-- DownloadItem card speed rendering: zero gap between arrow and number -->
-              <span class="inline-flex items-center text-[var(--color-primary-visual)] text-12px font-500 tabular-nums [&>svg]:w-3 [&>svg]:h-3">
+              <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)] text-11px font-500 tabular-nums [&>svg]:w-3 [&>svg]:h-3">
                 <ArrowDown aria-hidden="true" class="flex-none" />
                 <span>{formatted}</span>
               </span>

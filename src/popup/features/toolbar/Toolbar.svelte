@@ -56,14 +56,14 @@
   {#if !toolbarView.isIdle}
     <span
       id="status-speed"
-      class="status-speed inline-flex items-center gap-2 text-11px font-500 py-0.5 select-none tabular-nums [&>svg]:w-3 [&>svg]:h-3 flex-none"
+      class="status-speed inline-flex items-center gap-2 text-11px font-500 py-0.5 select-none tabular-nums whitespace-nowrap [&>svg]:w-3 [&>svg]:h-3 flex-none"
       aria-label={`Download ${toolbarView.statusDownloadSpeed}; upload ${toolbarView.statusUploadSpeed}`}
       aria-live="off"
     >
-      <span class="inline-flex items-center text-[var(--color-primary-visual)]">
+      <span class="inline-flex items-center whitespace-nowrap text-[var(--color-primary-visual)]">
         <ArrowDown aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text)] tabular-nums">{toolbarView.statusDownloadSpeed}</span>
       </span>
-      <span class="inline-flex items-center text-[var(--progress-fill-seeding)]">
+      <span class="inline-flex items-center whitespace-nowrap text-[var(--progress-fill-seeding)]">
         <ArrowUp aria-hidden="true" class="flex-none" /><span class="text-[var(--color-text-secondary)] tabular-nums">{toolbarView.statusUploadSpeed}</span>
       </span>
     </span>
