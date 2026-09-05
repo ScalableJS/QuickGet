@@ -21,15 +21,11 @@ Open defects are tracked separately in `bugs-kanban.md`.
 - Download interception stabilized and made transactional; strict no-local-file mode.
 - Magnet link auto-capture (`autoCaptureMagnets`) shipped in v2.2.0 with synchronous capture cancellation and in-page toast feedback.
 - Seeding quota progress and dedicated emerald theme shipped in v2.2.0.
-
-## Phase 1 — Rich Status & Diagnostics (Quick Wins)
-
-High-value, zero-clutter enhancements to task clarity based on live QNAP API capabilities:
-
-- **Downloaded payload size (`done / size`):** Display actual downloaded volume (e.g. `17.8 / 24.3 GB`) rather than an opaque percentage (BUG-36).
-- **Human-readable error taxonomy:** Translate QNAP integer failure codes (e.g. 20488 disk full, 4096 folder missing, 8196 duplicate) into friendly, actionable explanations (BUG-37).
-- **Conditional swarm health (`seeds / peers`):** Render `S 12 · P 4` compactly for active BitTorrent tasks, clarifying stalled downloads (BUG-35).
-- **Global NAS transfer rates in header:** Real-time combined `↓ 24.8 MB/s  ↑ 3.1 MB/s` in the popup header via `Task/Status` (GAP-7).
+- **Downloaded payload size (`done / size`):** Shipped in v2.2.1 (BUG-36).
+- **Human-readable error taxonomy:** Shipped in v2.2.1 (BUG-37).
+- **Conditional swarm health (`seeds / peers`):** Render `S15 P5` compactly, shipped in v2.2.1 (BUG-35).
+- **Global NAS transfer rates in header:** Real-time combined `↓ 12.0 MB/s  ↑ 0.8 MB/s` with zero-gap arrows, $\le 3$ digits cap, and `KB/s` base unit, shipped in v2.2.1 (GAP-7).
+- **Task queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) via card contextual menu with Skeleton Wintry styling and optimistic updates, shipped in v2.2.1 (GAP-10).
 
 ## Phase 2 — High Value Task Controls
 
@@ -37,7 +33,6 @@ Contextual task actions exposed through clean interactions without bloating the 
 
 - **Safe task removal dialog:** Single trash action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`) (GAP-8).
 - **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
-- **Task queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) via the card's `⋮` overflow menu (`Task/Priority`) (GAP-10).
 - **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11).
 
 ## Phase 3 — Advanced Settings & Diagnostics
