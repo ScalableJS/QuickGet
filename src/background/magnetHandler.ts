@@ -13,9 +13,7 @@ import { ensureMonitoring } from "./alarms.js";
 const recentMagnets = new Map<string, number>();
 const DEDUP_TTL_MS = 5_000;
 
-export async function handleMagnetAdd(
-  uri: string,
-): Promise<{ ok: boolean; error?: string; deduped?: boolean }> {
+export async function handleMagnetAdd(uri: string): Promise<{ ok: boolean; error?: string; deduped?: boolean }> {
   const now = Date.now();
   const lastSeen = recentMagnets.get(uri);
   if (lastSeen && now - lastSeen < DEDUP_TTL_MS) {

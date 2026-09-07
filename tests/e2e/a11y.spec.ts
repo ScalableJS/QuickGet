@@ -233,9 +233,7 @@ test.describe("accessibility", () => {
 
       await intercept.uncheck();
       await expect(suppressLocalFile).toBeDisabled();
-      await expect(suppressLocalFile).toHaveAccessibleDescription(
-        "Requires .torrent interception.",
-      );
+      await expect(suppressLocalFile).toHaveAccessibleDescription("Requires .torrent interception.");
       await session.page.click("#save-btn");
 
       // What the background reads is the stored mode, not the checkbox.

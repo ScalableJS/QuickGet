@@ -8,9 +8,8 @@ import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
 import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
-
-import { ensureMonitoring } from "./alarms.js";
 import { markConfigurationProblem } from "./actions.js";
+import { ensureMonitoring } from "./alarms.js";
 import { notifyDirect } from "./notifier.js";
 
 /**

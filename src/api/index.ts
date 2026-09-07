@@ -1,6 +1,5 @@
-import createClient, { type Middleware } from "openapi-fetch";
-
 import type { Settings } from "@lib/config.js";
+import createClient, { type Middleware } from "openapi-fetch";
 
 import type { paths } from "./type.js";
 

@@ -60,7 +60,9 @@ describe("resolveDestination", () => {
 
   it("matches an exact domain", () => {
     const rules = [rule({ domain: "releases.example.com", destination: "Site" })];
-    expect(resolveDestination({ url: "https://releases.example.com/f.zip", kind: "url" }, rules, FALLBACK)).toBe("Site");
+    expect(resolveDestination({ url: "https://releases.example.com/f.zip", kind: "url" }, rules, FALLBACK)).toBe(
+      "Site",
+    );
   });
 
   it("matches a wildcard domain against subdomains and the apex", () => {

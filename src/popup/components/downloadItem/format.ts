@@ -106,10 +106,7 @@ function formatSwarm(task: Task): string {
   if (task.status === "downloading" || task.status === "downloadingMetadata") {
     const seeds = task.seeds?.connected;
     const peers = task.peers?.connected;
-    const parts = [
-      seeds !== undefined ? `S${seeds}` : "",
-      peers !== undefined ? `P${peers}` : "",
-    ].filter(Boolean);
+    const parts = [seeds !== undefined ? `S${seeds}` : "", peers !== undefined ? `P${peers}` : ""].filter(Boolean);
     return parts.join(" ");
   }
   return "";

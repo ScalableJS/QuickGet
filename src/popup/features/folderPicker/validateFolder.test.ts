@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-
 import type { DirEntry } from "@api/client.js";
+import { describe, expect, it, vi } from "vitest";
 
 import { type FolderLister, normalizeFolderPath, validateFolder } from "./validateFolder.js";
 

@@ -3,16 +3,15 @@
  * Orchestrates background tasks and event handlers
  */
 
-import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
-
-import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
-import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
-import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
-import { initDownloadInterception } from "./downloads.js";
-import { createContextMenus, handleContextMenuClick } from "./menus.js";
-import { handleMagnetAdd } from "./magnetHandler.js";
-import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./monitorMessage.js";
 import { getErrorMessage } from "@lib/errors.js";
+import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
+import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
+import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
+import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
+import { initDownloadInterception } from "./downloads.js";
+import { handleMagnetAdd } from "./magnetHandler.js";
+import { createContextMenus, handleContextMenuClick } from "./menus.js";
+import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./monitorMessage.js";
 
 declare const self: ServiceWorkerGlobalScope;
 

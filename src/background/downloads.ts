@@ -15,8 +15,8 @@
  *     user re-clicks. A successful hand-off is removed from Chrome's download history.
  */
 
-import type { Settings } from "@lib/config.js";
 import { performLogin } from "@api/index.js";
+import type { Settings } from "@lib/config.js";
 import { findConfigProblem } from "@lib/configHealth.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { classifyUrl, resolveDestination } from "@lib/routingRules.js";

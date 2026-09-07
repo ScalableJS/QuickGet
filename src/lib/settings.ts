@@ -76,7 +76,6 @@ export async function loadSettings(): Promise<Settings> {
           return fallback;
         };
 
-
         /**
          * The NAS password is stored, full stop, and the service worker can always read it.
          * There is no locked state: a download starts when the user clicks a link, not when
@@ -102,15 +101,8 @@ export async function loadSettings(): Promise<Settings> {
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
           torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
-          suppressLocalTorrentFile: booleanWithDefault(
-            "suppressLocalTorrentFile",
-            DEFAULTS.suppressLocalTorrentFile,
-          ),
-          autoCaptureMagnets: booleanWithDefault(
-            "autoCaptureMagnets",
-            DEFAULTS.autoCaptureMagnets,
-            false,
-          ),
+          suppressLocalTorrentFile: booleanWithDefault("suppressLocalTorrentFile", DEFAULTS.suppressLocalTorrentFile),
+          autoCaptureMagnets: booleanWithDefault("autoCaptureMagnets", DEFAULTS.autoCaptureMagnets, false),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };
@@ -156,9 +148,8 @@ export async function migrateSettings(previousVersion?: string): Promise<Setting
   await chrome.storage.local.remove("qg:activity");
 
   const stored = await new Promise<Record<string, unknown>>((resolve) => {
-    chrome.storage.local.get(
-      ["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"],
-      (items) => resolve(items),
+    chrome.storage.local.get(["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"], (items) =>
+      resolve(items),
     );
   });
 

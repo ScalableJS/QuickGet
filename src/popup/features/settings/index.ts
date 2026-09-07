@@ -1,6 +1,5 @@
-import { mount } from "svelte";
-
 import { getSettingsLockState } from "@lib/settingsLock.js";
+import { mount } from "svelte";
 
 import UnlockPanel from "../unlock/Unlock.svelte";
 

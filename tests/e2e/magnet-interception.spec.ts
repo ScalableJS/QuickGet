@@ -64,7 +64,9 @@ test.describe("magnet link interception (GAP-1)", () => {
       expect(decodeURIComponent(addUrlRequests[0].requestBody ?? "")).toContain("Ubuntu+ISO");
 
       // Verify page was prevented from default action
-      const lastClick = await page.evaluate(() => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick);
+      const lastClick = await page.evaluate(
+        () => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick,
+      );
       expect(lastClick?.defaultPrevented).toBe(true);
     } finally {
       await session.close();
@@ -125,7 +127,9 @@ test.describe("magnet link interception (GAP-1)", () => {
         .filter((req) => req.path === "/downloadstation/V4/Task/AddUrl");
       expect(addUrlRequests.length).toBe(0);
 
-      const lastClick = await page.evaluate(() => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick);
+      const lastClick = await page.evaluate(
+        () => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick,
+      );
       expect(lastClick?.defaultPrevented).toBe(false);
     } finally {
       await session.close();
@@ -154,9 +158,9 @@ test.describe("magnet link interception (GAP-1)", () => {
       // First click: disabled -> not intercepted by extension
       await page.click("#magnet-simple");
       await page.waitForTimeout(300);
-      expect(
-        mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length,
-      ).toBe(0);
+      expect(mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length).toBe(
+        0,
+      );
 
       // Toggle setting to true live via storage
       await seedSettings(session.worker, { autoCaptureMagnets: true });
@@ -166,10 +170,7 @@ test.describe("magnet link interception (GAP-1)", () => {
       await page.click("#magnet-simple");
       await expect
         .poll(
-          () =>
-            mockNas.requestLog
-              .toJSON()
-              .filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length,
+          () => mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length,
           { timeout: 10_000 },
         )
         .toBe(1);

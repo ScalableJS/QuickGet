@@ -13,8 +13,8 @@ import {
   markInterceptNoticeShown,
   migrateSettings,
   resetSettings,
-  saveSettings,
   SETTINGS_SCHEMA_VERSION,
+  saveSettings,
 } from "./settings.js";
 
 describe("settings", () => {
@@ -116,9 +116,7 @@ describe("settings", () => {
   it("saves partial settings into chrome.storage.local", async () => {
     await saveSettings({ NASdir: "/share/Downloads/New" });
 
-    expect(chrome.storage.local.set).toHaveBeenCalledWith(
-      expect.objectContaining({ NASdir: "/share/Downloads/New" }),
-    );
+    expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({ NASdir: "/share/Downloads/New" }));
     expect(getChromeStorageSnapshot().NASdir).toBe("/share/Downloads/New");
   });
 
