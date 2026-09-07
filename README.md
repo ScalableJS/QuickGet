@@ -5,13 +5,16 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 ## Capabilities
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
-- Intercept browser `.torrent` downloads and route them to the NAS — on by default, switchable in Settings.
-- Monitor active tasks, review seeding items (upload volume and share ratio), and remove entries when necessary.
+- Intercept browser `.torrent` downloads and clicks on `magnet:` links — route them directly to your NAS.
+- Monitor active tasks in real time: combined NAS transfer rates (`↓ / ↑`) in the header, transferred payload size (`done / size`), and swarm health (seeds and peers).
+- Manage download priority in the queue (`Top`, `Up`, `Down`) directly from each task card.
+- Track seeding items with upload volume, target share ratio progress, and dedicated status indicators.
 - Pick which files inside a multi-file torrent the NAS should download.
 - Route tasks to different NAS folders automatically with rules matched on URL, domain, or task name.
-- Optionally lock the settings screen behind a password so the NAS connection cannot be read or changed at a shared computer.
-- Validate NAS settings directly from the popup and persist them locally.
-- Operate on Chromium-based browsers and Firefox without additional plugins.
+- Lock the settings screen behind a password on shared computers to protect NAS credentials.
+- Validate NAS folders and credentials directly from the popup.
+- Runs on Chromium browsers (Chrome, Edge, Brave, Opera) and Firefox without extra plugins.
+
 
 <details>
 <summary>How torrent interception behaves</summary>
@@ -60,9 +63,11 @@ To load a local build instead:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| **Send .torrent downloads to the NAS** | On | The normal, safe hand-off. If the NAS cannot accept the torrent, Chrome resumes the browser download. |
-| **Don't keep the .torrent file locally** | Off (Chromium only) | Avoids a "Save as" prompt and a local copy. If the NAS cannot accept it, click the link again. It becomes available after torrent forwarding is on. |
-| **Protect settings** | Off | A password is opt-in because it protects only access to the settings screen; background downloads continue either way. |
+| **Send .torrent downloads to NAS** | On | Safe hand-off. If the NAS cannot accept the torrent, the browser resumes the normal download. |
+| **Don't save .torrent locally** | Off (Chromium only) | Avoids a local file and "Save as" prompt. If the NAS cannot accept it, click the link again. Requires torrent interception. |
+| **Intercept magnet links** | Off | Forwards clicked `magnet:` links on web pages directly to Download Station instead of launching an external BitTorrent application. |
+| **Lock settings with password** | Off | Protects access to the settings screen. Background downloads continue while locked. |
+
 
 All configuration values are stored in `chrome.storage.local` and remain on the local browser profile. The extension sends connection credentials, torrent URLs, magnet links, and selected `.torrent` files only to the NAS address configured by the user; it does not use analytics, telemetry, or third-party services. See the [privacy policy](./docs/privacy-policy.md).
 
@@ -223,27 +228,16 @@ QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE
 
 ## Roadmap
 
-Prioritized by user impact and clarity, keeping the extension fast, lightweight, and focused. Detailed specs and discussion live on the [competitive gaps board](./agent-os/product/competitive-gaps-kanban.md).
+Upcoming improvements focused on convenience and network control, keeping the extension fast and lightweight:
 
-### Phase 1 — Rich Status & Diagnostics (Quick Wins)
-- **Downloaded volume (`done / size`):** Display actual transferred volume (e.g. `17.8 / 24.3 GB`) instead of only an opaque percentage bar.
-- **Actionable error messages:** Translate QNAP error codes (disk full, folder missing, duplicate task, corrupt torrent) into clear explanations with recovery advice.
-- **Swarm telemetry (`seeds / peers`):** Compact `S 12 · P 4` indicators on active torrents so users can immediately diagnose stalled downloads.
-- **Global NAS transfer rates:** Real-time combined speeds (`↓ 24.8 MB/s  ↑ 3.1 MB/s`) in the popup header via `Task/Status`.
-
-### Phase 2 — High Value Task Controls
-- **Safe task removal dialog:** Single delete action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`).
-- **Quick speed limit throttle:** Speedometer icon in the header opening a preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) via `Config/Set`.
-- **Queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) directly from the card's `⋮` overflow menu (`Task/Priority`).
-- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via the `⋮` menu (`Task/GetTorrentFile`).
-
-### Phase 3 — Advanced Settings & Diagnostics
-- **Client emulation for private trackers:** Select client identity (`peer_mode`: Transmission 2.94, Deluge, uTorrent) in `Settings → Advanced` to bypass tracker blacklists.
-- **Default seeding limits:** Configure default share ratio and seeding duration limits for new tasks directly from Settings.
-- **Target destination folder:** Surface the destination path on the NAS within task details.
+- **Quick speed limit throttle:** A speedometer button in the header with one-click presets (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, or custom) to temporarily throttle NAS bandwidth when someone is streaming or gaming on your local network.
+- **Private tracker compatibility:** An option in advanced settings to identify as popular BitTorrent clients (Transmission, Deluge, or uTorrent) so private trackers that whitelist specific clients accept downloads smoothly.
+- **Default seeding limits:** Configure default target share ratios and seeding durations for finished torrents directly from settings.
+- **Target folder visibility:** Show the destination folder on the NAS inside task details.
 
 > [!NOTE]
-> In-popup torrent discovery (`Addon/Search`), RSS automation, filehost accounts, and complex 24x7 schedule matrices are deliberately kept out of the popup to preserve a fast, clean, and reliable remote-download client.
+> In-popup torrent discovery, RSS automation, filehost accounts, and complex schedule grids are deliberately kept out to maintain a clean and reliable remote client.
+
 
 ## Feedback and ideas
 

@@ -33,9 +33,9 @@ Open defects are tracked separately in `bugs-kanban.md`.
 
 Contextual task actions exposed through clean interactions without bloating the primary card:
 
-- **Safe task removal dialog:** Single trash action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`) (GAP-8).
 - **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
-- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11).
+- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11, deferred).
+
 
 ## Phase 3 — Advanced Settings & Diagnostics
 
