@@ -26,6 +26,8 @@ Open defects are tracked separately in `bugs-kanban.md`.
 - **Conditional swarm health (`seeds / peers`):** Render `S15 P5` compactly, shipped in v2.2.1 (BUG-35).
 - **Global NAS transfer rates in header:** Real-time combined `↓ 12.0 MB/s  ↑ 0.8 MB/s` with zero-gap arrows, $\le 3$ digits cap, and `KB/s` base unit, shipped in v2.2.1 (GAP-7).
 - **Task queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) via card contextual menu with Skeleton Wintry styling and optimistic updates, shipped in v2.2.1 (GAP-10).
+- **Streamlined UI copy & competitor-standard phrasing:** Concise toolbar actions ("Remove with files…"), clean empty states, natural pluralization, and tightened settings/security text shipped in v2.2.2.
+
 
 ## Phase 2 — High Value Task Controls
 
