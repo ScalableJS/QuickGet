@@ -101,7 +101,7 @@ describe("batchUpload", () => {
       await uploadUrls(urls, { onSuccess });
 
       expect(requestMonitoring).not.toHaveBeenCalled();
-      expect(showStatus).toHaveBeenCalledWith("Failed to add 1 URL(s)", "error");
+      expect(showStatus).toHaveBeenCalledWith("Failed to add 1 download", "error");
       expect(onSuccess).not.toHaveBeenCalled();
     });
 

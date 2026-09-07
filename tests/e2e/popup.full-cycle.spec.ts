@@ -144,13 +144,13 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await page.click("#downloads-list .download-item");
 
     await page.click("#toolbar-stop");
-    await expect(page.locator("#status-message")).toContainText("Torrent stopped");
+    await expect(page.locator("#status-message")).toContainText("Download stopped");
 
     await page.click("#toolbar-pause");
-    await expect(page.locator("#status-message")).toContainText("Torrent paused");
+    await expect(page.locator("#status-message")).toContainText("Download paused");
 
     await page.click("#toolbar-play");
-    await expect(page.locator("#status-message")).toContainText("Torrent started");
+    await expect(page.locator("#status-message")).toContainText("Download started");
 
     await page.setInputFiles("#torrentFileInput", sampleTorrentPath);
     await page.getByRole("button", { name: "All" }).click();
@@ -168,9 +168,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO");
 
     await page.locator("#downloads-list .download-item").filter({ hasText: "Ubuntu ISO" }).click();
-    await page.getByRole("button", { name: "More remove options" }).click();
+    await page.getByRole("button", { name: "Remove options" }).click();
     page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("menuitem", { name: "Remove task and files…" }).click();
+    await page.getByRole("menuitem", { name: "Remove with files…" }).click();
     await expect(page.locator("#downloads-list .download-item")).toHaveCount(0, { timeout: 15_000 });
     await expect
       .poll(() =>

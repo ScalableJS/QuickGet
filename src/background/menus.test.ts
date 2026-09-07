@@ -23,7 +23,7 @@ describe("context-menu registration", () => {
     expect(chrome.contextMenus.create).toHaveBeenCalledTimes(1);
     expect(chrome.contextMenus.create).toHaveBeenCalledWith({
       id: "quickget-send-link",
-      title: "Send link to Download Station",
+      title: "Send to Download Station",
       contexts: ["link"],
       documentUrlPatterns: ["*://*/*"],
     });

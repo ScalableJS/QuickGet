@@ -21,8 +21,8 @@ test("routing rules save priority and fallback settings", async ({}, testInfo) =
     await openSettingsPanel(page);
 
     await switchSettingsTab(page, "Advanced");
-    await expect(page.getByText("No rules yet. All downloads use the Target Folder.")).toBeVisible();
-    await expect(page.getByText(/Send matching downloads to a folder automatically/)).toBeVisible();
+    await expect(page.getByText("No rules yet. All downloads use the Target folder.")).toBeVisible();
+    await expect(page.getByText(/Route downloads to folders automatically/)).toBeVisible();
 
     await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);

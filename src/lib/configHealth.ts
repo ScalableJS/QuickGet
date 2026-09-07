@@ -21,7 +21,7 @@ export function findConfigProblem(settings: Settings): ConfigProblem | undefined
   if (!settings.NASaddress.trim()) missing.push("Server address");
   if (!settings.NASlogin.trim()) missing.push("Username");
   if (!settings.NASpassword) missing.push("Password");
-  if (!settings.NAStempdir.trim()) missing.push("Temp Folder");
+  if (!settings.NAStempdir.trim()) missing.push("Temp folder");
 
   if (missing.length === 0) return undefined;
 

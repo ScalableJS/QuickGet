@@ -66,8 +66,8 @@
   <IconButton
     size="sm"
     id="toolbar-play"
-    title="Start selected download"
-    aria-label="Start selected download"
+    title="Start download"
+    aria-label="Start download"
     {disabled}
     aria-disabled={disabled}
     onclick={actions.start}
@@ -77,8 +77,8 @@
   <IconButton
     size="sm"
     id="toolbar-stop"
-    title="Stop selected download"
-    aria-label="Stop selected download"
+    title="Stop download"
+    aria-label="Stop download"
     {disabled}
     aria-disabled={disabled}
     onclick={actions.stop}
@@ -88,8 +88,8 @@
   <IconButton
     size="sm"
     id="toolbar-pause"
-    title="Pause selected download"
-    aria-label="Pause selected download"
+    title="Pause download"
+    aria-label="Pause download"
     {disabled}
     aria-disabled={disabled}
     onclick={actions.pause}
@@ -103,20 +103,20 @@
     primaryLabel="Add torrent"
     primaryIcon={plusIcon}
     onPrimary={actions.add}
-    menuLabel="More add options"
+    menuLabel="Add options"
     items={[
-      { label: "Add .torrent file", icon: fileIcon, onSelect: actions.add },
+      { label: "Add torrent file", icon: fileIcon, onSelect: actions.add },
       { label: "Add URLs…", icon: linkIcon, onSelect: actions.addUrls },
     ]}
   />
   <SplitButton
     size="sm"
     id="toolbar-remove"
-    primaryLabel="Remove selected download"
+    primaryLabel="Remove download"
     primaryIcon={trashIcon}
     onPrimary={actions.remove}
-    menuLabel="More remove options"
-    items={[{ label: "Remove task and files…", icon: trashIcon, onSelect: actions.removeWithFiles }]}
+    menuLabel="Remove options"
+    items={[{ label: "Remove with files…", icon: trashIcon, onSelect: actions.removeWithFiles }]}
     {disabled}
   />
 </div>

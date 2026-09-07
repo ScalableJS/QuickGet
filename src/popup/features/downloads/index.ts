@@ -70,7 +70,7 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
     remove: async (hash: string, clean = false) => {
       const normalizedHash = hash?.trim();
       if (!normalizedHash) {
-        showStatus("Cannot remove download: missing identifier", "error");
+        showStatus("Cannot remove: missing ID", "error");
         return;
       }
       setRemovingDownload(normalizedHash);
@@ -87,15 +87,15 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
     },
     start: async (hash: string) => {
       await startTask(hash);
-      showStatus("Torrent started", "success", { autoHideMs: 2000 });
+      showStatus("Download started", "success", { autoHideMs: 2000 });
     },
     stop: async (hash: string) => {
       await stopTask(hash);
-      showStatus("Torrent stopped", "success", { autoHideMs: 2000 });
+      showStatus("Download stopped", "success", { autoHideMs: 2000 });
     },
     pause: async (hash: string) => {
       await pauseTask(hash);
-      showStatus("Torrent paused", "info", { autoHideMs: 2000 });
+      showStatus("Download paused", "info", { autoHideMs: 2000 });
     },
     getSelected: () => getSelectedHash(),
     clearSelection: () => clearSelection(),

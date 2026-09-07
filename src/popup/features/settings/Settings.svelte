@@ -102,7 +102,7 @@
     { id: "serverUrl", label: "Server address", value: () => serverUrl, tab: "connection" },
     { id: "NASlogin", label: "Username", value: () => form.NASlogin, tab: "connection" },
     { id: "NASpassword", label: "Password", value: () => form.NASpassword, tab: "connection" },
-    { id: "NAStempdir", label: "Temp Folder", value: () => form.NAStempdir, tab: "connection" },
+    { id: "NAStempdir", label: "Temp folder", value: () => form.NAStempdir, tab: "connection" },
   ];
 
   function validateField(id: string): void {
@@ -375,7 +375,7 @@
   }
 
   async function removeConnection(): Promise<void> {
-    if (!confirm("Remove the saved NAS address, username and password? Downloads will no longer be sent to this NAS.")) {
+    if (!confirm("Remove saved connection? Downloads will no longer be sent to this NAS.")) {
       return;
     }
 
@@ -414,7 +414,7 @@
     size="sm"
     label="Theme"
     items={[
-      { value: "auto", label: "Follow system", icon: Monitor },
+      { value: "auto", label: "System", icon: Monitor },
       { value: "light", label: "Light", icon: Sun },
       { value: "dark", label: "Dark", icon: Moon },
     ]}
@@ -437,9 +437,9 @@
         {HEALTH_LABEL[connection.health.kind]}
       </p>
       {#if connection.health.kind === "unreachable"}
-        <p class="text-[0.85rem] text-[var(--text-secondary)]">Saved connection settings are still in use.</p>
+        <p class="text-[0.85rem] text-[var(--text-secondary)]">Saved connection settings still active.</p>
       {:else if connection.health.kind === "auth-failed"}
-        <p class="text-[0.85rem] text-[var(--text-secondary)]">The NAS rejected the saved credentials.</p>
+        <p class="text-[0.85rem] text-[var(--text-secondary)]">NAS rejected saved credentials.</p>
       {/if}
 
       <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">
@@ -467,23 +467,23 @@
   </div>
 
   <div class="form-group mb-[var(--spacing-md)]">
-    <Field id="NASlogin" label="Username" placeholder="Your QNAP account" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
+    <Field id="NASlogin" label="Username" placeholder="QNAP username" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
   </div>
 
   <div class="form-group mb-[var(--spacing-md)]">
-    <Field id="NASpassword" label="Password" type="password" placeholder="Your QNAP password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
+    <Field id="NASpassword" label="Password" type="password" placeholder="Password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
   </div>
   {/if}
   </FormSection>
 
   <FormSection legend="Folders">
   <div class="form-group mb-[var(--spacing-md)]">
-    <label for="NAStempdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Temp Folder</label>
+    <label for="NAStempdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Temp folder</label>
     <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
   </div>
 
   <div class="form-group mb-[var(--spacing-md)]">
-    <label for="NASdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Target Folder</label>
+    <label for="NASdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Target folder</label>
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
 
@@ -496,7 +496,7 @@
         checked={form.torrentInterceptMode === "always"}
         onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
       >
-        Send .torrent downloads to the NAS
+        Send .torrent downloads to NAS
       </Checkbox>
     </div>
 
@@ -512,17 +512,16 @@
           aria-describedby="suppressLocalTorrentFileHint"
           bind:checked={form.suppressLocalTorrentFile}
         >
-          Don't keep the .torrent file locally
+          Don't save .torrent locally
         </Checkbox>
         <div class="mt-[var(--spacing-xs)] ml-[var(--spacing-lg)]">
           {#if form.torrentInterceptMode === "always"}
             <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-              QuickGet sends the torrent to the NAS before Chrome saves it — no "Save as" prompt or
-              local copy. If the NAS cannot accept it, click the link again.
+              Sends torrent directly to NAS without saving locally. If the transfer fails, download locally.
             </p>
           {:else}
             <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-              Available when sending .torrent downloads to the NAS.
+              Requires .torrent interception.
             </p>
           {/if}
         </div>
@@ -535,12 +534,12 @@
         aria-describedby="autoCaptureMagnetsHint"
         bind:checked={form.autoCaptureMagnets}
       >
-        Intercept magnet link clicks
+        Intercept magnet links
       </Checkbox>
     </div>
     <div class="ml-[var(--spacing-lg)]">
       <p id="autoCaptureMagnetsHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-        Send clicked magnet: links directly to QNAP Download Station instead of launching an external app.
+        Send clicked magnet links to Download Station instead of local app.
       </p>
     </div>
   </div>
@@ -548,16 +547,14 @@
 </section>
     {:else if tab.id === "advanced"}
 <section class="settings-section">
-  <FormSection legend="Privacy">
+  <FormSection legend="Security">
   <div class="form-group form-inline mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-sm)] font-500">
     <Checkbox id="settingsLockEnabled" bind:checked={settingsLockEnabled}>
-      Protect settings
+      Lock settings with password
     </Checkbox>
   </div>
   <Alert tone="hint">
-    Require a password to view or change your NAS connection settings. Background downloads
-    continue to work while settings are locked. This does not encrypt the stored password —
-    protecting files on this computer is your operating system's job.
+    Require a password to view or change settings. Background downloads continue while locked.
   </Alert>
 
   {#if settingsLockEnabled && !lockWasEnabled}
@@ -568,13 +565,13 @@
       }} />
     </div>
     <div class="form-group mb-[var(--spacing-md)]">
-      <Field id="confirmLockPasswordInput" label="Confirm settings password" type="password" placeholder="Repeat the settings password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
+      <Field id="confirmLockPasswordInput" label="Confirm password" type="password" placeholder="Repeat password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
         const { confirmLockPasswordInput: _removed, ...rest } = fieldErrors;
         fieldErrors = rest;
       }} />
     </div>
   {:else if settingsLockEnabled}
-    <p class="text-[0.85rem] text-[var(--text-secondary)]">Settings password is active. Turn this off to remove it.</p>
+    <p class="text-[0.85rem] text-[var(--text-secondary)]">Password lock is active. Uncheck to remove.</p>
   {/if}
   </FormSection>
 </section>
@@ -585,12 +582,11 @@
     <button type="button" class="add-rule inline-flex items-center gap-[var(--space-1)] p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <Alert tone="hint">
-    Send matching downloads to a folder automatically. Rules run top to bottom; the first match wins.
-    Everything else uses the Target Folder.
+    Route downloads to folders automatically. First matching rule wins. Unmatched downloads use the Target folder.
   </Alert>
 
   {#if form.routingRules.length === 0}
-    <p class="routing-empty text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target Folder.</p>
+    <p class="routing-empty text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target folder.</p>
   {:else}
     {#each form.routingRules as rule, i (rule)}
       <!-- Each rule is its own group with a name. Without it a screen reader reads three
@@ -625,12 +621,12 @@
 
 <section class="settings-section">
   <FormSection legend="Backup">
-  <Alert tone="hint">Export or restore settings. Credentials are never included.</Alert>
+  <Alert tone="hint">Export or import settings. Credentials are never included.</Alert>
 
   {#if pendingImport}
     <Alert tone="warning">
-      Importing will overwrite your current settings: {pendingImport.changes.join(", ")}.
-      Nothing is saved until you press Save.
+      This will overwrite current settings: {pendingImport.changes.join(", ")}.
+      Review and click Save to apply.
     </Alert>
     <div class="backup-actions flex flex-col gap-[var(--space-2)] mt-[var(--space-3)]">
       <Button onclick={applyImport} block>Replace settings</Button>

@@ -28,7 +28,7 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     return;
   }
 
-  showStatus(`Adding ${urls.length} URL(s)…`, "info");
+  showStatus(`Adding ${urls.length} download${urls.length === 1 ? "" : "s"}…`, "info");
 
   try {
     const client = await getApiClient();
@@ -50,7 +50,7 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
       showStatus(`Added ${ok}, failed ${failed}`, "info", { autoHideMs: 3000 });
       options.onSuccess?.();
     } else {
-      showStatus(`Failed to add ${failed} URL(s)`, "error");
+      showStatus(`Failed to add ${failed} download${failed === 1 ? "" : "s"}`, "error");
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

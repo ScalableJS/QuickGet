@@ -37,6 +37,7 @@ coverage/
 # Agent OS — product context, standards, and the bug board.
 !agent-os/**/*.md
 !.agents/**/*.md
+!.rulesync/**/*.md
 
 !docs/toolbar-actions.md
 !docs/svelte-migration-plan.md

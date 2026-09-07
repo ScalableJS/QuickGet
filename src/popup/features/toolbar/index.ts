@@ -20,7 +20,7 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
   const requireSelection = (verb: string): string | null => {
     const selected = downloads.getSelected();
     if (!selected) {
-      showStatus(`Select a torrent to ${verb}`, "info", { autoHideMs: 2000 });
+      showStatus(`Select a download to ${verb}`, "info", { autoHideMs: 2000 });
       return null;
     }
     return selected;
@@ -47,7 +47,7 @@ export function initializeToolbar(options: InitializeToolbarOptions): void {
     removeWithFiles: () => {
       const hash = requireSelection("remove");
       if (!hash) return;
-      if (!confirm("Remove this download task and its downloaded files from the NAS? This cannot be undone.")) return;
+      if (!confirm("Delete this download and its files from NAS? This cannot be undone.")) return;
       void downloads.remove(hash, true);
     },
     add: () => upload.triggerFilePicker(),
