@@ -197,7 +197,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       // once per episode, not on every torrent they click while it stays unconfigured.
       await notifyFailure(
         "not-configured",
-        "QuickGet is not configured",
+        "QuickGet not configured",
         `${problem.summary} The .torrent was left to the browser.`,
         problem.missing.join(","),
       );
@@ -217,7 +217,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       await markConfigurationProblem(message);
       await notifyFailure(
         classifyConnectionFailure(error),
-        "QuickGet could not reach the NAS",
+        "Could not reach NAS",
         `${message} The .torrent was left to the browser.`,
         settings.NASaddress,
       );
@@ -330,7 +330,7 @@ async function handOffToNas(
     const resumed = paused ? await resumeBrowserDownload(downloadId) : false;
     await notifyFailure(
       failureKind,
-      "QuickGet needs attention",
+      "Download failed",
       // A successful strict cancellation already dropped the browser download to keep it off
       // disk, so there is
       // nothing to resume — say that plainly instead of implying the file is still coming.

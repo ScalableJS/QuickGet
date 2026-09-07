@@ -47,19 +47,19 @@
     <textarea
       id="batch-urls"
       rows="4"
-      placeholder={"https://example.com/a.zip\nmagnet:?xt=...\nEach line becomes one task"}
+      placeholder={"https://example.com/file.zip\nmagnet:?xt=...\nOne link per line"}
       class="w-full min-h-[var(--control-height)] p-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]"
       bind:value={raw}
     ></textarea>
-    <Alert tone="hint">Each line is treated as an individual URL and creates a task.</Alert>
+    <Alert tone="hint">One URL or magnet link per line.</Alert>
   </div>
 
   <div class="flex flex-col gap-[var(--space-1)]">
-    <label for="batch-folder" class="text-13px font-600 text-[var(--color-text)]">Target Folder</label>
+    <label for="batch-folder" class="text-13px font-600 text-[var(--color-text)]">Target folder</label>
     <FolderSelect id="batch-folder" placeholder="/share/Multimedia/Movies" bind:value={targetFolder} />
   </div>
 
   <Button disabled={submitting || urls.length === 0} onclick={create}>
-    {submitting ? "Adding…" : `Create ${urls.length || ""} task(s)`}
+    {submitting ? "Adding…" : urls.length > 0 ? `Add ${urls.length} download${urls.length === 1 ? "" : "s"}` : "Add downloads"}
   </Button>
 </div>

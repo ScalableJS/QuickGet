@@ -23,7 +23,7 @@ export function createContextMenus(): void {
     void chrome.runtime.lastError; // ignore "no items" on a fresh worker
     chrome.contextMenus.create({
       id: "quickget-send-link",
-      title: "Send link to Download Station",
+      title: "Send to Download Station",
       contexts: ["link"],
       documentUrlPatterns: ["*://*/*"],
     });
@@ -50,7 +50,7 @@ export async function handleContextMenuClick(
 
     // Validate URL
     if (!isSupportedUrl(url)) {
-      throw new Error("Only web and magnet links can be sent to Download Station");
+      throw new Error("Only web and magnet links are supported");
     }
 
     // The page the link was right-clicked on is the referrer a tracker's hotlink guard expects.
@@ -58,7 +58,7 @@ export async function handleContextMenuClick(
   } catch (error) {
     console.error("Context menu error:", error);
     // A failure the user directly asked for: they are waiting for an answer right now.
-    notifyDirect("Failed to send with QuickGet", getErrorMessage(error));
+    notifyDirect("Failed to send download", getErrorMessage(error));
   }
 }
 

@@ -180,7 +180,7 @@ test.describe("accessibility", () => {
       });
 
       // Named, not merely announced: the user is told which settings the file will replace.
-      const warning = session.page.getByText(/Importing will overwrite/);
+      const warning = session.page.getByText(/This will overwrite current settings/);
       await expect(warning).toBeVisible();
       await expect(warning).toContainText("Server address");
       await expect(warning).toContainText("Username");
@@ -227,14 +227,14 @@ test.describe("accessibility", () => {
       await session.page.getByRole("button", { name: "Edit" }).click();
 
       const intercept = session.page.locator("#torrentInterceptMode");
-      const suppressLocalFile = session.page.getByLabel("Don't keep the .torrent file locally");
+      const suppressLocalFile = session.page.getByLabel("Don't save .torrent locally");
       await expect(intercept).toBeChecked();
       await expect(suppressLocalFile).toBeEnabled();
 
       await intercept.uncheck();
       await expect(suppressLocalFile).toBeDisabled();
       await expect(suppressLocalFile).toHaveAccessibleDescription(
-        "Available when sending .torrent downloads to the NAS.",
+        "Requires .torrent interception.",
       );
       await session.page.click("#save-btn");
 
@@ -262,7 +262,7 @@ test.describe("accessibility", () => {
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
       await session.page.getByRole("tab", { name: "Advanced" }).click();
-      await session.page.getByLabel("Protect settings").check();
+      await session.page.getByLabel("Lock settings with password").check();
       await session.page.getByLabel("Settings password", { exact: true }).fill("short");
       await session.page.getByRole("button", { name: "Save settings" }).click();
 

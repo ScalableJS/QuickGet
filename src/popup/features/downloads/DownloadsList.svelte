@@ -62,10 +62,10 @@
     query.trim()
       ? `No downloads match “${query.trim()}”`
       : filter === "completed"
-      ? "Nothing completed yet"
-      : filter === "all"
-        ? "No tasks"
-        : "No downloads in progress",
+        ? "No completed downloads"
+        : filter === "all"
+          ? "No downloads"
+          : "No active downloads",
   );
 </script>
 

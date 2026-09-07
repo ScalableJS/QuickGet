@@ -623,7 +623,7 @@ describe("download interception — configuration is visible", () => {
 
     await handleDownloadCreated(createDownloadItem({ id: 72 }));
 
-    expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({ title: "QuickGet is not configured" }));
+    expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({ title: "QuickGet not configured" }));
     const message = notifications.create.mock.calls[0]?.[0]?.message as string;
     expect(message).toContain("Password");
   });

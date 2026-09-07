@@ -222,7 +222,7 @@ function sendMagnetToWorker(uri: string): void {
   if (inFlightUris.has(uri)) return;
   inFlightUris.add(uri);
 
-  showFeedback("loading", "Sending magnet link to QNAP Download Station…");
+  showFeedback("loading", "Sending to Download Station…");
 
   const message: MagnetMessage = {
     type: "task:add",
@@ -242,10 +242,10 @@ function sendMagnetToWorker(uri: string): void {
         }
 
         if (response?.ok) {
-          showFeedback("success", "Added to QNAP Download Station");
+          showFeedback("success", "Sent to Download Station");
         } else {
           const err = response?.error || "NAS rejected the link";
-          showFeedback("error", `Failed to send to QNAP: ${err}`);
+          showFeedback("error", `Failed to send: ${err}`);
         }
       });
     } catch (error) {

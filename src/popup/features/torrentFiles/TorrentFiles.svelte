@@ -62,14 +62,14 @@
         );
 
       if (selections.length === 0) {
-        showStatus("No changes to apply", "info", { autoHideMs: 1500 });
+        showStatus("No changes", "info", { autoHideMs: 1500 });
         return;
       }
 
       const results = await saveFiles(hash, selections);
       const failed = results.filter((r) => !r.ok).length;
       if (failed === 0) {
-        showStatus(`Updated ${results.length} file(s)`, "success", { autoHideMs: 2000 });
+        showStatus(`Updated ${results.length} file${results.length === 1 ? "" : "s"}`, "success", { autoHideMs: 2000 });
       } else {
         showStatus(`Updated ${results.length - failed}, failed ${failed}`, "error");
       }
@@ -100,7 +100,7 @@
   {:else if error}
     <p class="tf-error my-1 text-12px text-[var(--color-error)]">{error}</p>
   {:else if files.length === 0}
-    <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">No files reported for this task.</p>
+    <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">No files found.</p>
   {:else}
     <ul class="tf-list list-none m-0 p-0 max-h-[180px] overflow-y-auto">
       {#each shown as file (file.no)}
@@ -115,7 +115,7 @@
 
     {#if files.length > DISPLAY_LIMIT}
       <p class="tf-note my-1 text-12px text-[var(--color-text-secondary)]">
-        Showing first {DISPLAY_LIMIT} of {files.length} files — manage the rest in the QTS interface.
+        Showing first {DISPLAY_LIMIT} of {files.length} files. Manage the rest in QTS.
       </p>
     {/if}
 

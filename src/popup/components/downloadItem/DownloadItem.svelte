@@ -162,7 +162,7 @@
         {#if view.swarmText}
           <span
             class="download-swarm text-11px text-[var(--color-text-secondary)] tabular-nums"
-            title="Seeds & Peers in swarm"
+            title="Seeds and peers"
           >
             {view.swarmText}
           </span>
@@ -173,7 +173,7 @@
               bind:this={triggerBtnEl}
               type="button"
               class="priority-menu-btn inline-flex items-center justify-center w-6 h-6 rounded-[var(--radius)] bg-transparent hover:bg-[var(--color-bg-raised)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] border border-transparent hover:border-[var(--color-control-border)] aria-[expanded=true]:bg-[var(--color-bg-raised)] aria-[expanded=true]:border-[var(--color-control-border)] aria-[expanded=true]:text-[var(--color-primary-visual)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
-              aria-label="Queue priority options"
+              aria-label="Queue priority"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               title="Queue priority"
@@ -198,7 +198,7 @@
                 class="priority-menu absolute right-0 top-full mt-1 z-30 flex items-center p-0.5 bg-[var(--menu-bg)] border border-[var(--color-control-border)] rounded-[var(--radius)] shadow-[var(--shadow)]"
                 role="menu"
                 tabindex="-1"
-                aria-label="Queue priority options"
+                aria-label="Queue priority"
                 onclick={(e) => e.stopPropagation()}
                 onkeydown={onMenuKeydown}
               >
