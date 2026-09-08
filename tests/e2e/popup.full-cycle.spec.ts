@@ -111,6 +111,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
       .toMatchObject({ clientHeight: 600, toolbarPosition: "sticky" });
     expect(await page.evaluate(() => document.body.scrollHeight > document.body.clientHeight)).toBe(true);
 
+    await page.getByRole("button", { name: "Remove rule 1" }).click();
+    await expect(page.locator(".routing-rule")).toHaveCount(0);
+
     await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");

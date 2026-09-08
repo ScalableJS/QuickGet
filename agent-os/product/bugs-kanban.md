@@ -19,6 +19,12 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Done |
 | BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | low | Backlog |
 | BUG-39 | Toolbar badge background poll fetches full task list instead of lightweight `Task/Status` | background/perf | low | Backlog |
+| BUG-40 | Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid | popup/settings | medium | Backlog |
+| BUG-41 | Saving routing rules with empty optional fields crashes Svelte with props_invalid_value, freezing "Add rule" | popup/settings | high | Done |
+| BUG-42 | Routing rules parser edge cases: case-sensitive .torrent, fragile magnet dn parsing, and unhandled URI errors | core/routing | high | Done |
+| BUG-43 | Routing rules UX in popup: cramped single-line layout, missing priority reorder controls, and silent rule drop | popup/UX | high | Done |
+| BUG-44 | Missing test coverage for routing rules: URL/magnet edge cases, Svelte draft reactivity, and E2E error catching | testing | high | Done |
+| BUG-45 | Routing engine ReDoS in matchGlob, sanitizer condition-invariant gap, and type: "all" draft smell | core/routing | high | Done |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
@@ -168,6 +174,152 @@ with minimal CPU and network overhead on both the browser and the NAS.
 
 **Proposed fix:** Implement `client.getTaskStatus()` and migrate badge count monitoring to use
 `Task/Status`, reserving `Task/Query` for when the popup UI is actively open.
+
+---
+
+### BUG-40 — Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid
+
+**Severity:** medium · **Area:** popup/settings · **Status:** Backlog
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/api/index.ts`, `src/api/client.ts`
+
+When saving connection settings while the NAS server is unreachable (offline, sleeping host, wrong IP/port,
+firewall dropping packets, or invalid credentials), the UI button displays `Saving…` and blocks the interface
+for more than 10 seconds (up to 30s depending on OS/Chromium TCP timeout). The UI briefly flashes a green
+"Settings saved" message while still spinning on "Saving…", and only then turns into a red error.
+
+**Root causes:**
+1. **No client-side request timeout on `fetch` (`src/api/index.ts` & `src/api/client.ts`):** Neither
+   `requestLogin` nor openapi-fetch configure an `AbortSignal.timeout(...)`. When the target NAS is unreachable
+   (e.g., non-responsive LAN IP or offline NAS), Chromium's underlying network stack performs TCP SYN
+   retransmissions (1s, 2s, 4s, 8s, 16s...), hanging for 10–30+ seconds before rejecting with
+   `TypeError: Failed to fetch` or `ERR_CONNECTION_TIMED_OUT`.
+2. **Coupled Save & Test state (`Settings.svelte`):** `save()` persists settings to storage (~2ms) but immediately
+   awaits `testConnection()`. The `isSaving` state remains `true` throughout the entire network timeout,
+   so the button misleadingly displays "Saving…" instead of completing the save phase or displaying an explicit
+   "Connecting to NAS… / Testing…". To the user, it appears as though saving settings to the browser is frozen.
+3. **Double network round-trip on auth error (`performLogin` in `src/api/index.ts`):** When the NAS is reachable
+   but credentials are wrong, QNAP Download Station returns error 4. `performLogin` executes a second sequential
+   request with raw password. Combined with QTS PAM anti-brute-force delays (2–4s per failed attempt), this
+   adds another 5–8s of delays.
+4. **Premature success flash:** `showStatus("Settings saved", "success")` is fired before `testConnection()`
+   runs, causing confusing UI state transitions (green success briefly shown right before red network/auth failure).
+
+**Proposed fix:**
+1. **Enforce network timeouts on connection test:** Add `signal: AbortSignal.timeout(4000)` (or 5000ms) to
+   `testConnection()` and `requestLogin()`, failing fast with a clear "NAS unreachable" rather than hanging for 10–30s.
+2. **Decouple `isSaving` from `isTesting`:** Complete `isSaving = false` as soon as `saveSettings()` finishes (~2ms),
+   and show an explicit "Testing connection…" state or inline card spinner for the network check.
+3. **Only show final status:** Announce "Settings saved. Testing connection…" or defer the status alert until
+   the connection verification concludes.
+
+---
+
+### BUG-41 — Saving routing rules with empty optional fields crashes Svelte with props_invalid_value, freezing "Add rule"
+
+**Severity:** high · **Area:** popup/settings · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/popup/ui/Field.svelte`, `src/lib/routingRules.ts`
+
+When creating or saving routing rules where optional fields (such as `domain` or `namePattern`) are left empty:
+1. If `destination` is empty, `normalizeRoutingRules()` silently discards the rule without warning the user.
+2. If `domain` or `namePattern` is left empty, `normalizeRoutingRules()` normalizes them to `undefined` on the reactive `form.routingRules` state.
+3. Because `<Field>` defines `value = $bindable("")` with a default string fallback, binding `bind:value={rule.domain}` where `rule.domain === undefined` triggers a fatal Svelte 5 runtime exception:
+   `Error: https://svelte.dev/e/props_invalid_value` (`Cannot do bind:value={undefined} when value has a fallback value`).
+4. The uncaught Svelte runtime exception leaves the Routing Rules UI in a broken state; subsequent Add rule interactions no longer update the reactive state or UI.
+5. Keying rules in `{#each form.routingRules as rule, i (rule)}` by object reference causes avoidable child-component remounting whenever normalization recreates rule objects. Stable draft IDs eliminate this churn.
+
+**Resolved 2026-09-08** —
+1. `src/lib/routingRules.ts`: Implemented `RoutingRuleDraft`, `toRoutingRuleDraft`, `validateRoutingRuleDraft`, and `serializeRoutingRuleDraft`. Ensured all UI draft string fields default to concrete strings (`""`), strictly preventing `undefined` values from ever reaching `<Field>` `$bindable` inputs.
+2. `src/popup/features/settings/Settings.svelte`: Converted editor state to `routingRuleDrafts` with stable IDs `draft.id` (keyed in `{#each routingRuleDrafts as draft, i (draft.id)}`).
+3. Replaced destructive pre-save normalization with non-destructive validation that presents inline errors and retains user drafts.
+4. Added `routingRuleDrafts` to `settingsSignature` to track form dirty status reactively.
+5. Playwright E2E test in `tests/e2e/routing-rules.spec.ts` verified with `expect(pageErrors).toEqual([])` and active interactivity.
+
+---
+
+### BUG-42 — Routing rules parser edge cases: case-sensitive .torrent, fragile magnet dn parsing, unhandled URI errors, and domain normalization
+
+**Severity:** high · **Area:** core/routing · **Status:** Done
+**Files:** `src/lib/routingRules.ts`, `src/lib/routingRules.test.ts`
+
+Audit of `src/lib/routingRules.ts` revealed silent routing failures and unhandled runtime exceptions:
+1. **Case-sensitive extension in `classifyUrl`:** `stripQueryAndHash(url).endsWith(".torrent")` is case-sensitive and misses `.TORRENT` or `.Torrent`. Similarly, `MAGNET:` scheme should be handled case-insensitively.
+2. **Fragile `magnet dn=` parsing in `getFilename`:** `param.split("=")` splits on the first `=` only, dropping content if the filename contains `=` (e.g., base64 chunks or titles with `=`). It also manually re-implements percent decoding and `+` replacement instead of using standard `URLSearchParams`.
+3. **Double `decodeURIComponent` exception in `getFilename`:** If a URL is syntactically valid but contains a malformed percent-sequence (e.g., `foo%ZZ.mkv`), `decodeURIComponent` throws `URIError`. The `catch` block attempts `decodeURIComponent(lastSegment)` a second time *outside* a try-catch, causing an unhandled crash. Safe fallback should return the raw segment.
+4. **Sanitizer vs Resolver semantic mismatch:** `sanitizeRoutingRules` allows whitespace-only `destination: "   "`, but `resolveDestination` skips it because `rule.destination.trim() === ""`.
+5. **Empty string conditions in storage:** If a rule has `domain: ""` or `namePattern: ""` in storage, `resolveDestination` checks `rule.domain !== undefined` or `rule.namePattern !== undefined`, treating an empty string as an active impossible condition (e.g. `/^$/`) that can never match.
+6. **Domain matching edge cases:** Domains pasted with protocol (`https://example.com`), trailing slashes (`example.com/`), or trailing dots (`example.com.`) fail to match incoming URLs.
+7. **Condition policy:** A rule requires at least one condition (`type !== "all" || domain.trim() || namePattern.trim()`) AND a non-empty `destination.trim()`. Catch-all rules without conditions are prohibited in the UI (users configure the global Target folder setting instead).
+
+**Resolved 2026-09-08** —
+1. `src/lib/routingRules.ts`: Switched magnet query parsing in `getFilename` to `URLSearchParams`, correctly preserving `=` in filenames and decoding pluses.
+2. Added `safeDecodeURIComponent` fallback to return raw string without throwing `URIError`.
+3. Added `normalizeDomain` stripping `https?://`, trailing slashes, dots, and lowercasing.
+4. Hardened `classifyUrl` to handle uppercase `.TORRENT` and `magnet:` case-insensitively.
+5. In `sanitizeRoutingRules`, trimmed empty strings to `undefined` and discarded whitespace-only destinations.
+6. Consolidated all 8 edge cases into passing assertions in `src/lib/routingRules.test.ts`.
+
+---
+
+### BUG-43 — Routing rules UX in popup: cramped single-line layout, missing priority reorder controls, and silent rule drop
+
+**Severity:** high · **Area:** popup/UX · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/popup/features/folderPicker/FolderSelect.svelte`
+
+The previous Routing Rules interface in the popup (~360–400px width) had critical usability issues:
+1. **Cramped horizontal layout:** Three inputs (`Select` type, `Field` filename, `Field` domain) were squeezed into a single row alongside the delete button.
+2. **No priority reordering:** The rule engine operates on "First matching rule wins", but the UI provided no way to reorder rules (no Move Up / Move Down buttons).
+3. **Ambiguous condition logic:** Users could not tell whether conditions are combined with AND or OR.
+4. **Data loss on incomplete rules:** Clicking "Save" when `destination` was blank silently dropped the rule without user confirmation or validation error.
+5. **Incompatible conditions (Magnet + Domain):** Selecting type `magnet` while filling `domain` created an impossible condition (magnets have no host).
+
+**Resolved 2026-09-08** —
+1. `src/popup/features/settings/Settings.svelte`: Implemented vertical card layout (`IF ... THEN SAVE TO`) with `Rule N` header, microcopy `matches all filled (AND)`, and full-width `FolderSelect`.
+2. Added accessible Move Up / Move Down icon buttons with boundary disable logic (`i === 0` and `i === length - 1`), plus Remove button with destructive hover tone.
+3. Added transactional validation: incomplete destination or empty conditions render inline `role="alert"` errors, focus the invalid field, and never drop rows.
+4. When `type === "magnet"`, disabled Domain field with hint *"Domain matching is not applicable to magnet links"* and cleared domain upon serialization.
+5. Verified with Playwright E2E tests in `tests/e2e/routing-rules.spec.ts` and Storybook stories.
+
+---
+
+### BUG-44 — Comprehensive regression coverage & post-fix test suite for Routing Rules
+
+**Severity:** high · **Area:** testing · **Status:** Done
+**Files:** `src/lib/routingRules.test.ts`, `tests/e2e/routing-rules.spec.ts`, `tests/e2e/fixtures/test-stand/index.html`, `src/popup/features/settings/RoutingRules.stories.ts`
+
+Comprehensive test suite covering unit, component, Storybook, and E2E regression:
+1. `src/lib/routingRules.test.ts`: Consolidated 34 unit tests covering URL/magnet edge cases, draft conversions, draft validation, and domain normalization (all 379 test suite cases passing).
+2. `src/popup/features/settings/RoutingRules.stories.ts`: Added 8 dedicated Storybook stories (`EmptyState`, `SingleRule`, `MultiplePrioritizedRules`, `MagnetDisabledDomain`, `ValidationErrorMissingDestination`, `ValidationErrorNoConditions`, `ReorderPriorityInteraction`, `LongPatternsAndDeepPaths`).
+3. `tests/e2e/fixtures/test-stand/index.html`: Created interactive test stand with Torrents, Magnets, Direct URLs, and Domains tabs, including live event logger and download triggers.
+4. `tests/e2e/routing-rules.spec.ts`: Expanded Playwright suite to 5 tests verifying zero page errors, draft retention on validation error, priority reordering persistence, and live interception against mock NAS with routed destinations.
+
+**Resolved 2026-09-08** —
+All test suites green and verified via CI quality gates.
+
+---
+
+### BUG-45 — Routing engine ReDoS vulnerability in matchGlob, sanitizer condition-invariant gap, and type: "all" draft smell
+
+**Severity:** high · **Area:** core/routing · **Status:** Done
+**Files:** `src/lib/routingRules.ts`, `src/lib/routingRules.test.ts`, `src/popup/features/settings/Settings.svelte`,
+`src/popup/features/settings/RoutingRules.stories.ts`, `tests/e2e/routing-rules.spec.ts`
+
+Following architecture review via ChatGPT Gateway on `ca198bd`, two critical production blockers and an architectural typing smell were identified and resolved:
+1. **ReDoS / Catastrophic Backtracking in `matchGlob`:**
+   Converting wildcard glob patterns like `*a*a*a*...b` into regular expressions (`^.*a.*a.*a...b$`) induces exponential backtracking in V8. Under Chrome MV3, an adversarial or accidental glob pattern locks up the service worker or UI thread.
+   *Competitor benchmark:* Leading download routing extensions (e.g. *Downloads Butler*, *SmarTidy Downloader*, *Regexp Download Organizer*) either avoid regular expressions for glob matching or constrain pattern execution. Replaced `new RegExp()` with a deterministic, linear two-pointer wildcard matching algorithm ($\mathcal{O}(|s| \times |p|)$) supporting `*` and `?`, case-insensitive, with literal treatment of regex special characters (`[]()+${}^`).
+2. **Sanitizer Invariant Mismatch (Catch-all shadow rules):**
+   The UI validator strictly mandates `destination` plus at least one active condition (`type !== "all" || domain || namePattern`). However, `sanitizeRoutingRules` previously accepted rules with only `destination: "Folder"`, which `resolveDestination` evaluated as matching *all* inputs. If such a rule were positioned first, all subsequent rules were permanently shadowed. Furthermore, magnet rules erroneously retained `domain` conditions in storage despite magnets lacking HTTP hosts.
+   *Resolution:* Aligned `sanitizeRoutingRules` to discard rules lacking active conditions and strip invalid domain conditions from magnet rules.
+3. **`type: "all"` vs `undefined` Typing Smell:**
+   `RoutingRuleDraft.type` was previously typed as `RoutingMatchType | undefined`, allowing `undefined` bindings to creep into Svelte 5 `<Select>` inputs and triggering semantic ambiguities in condition evaluation (`Boolean(draft.type)`).
+   *Resolution:* Introduced concrete `type RoutingRuleDraftType = "all" | RoutingMatchType;` so `draft.type` is always a concrete string. On serialization, `"all"` is cleanly omitted from storage.
+4. **Test Suite Expansion:**
+   - Vitest: Added ReDoS verification test executing 16-group adversarial wildcard pattern in <5ms, regex literal characters test, sanitizer catch-all prevention tests, and draft roundtrip tests.
+   - Playwright E2E: Added cold hydration reload test (`reloading popup loads stored rules without errors and maintains full draft reactivity`) and transactional validation assertion confirming `chrome.storage.local` remains untouched upon validation errors.
+   - Storybook: Added `play` assertions for disabled `Move Up` / `Move Down` controls on single and multi-rule configurations.
+
+**Resolved 2026-09-09** —
+All 385 Vitest unit tests, Storybook build, and 31 Playwright E2E tests verified green.
 
 ---
 
