@@ -511,6 +511,13 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
         },
         nextIndex,
       );
+      // The folders the caller asked for, kept rather than validated and dropped. `AddTorrent`
+      // already did this; `AddUrl` did not, so every magnet came back with a hardcoded `Movies`
+      // and the one path where routing is hardest was the one the mock could not tell the truth
+      // about.
+      task.move = move;
+      task.temp = temp;
+      task.path = `${temp}/${taskName}`;
       tasks.push(task);
       reply(200, { status: 0, error: 0 });
       return;

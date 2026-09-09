@@ -236,6 +236,15 @@ Hover is used there for exactly one thing, a delayed tooltip on the title. Neith
 two has any density control. A density toggle stays out of scope; showing less by default is the
 cheaper half of the same idea.
 
+**2026-09-09, closing the loop — and a mock that was lying about magnets.** Everything up to here
+asserted what was *sent* to the NAS. Nothing asserted that the folder comes back and reaches the
+user. Adding that check surfaced the reason it mattered: the mock's `AddUrl` read the `move` it
+was given, validated it, and then created the task with a hardcoded `Movies` — `AddTorrent` had
+always persisted both folders, `AddUrl` never had. So the one path where routing has neither a
+filename nor a host of its own to work from was also the one path the harness could not tell the
+truth about. Fixed, and `routing-matrix.spec.ts` now reloads the popup and asserts the magnet's
+card displays the routed folder, and that a task which went to the Target shows no line at all.
+
 ---
 
 ### BUG-39 — Toolbar badge background poll fetches full task list instead of lightweight `Task/Status`

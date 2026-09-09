@@ -39,7 +39,12 @@ const RULES = [
   { type: "url", namePattern: "mkv", destination: "R/DirectMovies" },
 ];
 
-const FALLBACK = "Multimedia/Default";
+/**
+ * Deliberately the folder the mock's seed task already sits in, so the run has one card that
+ * genuinely went to the Target and can be asserted to stay quiet about it. No case below expects
+ * the fallback — every one of them matches a rule.
+ */
+const FALLBACK = "Movies";
 
 type Expectation = {
   /** Row label in the summary table. */
@@ -237,6 +242,23 @@ test("routing matrix: every source shape the stand can produce lands in the fold
       actual: afterDirect.length === 0 ? "not sent to the NAS" : `sent via ${afterDirect[0].path}`,
       via: "—",
     });
+
+    // Closing the loop: everything above asserts the *request*. This asserts that the folder a
+    // rule chose comes back from the NAS and reaches the user's eyes. A magnet is the case worth
+    // spending the check on — it is the only one where routing has neither a filename nor a host
+    // of its own to work from, and it is the path the mock used to lie about.
+    await session.page.reload({ waitUntil: "domcontentloaded" });
+    const magnetCard = session.page
+      .locator("#downloads-list .download-item")
+      .filter({ hasText: "Documentary.Film.2024.1080p.mkv" });
+    await expect(magnetCard).toBeVisible({ timeout: 15_000 });
+    await expect(magnetCard.locator(".download-destination")).toHaveText(/R\/MagnetMovies/);
+
+    // And the card stays quiet when the task simply went to the Target folder — the seed task
+    // the mock starts with sits in exactly that folder.
+    const defaultCard = session.page.locator("#downloads-list .download-item").filter({ hasText: "Ubuntu ISO" });
+    await expect(defaultCard).toBeVisible();
+    await expect(defaultCard.locator(".download-destination")).toHaveCount(0);
 
     await testInfo.attach("routing-matrix", {
       body: renderTable(results),
