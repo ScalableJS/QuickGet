@@ -212,6 +212,30 @@ Synology client treats `destination` purely as a request field. See
   card exists to carry. One 11px row under the status line, both folders truncating
   independently.
 
+**2026-09-09, third pass — the line only appears when it is news.** Looking at a list of cards in
+Storybook, the folder row was on every one of them, and on most it said "this went where
+everything goes". Two cuts, both on the product owner's call:
+
+- **Shown only when the destination differs from the configured Target folder.** The user chose
+  that folder; repeating it back on every task is noise. The card is exactly its pre-routing shape
+  for the ordinary case and grows by one line precisely when a rule did something.
+- **The staging folder left the card for the tooltip.** `temp` is one global setting, so on the
+  card it was the same string repeated down the whole list. In the tooltip it still answers
+  "where is it right now" — until the task finishes, after which naming it would point at an
+  empty directory.
+
+`defaultFolder` reaches the card as a prop from `DownloadsList`, which loads settings on mount.
+Undefined means "not known yet" and shows the destination rather than guessing it away; settings
+resolve long before the first NAS poll, so it is not seen in practice.
+
+**Competitor context for the density question** (`docs/competitor-routing-teardown.md`): *Send To
+QNAP++* solves it with an explicit compact/expanded toggle persisted in storage — compact hides
+the whole meta row and swaps the bar for a 28px ring. It also measures that row and shrinks its
+font to as low as 9px when it overflows, which is an admission that one dense row does not fit.
+Hover is used there for exactly one thing, a delayed tooltip on the title. Neither of the other
+two has any density control. A density toggle stays out of scope; showing less by default is the
+cheaper half of the same idea.
+
 ---
 
 ### BUG-39 — Toolbar badge background poll fetches full task list instead of lightweight `Task/Status`

@@ -3,6 +3,7 @@
   import Search from "~icons/lucide/search";
   import { flip } from "svelte/animate";
   import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
+  import { loadSettings } from "@lib/settings.js";
   import { isReorderableStatus } from "@lib/tasks.js";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
   import { showStatus } from "../../components/index.js";
@@ -17,6 +18,14 @@
     view: typeof downloadsView;
     onToggle: (hash: string) => void;
   } = $props();
+
+  // The configured Target folder, so a task that landed there does not repeat it back on its
+  // card. Undefined until settings arrive, and a card shows its destination rather than
+  // guessing — settings resolve long before the first NAS poll, so this is not seen in practice.
+  let defaultFolder = $state<string | undefined>(undefined);
+  void loadSettings().then((settings) => {
+    defaultFolder = settings.NASdir;
+  });
 
   let filter = $state<DownloadFilter>("in-progress");
   let searchOpen = $state(false);
@@ -117,6 +126,7 @@
       <div animate:flip={{ duration: 180 }}>
         <DownloadItem
           {task}
+          {defaultFolder}
           selectedHash={view.selectedHash}
           removing={view.removingHash === (task.hash ?? task.id)}
           menuOpen={activeMenuHash === task.hash}

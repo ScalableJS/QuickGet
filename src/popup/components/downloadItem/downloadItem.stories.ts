@@ -27,7 +27,7 @@ function task(over: Partial<Task> = {}): Task {
 const meta = {
   title: "Downloads/DownloadItem",
   component: DownloadItem,
-  args: { onToggle: () => {}, selectedHash: null },
+  args: { onToggle: () => {}, selectedHash: null, defaultFolder: "Download" },
 } satisfies Meta<typeof DownloadItem>;
 
 export default meta;
@@ -186,22 +186,23 @@ export const AllStatuses: StoryObj = {
 };
 
 /**
- * While a task runs the data is in the staging folder, not where the rule sent it — the arrow is
- * the difference between "look in Movies" and "look in Movies later".
+ * The ordinary case: the task went to the configured Target folder, so the card says nothing
+ * about it. This is what most cards look like most of the time, and it is the shape the card had
+ * before routing existed.
  */
-export const DestinationStagingThenFinal: Story = {
+export const DestinationIsTheDefault: Story = {
   args: {
-    task: task({
-      name: "Some.Movie.2024.1080p.mkv",
-      stagingFolder: "Download",
-      destination: "Multimedia/Movies",
-    }),
+    task: task({ name: "Ubuntu 24.04 Desktop.iso", destination: "Multimedia/Movies" }),
+    defaultFolder: "Multimedia/Movies",
   },
 };
 
-/** The NAS stages in the destination itself — no arrow, because nothing will move. */
-export const DestinationStagingSameAsFinal: Story = {
-  args: { task: task({ stagingFolder: "Multimedia/Movies", destination: "Multimedia/Movies" }) },
+/** A rule sent this somewhere else, which is the only reason the line exists. */
+export const DestinationChosenByARule: Story = {
+  args: {
+    task: task({ name: "Some.Movie.2024.1080p.mkv", destination: "Multimedia/Movies" }),
+    defaultFolder: "Download",
+  },
 };
 
 /**

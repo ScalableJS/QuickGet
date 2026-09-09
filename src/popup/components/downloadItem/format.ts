@@ -128,13 +128,12 @@ export type DownloadItemView = {
   sizeText: string;
   swarmText: string;
   errorDetail: string;
-  /** Shortened destination folder, empty when the NAS reported none. */
-  destinationText: string;
   /**
-   * Shortened staging folder, shown only while it still differs from where the task will end up.
-   * Empty once the move has happened, or when the two folders are the same anyway.
+   * Shortened destination folder — empty when the NAS reported none, and **empty when it is the
+   * default Target**, because then it is not news. A line saying "this went where everything
+   * goes" on every card is noise; the line exists to say a rule sent it somewhere else.
    */
-  stagingText: string;
+  destinationText: string;
   /** The same information unfolded, for the tooltip — nothing is hidden, only shortened. */
   folderTitle: string;
 };
@@ -143,7 +142,15 @@ export type DownloadItemView = {
  * Pure presentation model for a download item — shared by the Svelte component
  * and the Storybook stories.
  */
-export function getDownloadItemView(task: Task): DownloadItemView {
+export function getDownloadItemView(
+  task: Task,
+  /**
+   * The globally configured Target folder. A destination equal to it is not shown: the user
+   * chose that folder and does not need reminding of it on every task. Undefined means "not
+   * known yet", and then the destination is shown rather than guessed away.
+   */
+  defaultFolder?: string,
+): DownloadItemView {
   const rawProgress = Number.isFinite(task.progress) ? Math.max(0, Math.min(100, Math.round(task.progress))) : 0;
   const isSeeding = task.status === "seeding";
   const isFinished = task.status === "finished";
@@ -172,12 +179,16 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const sizeText = formatTaskSize(task.downloadedBytes, task.sizeBytes, isDownloadComplete);
   const swarmText = formatSwarm(task);
   const errorDetail = isError ? formatError(task.errorCode, task.errorMessage) : "";
-  const destinationText = formatDestination(task.destination);
-  // Once a task is finished the data has already been moved, so naming the staging folder would
-  // send the user to an empty directory. Same when the NAS stages in the destination itself.
-  const stagingCandidate = isFinished || isSeeding ? "" : formatDestination(task.stagingFolder);
-  const stagingText = stagingCandidate === destinationText ? "" : stagingCandidate;
-  const folderTitle = stagingText
+  const isDefaultFolder = defaultFolder !== undefined && isSameFolder(task.destination, defaultFolder);
+  const destinationText = isDefaultFolder ? "" : formatDestination(task.destination);
+
+  // The staging folder is one global setting, so putting it on the card would repeat the same
+  // string on every task. It belongs in the tooltip, where it answers "where is it right now"
+  // for the one person asking. Dropped once the task is finished: the move has already happened,
+  // and naming the staging folder then sends the user to an empty directory.
+  const stagingWorthNaming =
+    !isFinished && !isSeeding && task.stagingFolder && !isSameFolder(task.stagingFolder, task.destination);
+  const folderTitle = stagingWorthNaming
     ? `Currently in ${task.stagingFolder}, will be saved to ${task.destination}`
     : `Saving to ${task.destination}`;
 
@@ -208,7 +219,6 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     swarmText,
     errorDetail,
     destinationText,
-    stagingText,
     folderTitle,
   };
 }
@@ -231,4 +241,17 @@ export function formatDestination(raw: string | undefined): string {
   if (segments.length === 0) return "";
   if (segments.length <= 2) return segments.join("/");
   return `…/${segments.slice(-2).join("/")}`;
+}
+
+/** Whether two NAS paths name the same folder, ignoring stray slashes and surrounding space. */
+function isSameFolder(a: string | undefined, b: string | undefined): boolean {
+  return formatFullPath(a) === formatFullPath(b);
+}
+
+function formatFullPath(raw: string | undefined): string {
+  return (raw ?? "")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/");
 }

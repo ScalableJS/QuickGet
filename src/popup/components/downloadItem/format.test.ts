@@ -340,7 +340,7 @@ describe("formatDestination", () => {
   });
 });
 
-describe("staging folder on the card", () => {
+describe("the folder line only appears when it is news", () => {
   const base = {
     id: "1",
     hash: "a",
@@ -355,24 +355,47 @@ describe("staging folder on the card", () => {
     destination: "Multimedia/Movies",
   } as const;
 
-  it("shows where the data is now while the task is still running", () => {
-    const view = getDownloadItemView({ ...base, status: "downloading" });
-    expect(view.stagingText).toBe("Download");
-    expect(view.destinationText).toBe("Multimedia/Movies");
-    expect(view.folderTitle).toBe("Currently in Download, will be saved to Multimedia/Movies");
+  it("says nothing when the task went to the configured Target folder", () => {
+    const view = getDownloadItemView({ ...base, status: "downloading" }, "Multimedia/Movies");
+    expect(view.destinationText).toBe("");
   });
 
-  it("drops the staging folder once the move has happened", () => {
-    for (const status of ["finished", "seeding"] as const) {
-      const view = getDownloadItemView({ ...base, status });
-      expect(view.stagingText, status).toBe("");
-      expect(view.destinationText, status).toBe("Multimedia/Movies");
-      expect(view.folderTitle, status).toBe("Saving to Multimedia/Movies");
+  it("ignores stray slashes and spacing when comparing against the Target", () => {
+    for (const target of ["/Multimedia/Movies", "Multimedia/Movies/", " Multimedia / Movies "]) {
+      expect(getDownloadItemView({ ...base, status: "downloading" }, target).destinationText, target).toBe("");
     }
   });
 
-  it("says nothing extra when the NAS stages in the destination itself", () => {
-    const view = getDownloadItemView({ ...base, status: "downloading", stagingFolder: "Multimedia/Movies" });
-    expect(view.stagingText).toBe("");
+  it("shows the folder when a rule sent the task somewhere else", () => {
+    const view = getDownloadItemView({ ...base, status: "downloading" }, "Download");
+    expect(view.destinationText).toBe("Multimedia/Movies");
+  });
+
+  it("shows the folder while the Target is still unknown, rather than guessing it away", () => {
+    expect(getDownloadItemView({ ...base, status: "downloading" }).destinationText).toBe("Multimedia/Movies");
+  });
+
+  /**
+   * The staging folder is one global setting, so on the card it would repeat identically down the
+   * whole list. It answers "where is it right now", which is a tooltip question.
+   */
+  it("names the staging folder in the tooltip only, and only until the move happens", () => {
+    expect(getDownloadItemView({ ...base, status: "downloading" }, "Download").folderTitle).toBe(
+      "Currently in Download, will be saved to Multimedia/Movies",
+    );
+
+    for (const status of ["finished", "seeding"] as const) {
+      expect(getDownloadItemView({ ...base, status }, "Download").folderTitle, status).toBe(
+        "Saving to Multimedia/Movies",
+      );
+    }
+  });
+
+  it("does not name a staging folder that is the destination anyway", () => {
+    const view = getDownloadItemView(
+      { ...base, status: "downloading", stagingFolder: "Multimedia/Movies" },
+      "Download",
+    );
+    expect(view.folderTitle).toBe("Saving to Multimedia/Movies");
   });
 });
