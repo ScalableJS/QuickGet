@@ -7,6 +7,7 @@ import { expect, test, type Worker } from "@playwright/test";
 
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
+import { startTestStandHost } from "./support/testStandHost.js";
 import { startTorrentHost } from "./support/torrentHost.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -316,48 +317,60 @@ test("leaves the download alone when no NAS credentials are available", async ()
  *   3. Click a .torrent link: no "Save as" prompt, no file in Downloads, task on the NAS.
  */
 /**
- * The two halves of strict mode, run as one comparison, because either assertion alone is
- * worthless. "No file appeared" proves nothing unless a file appears when the mode is off — an
- * earlier version of this probe measured a directory Chrome was not writing to and reported
- * success for both arms.
+ * Two tests, and the first one exists so the second cannot pass vacuously.
  *
- * This needs `nativeDownloads`: Playwright's own `Browser.setDownloadBehavior: allowAndName`
- * skips the filename-determination stage, so `onDeterminingFilename` never fires and strict mode
- * cannot engage at all. That is why this case sat `test.skip` with manual steps for ten days.
+ * Both need `nativeDownloads`: `launchPersistentContext` sends `Browser.setDownloadBehavior`
+ * with `allowAndName`, which skips the filename-determination stage entirely, so
+ * `onDeterminingFilename` never fires and strict mode cannot engage at all. That is why this
+ * case sat `test.skip` with manual steps for ten days.
  */
-for (const strict of [false, true] as const) {
-  test(`strict mode ${strict ? "leaves no" : "leaves a"} .torrent in Downloads when the NAS accepts it`, async () => {
-    const mockNas = await startMockNas();
-    // No body delay on purpose: this is the race the permissive path loses. A small .torrent from
-    // localhost reaches `complete` before any cancel can bite, so a file that is still absent was
-    // kept away by the filename-stage cancel and nothing else.
-    const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
+test("downloads land in the directory the strict-mode test watches", async () => {
+  // The control for the test below. "The directory is empty" proves nothing unless something
+  // is known to arrive there, and it must be something the extension never touches — an
+  // ordinary .mkv, not a torrent. An earlier version used a torrent with interception in
+  // permissive mode and was flaky by construction: that path pauses, hands off and cancels, so
+  // whether a file survives is a race the code is *designed to win*. It held on macOS and lost
+  // on the Linux runner.
+  const stand = await startTestStandHost();
+  const { session, downloadsPath } = await startSession({ nativeDownloads: true });
 
-    try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { suppressLocalTorrentFile: strict }));
+  try {
+    const page = await session.context.newPage();
+    await page.goto(`${stand.url}files/sample-clip.mkv`).catch(() => {
+      // Navigating to an attachment aborts the navigation; the download is what matters.
+    });
 
-      const page = await session.context.newPage();
-      await page.goto(torrentHost.url).catch(() => {
-        // Navigating to an attachment aborts the navigation; the download is what matters.
-      });
+    await expect.poll(() => readdir(downloadsPath), { timeout: 20_000 }).toContain("sample-clip.mkv");
+  } finally {
+    await session.close();
+    await stand.close();
+  }
+});
 
-      await expect
-        .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), { timeout: 30_000 })
-        .toBe(true);
+test("strict mode leaves no .torrent in Downloads when the NAS accepts it", async () => {
+  const mockNas = await startMockNas();
+  // No body delay on purpose: a small .torrent from localhost is committed before any cancel
+  // could bite, so a file that is still absent was kept away by the filename-stage cancel.
+  const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
 
-      if (strict) {
-        // The whole point of the mode: nothing is left for the user to find in Downloads.
-        await page.waitForTimeout(3_000);
-        expect(await readdir(downloadsPath)).toEqual([]);
-      } else {
-        // The control. Without it, "the directory is empty" could just mean Chrome was writing
-        // somewhere else, and the assertion above would pass while proving nothing.
-        await expect.poll(() => readdir(downloadsPath), { timeout: 20_000 }).toContain("sample.torrent");
-      }
-    } finally {
-      await session.close();
-      await torrentHost.close();
-      await mockNas.close();
-    }
-  });
-}
+  try {
+    await seedSettings(session.worker, nasSettings(mockNas.port, { suppressLocalTorrentFile: true }));
+
+    const page = await session.context.newPage();
+    await page.goto(torrentHost.url).catch(() => {
+      // Navigating to an attachment aborts the navigation; the download is what matters.
+    });
+
+    await expect
+      .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), { timeout: 30_000 })
+      .toBe(true);
+
+    // The whole point of the mode: nothing is left for the user to find in Downloads.
+    await page.waitForTimeout(3_000);
+    expect(await readdir(downloadsPath)).toEqual([]);
+  } finally {
+    await session.close();
+    await torrentHost.close();
+    await mockNas.close();
+  }
+});
