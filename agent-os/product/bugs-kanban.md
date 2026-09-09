@@ -40,7 +40,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
-| BUG-30 | Intercepted `.torrent` still reaches the disk — no filename-stage suppression | background | medium | In Review |
+| BUG-30 | Intercepted `.torrent` still reaches the disk — no filename-stage suppression | background | medium | Done |
 | BUG-29 | Tracker-auth send failure is painted as a hard extension error | background | medium | Done |
 | BUG-25 | Losing the worker between pause and pending-marker write strands a browser download | background | high | Done |
 | BUG-24 | Rejected duplicate listener can release another listener's in-flight ownership | background | high | Done |
@@ -1016,7 +1016,7 @@ the successful item is absent after a full close/reopen and that no second `AddT
 
 ### BUG-30 — Intercepted `.torrent` still reaches the disk — no filename-stage suppression
 
-**Severity:** medium · **Area:** background · **Status:** In Review
+**Severity:** medium · **Area:** background · **Status:** Done
 **Files:** `src/background/downloads.ts:230-247` (`handOffToNas`), `manifest.json` (permissions),
 `src/lib/config.ts` (`torrentInterceptMode`), `tests/e2e/download-interception.spec.ts:113-122`
 
@@ -1113,6 +1113,38 @@ the event never arrives). The e2e case is therefore `test.skip` with manual step
 docstring, and the logic is covered by unit tests instead (`downloads.test.ts` →
 `suppressLocalTorrentFile`). **Strict mode has not been exercised against a real Chrome
 profile yet** — that check is still outstanding and keeps this card In Review.
+**2026-09-09 — automated, and the ten-day manual gap is closed.** The blocker was never the
+feature; it was that `onDeterminingFilename` does not fire under Playwright, so strict mode could
+not be exercised at all. The cause turned out to be one CDP call: `launchPersistentContext` sends
+`Browser.setDownloadBehavior` with `allowAndName` at context init (playwright-core
+`coreBundle.js:37972`), which names every download a GUID and skips the filename-determination
+stage entirely.
+
+Undoing it restores native handling. `launchExtensionPopup` gained a `nativeDownloads` option
+that writes `download.default_directory` into the profile's `Preferences` before launch — with
+`behavior: "default"` Chrome ignores `downloadPath`, so the profile is the only thing that decides
+where a file lands — and then sends `Browser.setDownloadBehavior { behavior: "default" }` over a
+CDP session after launch.
+
+`download-interception.spec.ts` now runs **both arms**: strict off leaves `sample.torrent` in the
+directory under its real `Content-Disposition` name, strict on leaves the directory empty. The
+control is not decoration — an earlier version of this probe measured a directory Chrome was not
+writing to and reported success for *both* settings.
+
+**What is still not covered, stated plainly:** the "no Save-as dialog" half. With
+`prompt_for_download: true` a headless browser cannot show a dialog, and nothing lands whether
+strict is on or off, so that arm proves nothing and was dropped rather than kept as decoration.
+The mechanism is the same one the file-absence assertion exercises — cancel while the filename
+stage is held — but the dialog itself has still only been reasoned about, not observed.
+
+Two things worth keeping: `acceptDownloads: "internal-browser-default"` would be the clean flag
+and is unreachable from the public API, because the client coerces any truthy value to `"accept"`
+(`coreBundle.js:60511`); and `onDeterminingFilename` allows exactly **one listener per
+extension**, so a test cannot add a probe listener alongside ours — it must assert on outcomes.
+Playwright consider CDP calls like this out of scope (issue #23776), so an upgrade may break it —
+it will break loudly.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 

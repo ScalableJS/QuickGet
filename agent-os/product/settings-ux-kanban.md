@@ -30,7 +30,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | **Done** |
 | UX-16 | Settings held things that did not justify being there | ui | M | **Done** |
-| UX-17 | No control over how aggressively a `.torrent` is intercepted | settings | M | In Review |
+| UX-17 | No control over how aggressively a `.torrent` is intercepted | settings | M | **Done** |
 | UX-18 | The rule editor teaches patterns that cannot match | ui | M | **Done** |
 | UX-19 | Rules are write-only — nothing tells you whether they work | ui | M | Deferred |
 | UX-20 | Which rule sent a task, and where, is invisible | ui | S | Rejected |
@@ -618,7 +618,7 @@ own sake. It now sits in a header row above the tab list, which leaves two tabs:
 
 ### UX-17 — No control over how aggressively a `.torrent` is intercepted
 
-**Size:** M · **Area:** settings · **Status:** In Review
+**Size:** M · **Area:** settings · **Status:** Done
 **Files:** `src/lib/config.ts` (`torrentInterceptMode`), `src/popup/features/settings/Settings.svelte`,
 `src/background/downloads.ts`
 **Depends on:** BUG-30 (the mechanism this setting exposes)
@@ -672,6 +672,12 @@ the settings lock starts **off**. See BUG-30 for the mechanism and for the 15-se
 timeout that shaped strict mode. UX-17 remains In Review until BUG-30's strict path is exercised
 in a real Chrome profile.
 
+**2026-09-09 — Done.** The card's own closing line was "UX-17 remains In Review until BUG-30's
+strict path is exercised in a real Chrome profile". It now is, automatically and in CI, with a
+control arm — see BUG-30 for the mechanism and for the one half that automation still cannot
+reach (the Save-as dialog, which a headless browser cannot show).
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 
