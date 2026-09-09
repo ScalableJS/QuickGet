@@ -13,13 +13,13 @@
   import { DEFAULTS, type Settings, type ThemeMode } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
   import {
-    type RoutingMatchType,
     type RoutingRule,
     type RoutingRuleDraft,
     serializeRoutingRuleDraft,
     toRoutingRuleDraft,
     validateRoutingRuleDraft,
   } from "@lib/routingRules.js";
+  import type { SourceKind } from "@lib/sourceKind.js";
   import { findConfigProblem } from "@lib/configHealth.js";
   import { connectionFailure, type ConnectionState, readConnectionState } from "@lib/connectionHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
@@ -183,6 +183,11 @@
     }
   }
 
+  /** Mirrors the id `Field` derives for its error message, so siblings can point at it. */
+  function conditionErrorId(index: number): string {
+    return `routing-${index}-namePattern-error`;
+  }
+
   function clearDraftError(id: string, field: "destination" | "conditions"): void {
     if (!routingErrors[id]) return;
     const current = { ...routingErrors[id] };
@@ -196,9 +201,15 @@
     }
   }
 
-  function addRule(): void {
+  async function addRule(): Promise<void> {
     const newDraft = toRoutingRuleDraft({ destination: "" });
     routingRuleDrafts = [...routingRuleDrafts, newDraft];
+    // The new card appears at the bottom of a scrolling list while focus stays on the button.
+    // Without moving it, adding a rule is indistinguishable from a no-op without sight.
+    const index = routingRuleDrafts.length - 1;
+    await tick();
+    document.getElementById(`routing-${index}-type`)?.focus();
+    showStatus(`Rule ${index + 1} added`, "info", { autoHideMs: 2000 });
   }
 
   function removeRule(index: number): void {
@@ -213,30 +224,41 @@
     showStatus(`Rule ${index + 1} removed`, "info", { autoHideMs: 2000 });
   }
 
-  function moveRuleUp(index: number): void {
-    if (index <= 0) return;
+  /**
+   * Priority order is the whole meaning of a rule set — first match wins — so changing it
+   * cannot be silent, and it cannot cost the keyboard user their place: the button that did the
+   * move is disabled the moment the rule reaches an end, and Chrome then drops focus to <body>.
+   */
+  async function moveRule(index: number, delta: -1 | 1): Promise<void> {
+    const target = index + delta;
+    if (target < 0 || target >= routingRuleDrafts.length) return;
+
     const copy = [...routingRuleDrafts];
-    const temp = copy[index - 1];
-    copy[index - 1] = copy[index];
-    copy[index] = temp;
+    const moved = copy[index];
+    copy[index] = copy[target];
+    copy[target] = moved;
     routingRuleDrafts = copy;
+
+    const direction = delta < 0 ? "up" : "down";
+    showStatus(`Rule ${index + 1} moved ${direction} — now rule ${target + 1}`, "info", { autoHideMs: 2000 });
+
+    await tick();
+    focusMoveControl(target, direction);
   }
 
-  function moveRuleDown(index: number): void {
-    if (index >= routingRuleDrafts.length - 1) return;
-    const copy = [...routingRuleDrafts];
-    const temp = copy[index + 1];
-    copy[index + 1] = copy[index];
-    copy[index] = temp;
-    routingRuleDrafts = copy;
+  /** Prefer the button that was just used; fall back to its sibling when it is now disabled. */
+  function focusMoveControl(index: number, direction: "up" | "down"): void {
+    const preferred = document.getElementById(`routing-${index}-move-${direction}`);
+    if (preferred instanceof HTMLButtonElement && !preferred.disabled) {
+      preferred.focus();
+      return;
+    }
+    document.getElementById(`routing-${index}-move-${direction === "up" ? "down" : "up"}`)?.focus();
   }
 
   function setRuleType(index: number, raw: string): void {
-    const nextType = raw === "" || raw === "all" ? "all" : (raw as RoutingMatchType);
+    const nextType = raw === "" || raw === "all" ? "all" : (raw as SourceKind);
     routingRuleDrafts[index].type = nextType;
-    if (nextType === "magnet" && routingRuleDrafts[index].domain) {
-      routingRuleDrafts[index].domain = "";
-    }
     clearDraftError(routingRuleDrafts[index].id, "conditions");
   }
 
@@ -685,25 +707,28 @@
             (draftError?.destination || draftError?.conditions) && "!border-[var(--color-error)]"
           ]}
         >
-          <legend class="visually-hidden sr-only">Rule {i + 1}</legend>
+          <legend class="sr-only">Rule {i + 1}</legend>
           <div class="routing-rule-header flex items-center justify-between pb-1 border-b border-solid border-[var(--color-control-border)]">
-            <span class="font-600 text-12px text-[var(--color-text)]">Rule {i + 1}</span>
+            <!-- The legend above already names the group; repeating it would announce twice. -->
+            <span class="font-600 text-12px text-[var(--color-text)]" aria-hidden="true">Rule {i + 1}</span>
             <div class="routing-rule-actions flex items-center gap-1">
               <IconButton
+                id={`routing-${i}-move-up`}
                 size="sm"
                 aria-label={`Move rule ${i + 1} up`}
                 title="Move up"
                 disabled={i === 0}
-                onclick={() => moveRuleUp(i)}
+                onclick={() => moveRule(i, -1)}
               >
                 <ChevronUp aria-hidden="true" />
               </IconButton>
               <IconButton
+                id={`routing-${i}-move-down`}
                 size="sm"
                 aria-label={`Move rule ${i + 1} down`}
                 title="Move down"
                 disabled={i === routingRuleDrafts.length - 1}
-                onclick={() => moveRuleDown(i)}
+                onclick={() => moveRule(i, 1)}
               >
                 <ChevronDown aria-hidden="true" />
               </IconButton>
@@ -722,14 +747,24 @@
           <!-- IF section: conditions -->
           <div class="routing-conditions flex flex-col gap-[var(--space-1)]">
             <div class="flex items-center justify-between text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">
-              <span>IF</span>
-              <span class="text-10px font-normal lowercase opacity-75">matches all filled (AND)</span>
+              <span>If</span>
+              <span class="text-11px font-normal normal-case">all filled conditions must match</span>
+            </div>
+            <!-- Headers rather than placeholders: a placeholder stops being a label the moment
+                 anything is typed, which is exactly when you need to know which field is which. -->
+            <div class="grid grid-cols-3 gap-[var(--space-1)] text-11px text-[var(--text-secondary)]" aria-hidden="true">
+              <span>Source</span>
+              <span>Name or extension</span>
+              <span>Site</span>
             </div>
             <div class="grid grid-cols-3 gap-[var(--space-1)]">
               <div class="routing-match-type min-w-0">
                 <Select
+                  id={`routing-${i}-type`}
                   size="sm"
                   aria-label={`Rule ${i + 1} match type`}
+                  aria-invalid={draftError?.conditions ? "true" : undefined}
+                  aria-describedby={draftError?.conditions ? conditionErrorId(i) : undefined}
                   value={draft.type}
                   onchange={(e) => setRuleType(i, e.currentTarget.value)}
                 >
@@ -740,11 +775,14 @@
                 </Select>
               </div>
               <div class="routing-text-field min-w-0">
+                <!-- The condition error belongs to the group, but it has to live on a control
+                     to be announced: `Field` renders it, and the other two point at it. -->
                 <Field
                   id={`routing-${i}-namePattern`}
                   size="sm"
-                  placeholder="e.g. *.mkv"
-                  aria-label={`Rule ${i + 1} filename pattern`}
+                  placeholder="mkv mp4 avi"
+                  aria-label={`Rule ${i + 1} name or extension`}
+                  error={draftError?.conditions}
                   bind:value={draft.namePattern}
                   oninput={() => clearDraftError(draft.id, "conditions")}
                 />
@@ -753,29 +791,30 @@
                 <Field
                   id={`routing-${i}-domain`}
                   size="sm"
-                  placeholder={draft.type === "magnet" ? "N/A (magnet)" : "e.g. site.com"}
-                  aria-label={`Rule ${i + 1} domain`}
-                  disabled={draft.type === "magnet"}
+                  placeholder="rutracker.org"
+                  aria-label={`Rule ${i + 1} site`}
+                  aria-invalid={draftError?.conditions ? "true" : undefined}
+                  aria-describedby={draftError?.conditions ? conditionErrorId(i) : undefined}
                   bind:value={draft.domain}
                   oninput={() => clearDraftError(draft.id, "conditions")}
                 />
               </div>
             </div>
+            <p class="m-0 text-11px text-[var(--text-secondary)]">
+              List several values in a field &mdash; <code>mkv mp4 avi</code>, <code>rutracker.org nnmclub.to</code>.
+              Any one of them matches. Use <code>*</code> for anything that is not an extension:
+              <code>*S0?E0?*</code>, <code>*1080p*</code>.
+            </p>
             {#if draft.type === "magnet"}
               <p class="m-0 text-11px text-[var(--text-secondary)] italic">
-                Domain matching is not applicable to magnet links.
-              </p>
-            {/if}
-            {#if draftError?.conditions}
-              <p class="m-0 text-11px text-[var(--color-error)] font-500" role="alert">
-                {draftError.conditions}
+                A magnet has no site of its own, so Site matches the page it was clicked on.
               </p>
             {/if}
           </div>
 
           <!-- THEN SAVE TO section: destination -->
           <div class="routing-then flex flex-col gap-[var(--space-1)]">
-            <span class="text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">THEN SAVE TO</span>
+            <span class="text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">Then save to</span>
             <FolderSelect
               id={`routing-${i}-destination`}
               placeholder="e.g. Multimedia/Movies"

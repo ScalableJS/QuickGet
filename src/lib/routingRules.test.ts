@@ -1,38 +1,22 @@
 import { describe, expect, it } from "vitest";
-
 import {
-  classifyUrl,
   matchGlob,
   normalizeDomain,
-  resolveDestination,
   type RoutingRule,
   type RoutingRuleDraft,
+  resolveDestination,
   sanitizeRoutingRules,
   serializeRoutingRuleDraft,
   toRoutingRuleDraft,
   validateRoutingRuleDraft,
 } from "./routingRules.js";
+import { magnetDisplayName } from "./sourceKind.js";
 
 const FALLBACK = "Default";
 
 function rule(rule: Partial<RoutingRule>): RoutingRule {
   return { destination: "Dest", ...rule };
 }
-
-describe("classifyUrl", () => {
-  it.each([
-    ["magnet:?xt=urn:btih:abc", "magnet"],
-    ["MAGNET:?xt=urn:btih:abc", "magnet"],
-    ["https://site.com/file.torrent", "torrent"],
-    ["https://site.com/file.TORRENT", "torrent"],
-    ["https://site.com/file.Torrent", "torrent"],
-    ["https://site.com/file.torrent?x=1", "torrent"],
-    ["https://site.com/video.mkv", "url"],
-    ["http://site.com/", "url"],
-  ] as const)("classifies %s as %s", (url, expected) => {
-    expect(classifyUrl(url)).toBe(expected);
-  });
-});
 
 describe("normalizeDomain", () => {
   it("strips http/https protocol", () => {
@@ -93,28 +77,20 @@ describe("sanitizeRoutingRules", () => {
     expect(sanitizeRoutingRules([{ destination: "InvalidType", type: "not-a-type" }])).toEqual([]);
   });
 
-  it("strips domain from magnet rule even if no other pattern is specified", () => {
+  /**
+   * A magnet's domain used to be stripped here, because a magnet has no host. It has no host *of
+   * its own* — but it was clicked on a page, and that page is what "where I download from" means.
+   */
+  it("keeps the domain on a magnet rule, which now matches the page it was clicked on", () => {
     expect(sanitizeRoutingRules([{ type: "magnet", domain: "tracker.com", destination: "Magnets" }])).toEqual([
-      { type: "magnet", destination: "Magnets" },
+      { type: "magnet", domain: "tracker.com", destination: "Magnets" },
     ]);
-  });
 
-  it("strips domain from magnet rules while retaining valid conditions", () => {
-    const input = [
-      {
-        type: "magnet",
-        domain: "tracker.com",
-        namePattern: "*ubuntu*",
-        destination: "Magnets",
-      },
-    ];
-    expect(sanitizeRoutingRules(input)).toEqual([
-      {
-        type: "magnet",
-        namePattern: "*ubuntu*",
-        destination: "Magnets",
-      },
-    ]);
+    expect(
+      sanitizeRoutingRules([
+        { type: "magnet", domain: "tracker.com", namePattern: "*ubuntu*", destination: "Magnets" },
+      ]),
+    ).toEqual([{ type: "magnet", domain: "tracker.com", namePattern: "*ubuntu*", destination: "Magnets" }]);
   });
 
   it("normalizes domains and strips empty condition strings", () => {
@@ -211,12 +187,12 @@ describe("RoutingRuleDraft helpers", () => {
     expect(res4.errors.conditions).toBeUndefined();
   });
 
-  it("serializeRoutingRuleDraft produces clean storage rule and omits magnet domain and 'all' type", () => {
+  it("serializeRoutingRuleDraft produces a clean storage rule and omits the 'all' type", () => {
     const draft: RoutingRuleDraft = {
       id: "1",
       type: "magnet",
       namePattern: "*movie*",
-      domain: "should-be-omitted.com",
+      domain: "Tracker.COM/",
       destination: "Torrents/Magnets",
     };
     const serialized = serializeRoutingRuleDraft(draft);
@@ -224,6 +200,7 @@ describe("RoutingRuleDraft helpers", () => {
       destination: "Torrents/Magnets",
       type: "magnet",
       namePattern: "*movie*",
+      domain: "tracker.com",
     });
 
     const anyTypeDraft: RoutingRuleDraft = {
@@ -272,23 +249,30 @@ describe("resolveDestination", () => {
     expect(resolveDestination({ url: "https://x.com/a/b.mkv?token=xyz", kind: "url" }, rules, FALLBACK)).toBe("Movies");
   });
 
-  it("matches a magnet display name via dn=", () => {
+  /**
+   * Reading `dn` out of a magnet is the caller's job (`magnetDisplayName`, covered in
+   * `sourceKind.test.ts`); the router only matches what it is handed. It used to parse the URI
+   * itself, which meant the matcher had to know one source format and not the others.
+   */
+  it("matches a magnet on the display name its caller supplies", () => {
     const rules = [rule({ namePattern: "*flac*", destination: "Lossless" })];
     const magnet = "magnet:?xt=urn:btih:abc&dn=Album%20%5BFLAC%5D";
-    expect(resolveDestination({ url: magnet, kind: "magnet" }, rules, FALLBACK)).toBe("Lossless");
+    expect(resolveDestination({ url: magnet, kind: "magnet", name: magnetDisplayName(magnet) }, rules, FALLBACK)).toBe(
+      "Lossless",
+    );
   });
 
-  it("correctly parses magnet dn with '=' inside filename", () => {
-    const rules = [rule({ namePattern: "*Part1*", destination: "Matched" })];
-    const magnet = "magnet:?xt=urn:btih:abc&dn=Movie=Part1.mkv";
-    expect(resolveDestination({ url: magnet, kind: "magnet" }, rules, FALLBACK)).toBe("Matched");
+  it("leaves a magnet with no display name to its type and domain rules", () => {
+    const rules = [rule({ namePattern: "*", destination: "Anything" })];
+    const magnet = "magnet:?xt=urn:btih:abc";
+    expect(resolveDestination({ url: magnet, kind: "magnet", name: magnetDisplayName(magnet) }, rules, FALLBACK)).toBe(
+      "Anything",
+    );
   });
 
   it("handles malformed percent encoding safely without throwing URIError", () => {
     const rules = [rule({ namePattern: "*foo*", destination: "Movies" })];
-    expect(
-      resolveDestination({ url: "https://example.com/foo%ZZ.mkv", kind: "url" }, rules, FALLBACK),
-    ).toBe("Movies");
+    expect(resolveDestination({ url: "https://example.com/foo%ZZ.mkv", kind: "url" }, rules, FALLBACK)).toBe("Movies");
   });
 
   it("matches an exact domain", () => {
@@ -298,10 +282,38 @@ describe("resolveDestination", () => {
     );
   });
 
-  it("matches a domain even when configured with protocol, slash, or trailing dot", () => {
-    const rules = [rule({ domain: "https://releases.example.com/", destination: "Site" })];
+  it("matches a domain written with protocol, slash or trailing dot — normalised on the way in", () => {
+    const rules = sanitizeRoutingRules([{ domain: "https://releases.example.com/", destination: "Site" }]);
     expect(resolveDestination({ url: "https://releases.example.com/f.zip", kind: "url" }, rules, FALLBACK)).toBe(
       "Site",
+    );
+  });
+
+  /**
+   * A magnet has no host, and a tracker that serves its torrents from a mirror has the wrong one.
+   * The page the download started from is the host a user means by "where I download from".
+   */
+  it("matches a domain rule against the originating page as well as the file", () => {
+    const rules = [rule({ domain: "tracker.example.com", destination: "FromTracker" })];
+
+    expect(
+      resolveDestination(
+        { url: "magnet:?xt=urn:btih:abc", kind: "magnet", pageUrl: "https://tracker.example.com/topic/1" },
+        rules,
+        FALLBACK,
+      ),
+    ).toBe("FromTracker");
+
+    expect(
+      resolveDestination(
+        { url: "https://cdn.mirror.net/f.torrent", kind: "torrent", pageUrl: "https://tracker.example.com/topic/1" },
+        rules,
+        FALLBACK,
+      ),
+    ).toBe("FromTracker");
+
+    expect(resolveDestination({ url: "https://cdn.mirror.net/f.torrent", kind: "torrent" }, rules, FALLBACK)).toBe(
+      FALLBACK,
     );
   });
 
@@ -337,11 +349,136 @@ describe("resolveDestination", () => {
     expect(resolveDestination({ url: "https://x.com/a.mkv", kind: "url" }, rules, FALLBACK)).toBe("First");
   });
 
-  it("treats a rule with an empty destination as incomplete (skipped)", () => {
-    const rules = [
-      rule({ namePattern: "*.mkv", destination: "" }),
-      rule({ namePattern: "*.mkv", destination: "Movies" }),
+  it("takes its rules already sanitized — the sanitizer drops incomplete ones, not the matcher", () => {
+    const stored = [
+      { namePattern: "*.mkv", destination: "   " },
+      { namePattern: "  *.mkv  ", destination: "Movies" },
     ];
-    expect(resolveDestination({ url: "https://x.com/a.mkv", kind: "url" }, rules, FALLBACK)).toBe("Movies");
+    expect(
+      resolveDestination({ url: "https://x.com/a.mkv", kind: "url" }, sanitizeRoutingRules(stored), FALLBACK),
+    ).toBe("Movies");
+  });
+});
+
+/**
+ * The name a rule matches against is the whole point of the feature, and the URL is the worst
+ * available source for it: a `.torrent` link names the metadata file, and an opaque tracker
+ * endpoint names nothing at all. Callers that know better say so.
+ */
+describe("resolveDestination — explicit name", () => {
+  const rules: RoutingRule[] = [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }];
+
+  it("matches the supplied name instead of the URL when one is given", () => {
+    const input = { url: "https://tracker.example.com/dl.php?id=12345", kind: "torrent" as const };
+
+    expect(resolveDestination(input, rules, "Download")).toBe("Download");
+    expect(resolveDestination({ ...input, name: "Some.Movie.2024.mkv" }, rules, "Download")).toBe("Multimedia/Movies");
+  });
+
+  it("prefers the supplied name over the .torrent file name in the URL", () => {
+    const input = {
+      url: "https://files.example.com/1234.torrent",
+      kind: "torrent" as const,
+      name: "Some.Movie.2024.mkv",
+    };
+
+    expect(resolveDestination(input, rules, "Download")).toBe("Multimedia/Movies");
+  });
+
+  it("overrides a magnet's dn when the real release name becomes known", () => {
+    const input = {
+      url: "magnet:?xt=urn:btih:abc&dn=placeholder",
+      kind: "magnet" as const,
+      name: "Some.Movie.2024.mkv",
+    };
+
+    expect(resolveDestination(input, rules, "Download")).toBe("Multimedia/Movies");
+  });
+
+  it("falls back to the URL when the supplied name is blank", () => {
+    const input = { url: "https://files.example.com/Some.Movie.2024.mkv", kind: "url" as const, name: "   " };
+
+    expect(resolveDestination(input, rules, "Download")).toBe("Multimedia/Movies");
+  });
+});
+
+/**
+ * One rule per extension was the thing that made routing feel like an intake form. A field holds
+ * a list; the values are OR-ed inside the field and the fields stay AND-ed with each other.
+ */
+describe("resolveDestination — lists in one field", () => {
+  const FALLBACK_HERE = "Download";
+
+  it("matches any of several extensions written the way people write them", () => {
+    const [videoRule] = sanitizeRoutingRules([{ namePattern: "mkv, .mp4  *.avi", destination: "Movies" }]);
+
+    for (const name of ["Some.Movie.mkv", "Clip.MP4", "Old.avi"]) {
+      expect(resolveDestination({ url: "https://x.com/f", kind: "url", name }, [videoRule], FALLBACK_HERE)).toBe(
+        "Movies",
+      );
+    }
+    expect(
+      resolveDestination({ url: "https://x.com/f", kind: "url", name: "notes.pdf" }, [videoRule], FALLBACK_HERE),
+    ).toBe(FALLBACK_HERE);
+  });
+
+  it("treats a bare token as an extension, not as a substring", () => {
+    const [rule] = sanitizeRoutingRules([{ namePattern: "mp4", destination: "Movies" }]);
+
+    expect(
+      resolveDestination({ url: "https://x.com/f", kind: "url", name: "mp4converter.zip" }, [rule], FALLBACK_HERE),
+    ).toBe(FALLBACK_HERE);
+    expect(
+      resolveDestination({ url: "https://x.com/f", kind: "url", name: "holiday.mp4" }, [rule], FALLBACK_HERE),
+    ).toBe("Movies");
+  });
+
+  it("still supports globs for everything an extension cannot express", () => {
+    const [rule] = sanitizeRoutingRules([{ namePattern: "*S0?E0?* *1080p*", destination: "Series" }]);
+
+    expect(
+      resolveDestination(
+        { url: "https://x.com/f", kind: "torrent", name: "Some.Show.S01E02.WEB-DL" },
+        [rule],
+        FALLBACK_HERE,
+      ),
+    ).toBe("Series");
+    expect(
+      resolveDestination(
+        { url: "https://x.com/f", kind: "torrent", name: "Some.Show.S01.1080p.WEB-DL" },
+        [rule],
+        FALLBACK_HERE,
+      ),
+    ).toBe("Series");
+  });
+
+  it("matches any of several domains, each normalised on the way in", () => {
+    const [rule] = sanitizeRoutingRules([{ domain: "https://rutracker.org/, *.nnmclub.to", destination: "Trackers" }]);
+    expect(rule.domain).toBe("rutracker.org *.nnmclub.to");
+
+    for (const url of ["https://rutracker.org/f.torrent", "https://dl.nnmclub.to/f.torrent"]) {
+      expect(resolveDestination({ url, kind: "torrent" }, [rule], FALLBACK_HERE)).toBe("Trackers");
+    }
+    expect(resolveDestination({ url: "https://other.example/f.torrent", kind: "torrent" }, [rule], FALLBACK_HERE)).toBe(
+      FALLBACK_HERE,
+    );
+  });
+
+  it("keeps fields AND-ed while values inside a field are OR-ed", () => {
+    const [rule] = sanitizeRoutingRules([
+      { namePattern: "mkv mp4", domain: "rutracker.org nnmclub.to", destination: "TrackerVideo" },
+    ]);
+
+    expect(
+      resolveDestination({ url: "https://rutracker.org/f", kind: "torrent", name: "a.mkv" }, [rule], FALLBACK_HERE),
+    ).toBe("TrackerVideo");
+    // Right domain, wrong kind of file.
+    expect(
+      resolveDestination({ url: "https://rutracker.org/f", kind: "torrent", name: "a.pdf" }, [rule], FALLBACK_HERE),
+    ).toBe(FALLBACK_HERE);
+    // Right file, wrong site.
+    expect(
+      resolveDestination({ url: "https://other.example/f", kind: "torrent", name: "a.mkv" }, [rule], FALLBACK_HERE),
+    ).toBe(FALLBACK_HERE);
   });
 });

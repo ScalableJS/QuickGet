@@ -332,6 +332,9 @@
       <button id="tab-btn-domains" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-domains" onclick="switchTab('domains')">
         🎯 Domains &amp; Edge Cases
       </button>
+      <button id="tab-btn-tracker" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" onclick="switchTab('tracker')">
+        Tracker endpoints
+      </button>
     </div>
 
     <!-- Tab 1: Torrents -->
@@ -471,6 +474,12 @@
 
     <!-- Tab 3: Direct URLs -->
     <section id="tab-direct" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-direct">
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
+        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
+        the browser, so no routing rule can apply to it. These links are here to show where the
+        rules stop, not what they do.
+      </p>
       <div class="grid-cards">
         <article class="card">
           <div class="card-header">
@@ -478,7 +487,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct browser download of an ISO disc image.</p>
-          <div class="rule-hint">Match target: Pattern <code>*.iso</code> &rarr; <code>Downloads/ISOs</code></div>
+          <div class="rule-hint">Not intercepted &mdash; a <code>*.iso</code> rule cannot fire here</div>
           <a id="stand-direct-iso" class="btn-action" href="/files/linux-minimal.iso" download="linux-minimal.iso">
             Download ISO File
           </a>
@@ -490,7 +499,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct video download intercepted via Chrome Downloads.</p>
-          <div class="rule-hint">Match target: Pattern <code>*.mkv</code> &rarr; <code>Multimedia/Clips</code></div>
+          <div class="rule-hint">Not intercepted &mdash; a <code>*.mkv</code> rule cannot fire here</div>
           <a id="stand-direct-mkv" class="btn-action" href="/files/sample-clip.mkv" download="sample-clip.mkv">
             Download MKV Clip
           </a>
@@ -502,7 +511,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct download of a zip package.</p>
-          <div class="rule-hint">Match target: Pattern <code>*.zip</code> &rarr; <code>Archives</code></div>
+          <div class="rule-hint">Not intercepted &mdash; a <code>zip</code> rule cannot fire here</div>
           <a id="stand-direct-zip" class="btn-action" href="/files/devtools.zip" download="devtools.zip">
             Download ZIP Archive
           </a>
@@ -514,7 +523,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Document file download.</p>
-          <div class="rule-hint">Match target: Pattern <code>*.pdf</code> &rarr; <code>Documents</code></div>
+          <div class="rule-hint">Not intercepted &mdash; a <code>pdf</code> rule cannot fire here</div>
           <a id="stand-direct-pdf" class="btn-action" href="/files/documentation.pdf" download="documentation.pdf">
             Download PDF File
           </a>
@@ -522,40 +531,24 @@
       </div>
     </section>
 
-    <!-- Tab 4: Domains & Edge Cases -->
+    <!-- Tab 4: URL edge cases. Domain matching moved to the Tracker tab, where it is real:
+         these two links used to point at tracker.example.com and eu-west.cdn-network.org, which
+         resolve nowhere, so they demonstrated nothing and implied coverage that did not exist. -->
     <section id="tab-domains" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-domains">
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
+        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
+        the browser, so no routing rule can apply to it. These links are here to show where the
+        rules stop, not what they do.
+      </p>
       <div class="grid-cards">
-        <article class="card">
-          <div class="card-header">
-            <h2 class="card-title">Tracker Subdomain Matching</h2>
-            <span class="tag tag-direct">Domain Match</span>
-          </div>
-          <p class="card-meta">Simulates domain matching with normalized domains.</p>
-          <div class="rule-hint">Match target: Domain <code>tracker.example.com</code> &rarr; <code>Trackers/Downloads</code></div>
-          <a id="stand-domain-tracker" class="btn-action" href="https://tracker.example.com/download/file.zip?passkey=secret123" target="_blank" rel="noopener">
-            Simulated Tracker Link
-          </a>
-        </article>
-
-        <article class="card">
-          <div class="card-header">
-            <h2 class="card-title">CDN Domain Wildcard Matching</h2>
-            <span class="tag tag-direct">Wildcard Domain</span>
-          </div>
-          <p class="card-meta">Domain rule matching <code>*.cdn-network.org</code>.</p>
-          <div class="rule-hint">Match target: Domain <code>*.cdn-network.org</code> &rarr; <code>CDN/Incoming</code></div>
-          <a id="stand-domain-cdn" class="btn-action" href="https://eu-west.cdn-network.org/releases/bundle.tar.gz" target="_blank" rel="noopener">
-            Simulated CDN Link
-          </a>
-        </article>
-
         <article class="card">
           <div class="card-header">
             <h2 class="card-title">Percent-Encoded File Path</h2>
             <span class="tag tag-direct">Encoded URI</span>
           </div>
           <p class="card-meta">Filename containing escaped spaces and brackets: <code>my%20cool%20video%20%5B1080p%5D.mkv</code>.</p>
-          <div class="rule-hint">Pattern <code>*.mkv</code> extracts decoded name</div>
+          <div class="rule-hint">Not intercepted &mdash; here to prove the URL decoder does not throw</div>
           <a id="stand-edge-encoded" class="btn-action" href="/files/my%20cool%20video%20%5B1080p%5D.mkv" download="my cool video [1080p].mkv">
             Download Encoded MKV
           </a>
@@ -567,9 +560,106 @@
             <span class="tag tag-direct">URI Error</span>
           </div>
           <p class="card-meta">Malformed percent in HTTP path: <code>foo%ZZbar.mkv</code>.</p>
-          <div class="rule-hint">Safe decode fallback prevents extension breakdown</div>
+          <div class="rule-hint">Not intercepted &mdash; here to prove a bad escape does not throw</div>
           <a id="stand-edge-malformed" class="btn-action secondary" href="/files/broken%ZZname.mkv" download="broken%ZZname.mkv">
             Test Broken URL
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Tab 5: Tracker-shaped endpoints — the cases a real private tracker produces -->
+    <section id="tab-tracker" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-tracker">
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Opaque endpoint (<code>dl.php</code>)</h2>
+            <span class="tag tag-torrent">No extension</span>
+          </div>
+          <p class="card-meta">A torrent served from <code>/dl.php?name=…</code>. Nothing in the URL says
+            &ldquo;torrent&rdquo; and nothing names the release &mdash; only the MIME type and
+            <code>Content-Disposition</code> do. This is what a TorrentPier-style tracker looks like.</p>
+          <div class="rule-hint">Type <code>.torrent</code> and pattern <code>*.mkv</code> must both match</div>
+          <a id="stand-tracker-dlphp" class="btn-action" href="/dl.php?name=Tracker.Release.2024.1080p.mkv">
+            Download from dl.php
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">MIME only, no filename</h2>
+            <span class="tag tag-torrent">Hardest case</span>
+          </div>
+          <p class="card-meta">Correct <code>application/x-bittorrent</code>, no <code>Content-Disposition</code>,
+            no extension in the path. The release name exists <em>only</em> inside the file.</p>
+          <div class="rule-hint">Only a bencode read of <code>info.name</code> can route this</div>
+          <a id="stand-tracker-nocd" class="btn-action" href="/get/Hidden.Name.Release.2024.mkv">
+            Download with no name outside the file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Multi-file season pack</h2>
+            <span class="tag tag-torrent">Directory torrent</span>
+          </div>
+          <p class="card-meta">A torrent with two files under a directory. <code>info.name</code> is the
+            directory, and no member file name is visible before the NAS has the task.</p>
+          <div class="rule-hint">Pattern <code>*S01*</code> matches; <code>*.mkv</code> must not</div>
+          <a id="stand-tracker-multi" class="btn-action" href="/dl.php?name=Some.Show.S01.1080p.WEB-DL&amp;multi=1">
+            Download season pack
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Same file, other hostname</h2>
+            <span class="tag tag-direct">Domain rule</span>
+          </div>
+          <p class="card-meta">The identical torrent served from <code>localhost</code> instead of
+            <code>127.0.0.1</code> &mdash; two different hosts for a domain rule, one origin for the server.</p>
+          <div class="rule-hint">Domain <code>localhost</code> &rarr; its own folder</div>
+          <a id="stand-tracker-otherhost" class="btn-action" data-host-swap="/files/Domain.Probe.2024.mkv.torrent" href="/files/Domain.Probe.2024.mkv.torrent" download>
+            Download from localhost
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Magnet without <code>dn</code></h2>
+            <span class="tag tag-magnet">No name at all</span>
+          </div>
+          <p class="card-meta">Plenty of trackers emit magnets with no display name. There is nothing for a
+            filename pattern to match until the NAS resolves metadata.</p>
+          <div class="rule-hint">Only a <code>type = magnet</code> rule can catch this</div>
+          <a id="stand-magnet-nodn" class="btn-action" href="magnet:?xt=urn:btih:8888888888999999999900000000001111111111&amp;tr=udp%3A%2F%2Ftracker.example.com%3A6969">
+            Send nameless magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Magnet routed by the page, not the link</h2>
+            <span class="tag tag-magnet">Origin domain</span>
+          </div>
+          <p class="card-meta">A magnet has no host of its own, so a domain rule can only match the page it
+            was clicked on &mdash; which is what &ldquo;where I download from&rdquo; actually means.</p>
+          <div class="rule-hint">Domain of <em>this page</em> + type <code>magnet</code> &rarr; its own folder</div>
+          <a id="stand-magnet-origin" class="btn-action" href="magnet:?xt=urn:btih:9999999999000000000011111111112222222222&amp;dn=Origin.Probe.2024.avi">
+            Send magnet from this page
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">BitTorrent v2 magnet (<code>btmh</code>)</h2>
+            <span class="tag tag-magnet">v2 / hybrid</span>
+          </div>
+          <p class="card-meta">A v2 magnet uses <code>urn:btmh</code>. We forward the scheme without inspecting
+            <code>xt</code>; whether Download Station accepts it is RES-1.</p>
+          <div class="rule-hint">Should route exactly like a v1 magnet on its <code>dn</code></div>
+          <a id="stand-magnet-v2" class="btn-action secondary" href="magnet:?xt=urn:btmh:1220caf1e1f0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b&amp;dn=V2.Hybrid.Release.2024.mkv">
+            Send v2 magnet
           </a>
         </article>
       </div>
@@ -592,7 +682,7 @@
   <script>
     // Tab switching logic
     window.switchTab = function switchTab(tabId) {
-      const tabs = ['torrents', 'magnets', 'direct', 'domains'];
+      const tabs = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
       for (const t of tabs) {
         const btn = document.getElementById(`tab-btn-${t}`);
         const panel = document.getElementById(`tab-${t}`);
@@ -607,6 +697,15 @@
         }
       }
     };
+
+    // A domain rule needs two hostnames. The stand is served on 127.0.0.1; the same server
+    // answers on localhost, so rewriting these links at load time gives a second host without
+    // hardcoding the port the harness picked.
+    for (const link of document.querySelectorAll("[data-host-swap]")) {
+      const otherHost = location.hostname === "localhost" ? "127.0.0.1" : "localhost";
+      link.href = `${location.protocol}//${otherHost}:${location.port}${link.dataset.hostSwap}`;
+      link.setAttribute("download", "");
+    }
 
     // Dynamic magnet insertion
     window.injectDynamicMagnet = function injectDynamicMagnet() {

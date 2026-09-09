@@ -117,12 +117,12 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   }
 
   if (type === "task:add") {
-    const { uri } = message as { uri?: unknown };
+    const { uri, pageUrl } = message as { uri?: unknown; pageUrl?: unknown };
     if (typeof uri !== "string" || !uri.startsWith("magnet:")) {
       sendResponse({ ok: false, error: "Invalid magnet URI" });
       return;
     }
-    void handleMagnetAdd(uri)
+    void handleMagnetAdd(uri, typeof pageUrl === "string" ? pageUrl : undefined)
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
     return true;

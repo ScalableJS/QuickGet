@@ -40,7 +40,7 @@ test("routing rules persist in configured priority order", async ({}, testInfo) 
     await page.getByRole("button", { name: "Add rule" }).click();
     await expect(page.locator(".routing-rule")).toHaveCount(2);
 
-    const filenamePatterns = page.getByRole("textbox", { name: /filename pattern/i });
+    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
     await filenamePatterns.nth(0).fill("*.mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
     await filenamePatterns.nth(1).fill("*.mkv");
@@ -100,7 +100,7 @@ test("BUG-41 fix: saving rule with empty optional fields succeeds without page e
     await expect(page.locator(".routing-rule")).toHaveCount(1);
 
     // Fill filename pattern and destination, leave domain EMPTY
-    const filenamePatterns = page.getByRole("textbox", { name: /filename pattern/i });
+    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
     await filenamePatterns.nth(0).fill("*.mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
 
@@ -166,7 +166,7 @@ test("BUG-41/43 fix: saving rule with empty destination displays inline error an
     await expect(page.locator(".routing-rule")).toHaveCount(1);
 
     // User types a filename pattern but leaves destination empty
-    const filenamePatterns = page.getByRole("textbox", { name: /filename pattern/i });
+    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
     await filenamePatterns.nth(0).fill("*.mkv");
     await expect(page.locator("#routing-0-destination")).toHaveValue("");
 
@@ -222,7 +222,7 @@ test("reordering rules via Move Up / Move Down buttons updates priority order in
     await page.getByRole("button", { name: "Add rule" }).click();
     await page.getByRole("button", { name: "Add rule" }).click();
 
-    const filenamePatterns = page.getByRole("textbox", { name: /filename pattern/i });
+    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
     await filenamePatterns.nth(0).fill("*.mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
 
@@ -292,7 +292,7 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
           ],
         });
       },
-      { port: mockNas.port }
+      { port: mockNas.port },
     );
 
     // Open the test stand in a new tab
@@ -307,9 +307,7 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
 
     await expect
       .poll(() => {
-        const requests = mockNas.requestLog
-          .toJSON()
-          .filter((req) => req.path === "/downloadstation/V4/Task/AddUrl");
+        const requests = mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl");
         return requests.length;
       })
       .toBeGreaterThanOrEqual(1);
@@ -419,4 +417,3 @@ test("reloading popup loads stored rules without errors and maintains full draft
     await mockNas.close();
   }
 });
-

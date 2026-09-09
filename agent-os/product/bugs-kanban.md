@@ -25,6 +25,18 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-43 | Routing rules UX in popup: cramped single-line layout, missing priority reorder controls, and silent rule drop | popup/UX | high | Done |
 | BUG-44 | Missing test coverage for routing rules: URL/magnet edge cases, Svelte draft reactivity, and E2E error catching | testing | high | Done |
 | BUG-45 | Routing engine ReDoS in matchGlob, sanitizer condition-invariant gap, and type: "all" draft smell | core/routing | high | Done |
+| BUG-46 | Routing type detection disagrees with the send-path detector, so `.torrent` rules miss tracker links | core/routing | high | Done |
+| BUG-47 | Rules match the URL slug instead of the name the download will actually have | core/routing | high | Done |
+| BUG-48 | Rule condition errors are not tied to the fields they describe | popup/a11y | high | Done |
+| BUG-49 | Reordering a rule drops keyboard focus and announces nothing | popup/a11y | medium | Done |
+| BUG-50 | Rule card small print fails contrast and lowercases the AND it exists to explain | popup/a11y | medium | Done |
+| BUG-51 | The axe gate never reaches the routing rules UI | testing | medium | Done |
+| BUG-52 | No way to discard unsaved rule edits | popup/settings | low | Backlog |
+| BUG-53 | Rule editor a11y polish batch: focus, labels, dead class, literal caps | popup/a11y | low | Done |
+| BUG-54 | Popup `.torrent` upload bypasses routing rules entirely | popup/upload | medium | Done |
+| BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | Backlog |
+| BUG-56 | The test stand advertises cases it cannot exercise | testing | low | Done |
+| BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Backlog |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
@@ -295,6 +307,16 @@ Comprehensive test suite covering unit, component, Storybook, and E2E regression
 **Resolved 2026-09-08** —
 All test suites green and verified via CI quality gates.
 
+
+**2026-09-09 — the coverage it added had a blind spot, now closed.** The stand's host served one
+shared `sample.torrent` for every `.torrent` link, so all four torrent cards were byte-identical
+inside and no test could tell whether routing used the URL or the file. The host now generates a
+distinct torrent per link, a "Tracker endpoints" tab carries the shapes a real private tracker
+produces (opaque `dl.php`, MIME-only with no filename, multi-file pack, second hostname, magnet
+with no `dn`, v2 magnet), and `tests/e2e/routing-matrix.spec.ts` asserts the destination folder
+for all twelve. The full picture, including what the stand still cannot reach, is
+`docs/routing-coverage.md`.
+
 ---
 
 ### BUG-45 — Routing engine ReDoS vulnerability in matchGlob, sanitizer condition-invariant gap, and type: "all" draft smell
@@ -320,6 +342,441 @@ Following architecture review via ChatGPT Gateway on `ca198bd`, two critical pro
 
 **Resolved 2026-09-09** —
 All 385 Vitest unit tests, Storybook build, and 31 Playwright E2E tests verified green.
+
+---
+
+### BUG-46 — Routing type detection disagrees with the send-path detector, so `.torrent` rules miss tracker links
+
+**Severity:** high · **Area:** core/routing · **Status:** Done
+**Files:** `src/lib/routingRules.ts` (`classifyUrl`), `src/background/menus.ts:78`,
+`src/background/downloads.ts:293`, `src/background/magnetHandler.ts:32`, `src/lib/torrentSender.ts:25`
+
+Two detectors answer the same question and disagree. `isTorrentSource(url, mime, filename)`
+uses four signals — response MIME, the `Content-Disposition` filename, a `.torrent` ending, and
+the `/dl.php` fallback. `classifyUrl(url)` uses one: does the URL end in `.torrent`.
+
+They are called side by side. In `menus.ts` the destination is resolved with
+`classifyUrl(url)` on line 78 and the transport is chosen with `isTorrentSource(url)` on line
+83. In `downloads.ts` the type is already established on line 66 from `item.mime` and
+`item.filename`, then thrown away and re-derived from the bare URL on line 293.
+
+The consequence lands exactly on the case the interception path exists for. A private tracker
+serves `https://tracker/dl.php?id=12345`: the extension correctly treats it as a torrent and
+uploads the file via `AddTorrent`, while the routing engine classifies it as `url`. A rule
+"type = .torrent → Multimedia/Torrents" never fires on the links that need it most, and the
+user has no way to tell why.
+
+**Fix:** `RoutingInput.kind` already exists as a parameter — callers must supply the truth they
+already hold instead of asking a weaker function to guess it again. `classifyUrl` stays as the
+fallback for `magnetHandler`, which genuinely has nothing but the URI.
+
+**Acceptance criteria**
+
+- [x] `menus.ts` and `downloads.ts` pass the kind their own torrent detection produced.
+- [x] A rule with `type: "torrent"` matches `https://tracker/dl.php?id=1` whenever the
+      extension itself sends that link as a torrent.
+- [x] `classifyUrl` is documented and unit-covered as a fallback, not as the classifier.
+- [x] A test asserts the two paths cannot diverge for the same input plus metadata.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** `classifySource(url, mime?, filename?)` in
+`src/lib/torrentSender.ts` is now the single answer: magnet by scheme, otherwise whatever
+`isTorrentSource` says. `menus.ts` classifies once and branches the transport on the *same*
+value, so the two cannot disagree; `downloads.ts` states `kind: "torrent"` outright, because
+that path only runs for torrents. A test walks the signal matrix and asserts `classifySource`
+never contradicts `isTorrentSource`.
+
+---
+
+### BUG-47 — Rules match the URL slug instead of the name the download will actually have
+
+**Severity:** high · **Area:** core/routing · **Status:** Done
+**Files:** `src/lib/routingRules.ts` (`getFilename`), `src/background/downloads.ts:66,293`,
+`src/lib/torrentSender.ts:52` (`sendTorrentUrlToNas`)
+
+`getFilename` returns whatever the URL happens to end with:
+
+| Source | What the matcher sees | What the user means |
+|---|---|---|
+| magnet | the `dn` parameter, which has no extension and is often absent | the release name |
+| `.torrent` URL | `1234.torrent`, `download.php` | the name of the content inside |
+| direct HTTP | the real filename | the real filename ✅ |
+
+The editor's placeholder is `e.g. *.mkv` for every type, so it actively teaches a pattern that
+can never match a torrent. This is the defect behind the whole "the rules do not work on
+torrents" complaint.
+
+**Two better sources already exist in the code and are both discarded:**
+
+1. `DownloadItem.filename` — Chrome has already derived it from `Content-Disposition`, and
+   `downloads.ts:66` reads it to decide the link *is* a torrent. It is the only meaningful name
+   a `dl.php?id=…` link has.
+2. **The `.torrent` bytes themselves.** `sendTorrentUrlToNas` fetches the blob and already
+   inspects its first two bytes to confirm it is bencoded (`assertLooksLikeTorrent`). The info
+   dictionary's `name` key is the real content name — a bounded scan for `4:name` needs no
+   dependency and no NAS call. This requires splitting fetch from send so the destination is
+   resolved *after* the name is known; today the folder is computed before the fetch and passed
+   in.
+
+Magnets have no equivalent: the content name is only knowable after the NAS resolves metadata.
+See GAP-14 / RES-6 on the competitive-gaps board for whether that window can be used at all.
+
+**Acceptance criteria**
+
+- [x] `RoutingInput` carries an explicit name candidate; the resolver stops re-deriving one
+      from the URL.
+- [x] Intercepted downloads pass `DownloadItem.filename` whenever Chrome has produced one.
+- [x] A `.torrent` hand-off resolves against the info-dict `name`, so `*.mkv` matches a
+      single-file torrent whose URL ends in `.torrent`.
+- [x] The bencode reader is bounded (size cap, malformed input rejected) and unit-covered
+      against a real single-file and multi-file torrent.
+- [ ] Magnet keeps `dn` as its only source; an absent `dn` is distinguishable from an empty
+      match rather than silently failing every pattern rule.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** Three changes:
+- `RoutingInput` gained `name?`, and `getFilename` prefers it over anything derived from the URL.
+- `src/lib/torrentMeta.ts` — `readTorrentName(bytes)` reads `info.name` (and `name.utf-8`) out of
+  the `.torrent` with a bounded, structural walk that skips `pieces` rather than copying it.
+  Malformed or oversized input returns `undefined`. 12 unit tests, including a decoy `4:name`
+  planted inside both a comment and the `pieces` blob — the case a naive scan gets wrong.
+- `sendTorrentUrlToNas` now accepts a function for `folder`, called with that name once the file
+  has been fetched, so the destination is decided against the release rather than the URL.
+  `downloads.ts` additionally passes `DownloadItem.filename` as the fallback candidate.
+
+The remaining acceptance line — telling the user when a magnet has no `dn` to match on — is not a
+matcher concern and moved to UX-18/UX-19.
+
+**Prior art, checked 2026-09-09:** no competitor does this. *Send To QNAP++* has an equivalent
+bencode parser and uses the name only to correlate a NAS task back to its source URL; its matcher
+still gets the URL. See `docs/competitor-routing-teardown.md` section B.
+
+---
+
+### BUG-48 — Rule condition errors are not tied to the fields they describe
+
+**Severity:** high · **Area:** popup/a11y · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte:769`, `src/popup/ui/Field.svelte`
+
+`Field` already implements the correct behaviour — an `error` prop sets `aria-invalid`, renders
+the message with a generated id and points `aria-describedby` at it. That is what UX-1 shipped
+it for, and `FolderSelect` uses it for the destination side of each rule.
+
+The IF side does not. Both condition inputs are rendered with only an `aria-label`, and the
+condition error is a loose `<p role="alert">` next to them (`:769`). A screen-reader user
+standing in the pattern field is told neither that it is invalid nor what is wrong with it —
+the exact failure mode `tests/e2e/a11y.spec.ts` was written to prevent for the connection
+fields.
+
+**Acceptance criteria**
+
+- [x] The condition error is passed to the fields it concerns via `Field`'s `error` prop.
+- [x] The offending inputs carry `aria-invalid="true"` and an `aria-describedby` that resolves
+      to the message.
+- [x] One alert per card, not one per field plus a loose paragraph.
+- [x] E2E asserts this on a rule field the way the existing spec asserts it on `#NASlogin`.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** The condition error is passed to the name `Field`, which
+renders it with the `aria-invalid` / `aria-describedby` / `role="alert"` wiring it already had;
+the type `Select` and the domain `Field` carry `aria-invalid` and point at the same message id.
+The loose `<p role="alert">` is gone, so there is one alert per card. Covered by the new axe pass
+over a rejected rule (BUG-51).
+
+---
+
+### BUG-49 — Reordering a rule drops keyboard focus and announces nothing
+
+**Severity:** medium · **Area:** popup/a11y · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte:216-232` (`moveRuleUp` / `moveRuleDown`),
+`:694-710`
+
+Moving a rule to the first position disables the Move Up button that currently has focus, and
+Chrome drops focus to `<body>`. A keyboard user is thrown to the top of the document after one
+keypress, mid-task.
+
+Nothing is announced either. Priority order *is* the semantics of this feature — first match
+wins — and changing it is completely silent, while removing a rule does post to the live region
+(`:213`). The two actions should not differ.
+
+**Acceptance criteria**
+
+- [x] After a move, focus is on a control inside the rule that moved.
+- [x] The live region says what moved and where it landed ("Rule 2 moved up — now rule 1").
+- [x] Covered by a keyboard-only E2E, not a mouse-driven one.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** `moveRuleUp`/`moveRuleDown` collapsed into `moveRule(index,
+delta)`, which announces the move through the existing live region and then restores focus: the
+button that performed it when it is still enabled, its sibling when the rule has reached an end.
+The Move controls gained ids so focus can find them. A keyboard-only E2E asserts focus stays
+inside the rule that moved and that the announcement fires.
+
+---
+
+### BUG-50 — Rule card small print fails contrast and lowercases the AND it exists to explain
+
+**Severity:** medium · **Area:** popup/a11y · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte:726`, `src/popup/ui/IconButton.svelte`
+
+`:726` renders "matches all filled (AND)" at `text-10px` with `opacity-75` on
+`--text-secondary`. In the light theme that is `#526276` at 75% over `--color-bg-alt`
+`#eef1f6` — roughly **3.6:1** against the 4.5:1 required for text this size. Recompute rather
+than trust that figure, and check dark as well.
+
+It is not decorative text. It is the only place the editor explains that conditions combine
+with AND, and the same element carries `lowercase`, which renders the "AND" as "and" and
+removes the one word doing the work.
+
+Separately, `IconButton` uses `disabled:opacity-45`; disabled controls are exempt from the
+contrast requirement, but at 45% the Move Up/Down arrows read as absent rather than disabled.
+
+**Acceptance criteria**
+
+- [x] Contrast measured in both themes and at or above 4.5:1 for every text node in the card.
+- [x] Smallest text in the rule card is at least 11px.
+- [x] The AND semantics survives the styling — uppercase kept, or stated in words.
+- [x] axe reports no `color-contrast` violation with the Advanced tab open (needs BUG-51).
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** The hint is now 11px with no `opacity`, inheriting
+`--text-secondary`: 5.6:1 in light, 8.6:1 in dark, both above 4.5:1. It reads "all filled
+conditions must match" — the AND is stated in words rather than shouted and then lowercased by a
+stray utility class. `IconButton`'s `disabled:opacity-45` was deliberately left alone: it is a
+shared control, disabled elements are exempt from the contrast requirement, and changing it here
+would be a global restyle smuggled into a routing fix.
+
+---
+
+### BUG-51 — The axe gate never reaches the routing rules UI
+
+**Severity:** medium · **Area:** testing · **Status:** Done
+**Files:** `tests/e2e/a11y.spec.ts`, `src/popup/ui/Tabs.svelte:58`
+
+The spec seeds two `routingRules` into storage, which looks like coverage, but it only ever
+opens the Connection tab. `Tabs` renders inactive panels with the `hidden` attribute (`:58`),
+and axe skips hidden subtrees entirely — so the rule cards have never been scanned by the gate
+that UX-9 marked Done. That is how BUG-48 and BUG-50 shipped.
+
+**Acceptance criteria**
+
+- [x] The axe pass switches to Advanced and scans with at least one rule rendered.
+- [x] It scans a rule in an error state as well as a valid one.
+- [x] `RoutingRules.stories.ts` states are covered by the Storybook a11y run.
+- [x] Adding a tab in future does not silently drop it from the sweep — the spec iterates the
+      tabs rather than naming one.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** `tests/e2e/a11y.spec.ts` gained a pass that switches to the
+Advanced tab and scans the rule cards twice — once valid, once after a rejected save, which is
+the markup BUG-48 was about. The Storybook magnet story now also asserts the domain field's
+`aria-describedby`, so the explanation stays connected to the field it explains.
+
+---
+
+### BUG-52 — No way to discard unsaved rule edits
+
+**Severity:** low · **Area:** popup/settings · **Status:** Backlog · **Cost:** easy
+**Files:** `src/popup/features/settings/Settings.svelte` (footer at `:824`, `load()`)
+
+**Originally "choosing Magnet silently erases the typed domain"; that half is fixed and the card
+is renamed to what is actually left.** The domain is no longer cleared on a type change — and as
+of the origin-matching work it is not even inapplicable to magnets any more, so there was nothing
+to clear. What remains is the second acceptance line, which was always the weaker one:
+
+The footer offers only Save. A rule deleted by mistake, or a field edited into nonsense, can only
+be undone by closing the popup — which discards every other unsaved change with it.
+
+**Why it is easy:** a secondary button in the footer, enabled while the form is dirty, calling the
+existing exported `load()`. That already re-reads storage, resets the drafts and calls
+`markClean()`. No new state. *Send To QNAP++* does the equivalent by editing a deep clone and
+offering a real Cancel (`docs/competitor-routing-teardown.md` section D).
+
+**Acceptance criteria**
+
+- [x] Switching to Magnet preserves the typed domain.
+- [ ] A Discard control returns the whole form to its saved state, and is inert when nothing is dirty.
+- [ ] Discarding announces itself — the change it undoes may be off screen.
+
+
+---
+
+### BUG-53 — Rule editor a11y polish batch: focus, labels, dead class, literal caps
+
+**Severity:** low · **Area:** popup/a11y · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte:688,725,746,760-768,778`
+
+Small items, each cheap, grouped so they are not five cards:
+
+- **Add rule moves nothing.** The new card appears at the bottom of the list, focus stays on
+  the button, and nothing is announced — indistinguishable from a no-op without sight.
+- **The disabled Domain field cannot explain itself.** `disabled` removes it from the tab
+  order, and the sentence that says why (`:766`) is not connected by `aria-describedby`, so
+  assistive tech never encounters either.
+- **Duplicate rule name.** `<legend class="sr-only">Rule N</legend>` (`:688`) sits next to a
+  visible `Rule N` span, so the group announces its name twice.
+- **`visually-hidden` is a dead class** — not a UnoCSS utility; only the `sr-only` beside it
+  does anything. Remove it or the next reader will assume it works.
+- **Literal capitals.** "IF" (`:725`) and "THEN SAVE TO" (`:778`) are uppercase in the source
+  *and* carry the `uppercase` class. Write them in sentence case and let CSS do the shouting,
+  so a screen reader does not spell out a two-letter word as an abbreviation.
+- **No visible labels at all** — the three condition controls are identified by placeholder
+  only, which disappears on input. The column-header fix belongs to UX-18.
+
+**Acceptance criteria**
+
+- [x] Adding a rule focuses the new card's first control and announces it.
+- [x] The magnet/domain limitation is reachable by assistive tech.
+- [x] Each rule group announces its name once.
+- [x] No dead utility classes; no literal uppercase carrying meaning.
+
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** Adding a rule now focuses the new card's type control and
+announces itself. The magnet note carries an id and is referenced by the domain field's
+`aria-describedby`, and it says what actually happens now ("kept but not applied"). The visible
+`Rule N` span is `aria-hidden`, leaving the `<legend>` as the group's only name. The dead
+`visually-hidden` class is gone. "IF" / "THEN SAVE TO" are written "If" / "Then save to" with the
+shouting left to the existing `uppercase` class.
+
+Not included: visible column labels for the three condition controls. That is UX-18, which
+redesigns the header row rather than adding three labels to the current layout.
+
+---
+
+### BUG-54 — Popup `.torrent` upload bypasses routing rules entirely
+
+**Severity:** medium · **Area:** popup/upload · **Status:** Done
+**Files:** `src/popup/features/upload/torrentUpload.ts:21`, `src/api/client.ts` (`addTorrent`)
+
+`uploadTorrent` calls `client.addTorrent(file)` with no folder, so the destination is
+`settings.NASdir` and nothing else. A user with "season packs → TV" configured drags a `.torrent`
+into the popup and it lands in the default folder, silently — the same rule that works when the
+identical file is clicked on the tracker.
+
+The file is already a `File` in hand, so `readTorrentName` applies directly and the fix is the one
+already made for the interception path: read the name, resolve the destination, pass it down.
+`addTorrent` takes no folder argument today and would need one — `sendTorrentUrlToNas` fakes it by
+overriding `settings.NASdir`, which is not a pattern to copy into a second place.
+
+Worth knowing: *Send To QNAP++* has exactly this bug, from exactly the same cause — routing lives
+at one choke point and the `AddTorrent` path does not go through it
+(`docs/competitor-routing-teardown.md` section E).
+
+**Acceptance criteria**
+
+- [x] A `.torrent` uploaded through the popup lands in the folder its rule names.
+- [x] `addTorrent` takes the destination as an argument rather than through a mutated settings copy.
+- [ ] The matrix spec gains a row for this path (`docs/routing-coverage.md`).
+- [x] Quick-add's explicit folder picker still wins over rules — that bypass is deliberate.
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** `uploadTorrent` reads the file's own `info.name` and resolves
+the destination like every other send path; `addTorrent(file, { targetFolder })` takes it as an
+argument, which also removed the `{...settings, NASdir: folder}` spread that `sendTorrentUrlToNas`
+was using to fake the same thing. Unit-covered.
+
+The matrix row stays unticked on purpose: the popup's hidden file input is not something the test
+stand can drive, and adding a seam for it would cost more than the assertion is worth. Recorded in
+the "cannot cover" table in `docs/routing-coverage.md` instead.
+
+---
+
+### BUG-55 — Routing edge cases have no test at the level that can reach them
+
+**Severity:** low · **Area:** testing · **Status:** Backlog
+**Files:** `src/background/menus.test.ts`, `tests/e2e/routing-matrix.spec.ts`
+
+**Written first as "the context-menu path has no coverage", which is wrong — corrected the same
+day after reading `menus.test.ts`.** `handleContextMenuClick` is exported and unit-tested through
+MSW, including *"routes the fetched torrent to the folder its rule selects"*, which asserts the
+`move` field out of the multipart body. The context-menu path is covered where it can be covered
+cheaply; what is missing is only Chrome's real menu wiring, and that needs a test seam in a
+production build to reach. Not worth it.
+
+What is actually uncovered is a handful of edge cases, all of which fit in the existing unit
+suite with no new machinery:
+
+- **quick-add is *supposed* to bypass rules** — nothing asserts it, so a future change could
+  quietly make it obey them and nobody would notice until a user's explicit folder choice stopped
+  winning.
+- **a valid-MIME torrent whose bencode is unreadable**, falling back to `DownloadItem.filename`
+  (`readTorrentName` returns `undefined` — unit-covered in isolation, never through a send).
+- **a non-ASCII release name**, exercising the `name.utf-8` branch end to end.
+- **a login-walled tracker fetch that succeeds** — `hotlink-guard.spec.ts` proves the fetch and the
+  refusal, not the folder the successful case lands in.
+
+**Acceptance criteria**
+
+- [ ] The four cases above are asserted at the unit level, on the destination folder rather than
+      on success.
+- [ ] `docs/routing-coverage.md`'s "cannot cover" table drops the rows these close, and keeps
+      Chrome's native menu with the reason it stays out.
+- [ ] No test seam is added to production code for this.
+
+---
+
+### BUG-56 — The test stand advertises cases it cannot exercise
+
+**Severity:** low · **Area:** testing · **Status:** Done
+**Files:** `tests/e2e/fixtures/test-stand/index.html` (tabs "Direct downloads", "Domains & Edge Cases")
+
+Two groups of cards on the stand imply coverage that does not exist:
+
+- **Domains & Edge Cases** links to `https://tracker.example.com/...` and
+  `https://eu-west.cdn-network.org/...`, which resolve nowhere. Clicking them in the harness does
+  nothing; clicking them manually gives a DNS error. Domain matching is now genuinely covered by
+  the second-hostname card on the Tracker tab, so these are pure decoration.
+- **Direct downloads** cards carry rule hints like "Pattern `*.mkv` → Movies", but a plain HTTP
+  download is never intercepted, so no rule can fire. The stand teaches the opposite of what the
+  product does.
+
+Either wire them to something real or relabel them as "not intercepted — this is what a rule
+cannot do". The second is arguably more useful: the stand is where someone goes to find out what
+the feature does.
+
+**Acceptance criteria**
+
+- [x] No card on the stand implies behaviour the extension does not have.
+- [x] Every card is either driven by the matrix spec or explicitly marked as a manual/negative case.
+- [x] `docs/routing-coverage.md` and the stand agree.
+
+**2026-09-09 — fixed. **Done 2026-09-09**,** The two links to hosts that resolve nowhere are deleted; domain
+matching is demonstrated for real on the Tracker tab, twice. The "Direct downloads" tab and what
+is now "URL edge cases" both open with "nothing on this tab reaches the NAS", and every card there
+says which rule *cannot* fire rather than which one would. Those cards are worth keeping: the
+stand is where someone goes to find out what the feature does, and the edge of a feature is part
+of what it does.
+
+---
+
+### BUG-57 — A wildcard-only pattern is a catch-all the sanitizer was written to prevent
+
+**Severity:** medium · **Area:** core/routing · **Status:** Backlog · **Cost:** easy
+**Files:** `src/lib/routingRules.ts` (`sanitizeRoutingRules`, `validateRoutingRuleDraft`)
+
+`sanitizeRoutingRules` documents an invariant — "catch-all rules without conditions are
+prohibited, unmatched downloads use the global Target" — and enforces it by requiring one of
+`type`, `domain`, `namePattern` to be set. A rule whose only condition is `namePattern: "*"`
+satisfies that check and then matches everything. Put first, it shadows the entire list, and
+because rules fail silently the user sees "all my downloads go to one folder" with no clue why.
+
+The same is true of `*` mixed into a list (`mkv *` matches everything) now that a field holds
+several values.
+
+**Why it is easy:** the guard is one predicate next to the ones already there — a pattern whose
+every token is made only of `*` and `?` carries no information, so treat it as absent. If nothing
+else is set, the rule is condition-less and already gets dropped. The editor's validator says the
+same thing, from the same function.
+
+**Do not over-fit.** `*.mkv`, `*S01*` and `*` mixed with a real domain are all legitimate. This is
+only about a rule that constrains nothing.
+
+**Acceptance criteria**
+
+- [ ] A rule whose only condition is a wildcard-only pattern is dropped by the sanitizer and
+      rejected by the editor, with a message naming the reason.
+- [ ] `*` alongside a domain or a type still works — it is not a catch-all then.
+- [ ] Existing stored rules that are catch-alls are dropped on load rather than silently kept.
+- [ ] Unit-covered both ways, including `mkv *` in one field.
 
 ---
 

@@ -8,7 +8,9 @@
 
 import { createApiClient } from "@api/client.js";
 import type { Settings } from "./config.js";
+import { hasTorrentExtension } from "./sourceKind.js";
 import { fetchFromPageContext } from "./tabFetch.js";
+import { readTorrentName } from "./torrentMeta.js";
 
 export type SendTorrentResult = {
   name: string;
@@ -16,43 +18,17 @@ export type SendTorrentResult = {
 };
 
 /**
- * Decide whether a download is a torrent source that must be routed to the NAS.
- *
- * `filename` is worth checking on its own: trackers commonly serve a `.torrent` from an
- * opaque endpoint and only reveal the real name through `Content-Disposition`, which Chrome
- * surfaces as the download item's filename rather than in the URL.
- */
-export function isTorrentSource(url: string, mime?: string, filename?: string): boolean {
-  if (mime && isTorrentMime(mime)) return true;
-  if (filename && hasTorrentExtension(filename)) return true;
-  if (hasTorrentExtension(url)) return true;
-
-  // A context-menu click has only the link URL: Chrome has not created a download yet, so
-  // there is no response MIME or Content-Disposition-derived filename to inspect. TorrentPier's
-  // source-backed download route is /dl.php; keep that fallback only while no contradictory
-  // response metadata exists, so an actual PDF served by the same path is never intercepted.
-  return !mime && !filename && /\/dl\.php\b/i.test(url);
-}
-
-/** Matches standard BitTorrent MIME type, ignoring optional parameters like charset. */
-function isTorrentMime(mime: string): boolean {
-  const cleanMime = mime.split(";")[0]?.trim().toLowerCase();
-  return cleanMime === "application/x-bittorrent" || cleanMime === "application/x-torrent";
-}
-
-/** Matches a `.torrent` ending, allowing for a query string or a fragment after it. */
-function hasTorrentExtension(value: string): boolean {
-  return /\.torrent(?:[?#]|$)/i.test(value);
-}
-
-/**
  * Fetch a .torrent with the browser's cookies and upload it to the NAS.
- * Pass `folder` to override the final destination directory for this task.
+ *
+ * `folder` overrides the final destination for this task. Pass a function instead of a string
+ * to decide the destination once the torrent has been read: it receives the release name
+ * declared inside the file, which is the only place that name exists before the NAS has the
+ * task. Routing rules need it — the URL alone names the metadata file, not the download.
  */
 export async function sendTorrentUrlToNas(
   settings: Settings,
   url: string,
-  folder?: string,
+  folder?: string | ((contentName: string | undefined) => string),
   referrer?: string,
 ): Promise<SendTorrentResult> {
   // A page on the tracker is the only context whose request looks like a real click. The
@@ -68,14 +44,15 @@ export async function sendTorrentUrlToNas(
   }
 
   const blob = await response.blob();
-  await assertLooksLikeTorrent(blob, response);
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  assertLooksLikeTorrent(bytes, response);
 
   const name = torrentFileName(response, url);
   const file = new File([blob], name, { type: "application/x-bittorrent" });
 
-  const effectiveSettings = folder ? { ...settings, NASdir: folder } : settings;
-  const client = createApiClient({ settings: effectiveSettings });
-  const result = await client.addTorrent(file);
+  const targetFolder = typeof folder === "function" ? folder(readTorrentName(bytes)) : folder;
+  const client = createApiClient({ settings });
+  const result = await client.addTorrent(file, { targetFolder });
 
   return { name, duplicate: Boolean(result.duplicate) };
 }
@@ -88,9 +65,8 @@ export async function sendTorrentUrlToNas(
  * A `.torrent` is bencoded, so it always starts with `d` followed by a digit (the first key's
  * length), e.g. `d8:announce`.
  */
-async function assertLooksLikeTorrent(blob: Blob, response: Response): Promise<void> {
-  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
-  const bencodedDict = head[0] === 0x64 && head[1] >= 0x30 && head[1] <= 0x39; // "d" + digit
+function assertLooksLikeTorrent(bytes: Uint8Array, response: Response): void {
+  const bencodedDict = bytes[0] === 0x64 && bytes[1] >= 0x30 && bytes[1] <= 0x39; // "d" + digit
   if (bencodedDict) return;
 
   const contentType = response.headers.get("content-type") ?? "";

@@ -78,6 +78,89 @@ test.describe("accessibility", () => {
     }
   });
 
+  /**
+   * The tab panels that are not open carry the `hidden` attribute, and axe skips hidden
+   * subtrees — so seeding `routingRules` into storage proved nothing while the pass never left
+   * the Connection tab. The rule cards had therefore never been scanned at all.
+   */
+  test("the routing rules on the Advanced tab have no detectable violations", async () => {
+    const nas = await startMockNas();
+    const session = await launchExtensionPopup(extensionDistPath);
+
+    try {
+      await session.worker.evaluate(
+        (values) => chrome.storage.local.set(values as Record<string, unknown>),
+        CONFIGURED(nas.port) as Record<string, unknown>,
+      );
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+      await session.page.getByRole("tab", { name: "Advanced" }).click();
+      await session.page.waitForSelector("#routing-0-namePattern");
+
+      const valid = await new AxeBuilder({ page: session.page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      expect(
+        valid.violations.map((violation) => `${violation.id}: ${violation.help}`),
+        "axe violations on the routing rules",
+      ).toEqual([]);
+
+      // Then the same panel with a rule in an error state — the markup that only exists after a
+      // rejected save, and the markup BUG-48 was about.
+      await session.page.fill("#routing-0-destination", "");
+      await session.page.fill("#routing-0-namePattern", "");
+      await session.page.click("#save-btn");
+      await expect(session.page.locator("#routing-0-destination")).toHaveAttribute("aria-invalid", "true");
+
+      const invalid = await new AxeBuilder({ page: session.page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      expect(
+        invalid.violations.map((violation) => `${violation.id}: ${violation.help}`),
+        "axe violations on a rejected routing rule",
+      ).toEqual([]);
+    } finally {
+      await session.close();
+      await nas.close();
+    }
+  });
+
+  /**
+   * Reordering is the only way to change rule priority, and the control that performs it is
+   * disabled the moment the rule reaches an end — at which point the browser drops focus to
+   * the document body unless something puts it back.
+   */
+  test("reordering a rule with the keyboard keeps focus inside the rule that moved", async () => {
+    const nas = await startMockNas();
+    const session = await launchExtensionPopup(extensionDistPath);
+
+    try {
+      await session.worker.evaluate(
+        (values) => chrome.storage.local.set(values as Record<string, unknown>),
+        CONFIGURED(nas.port) as Record<string, unknown>,
+      );
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+      await session.page.getByRole("tab", { name: "Advanced" }).click();
+      await session.page.waitForSelector("#routing-1-move-up");
+
+      // Rule 2 to the top: the Move Up button it was activated from becomes disabled.
+      await session.page.focus("#routing-1-move-up");
+      await session.page.keyboard.press("Enter");
+
+      const focusedId = await session.page.evaluate(() => document.activeElement?.id ?? "");
+      expect(focusedId, "focus must not fall out of the rule that moved").toMatch(/^routing-0-move-/);
+
+      const announcement = session.page.locator("#status-message");
+      await expect(announcement).toHaveText(/moved up/i);
+    } finally {
+      await session.close();
+      await nas.close();
+    }
+  });
+
   test("an incomplete form marks its fields rather than only describing them", async () => {
     const nas = await startMockNas();
     const session = await launchExtensionPopup(extensionDistPath);

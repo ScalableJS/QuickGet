@@ -157,12 +157,15 @@ export class ApiClient {
     return true;
   }
 
-  async addTorrent(file: File): Promise<AddTorrentResult> {
+  async addTorrent(
+    file: File,
+    options: { tempFolder?: string; targetFolder?: string } = {},
+  ): Promise<AddTorrentResult> {
     const loginResult = await performLogin(this.settings);
 
     // Normalize to the relative path DS expects (absolute `/share/...` → error 4096).
-    const temp = normalizeFolderPath(this.settings.NAStempdir);
-    const move = normalizeFolderPath(this.settings.NASdir);
+    const temp = normalizeFolderPath(options.tempFolder ?? this.settings.NAStempdir);
+    const move = normalizeFolderPath(options.targetFolder ?? this.settings.NASdir);
 
     // Download Station requires a temporary folder and answers an empty one with an opaque
     // `{error: 1, reason: "temp"}`. Failing here names the setting instead, and saves a

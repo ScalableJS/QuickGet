@@ -98,7 +98,7 @@ export const MultiplePrioritizedRules: Story = {
 };
 
 /** Magnet rule: Domain field is disabled with an explanatory hint. */
-export const MagnetDisabledDomain: Story = {
+export const MagnetSiteMatchesThePage: Story = {
   args: {
     storage: {
       ...BASE_SETTINGS,
@@ -114,10 +114,13 @@ export const MagnetDisabledDomain: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const domainInput = canvas.getByLabelText("Rule 1 domain");
-    await expect(domainInput).toBeDisabled();
+    // The Site field used to be disabled for magnets, on the reasoning that a magnet has no
+    // host. It has none of its own — but it was clicked on a page, and that is what the rule
+    // matches now, so the field has to be usable.
+    const siteInput = canvas.getByLabelText("Rule 1 site");
+    await expect(siteInput).toBeEnabled();
     await expect(
-      canvas.getByText("Domain matching is not applicable to magnet links.")
+      canvas.getByText("A magnet has no site of its own, so Site matches the page it was clicked on."),
     ).toBeVisible();
   },
 };
@@ -134,23 +137,12 @@ export const ValidationErrorMissingDestination: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Add rule" }));
-    await userEvent.type(
-      canvas.getByLabelText("Rule 1 filename pattern"),
-      "*.avi"
-    );
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save settings" })
-    );
+    await userEvent.type(canvas.getByLabelText("Rule 1 name or extension"), "*.avi");
+    await userEvent.click(canvas.getByRole("button", { name: "Save settings" }));
     await userEvent.keyboard("{Escape}");
 
-    await expect(
-      canvas.getByText("Destination folder is required")
-    ).toBeVisible();
-    await expect(
-      canvas.getByText(
-        "Fix the highlighted routing rule errors before saving"
-      )
-    ).toBeVisible();
+    await expect(canvas.getByText("Destination folder is required")).toBeVisible();
+    await expect(canvas.getByText("Fix the highlighted routing rule errors before saving")).toBeVisible();
   },
 };
 
@@ -170,15 +162,9 @@ export const ValidationErrorNoConditions: Story = {
     if (destInput) {
       await userEvent.type(destInput, "Downloads/Unsorted");
     }
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save settings" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save settings" }));
 
-    await expect(
-      canvas.getByText(
-        "Specify at least one condition (type, domain, or filename pattern)"
-      )
-    ).toBeVisible();
+    await expect(canvas.getByText("Set at least one condition: source, name or extension, or site")).toBeVisible();
   },
 };
 
@@ -211,10 +197,10 @@ export const ReorderPriorityInteraction: Story = {
     await userEvent.click(moveDownBtn);
 
     // After swapping, the first rule's pattern field now contains SECOND_RULE
-    const rule1Pattern = canvas.getByLabelText("Rule 1 filename pattern");
+    const rule1Pattern = canvas.getByLabelText("Rule 1 name or extension");
     await expect(rule1Pattern).toHaveValue("SECOND_RULE");
 
-    const rule2Pattern = canvas.getByLabelText("Rule 2 filename pattern");
+    const rule2Pattern = canvas.getByLabelText("Rule 2 name or extension");
     await expect(rule2Pattern).toHaveValue("FIRST_RULE");
 
     // Save button should be enabled because order changed (isDirty)
@@ -231,12 +217,9 @@ export const LongPatternsAndDeepPaths: Story = {
       routingRules: [
         {
           type: "torrent",
-          domain:
-            "very-long-subdomain.tracker-network-distribution.internal.company.com",
-          namePattern:
-            "*very.long.release.name.with.many.dots.and.tags.2160p.hdr.remux*",
-          destination:
-            "/share/CACHEDEV1_DATA/Multimedia/Archive/4K/HDR/Uncompressed/Films",
+          domain: "very-long-subdomain.tracker-network-distribution.internal.company.com",
+          namePattern: "*very.long.release.name.with.many.dots.and.tags.2160p.hdr.remux*",
+          destination: "/share/CACHEDEV1_DATA/Multimedia/Archive/4K/HDR/Uncompressed/Films",
         },
       ],
     },

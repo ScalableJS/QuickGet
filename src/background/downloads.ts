@@ -19,9 +19,10 @@ import { performLogin } from "@api/index.js";
 import type { Settings } from "@lib/config.js";
 import { findConfigProblem } from "@lib/configHealth.js";
 import { getErrorMessage } from "@lib/errors.js";
-import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
+import { resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
-import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
+import { isTorrentSource } from "@lib/sourceKind.js";
+import { sendTorrentUrlToNas } from "@lib/torrentSender.js";
 
 import { markConfigurationProblem, markSendNotice } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
@@ -63,7 +64,7 @@ function reserveForFilenameHold(item: chrome.downloads.DownloadItem): boolean {
   if (!chrome.downloads.onDeterminingFilename) return false;
   const url = item.finalUrl || item.url;
   if (!/^https?:\/\//i.test(url)) return false;
-  if (!isTorrentSource(url, item.mime, item.filename)) return false;
+  if (!isTorrentSource(url, { mime: item.mime, filename: item.filename })) return false;
   reservedForHold.add(item.id);
   return true;
 }
@@ -164,7 +165,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     }
 
     const url = item.finalUrl || item.url;
-    if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, item.mime, item.filename)) {
+    if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, { mime: item.mime, filename: item.filename })) {
       console.log("[QuickGet] skipped: not recognised as a torrent", {
         id: item.id,
         url,
@@ -239,7 +240,17 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
 
     // Chrome recorded the page the download started from — that is exactly the referrer a
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
-    await handOffToNas(settings, item.id, url, item.referrer, strict, cancelledAtFilenameStage);
+    // It also derived a filename from `Content-Disposition`, which for an opaque endpoint like
+    // `dl.php?id=1` is the only name the routing rules would otherwise never see.
+    await handOffToNas(
+      settings,
+      item.id,
+      url,
+      baseName(item.filename),
+      item.referrer,
+      strict,
+      cancelledAtFilenameStage,
+    );
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     await notifyFailure("handoff", "Failed to redirect download", getErrorMessage(error));
@@ -263,6 +274,12 @@ function claimDownload(id: number): boolean {
   return true;
 }
 
+/** Chrome reports a full target path; routing rules are written against the file name. */
+function baseName(path?: string): string | undefined {
+  const last = path?.split(/[/\\]/).pop()?.trim();
+  return last || undefined;
+}
+
 /** Re-evaluate a download whose type-identifying fields only just became known. */
 async function handleDownloadChanged(id: number): Promise<void> {
   try {
@@ -277,6 +294,8 @@ async function handOffToNas(
   settings: Settings,
   downloadId: number,
   url: string,
+  /** The name Chrome derived for the file, used for routing until the torrent itself is read. */
+  suggestedName: string | undefined,
   referrer?: string,
   /** Whether the full no-file setting was active for this hand-off. */
   strict = false,
@@ -290,8 +309,16 @@ async function handOffToNas(
   const paused = cancelledAtFilenameStage ? false : await pauseBrowserDownload(downloadId);
 
   try {
-    const folder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
-    await sendTorrentUrlToNas(settings, url, folder, referrer);
+    // The kind is not in question here — this path only ever runs for a torrent — and the name
+    // is resolved as late as possible: once the .torrent has been fetched its `info.name` is the
+    // release itself, which is what a rule like `*.mkv` was written against.
+    const route = (contentName?: string) =>
+      resolveDestination(
+        { url, kind: "torrent", name: contentName ?? suggestedName, pageUrl: referrer },
+        settings.routingRules,
+        settings.NASdir,
+      );
+    await sendTorrentUrlToNas(settings, url, route, referrer);
 
     // The NAS owns the torrent now — only here is it safe to stop the browser transfer. If the
     // cancel itself fails we must not leave it paused: put it back to the browser. A successful
