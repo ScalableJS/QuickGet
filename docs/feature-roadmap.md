@@ -455,17 +455,17 @@ is the index.
 
 | Card | What | Cost | Status |
 |---|---|---|---|
-| BUG-52 | Discard unsaved rule edits — a footer button calling the existing `load()` | easy | Backlog |
-| BUG-55 | Four routing edge cases in the unit suite; no seam needed | easy | Backlog |
-| BUG-57 | A wildcard-only pattern defeats the sanitizer's own catch-all invariant | easy | Backlog |
-| BUG-38 | Show the folder a task was sent to | easy | **Done** |
-| UX-21 | Mute and duplicate a rule; value went *up* now that the tester is deferred | easy | Backlog |
-| GAP-15 | Resolve redirects before `AddUrl` — one hardware check first, then maybe nothing | small | Backlog |
-| RES-3 | Narrowed to: what does DS do with a `move` that does not exist or is not writable | small | Backlog |
+| BUG-52 | Move the delete control away from the reorder arrows — 32px apart today | easy | Backlog |
+| BUG-55 | Two routing edge cases in the unit suite; no seam needed | easy | Backlog |
 | UX-19 | The rule tester | medium | Deferred |
 | RES-6 | Magnet metadata window | medium | Deferred — hardware |
-| RES-5 | Intercept ordinary downloads — the only thing that would make `type: url` meaningful | large | Backlog |
-| UX-20, UX-22, GAP-6, GAP-14, RES-4 | — | — | Rejected, reasons on the cards |
+| BUG-38, UX-18, BUG-46..51, 53, 54, 56 | — | — | Done |
+| BUG-57, UX-20, UX-21, UX-22, GAP-6, GAP-14, RES-3, RES-4 | — | — | Rejected, reasons on the cards |
+
+Two easy cards is the whole remaining routing surface. GAP-15 (resolve redirects before `AddUrl`)
+and RES-5 (intercept ordinary downloads) were in this list and should not have been: neither
+depends on a rule or a destination. They live with send correctness and with features
+respectively.
 
 Three easy cards and two small ones are the whole remaining surface. Nothing in it blocks anything
 else, and nothing in it is a prerequisite for the parked Wave 2.

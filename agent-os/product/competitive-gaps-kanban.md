@@ -34,7 +34,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-5 | Listing does not claim the maintenance gap left by the segment leader | store | S | Backlog |
 | RES-1 | Verify on a live NAS how `AddUrl` handles a magnet URI | api/research | S | Backlog |
 | RES-2 | Decide whether `ftp://` links are worth supporting | api/research | S | Backlog |
-| RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Backlog |
+| RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Rejected |
 | GAP-6 | Destination choice is missing from the paths that send most downloads | popup/background | S | Rejected |
 | RES-4 | Can File Station move a finished download, and at what cost to seeding? | api/research | M | Rejected |
 | GAP-14 | Re-route a download after it has started — which windows actually exist | api/background | L | Rejected |
@@ -386,7 +386,7 @@ Deliberately **not** doing it speculatively: we do not add code for users we hav
 
 ### RES-3 — Establish what the NAS allows for per-task destination folders
 
-**Size:** M · **Area:** api/research · **Status:** Backlog
+**Size:** M · **Area:** api/research · **Status:** Rejected
 **Blocks:** GAP-6 (and decides whether the "change it later" half exists at all)
 
 A user wants to choose where a download lands: **when sending**, **while it runs**, and
@@ -453,6 +453,19 @@ moving anything:
   per entry, so a bad destination could be caught in the picker instead of discovered afterwards.
 
 Everything else on this card is answered. Retitle it if it is picked up.
+
+**2026-09-09 — Rejected; the last open question is answerable without hardware.** It had been
+narrowed to "what does Download Station do with a `move` that does not exist or is not writable".
+Three things already answer it well enough to not spend a NAS session:
+
+- The editor validates the folder through `Misc/Dir` when the rule is written (F1), so the path
+  existed at least once.
+- The residual case is a folder deleted on the NAS afterwards — rare, and not preventable by us.
+- Download Station reports it: `++`'s error table carries `6: "Destination folder not found"`, and
+  we have displayed task error codes since BUG-37.
+
+So the failure is already surfaced to the user in words. Confirming the mechanism on hardware would
+change nothing we would build.
 
 ---
 
@@ -742,6 +755,11 @@ download, so it is only worth it if the failure is real.
       case where no redirect occurs.
 - [ ] A dead task caused by a redirect is distinguishable from a dead task caused by anything
       else — silence here is what makes it expensive.
+
+**2026-09-09 — filed under routing by accident; it is send correctness.** Nothing here depends on
+a rule or a destination: a redirecting URL handed to the NAS produces a dead task whatever folder
+it was going to. Keeping it in the routing list made that list look longer than it is. Unchanged
+otherwise — still small, still gated on one question to a real NAS.
 
 ---
 

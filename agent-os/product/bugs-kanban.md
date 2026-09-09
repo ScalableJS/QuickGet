@@ -31,12 +31,12 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-49 | Reordering a rule drops keyboard focus and announces nothing | popup/a11y | medium | Done |
 | BUG-50 | Rule card small print fails contrast and lowercases the AND it exists to explain | popup/a11y | medium | Done |
 | BUG-51 | The axe gate never reaches the routing rules UI | testing | medium | Done |
-| BUG-52 | No way to discard unsaved rule edits | popup/settings | low | Backlog |
+| BUG-52 | Delete sits next to the reorder arrows and looks identical to them | popup/UX | low | Backlog |
 | BUG-53 | Rule editor a11y polish batch: focus, labels, dead class, literal caps | popup/a11y | low | Done |
 | BUG-54 | Popup `.torrent` upload bypasses routing rules entirely | popup/upload | medium | Done |
 | BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | Backlog |
 | BUG-56 | The test stand advertises cases it cannot exercise | testing | low | Done |
-| BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Backlog |
+| BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Rejected |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
@@ -604,29 +604,42 @@ the markup BUG-48 was about. The Storybook magnet story now also asserts the dom
 
 ---
 
-### BUG-52 — No way to discard unsaved rule edits
+### BUG-52 — Delete sits next to the reorder arrows and looks identical to them
 
-**Severity:** low · **Area:** popup/settings · **Status:** Backlog · **Cost:** easy
-**Files:** `src/popup/features/settings/Settings.svelte` (footer at `:824`, `load()`)
+**Severity:** low · **Area:** popup/UX · **Status:** Backlog · **Cost:** easy
+**Files:** `src/popup/features/settings/Settings.svelte` (rule header, `:715-745`)
 
-**Originally "choosing Magnet silently erases the typed domain"; that half is fixed and the card
-is renamed to what is actually left.** The domain is no longer cleared on a type change — and as
-of the origin-matching work it is not even inapplicable to magnets any more, so there was nothing
-to clear. What remains is the second acceptance line, which was always the weaker one:
+**Rescoped twice; this is the version that treats the actual cause.** It began as "choosing Magnet
+erases the typed domain" (fixed), became "no way to discard unsaved rule edits", and is now the
+thing that makes discarding necessary in the first place.
 
-The footer offers only Save. A rule deleted by mistake, or a field edited into nonsense, can only
-be undone by closing the popup — which discards every other unsaved change with it.
+Each rule's header ends with three 28×28 icon buttons, 4px apart: `↑`, `↓`, `✕`. The only
+destructive control on the screen is the same size and shape as the two harmless ones, and it sits
+immediately after the one you press repeatedly. Reordering a rule and deleting it are 32 pixels
+apart.
 
-**Why it is easy:** a secondary button in the footer, enabled while the form is dirty, calling the
-existing exported `load()`. That already re-reads storage, resets the drafts and calls
-`markClean()`. No new state. *Send To QNAP++* does the equivalent by editing a deep clone and
-offering a real Cancel (`docs/competitor-routing-teardown.md` section D).
+Recovery afterwards is poor and that is the point — it is why prevention is the right fix. The
+toast says "Rule 3 removed" and carries no Undo; `showStatus` cannot hold a control (the same
+infrastructure gap that defers GAP-4). Closing the settings *panel* does not help: `togglePanel`
+toggles a CSS class, the component stays mounted and the drafts survive. Only closing the whole
+popup discards them — along with every other unsaved change in the form.
+
+**Fix:** separate the destructive control from the navigational ones. `✕` at the other end of the
+header, or the arrows grouped and `✕` set apart by a real gap. Minutes, no new state.
+
+**Heavier alternatives, deliberately not chosen now**
+
+- *Undo on the toast* — the precise fix for "I deleted it by mistake", and it needs a toast that
+  can carry an action. If that infrastructure ever lands for GAP-4, this closes with it.
+- *A Discard button in the footer* — treats the wrong illness. The problem is one lost rule; this
+  throws away deliberate edits too.
 
 **Acceptance criteria**
 
-- [x] Switching to Magnet preserves the typed domain.
-- [ ] A Discard control returns the whole form to its saved state, and is inert when nothing is dirty.
-- [ ] Discarding announces itself — the change it undoes may be off screen.
+- [ ] The delete control is not adjacent to the reorder controls, and reads as destructive.
+- [ ] Keyboard order still puts the rule's own controls together, and the Storybook stories cover
+      the new layout.
+- [ ] No confirmation dialog — a per-delete prompt on a five-item list is worse than the mis-click.
 
 
 ---
@@ -730,17 +743,21 @@ suite with no new machinery:
   winning.
 - **a valid-MIME torrent whose bencode is unreadable**, falling back to `DownloadItem.filename`
   (`readTorrentName` returns `undefined` — unit-covered in isolation, never through a send).
-- **a non-ASCII release name**, exercising the `name.utf-8` branch end to end.
-- **a login-walled tracker fetch that succeeds** — `hotlink-guard.spec.ts` proves the fetch and the
-  refusal, not the folder the successful case lands in.
 
 **Acceptance criteria**
 
-- [ ] The four cases above are asserted at the unit level, on the destination folder rather than
+- [ ] The two cases above are asserted at the unit level, on the destination folder rather than
       on success.
 - [ ] `docs/routing-coverage.md`'s "cannot cover" table drops the rows these close, and keeps
       Chrome's native menu with the reason it stays out.
 - [ ] No test seam is added to production code for this.
+
+**2026-09-09 — trimmed from four cases to two.** Dropped: the non-ASCII name, already covered in
+`torrentMeta.test.ts` at the level that actually parses it; and the successful login-walled fetch,
+because `hotlink-guard.spec.ts` proves the fetch and the folder is chosen by exactly the same code
+as every other torrent send. What is left is the two that guard something nothing else does — a
+deliberate bypass that a future "fix" could silently remove, and a fallback path never exercised
+through a real send.
 
 ---
 
@@ -780,7 +797,7 @@ of what it does.
 
 ### BUG-57 — A wildcard-only pattern is a catch-all the sanitizer was written to prevent
 
-**Severity:** medium · **Area:** core/routing · **Status:** Backlog · **Cost:** easy
+**Severity:** medium · **Area:** core/routing · **Status:** Rejected
 **Files:** `src/lib/routingRules.ts` (`sanitizeRoutingRules`, `validateRoutingRuleDraft`)
 
 `sanitizeRoutingRules` documents an invariant — "catch-all rules without conditions are
@@ -807,6 +824,20 @@ only about a rule that constrains nothing.
 - [ ] `*` alongside a domain or a type still works — it is not a catch-all then.
 - [ ] Existing stored rules that are catch-alls are dropped on load rather than silently kept.
 - [ ] Unit-covered both ways, including `mkv *` in one field.
+
+**2026-09-09 — Rejected the day after it was written.** Two reasons, and the second is the one
+that decides it.
+
+**It polices intent, not data.** The sanitizer exists to reject malformed input from storage and
+imported backups — a rule with *no conditions at all*, which nobody typed and which shadows
+everything. A pattern of `*` is a condition the user wrote on purpose. Ordering is theirs to
+choose, "first match wins" is stated in the editor, and the rule list is short and visible.
+
+**The failure is now self-diagnosing.** Since BUG-38 every task card shows the folder it is going
+to. A stray `*` at the top of the list announces itself on the next download instead of hiding.
+
+Left in the code instead of a guard: a sentence in `sanitizeRoutingRules` saying a wildcard-only
+pattern passes deliberately, so the next reader does not file this card again.
 
 ---
 

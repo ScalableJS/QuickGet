@@ -34,7 +34,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-18 | The rule editor teaches patterns that cannot match | ui | M | **Done** |
 | UX-19 | Rules are write-only — nothing tells you whether they work | ui | M | Deferred |
 | UX-20 | Which rule sent a task, and where, is invisible | ui | S | Rejected |
-| UX-21 | A rule cannot be muted or duplicated | ui | S | Backlog |
+| UX-21 | A rule cannot be muted or duplicated | ui | S | Rejected |
 | UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
 
 ---
@@ -799,7 +799,7 @@ Done). What stays rejected is only "which rule chose it", for the reason above.
 
 ### UX-21 — A rule cannot be muted or duplicated
 
-**Size:** S · **Area:** ui · **Status:** Backlog
+**Size:** S · **Area:** ui · **Status:** Rejected
 **Files:** `src/lib/routingRules.ts` (`RoutingRule`, `sanitizeRoutingRules`),
 `src/popup/features/settings/Settings.svelte`
 **Depends on:** UX-19 (a muted rule needs somewhere to be visibly muted)
@@ -831,6 +831,18 @@ muting is the only way to find which rule misbehaves". With the destination now 
 card (BUG-38), you can *see* the wrong folder without muting anything — but you still cannot tell
 *which* rule chose it, and bisecting by muting is the cheapest way to find out. Still easy, still
 worth it, no longer the only diagnostic.
+
+**2026-09-09 — Rejected.** The case for it moved twice in one day and ended below the cost.
+
+It was "with no tester, muting is the only way to find which rule misbehaves". Then BUG-38 put the
+destination on every card, so a wrong folder is *visible* without muting anything. What is left is
+"which of my rules chose it", on a list that is short and ordered and readable.
+
+The cost is not nothing: `enabled` in the stored rule shape, a default in the sanitizer so old data
+keeps working, a branch in the matcher, a state in the editor, tests for each. A schema change to
+serve a diagnostic. Duplicate is pure convenience and does not carry the card on its own.
+
+Reopen if rule sets start being long enough that reading them is the hard part.
 
 ---
 

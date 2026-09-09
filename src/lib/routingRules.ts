@@ -115,6 +115,9 @@ export function normalizeDomain(raw: string): string {
  * 1. A non-whitespace `destination`
  * 2. At least one active condition (type, domain, or namePattern).
  *    Catch-all rules without conditions are prohibited (unmatched downloads use global Target folder).
+ *    A pattern of `*` passes deliberately: it is a condition someone typed, ordering is theirs to
+ *    choose, and a stray one announces itself on the next task card. This is data validation, not
+ *    a review of intent — see the rejected BUG-57 before adding a guard here.
  *
  * A domain used to be stripped from magnet rules, on the reasoning that a magnet has no host.
  * It has no host *of its own* — but it was clicked on a page, and that page is what a user means
