@@ -691,8 +691,12 @@
   <div class="routing-header flex items-center justify-between mb-[var(--space-2)]">
     <button type="button" class="add-rule inline-flex items-center gap-[var(--space-1)] p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
+  <!-- Said once for the whole section. It was on every rule card, which turned three rules into
+       three copies of the same paragraph. -->
   <Alert tone="hint">
     Route downloads to folders automatically. First matching rule wins. Unmatched downloads use the Target folder.
+    List several values in a field — <code>mkv mp4 avi</code>, <code>rutracker.org nnmclub.to</code> — and any one of
+    them matches. Use <code>*</code> for anything that is not an extension: <code>*S0?E0?*</code>, <code>*1080p*</code>.
   </Alert>
 
   {#if routingRuleDrafts.length === 0}
@@ -711,27 +715,32 @@
           <div class="routing-rule-header flex items-center justify-between pb-1 border-b border-solid border-[var(--color-control-border)]">
             <!-- The legend above already names the group; repeating it would announce twice. -->
             <span class="font-600 text-12px text-[var(--color-text)]" aria-hidden="true">Rule {i + 1}</span>
-            <div class="routing-rule-actions flex items-center gap-1">
-              <IconButton
-                id={`routing-${i}-move-up`}
-                size="sm"
-                aria-label={`Move rule ${i + 1} up`}
-                title="Move up"
-                disabled={i === 0}
-                onclick={() => moveRule(i, -1)}
-              >
-                <ChevronUp aria-hidden="true" />
-              </IconButton>
-              <IconButton
-                id={`routing-${i}-move-down`}
-                size="sm"
-                aria-label={`Move rule ${i + 1} down`}
-                title="Move down"
-                disabled={i === routingRuleDrafts.length - 1}
-                onclick={() => moveRule(i, 1)}
-              >
-                <ChevronDown aria-hidden="true" />
-              </IconButton>
+            <!-- The destructive control is deliberately not in the same group as the two
+                 navigational ones: `↑ ↓ ✕` as three identical 28px buttons 4px apart put "reorder"
+                 and "delete for good" a mis-click away from each other, and there is no undo. -->
+            <div class="routing-rule-actions flex items-center gap-[var(--space-3)]">
+              <div class="flex items-center gap-1">
+                <IconButton
+                  id={`routing-${i}-move-up`}
+                  size="sm"
+                  aria-label={`Move rule ${i + 1} up`}
+                  title="Move up"
+                  disabled={i === 0}
+                  onclick={() => moveRule(i, -1)}
+                >
+                  <ChevronUp aria-hidden="true" />
+                </IconButton>
+                <IconButton
+                  id={`routing-${i}-move-down`}
+                  size="sm"
+                  aria-label={`Move rule ${i + 1} down`}
+                  title="Move down"
+                  disabled={i === routingRuleDrafts.length - 1}
+                  onclick={() => moveRule(i, 1)}
+                >
+                  <ChevronDown aria-hidden="true" />
+                </IconButton>
+              </div>
               <IconButton
                 size="sm"
                 class="text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_12%,var(--color-bg-alt))]"
@@ -800,11 +809,6 @@
                 />
               </div>
             </div>
-            <p class="m-0 text-11px text-[var(--text-secondary)]">
-              List several values in a field &mdash; <code>mkv mp4 avi</code>, <code>rutracker.org nnmclub.to</code>.
-              Any one of them matches. Use <code>*</code> for anything that is not an extension:
-              <code>*S0?E0?*</code>, <code>*1080p*</code>.
-            </p>
             {#if draft.type === "magnet"}
               <p class="m-0 text-11px text-[var(--text-secondary)] italic">
                 A magnet has no site of its own, so Site matches the page it was clicked on.

@@ -339,3 +339,40 @@ describe("formatDestination", () => {
     expect(formatDestination("///")).toBe("");
   });
 });
+
+describe("staging folder on the card", () => {
+  const base = {
+    id: "1",
+    hash: "a",
+    name: "x",
+    progress: 10,
+    sizeBytes: 100,
+    downloadedBytes: 10,
+    uploadedBytes: 0,
+    downSpeedBps: 1,
+    upSpeedBps: 0,
+    stagingFolder: "Download",
+    destination: "Multimedia/Movies",
+  } as const;
+
+  it("shows where the data is now while the task is still running", () => {
+    const view = getDownloadItemView({ ...base, status: "downloading" });
+    expect(view.stagingText).toBe("Download");
+    expect(view.destinationText).toBe("Multimedia/Movies");
+    expect(view.folderTitle).toBe("Currently in Download, will be saved to Multimedia/Movies");
+  });
+
+  it("drops the staging folder once the move has happened", () => {
+    for (const status of ["finished", "seeding"] as const) {
+      const view = getDownloadItemView({ ...base, status });
+      expect(view.stagingText, status).toBe("");
+      expect(view.destinationText, status).toBe("Multimedia/Movies");
+      expect(view.folderTitle, status).toBe("Saving to Multimedia/Movies");
+    }
+  });
+
+  it("says nothing extra when the NAS stages in the destination itself", () => {
+    const view = getDownloadItemView({ ...base, status: "downloading", stagingFolder: "Multimedia/Movies" });
+    expect(view.stagingText).toBe("");
+  });
+});

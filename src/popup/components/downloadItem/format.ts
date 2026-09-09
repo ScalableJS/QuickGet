@@ -130,6 +130,13 @@ export type DownloadItemView = {
   errorDetail: string;
   /** Shortened destination folder, empty when the NAS reported none. */
   destinationText: string;
+  /**
+   * Shortened staging folder, shown only while it still differs from where the task will end up.
+   * Empty once the move has happened, or when the two folders are the same anyway.
+   */
+  stagingText: string;
+  /** The same information unfolded, for the tooltip — nothing is hidden, only shortened. */
+  folderTitle: string;
 };
 
 /**
@@ -166,6 +173,13 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const swarmText = formatSwarm(task);
   const errorDetail = isError ? formatError(task.errorCode, task.errorMessage) : "";
   const destinationText = formatDestination(task.destination);
+  // Once a task is finished the data has already been moved, so naming the staging folder would
+  // send the user to an empty directory. Same when the NAS stages in the destination itself.
+  const stagingCandidate = isFinished || isSeeding ? "" : formatDestination(task.stagingFolder);
+  const stagingText = stagingCandidate === destinationText ? "" : stagingCandidate;
+  const folderTitle = stagingText
+    ? `Currently in ${task.stagingFolder}, will be saved to ${task.destination}`
+    : `Saving to ${task.destination}`;
 
   const speedLabel = isDownloadComplete
     ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}${etaText ? `; seeding ETA ${etaText}` : ""}`
@@ -194,6 +208,8 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     swarmText,
     errorDetail,
     destinationText,
+    stagingText,
+    folderTitle,
   };
 }
 

@@ -18,6 +18,7 @@ function task(over: Partial<Task> = {}): Task {
     upSpeedBps: 800_000,
     etaSec: 2400,
     destination: "Multimedia/Movies",
+    stagingFolder: "Download",
     source: "qnap",
     ...over,
   };
@@ -185,12 +186,31 @@ export const AllStatuses: StoryObj = {
 };
 
 /**
+ * While a task runs the data is in the staging folder, not where the rule sent it — the arrow is
+ * the difference between "look in Movies" and "look in Movies later".
+ */
+export const DestinationStagingThenFinal: Story = {
+  args: {
+    task: task({
+      name: "Some.Movie.2024.1080p.mkv",
+      stagingFolder: "Download",
+      destination: "Multimedia/Movies",
+    }),
+  },
+};
+
+/** The NAS stages in the destination itself — no arrow, because nothing will move. */
+export const DestinationStagingSameAsFinal: Story = {
+  args: { task: task({ stagingFolder: "Multimedia/Movies", destination: "Multimedia/Movies" }) },
+};
+
+/**
  * Where a download lands is on the card, which is the answer to "did my rule work" that used to
  * require opening Settings and guessing. No competitor shows it: the nearest one hides the path
  * behind a click-to-copy on the title, and the other two never surface it at all.
  */
 export const DestinationShortPath: Story = {
-  args: { task: task({ name: "Some.Movie.2024.1080p.mkv", destination: "Movies" }) },
+  args: { task: task({ name: "Some.Movie.2024.1080p.mkv", stagingFolder: "Download", destination: "Movies" }) },
 };
 
 /** Two segments fit as they are — one would lose what tells `Movies` apart from `Music/Movies`. */
@@ -221,7 +241,7 @@ export const DestinationVeryLongName: Story = {
 
 /** The NAS reported no destination. Nothing is shown — an empty label would be a guess. */
 export const DestinationUnknown: Story = {
-  args: { task: task({ destination: undefined }) },
+  args: { task: task({ destination: undefined, stagingFolder: undefined }) },
 };
 
 /** Finished is where the destination matters most: it says where to go and look. */
@@ -235,6 +255,9 @@ export const FinishedWithDestination: Story = {
       downSpeedBps: 0,
       upSpeedBps: 0,
       etaSec: 0,
+      // Finished means the move already happened — naming the staging folder would send the
+      // user to an empty directory, so it is dropped.
+      stagingFolder: "Download",
       destination: "Software/ISO",
     }),
   },

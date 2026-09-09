@@ -43,6 +43,14 @@ export type Task = {
    * did not report one, which is not the same as "the default" — say nothing rather than guess.
    */
   destination?: string;
+  /**
+   * The working folder the data sits in until the task finishes, share-relative.
+   *
+   * Download Station stages a download in `temp` and moves it to `move` on completion, so while a
+   * task is running the file is *not* where the rule sent it. Worth showing for exactly that
+   * reason: it is the difference between "look in Movies" and "look in Movies later".
+   */
+  stagingFolder?: string;
   errorCode?: number;
   errorMessage?: string;
   source?: Vendor;
@@ -351,6 +359,7 @@ const normalizeQnap = (input: unknown): Task => {
     priority: parseNumber(task.priority),
     totalFiles: parseNumber(task.total_files),
     destination: parseString(task.move)?.trim() || undefined,
+    stagingFolder: parseString(task.temp)?.trim() || undefined,
     errorCode,
     errorMessage,
     source: "qnap",

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ArrowDown from "~icons/lucide/arrow-down";
+  import ArrowRight from "~icons/lucide/arrow-right";
   import ArrowUp from "~icons/lucide/arrow-up";
   import ArrowUpToLine from "~icons/lucide/arrow-up-to-line";
   import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
@@ -310,17 +311,6 @@
             {/if}
           {/if}
 
-          <!-- Where it lands. Last in the row and the only shrinking item, so a long path folds
-               instead of pushing the numbers off the card. No competitor shows this at all: the
-               nearest one hides it behind a click-to-copy on the title. -->
-          {#if view.destinationText}
-            <span class="text-[var(--color-text-muted)]">•</span>
-            <span class="inline-flex items-center gap-1 min-w-0" title={`Saving to ${task.destination}`}>
-              <Folder class="w-3 h-3 flex-none" aria-hidden="true" />
-              <span class="sr-only">Saving to</span>
-              <span class="truncate">{view.destinationText}</span>
-            </span>
-          {/if}
         </div>
 
         {#if view.addedText && !view.swarmText}
@@ -328,6 +318,29 @@
         {/if}
       {/if}
     </div>
+
+    <!-- Where it is and where it lands, on its own line. It began inside the meta row and was the
+         first thing that row truncated away — which is the one thing this is here to show. While
+         a task runs the data sits in the staging folder, so "Download → Movies" is the difference
+         between "look in Movies" and "look in Movies later". No competitor shows either: the
+         nearest one hides the path behind a click-to-copy on the title. -->
+    {#if view.destinationText}
+      <div
+        class="download-destination flex items-center gap-1 min-w-0 text-11px text-[var(--torrent-text-secondary)]"
+        title={view.folderTitle}
+      >
+        <Folder class="w-3 h-3 flex-none" aria-hidden="true" />
+        {#if view.stagingText}
+          <span class="sr-only">Currently in</span>
+          <span class="truncate">{view.stagingText}</span>
+          <ArrowRight class="w-3 h-3 flex-none text-[var(--color-text-muted)]" aria-hidden="true" />
+          <span class="sr-only">then saved to</span>
+        {:else}
+          <span class="sr-only">Saving to</span>
+        {/if}
+        <span class="truncate font-500">{view.destinationText}</span>
+      </div>
+    {/if}
     {#if canChooseFiles}
       <DisclosureButton
         expanded={filesOpen}

@@ -143,11 +143,13 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
       timeout: 15_000,
     });
 
-    // Where a task is going is on the card. It is the only feedback a routing rule ever gives —
-    // before this, a rule sending downloads to the wrong folder looked exactly like one working.
+    // Where a task is and where it is going are both on the card. This is the only feedback a
+    // routing rule ever gives — before it, a rule sending downloads to the wrong folder looked
+    // exactly like one that worked. The mock stages in `Download` and moves to `Movies`, so an
+    // unfinished task shows both.
     const firstCard = page.locator("#downloads-list .download-item").first();
     await expect(firstCard).toContainText("Movies");
-    await expect(firstCard.getByTitle(/^Saving to /)).toBeVisible();
+    await expect(firstCard.getByTitle("Currently in Download, will be saved to Movies")).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.body.getBoundingClientRect().height)).toBeLessThan(600);
 
     await page.click("#downloads-list .download-item");

@@ -31,10 +31,10 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-49 | Reordering a rule drops keyboard focus and announces nothing | popup/a11y | medium | Done |
 | BUG-50 | Rule card small print fails contrast and lowercases the AND it exists to explain | popup/a11y | medium | Done |
 | BUG-51 | The axe gate never reaches the routing rules UI | testing | medium | Done |
-| BUG-52 | Delete sits next to the reorder arrows and looks identical to them | popup/UX | low | Backlog |
+| BUG-52 | Delete sits next to the reorder arrows and looks identical to them | popup/UX | low | In Review |
 | BUG-53 | Rule editor a11y polish batch: focus, labels, dead class, literal caps | popup/a11y | low | Done |
 | BUG-54 | Popup `.torrent` upload bypasses routing rules entirely | popup/upload | medium | Done |
-| BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | Backlog |
+| BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | In Review |
 | BUG-56 | The test stand advertises cases it cannot exercise | testing | low | Done |
 | BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Rejected |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
@@ -200,6 +200,17 @@ custom-protocol link that needs a helper installed; its own meta row is `ETA •
 Synology client treats `destination` purely as a request field. See
 `docs/competitor-routing-teardown.md`.
 
+**2026-09-09, later — two corrections after looking at it in Storybook.**
+
+- **The staging folder is shown too.** Download Station stages a task in `temp` and moves it to
+  `move` on completion, so while a task runs the data is *not* where the rule sent it. The card
+  reads `Download → Multimedia/Movies` until the move happens and just `Multimedia/Movies`
+  afterwards — the difference between "look in Movies" and "look in Movies later". Suppressed when
+  the two folders are the same.
+- **It has its own line.** Inline in the meta row it was the first thing truncated away — the
+  screenshot showed a folder icon and nothing after it, which is precisely the information the
+  card exists to carry. One 11px row under the status line, both folders truncating
+  independently.
 
 ---
 
@@ -606,7 +617,7 @@ the markup BUG-48 was about. The Storybook magnet story now also asserts the dom
 
 ### BUG-52 — Delete sits next to the reorder arrows and looks identical to them
 
-**Severity:** low · **Area:** popup/UX · **Status:** Backlog · **Cost:** easy
+**Severity:** low · **Area:** popup/UX · **Status:** In Review
 **Files:** `src/popup/features/settings/Settings.svelte` (rule header, `:715-745`)
 
 **Rescoped twice; this is the version that treats the actual cause.** It began as "choosing Magnet
@@ -636,11 +647,15 @@ header, or the arrows grouped and `✕` set apart by a real gap. Minutes, no new
 
 **Acceptance criteria**
 
-- [ ] The delete control is not adjacent to the reorder controls, and reads as destructive.
-- [ ] Keyboard order still puts the rule's own controls together, and the Storybook stories cover
+- [x] The delete control is not adjacent to the reorder controls, and reads as destructive.
+- [x] Keyboard order still puts the rule's own controls together, and the Storybook stories cover
       the new layout.
-- [ ] No confirmation dialog — a per-delete prompt on a five-item list is worse than the mis-click.
+- [x] No confirmation dialog — a per-delete prompt on a five-item list is worse than the mis-click.
 
+**2026-09-09 — fixed, In Review.** The two reorder arrows are their own group; the delete control
+sits apart from them by `--space-3` at the end of the header. No confirmation dialog, no new state,
+no Discard button. The heavier alternatives above stay recorded for whenever a toast can carry an
+action.
 
 ---
 
@@ -746,9 +761,9 @@ suite with no new machinery:
 
 **Acceptance criteria**
 
-- [ ] The two cases above are asserted at the unit level, on the destination folder rather than
+- [x] The two cases above are asserted at the unit level, on the destination folder rather than
       on success.
-- [ ] `docs/routing-coverage.md`'s "cannot cover" table drops the rows these close, and keeps
+- [x] `docs/routing-coverage.md`'s "cannot cover" table drops the rows these close, and keeps
       Chrome's native menu with the reason it stays out.
 - [ ] No test seam is added to production code for this.
 
@@ -758,6 +773,19 @@ because `hotlink-guard.spec.ts` proves the fetch and the folder is chosen by exa
 as every other torrent send. What is left is the two that guard something nothing else does — a
 deliberate bypass that a future "fix" could silently remove, and a fallback path never exercised
 through a real send.
+
+**2026-09-09 — fixed, In Review.** Both cases assert the destination folder, not merely success:
+
+- `menus.test.ts` — an unreadable `.torrent` on the context-menu path degrades to the URL's own
+  name, which for a `.torrent` link names the metadata file. The test asserts it lands in the
+  `torrent` rule rather than the `mkv` one, so the limit is written down instead of rediscovered.
+- `downloads.test.ts` — the interception path *does* have a name to fall back to, the one Chrome
+  derived from `Content-Disposition`, and a `dl.php` download with an unreadable torrent still
+  routes on it.
+
+Quick-add's deliberate bypass is left unasserted after all: `CreateUrls.svelte` contains no
+rule-resolution code, so a test there would restate that it passes its own folder and would not
+catch the regression the card feared.
 
 ---
 
