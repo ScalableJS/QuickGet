@@ -31,10 +31,10 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-49 | Reordering a rule drops keyboard focus and announces nothing | popup/a11y | medium | Done |
 | BUG-50 | Rule card small print fails contrast and lowercases the AND it exists to explain | popup/a11y | medium | Done |
 | BUG-51 | The axe gate never reaches the routing rules UI | testing | medium | Done |
-| BUG-52 | Delete sits next to the reorder arrows and looks identical to them | popup/UX | low | In Review |
+| BUG-52 | Delete sits next to the reorder arrows and looks identical to them | popup/UX | low | Done |
 | BUG-53 | Rule editor a11y polish batch: focus, labels, dead class, literal caps | popup/a11y | low | Done |
 | BUG-54 | Popup `.torrent` upload bypasses routing rules entirely | popup/upload | medium | Done |
-| BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | In Review |
+| BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | Done |
 | BUG-56 | The test stand advertises cases it cannot exercise | testing | low | Done |
 | BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Rejected |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
@@ -244,6 +244,8 @@ always persisted both folders, `AddUrl` never had. So the one path where routing
 filename nor a host of its own to work from was also the one path the harness could not tell the
 truth about. Fixed, and `routing-matrix.spec.ts` now reloads the popup and asserts the magnet's
 card displays the routed folder, and that a task which went to the Target shows no line at all.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 
@@ -460,6 +462,8 @@ value, so the two cannot disagree; `downloads.ts` states `kind: "torrent"` outri
 that path only runs for torrents. A test walks the signal matrix and asserts `classifySource`
 never contradicts `isTorrentSource`.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-47 — Rules match the URL slug instead of the name the download will actually have
@@ -525,6 +529,8 @@ matcher concern and moved to UX-18/UX-19.
 bencode parser and uses the name only to correlate a NAS task back to its source URL; its matcher
 still gets the URL. See `docs/competitor-routing-teardown.md` section B.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-48 — Rule condition errors are not tied to the fields they describe
@@ -557,6 +563,8 @@ the type `Select` and the domain `Field` carry `aria-invalid` and point at the s
 The loose `<p role="alert">` is gone, so there is one alert per card. Covered by the new axe pass
 over a rejected rule (BUG-51).
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-49 — Reordering a rule drops keyboard focus and announces nothing
@@ -585,6 +593,8 @@ delta)`, which announces the move through the existing live region and then rest
 button that performed it when it is still enabled, its sibling when the rule has reached an end.
 The Move controls gained ids so focus can find them. A keyboard-only E2E asserts focus stays
 inside the rule that moved and that the announcement fires.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 
@@ -620,6 +630,8 @@ stray utility class. `IconButton`'s `disabled:opacity-45` was deliberately left 
 shared control, disabled elements are exempt from the contrast requirement, and changing it here
 would be a global restyle smuggled into a routing fix.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-51 — The axe gate never reaches the routing rules UI
@@ -646,11 +658,13 @@ Advanced tab and scans the rule cards twice — once valid, once after a rejecte
 the markup BUG-48 was about. The Storybook magnet story now also asserts the domain field's
 `aria-describedby`, so the explanation stays connected to the field it explains.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-52 — Delete sits next to the reorder arrows and looks identical to them
 
-**Severity:** low · **Area:** popup/UX · **Status:** In Review
+**Severity:** low · **Area:** popup/UX · **Status:** Done
 **Files:** `src/popup/features/settings/Settings.svelte` (rule header, `:715-745`)
 
 **Rescoped twice; this is the version that treats the actual cause.** It began as "choosing Magnet
@@ -689,6 +703,8 @@ header, or the arrows grouped and `✕` set apart by a real gap. Minutes, no new
 sits apart from them by `--space-3` at the end of the header. No confirmation dialog, no new state,
 no Discard button. The heavier alternatives above stay recorded for whenever a toast can carry an
 action.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 
@@ -732,6 +748,8 @@ shouting left to the existing `uppercase` class.
 Not included: visible column labels for the three condition controls. That is UX-18, which
 redesigns the header row rather than adding three labels to the current layout.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-54 — Popup `.torrent` upload bypasses routing rules entirely
@@ -768,6 +786,8 @@ was using to fake the same thing. Unit-covered.
 The matrix row stays unticked on purpose: the popup's hidden file input is not something the test
 stand can drive, and adding a seam for it would cost more than the assertion is worth. Recorded in
 the "cannot cover" table in `docs/routing-coverage.md` instead.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 
@@ -820,6 +840,8 @@ Quick-add's deliberate bypass is left unasserted after all: `CreateUrls.svelte` 
 rule-resolution code, so a test there would restate that it passes its own folder and would not
 catch the regression the card feared.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### BUG-56 — The test stand advertises cases it cannot exercise
@@ -853,6 +875,8 @@ is now "URL edge cases" both open with "nothing on this tab reaches the NAS", an
 says which rule *cannot* fire rather than which one would. Those cards are worth keeping: the
 stand is where someone goes to find out what the feature does, and the edge of a feature is part
 of what it does.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
 
 ---
 

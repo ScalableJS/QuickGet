@@ -10,9 +10,11 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 - Manage download priority in the queue (`Top`, `Up`, `Down`) directly from each task card.
 - Track seeding items with upload volume, target share ratio progress, and dedicated status indicators.
 - Pick which files inside a multi-file torrent the NAS should download.
-- Route tasks to different NAS folders automatically with rules matched on URL, domain, or task name.
+- Route tasks to different NAS folders automatically, matched on the release name read from the
+  torrent itself, the site you downloaded from, or the kind of link — several values per field.
 - Lock the settings screen behind a password on shared computers to protect NAS credentials.
 - Validate NAS folders and credentials directly from the popup.
+- See on each task card where a rule sent it, whenever that is not the default folder.
 - Runs on Chromium browsers (Chrome, Edge, Brave, Opera) and Firefox without extra plugins.
 
 
@@ -233,7 +235,6 @@ Upcoming improvements focused on convenience and network control, keeping the ex
 - **Quick speed limit throttle:** A speedometer button in the header with one-click presets (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, or custom) to temporarily throttle NAS bandwidth when someone is streaming or gaming on your local network.
 - **Private tracker compatibility:** An option in advanced settings to identify as popular BitTorrent clients (Transmission, Deluge, or uTorrent) so private trackers that whitelist specific clients accept downloads smoothly.
 - **Default seeding limits:** Configure default target share ratios and seeding durations for finished torrents directly from settings.
-- **Target folder visibility:** Show the destination folder on the NAS inside task details.
 
 > [!NOTE]
 > In-popup torrent discovery, RSS automation, filehost accounts, and complex schedule grids are deliberately kept out to maintain a clean and reliable remote client.

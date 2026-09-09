@@ -714,6 +714,8 @@ Cut from the original scope: per-type hint text. It existed to warn that `*.mkv`
 `info.name` (BUG-47) and a pack is caught by `*S0?E0?` in the same field. One honest hint beat
 three conditional ones.
 
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
 ---
 
 ### UX-19 — Rules are write-only — nothing tells you whether they work
