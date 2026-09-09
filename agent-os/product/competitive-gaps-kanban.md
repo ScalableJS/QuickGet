@@ -530,6 +530,10 @@ modal per download would ruin the feature. That question is now moot rather than
 
 Nothing is left that this card would carry on its own.
 
+**2026-09-09 — and the "show" half is now Done too** (BUG-38): the destination is on every task
+card, folded to its last two segments with the full path in the tooltip. Nothing is left of this
+card in any form.
+
 ---
 
 ### RES-4 — Can File Station move a finished download, and at what cost to seeding?

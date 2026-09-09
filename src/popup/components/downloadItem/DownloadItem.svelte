@@ -3,6 +3,7 @@
   import ArrowUp from "~icons/lucide/arrow-up";
   import ArrowUpToLine from "~icons/lucide/arrow-up-to-line";
   import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
+  import Folder from "~icons/lucide/folder";
 
   import type { TaskPriorityAction } from "@api/client.js";
   import { isReorderableStatus, type Task } from "@lib/tasks.js";
@@ -307,6 +308,18 @@
               <span class="text-[var(--color-text-muted)]">•</span>
               <span>{view.etaText}</span>
             {/if}
+          {/if}
+
+          <!-- Where it lands. Last in the row and the only shrinking item, so a long path folds
+               instead of pushing the numbers off the card. No competitor shows this at all: the
+               nearest one hides it behind a click-to-copy on the title. -->
+          {#if view.destinationText}
+            <span class="text-[var(--color-text-muted)]">•</span>
+            <span class="inline-flex items-center gap-1 min-w-0" title={`Saving to ${task.destination}`}>
+              <Folder class="w-3 h-3 flex-none" aria-hidden="true" />
+              <span class="sr-only">Saving to</span>
+              <span class="truncate">{view.destinationText}</span>
+            </span>
           {/if}
         </div>
 

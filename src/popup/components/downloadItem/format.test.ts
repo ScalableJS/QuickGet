@@ -1,6 +1,6 @@
 import type { Task } from "@lib/tasks.js";
 import { describe, expect, it } from "vitest";
-import { getDownloadItemView } from "./format.js";
+import { formatDestination, getDownloadItemView } from "./format.js";
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -313,5 +313,29 @@ describe("getDownloadItemView", () => {
       }),
     );
     expect(fallbackView.errorDetail).toBe("Download failed");
+  });
+});
+
+describe("formatDestination", () => {
+  it("shows a one- or two-segment path as it is", () => {
+    expect(formatDestination("Movies")).toBe("Movies");
+    expect(formatDestination("Multimedia/Movies")).toBe("Multimedia/Movies");
+  });
+
+  it("folds a deeper path from the front, keeping the end that identifies the folder", () => {
+    expect(formatDestination("Multimedia/Video/Documentaries/2024")).toBe("…/Documentaries/2024");
+  });
+
+  it("tolerates the shapes a NAS path arrives in", () => {
+    expect(formatDestination("/Multimedia/Movies/")).toBe("Multimedia/Movies");
+    expect(formatDestination("Multimedia//Movies")).toBe("Multimedia/Movies");
+    expect(formatDestination("  Multimedia / Movies ")).toBe("Multimedia/Movies");
+  });
+
+  it("says nothing when there is nothing to say", () => {
+    expect(formatDestination(undefined)).toBe("");
+    expect(formatDestination("")).toBe("");
+    expect(formatDestination("   ")).toBe("");
+    expect(formatDestination("///")).toBe("");
   });
 });

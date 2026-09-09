@@ -128,6 +128,8 @@ export type DownloadItemView = {
   sizeText: string;
   swarmText: string;
   errorDetail: string;
+  /** Shortened destination folder, empty when the NAS reported none. */
+  destinationText: string;
 };
 
 /**
@@ -163,6 +165,7 @@ export function getDownloadItemView(task: Task): DownloadItemView {
   const sizeText = formatTaskSize(task.downloadedBytes, task.sizeBytes, isDownloadComplete);
   const swarmText = formatSwarm(task);
   const errorDetail = isError ? formatError(task.errorCode, task.errorMessage) : "";
+  const destinationText = formatDestination(task.destination);
 
   const speedLabel = isDownloadComplete
     ? `Uploaded ${uploadedText}${ratioText ? `, ratio ${ratioText}` : ""}; upload speed ${uploadSpeedText}${etaText ? `; seeding ETA ${etaText}` : ""}`
@@ -190,5 +193,26 @@ export function getDownloadItemView(task: Task): DownloadItemView {
     sizeText,
     swarmText,
     errorDetail,
+    destinationText,
   };
+}
+
+/**
+ * Shorten a destination folder to something that fits on a card.
+ *
+ * The whole point is answering "where is this going" at a glance, so the *end* of the path is
+ * what matters — `Multimedia/Films/2024` is recognisable, `/share/CACHEDEV1_DATA/Multimedia` is
+ * not, and the leading part is the same for every task anyway. Two segments is the compromise:
+ * one loses the context that tells `Movies` apart from `Music/Movies`. The full path stays
+ * available in the element's tooltip, so nothing is hidden, only folded.
+ */
+export function formatDestination(raw: string | undefined): string {
+  if (!raw) return "";
+  const segments = raw
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return "";
+  if (segments.length <= 2) return segments.join("/");
+  return `…/${segments.slice(-2).join("/")}`;
 }

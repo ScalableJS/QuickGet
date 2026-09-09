@@ -35,6 +35,14 @@ export type Task = {
   addedAt?: number;
   priority?: number;
   totalFiles?: number; // file count inside the torrent (for the file-selection dialog)
+  /**
+   * The folder the NAS will move the finished download into, share-relative (`Multimedia/Movies`).
+   *
+   * Taken from `move` and never from `path`: `path` is where the data physically is right now and
+   * includes the task's own name, so it is not a folder the user chose. Undefined when the NAS
+   * did not report one, which is not the same as "the default" — say nothing rather than guess.
+   */
+  destination?: string;
   errorCode?: number;
   errorMessage?: string;
   source?: Vendor;
@@ -342,6 +350,7 @@ const normalizeQnap = (input: unknown): Task => {
     addedAt,
     priority: parseNumber(task.priority),
     totalFiles: parseNumber(task.total_files),
+    destination: parseString(task.move)?.trim() || undefined,
     errorCode,
     errorMessage,
     source: "qnap",

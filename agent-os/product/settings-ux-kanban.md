@@ -754,6 +754,11 @@ rather than the winning rule's index. Reviving this card starts by splitting tha
 lines; the UI is the rest. **Revive it if rules start being written that do not behave as
 expected** — that is the symptom it treats.
 
+**2026-09-09 — deferral reinforced.** BUG-38 puts the destination on every task card, so the
+question the tester exists to answer — "did my rule do what I meant" — now has an answer from real
+traffic, continuously, for free. A tester answers it faster and for links you have not sent yet;
+that is a smaller gap than it was this morning.
+
 ---
 
 ### UX-20 — Which rule sent a task, and where, is invisible
@@ -787,6 +792,9 @@ string. Correlating them means keeping a side map from task to decision, expirin
 surviving a service-worker restart — machinery whose only output is a line of explanatory text.
 The tester (UX-19) answers the same question offline and exactly, whenever it is built.
 
+**2026-09-09 — the half worth keeping shipped.** "Where a task went" is on the card (BUG-38,
+Done). What stays rejected is only "which rule chose it", for the reason above.
+
 ---
 
 ### UX-21 — A rule cannot be muted or duplicated
@@ -817,6 +825,12 @@ matcher. No new concepts.
 Its value went **up** when UX-19 was deferred: with no tester, muting a rule is the only way to
 find out which one is doing something unexpected. That is the argument for it — not tidiness.
 Duplicate is the cheaper half of the same card and can ship alone.
+
+**2026-09-09 — the case for it narrowed but did not vanish.** The argument was "with no tester,
+muting is the only way to find which rule misbehaves". With the destination now visible on every
+card (BUG-38), you can *see* the wrong folder without muting anything — but you still cannot tell
+*which* rule chose it, and bisecting by muting is the cheapest way to find out. Still easy, still
+worth it, no longer the only diagnostic.
 
 ---
 

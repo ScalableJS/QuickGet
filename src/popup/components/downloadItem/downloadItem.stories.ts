@@ -17,6 +17,7 @@ function task(over: Partial<Task> = {}): Task {
     downSpeedBps: 12_000_000,
     upSpeedBps: 800_000,
     etaSec: 2400,
+    destination: "Multimedia/Movies",
     source: "qnap",
     ...over,
   };
@@ -181,4 +182,60 @@ export const Removing: Story = {
 /** All statuses at once — visual regression surface for icons + colours. */
 export const AllStatuses: StoryObj = {
   render: () => ({ Component: DownloadItemGallery }),
+};
+
+/**
+ * Where a download lands is on the card, which is the answer to "did my rule work" that used to
+ * require opening Settings and guessing. No competitor shows it: the nearest one hides the path
+ * behind a click-to-copy on the title, and the other two never surface it at all.
+ */
+export const DestinationShortPath: Story = {
+  args: { task: task({ name: "Some.Movie.2024.1080p.mkv", destination: "Movies" }) },
+};
+
+/** Two segments fit as they are — one would lose what tells `Movies` apart from `Music/Movies`. */
+export const DestinationTwoSegments: Story = {
+  args: { task: task({ name: "Some.Show.S01.1080p.WEB-DL", destination: "Multimedia/Series" }) },
+};
+
+/** A deep path folds from the front: the end is the part that identifies the folder. */
+export const DestinationDeepPath: Story = {
+  args: {
+    task: task({
+      name: "Documentary.Collection.2024",
+      destination: "Multimedia/Video/Documentaries/2024",
+    }),
+  },
+};
+
+/** A path long enough to need the card's own truncation, not just the two-segment fold. */
+export const DestinationVeryLongName: Story = {
+  args: {
+    task: task({
+      name: "A.Very.Long.Release.Name.That.Competes.For.The.Same.Row.2024.2160p.mkv",
+      downSpeedBps: 24_000_000,
+      destination: "Multimedia/Extremely Long Folder Name For Layout Testing",
+    }),
+  },
+};
+
+/** The NAS reported no destination. Nothing is shown — an empty label would be a guess. */
+export const DestinationUnknown: Story = {
+  args: { task: task({ destination: undefined }) },
+};
+
+/** Finished is where the destination matters most: it says where to go and look. */
+export const FinishedWithDestination: Story = {
+  args: {
+    task: task({
+      name: "Ubuntu 24.04 Desktop.iso",
+      status: "finished",
+      progress: 100,
+      downloadedBytes: 2_400_000_000,
+      downSpeedBps: 0,
+      upSpeedBps: 0,
+      etaSec: 0,
+      destination: "Software/ISO",
+    }),
+  },
 };

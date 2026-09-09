@@ -458,7 +458,7 @@ is the index.
 | BUG-52 | Discard unsaved rule edits — a footer button calling the existing `load()` | easy | Backlog |
 | BUG-55 | Four routing edge cases in the unit suite; no seam needed | easy | Backlog |
 | BUG-57 | A wildcard-only pattern defeats the sanitizer's own catch-all invariant | easy | Backlog |
-| BUG-38 | Show the folder a task was sent to — `Task/Query` already returns `move`/`path` | easy | Backlog |
+| BUG-38 | Show the folder a task was sent to | easy | **Done** |
 | UX-21 | Mute and duplicate a rule; value went *up* now that the tester is deferred | easy | Backlog |
 | GAP-15 | Resolve redirects before `AddUrl` — one hardware check first, then maybe nothing | small | Backlog |
 | RES-3 | Narrowed to: what does DS do with a `move` that does not exist or is not writable | small | Backlog |
@@ -467,8 +467,14 @@ is the index.
 | RES-5 | Intercept ordinary downloads — the only thing that would make `type: url` meaningful | large | Backlog |
 | UX-20, UX-22, GAP-6, GAP-14, RES-4 | — | — | Rejected, reasons on the cards |
 
-Four easy cards and one small one is the whole remaining surface. Nothing in it blocks anything
+Three easy cards and two small ones are the whole remaining surface. Nothing in it blocks anything
 else, and nothing in it is a prerequisite for the parked Wave 2.
+
+**BUG-38 was pulled forward the same day and shipped**, on the observation that the destination
+belongs on the task card rather than in a details panel. It changes the shape of what is left: the
+destination is now visible for every task, continuously, which is a better answer to "did my rule
+work" than any notification would have been and most of what the deferred tester (UX-19) was for.
+No competitor does it — see the addendum in `docs/competitor-routing-teardown.md`.
 
 ### Deliberately out
 

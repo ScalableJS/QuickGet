@@ -17,7 +17,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
 | BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Done |
-| BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | low | Backlog |
+| BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | medium | Done |
 | BUG-39 | Toolbar badge background poll fetches full task list instead of lightweight `Task/Status` | background/perf | low | Backlog |
 | BUG-40 | Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid | popup/settings | medium | Backlog |
 | BUG-41 | Saving routing rules with empty optional fields crashes Svelte with props_invalid_value, freezing "Add rule" | popup/settings | high | Done |
@@ -160,16 +160,46 @@ target path permission error). QuickGet displays only a generic red "Error" badg
 
 ### BUG-38 — Destination NAS path (`path` / `move`) is omitted from task details
 
-**Severity:** low · **Area:** popup/UX · **Status:** Backlog
-**Files:** `src/popup/components/downloadItem/DownloadItem.svelte`,
-`src/popup/components/downloadItem/format.ts`
+**Severity:** medium · **Area:** popup/UX · **Status:** Done
+**Files:** `src/lib/tasks.ts`, `src/popup/components/downloadItem/format.ts`,
+`src/popup/components/downloadItem/DownloadItem.svelte`,
+`src/popup/components/downloadItem/downloadItem.stories.ts`
 
 QNAP returns destination directories `move` (final destination folder) and `temp` (temporary staging).
 Users managing multi-folder setups or custom routing rules cannot see where a download was placed
 directly from the popup.
 
-**Proposed fix:** Display the target folder path (e.g., `/Download/Torrents`) as secondary information
-or within an expandable task details section.
+**Severity raised from low on 2026-09-09.** It stopped being a details-panel nicety once routing
+rules became a real feature: the destination is the *only* feedback a rule ever gives, so without
+it a rule sending everything to the wrong folder looks exactly like a rule that works. That is
+also why it is worth more than the notification it replaces — a toast says it once and is gone,
+the card says it for as long as the task exists.
+
+**Resolved 2026-09-09.** `Task.destination` carries `move` through normalisation, and the card
+renders it as the last item of the meta row, after the ETA, with a folder icon and a `Saving to …`
+tooltip carrying the full path.
+
+Three decisions worth keeping:
+
+- **`move`, never `path`.** `path` is where the bytes physically are and includes the task's own
+  name, so it is not a folder anybody chose. When the NAS reports no `move`, the card says nothing
+  rather than guessing at the default.
+- **Two trailing segments, folded from the front** (`…/Documentaries/2024`). The end identifies the
+  folder; the head is the same for every task. One segment loses what tells `Movies` apart from
+  `Music/Movies`. Nothing is hidden — the tooltip has the whole path.
+- **It is the only shrinking item in the row**, so a long path folds instead of pushing the size
+  and speed off the card.
+
+Covered by `formatDestination` unit tests, a normalisation test asserting `path` is *not* a
+fallback, six Storybook stories (short, two-segment, deep, overlong, unknown, finished), and an
+assertion in the full-cycle E2E.
+
+**Prior art: none.** Not one of the three competitors shows a destination on a task card. *Send To
+QNAP++* has the data and spends it on a click-to-copy absolute path and an `openfolder:\\…`
+custom-protocol link that needs a helper installed; its own meta row is `ETA • ↓ • ↑ • size`. The
+Synology client treats `destination` purely as a request field. See
+`docs/competitor-routing-teardown.md`.
+
 
 ---
 
