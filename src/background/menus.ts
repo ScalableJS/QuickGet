@@ -73,8 +73,12 @@ export async function handleContextMenuClick(
  *
  * Magnets and ordinary URLs stay on AddUrl: there is no file to fetch, and the NAS needs no
  * session for them.
+ *
+ * Exported because the Shift-click gesture sends links through exactly this path. It lives here
+ * for historical reasons rather than good ones — if a third caller appears, move it out of the
+ * context-menu module.
  */
-async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
+export async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
   const settings = await loadSettings();
   // One classification decides both the transport and the routing, so the two can never
   // disagree about what a link is — a `dl.php` torrent used to be uploaded as a torrent and
@@ -86,7 +90,7 @@ async function sendDownloadToStation(url: string, referrer?: string): Promise<vo
       settings.routingRules,
       settings.NASdir,
     );
-    console.log("[QuickGet] context menu send", { url, kind, name, pageUrl: referrer, targetFolder });
+    console.log("[QuickGet] link send", { url, kind, name, pageUrl: referrer, targetFolder });
     return targetFolder;
   };
 

@@ -36,6 +36,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-20 | Which rule sent a task, and where, is invisible | ui | S | Rejected |
 | UX-21 | A rule cannot be muted or duplicated | ui | S | Rejected |
 | UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
+| UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | In Review |
 
 ---
 
@@ -905,3 +906,64 @@ four affordances:
 
 Recorded rather than silently dropped: the teardown is worth trusting on the engine, and it was
 right that we were behind on multi-value fields. It is not automatically right about the editor.
+
+---
+
+### UX-23 — Shift-click sends one link, whatever the automatic settings say
+
+**Size:** M · **Area:** settings · **Status:** In Review
+**Files:** `src/content/magnet.ts`, `src/background/index.ts`, `src/background/menus.ts`,
+`src/popup/features/settings/Settings.svelte`
+
+**The idea is the product owner's, and it is the inverse of what was first built.** The initial
+design read Shift as an escape hatch — interception on, Shift keeps the file local. The right
+reading is an opt-in escalation: **the checkboxes decide whether links are taken automatically,
+Shift takes the one under the cursor regardless.** That makes the default far less consequential.
+Someone who does not want automatic interception turns it off and still uses the extension with a
+modifier, without a trip to Settings or the context menu for every link.
+
+**The rule, in one line:** the checkbox means "don't ask", Shift means "this one".
+
+|  | plain click | Shift-click |
+|---|---|---|
+| off | browser | **sent to the NAS** |
+| on | sent to the NAS | sent to the NAS |
+
+The fourth cell is deliberately not an inversion. "Interception is on but I want *this* file
+locally" is a rare wish with an existing answer — turn the checkbox off — and serving it would
+mean a second mechanism: a short-lived "do not touch this download id" map and a real race with
+service-worker suspension. If it turns out to matter it can be added on top without disturbing
+any of this.
+
+**Decisions worth keeping**
+
+- **Shift and nothing else.** Ctrl, Cmd and Alt keep their native browser meanings — new tab, new
+  window, download the link. All three modifiers were already taken, and Shift's native meaning
+  on a torrent link (open in a new window) is the least useful of them.
+- **One rule for both link kinds.** Magnets previously treated *every* modifier as "leave it
+  alone", so Shift-clicking a magnet did the exact opposite of the new gesture. `isEligibleClick`
+  now lets Shift through, so a magnet and a `.torrent` behave the same way.
+- **The click is cancelled and the URL goes to the worker**, which sends it down the same path as
+  the context menu (`sendDownloadToStation`). No downloads API, no id juggling, no race — and a
+  `.torrent` still gets fetched in the page's own session for trackers behind a login.
+- **The listener is attached unconditionally.** Gating it on `autoCaptureMagnets` left the gesture
+  dead in precisely the configuration it exists for. The setting is now checked in the handler,
+  where it decides what an *ordinary* click does.
+
+**Known limit, worth stating rather than hiding:** the content script recognises a torrent from
+the href alone — a `.torrent` ending or TorrentPier's `/dl.php`. An opaque endpoint that reveals
+itself only through a response MIME type is, from inside the page, indistinguishable from any
+other link, and Shift-clicking one does nothing. Preventing every Shift-click on the web to find
+out is not a trade worth making. If it proves to matter, the fallback is to let the download start
+and escalate it by id.
+
+**Discoverability:** nobody finds a modifier gesture on their own, so it is stated under the
+interception checkbox — "Hold Shift when clicking any torrent or magnet link to send just that
+one — whether these are on or off" — and the existing in-page toast reports the result.
+
+**Covered by** unit tests for `getShiftSendUrl` and the modifier rule in `isEligibleClick`, and an
+E2E that sends both a `.torrent` and a magnet **with both automatic modes off**, asserting a plain
+click sends nothing first.
+
+**Next in this chain:** with a per-click way in, the three interception checkboxes can collapse
+into one. That is the follow-up, not this card.

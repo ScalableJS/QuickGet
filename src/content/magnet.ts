@@ -10,11 +10,30 @@
  */
 
 import { DEFAULTS } from "@lib/config.js";
+import { isTorrentSource } from "@lib/sourceKind.js";
 
 export type MagnetMessage = {
   type: "task:add";
   uri: string;
   source: "magnet-click";
+  pageUrl: string;
+};
+
+/**
+ * "Send this one, whatever the settings say."
+ *
+ * Shift is the per-click opt-in: the checkboxes decide whether links are taken automatically,
+ * Shift takes the one under the cursor regardless. It means the default matters less — someone
+ * who does not want automatic interception can turn it off and still use the extension with a
+ * modifier, without a trip to Settings or the context menu for every link.
+ *
+ * A `.torrent` needs its own message because a magnet click can be cancelled in the page while a
+ * `.torrent` would otherwise become a browser download the worker meets with no memory of the
+ * modifier — `DownloadItem` carries no modifier state.
+ */
+export type SendLinkMessage = {
+  type: "link:send";
+  url: string;
   pageUrl: string;
 };
 
@@ -24,14 +43,39 @@ const inFlightUris = new Set<string>();
 
 /**
  * Determine whether a mouse event represents an eligible, trusted primary click on a link.
+ *
+ * Shift is allowed through on purpose — it is the "send this one" gesture, and the same rule has
+ * to hold for magnets and for `.torrent` links or one modifier would mean opposite things on two
+ * kinds of link. Ctrl, Cmd and Alt keep their native meanings (new tab, new window, download the
+ * link); we take Shift and nothing else.
  */
 export function isEligibleClick(event: MouseEvent): boolean {
   if (!event.isTrusted) return false;
   if (event.button !== 0) return false;
   if (!event.cancelable) return false;
   if (event.defaultPrevented) return false;
-  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return false;
+  if (event.ctrlKey || event.metaKey || event.altKey) return false;
   return true;
+}
+
+/**
+ * The absolute URL of a Shift-clicked `.torrent` link, or `null` for every other click.
+ *
+ * Recognition happens from the href alone, so `.torrent` endings and TorrentPier's `/dl.php` are
+ * caught but an opaque endpoint that reveals itself only through a response MIME type is not —
+ * from inside the page it is indistinguishable from any other link, and preventing every
+ * Shift-click on the web to find out is not a trade worth making.
+ */
+export function getShiftSendUrl(event: MouseEvent): string | null {
+  if (!event.isTrusted || event.button !== 0 || !event.cancelable) return null;
+  if (event.defaultPrevented) return null;
+  if (!event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return null;
+
+  const anchor = findAnchor(event);
+  const href = anchor instanceof HTMLAnchorElement ? anchor.href : null;
+  if (!href || !/^https?:/i.test(href)) return null;
+
+  return isTorrentSource(href) ? href : null;
 }
 
 /**
@@ -258,11 +302,66 @@ function sendMagnetToWorker(uri: string): void {
 }
 
 /**
+ * Whether plain clicks on magnets are taken automatically. Shift-clicks do not consult it — that
+ * gesture is the per-click opt-in and works whatever the checkbox says.
+ */
+let magnetCaptureEnabled = DEFAULTS.autoCaptureMagnets;
+
+export function setMagnetCaptureEnabled(enabled: boolean): void {
+  magnetCaptureEnabled = enabled;
+}
+
+/**
+ * Hand a Shift-clicked link to the worker, which sends it the same way the context menu does —
+ * fetching a `.torrent` in the page's own session when the tracker needs one.
+ */
+function sendLinkToWorker(url: string): void {
+  if (inFlightUris.has(url)) return;
+  inFlightUris.add(url);
+
+  showFeedback("loading", "Sending to Download Station…");
+
+  const message: SendLinkMessage = { type: "link:send", url, pageUrl: window.location.href };
+  try {
+    chrome.runtime.sendMessage(message, (response: MagnetResponse | undefined) => {
+      inFlightUris.delete(url);
+      const lastErr = chrome.runtime.lastError;
+      if (lastErr) {
+        showFeedback("error", `Could not contact QuickGet: ${lastErr.message}`);
+        return;
+      }
+      if (response?.ok) {
+        showFeedback("success", "Sent to Download Station");
+        return;
+      }
+      showFeedback("error", response?.error ?? "Could not send to Download Station");
+    });
+  } catch (error) {
+    inFlightUris.delete(url);
+    showFeedback("error", error instanceof Error ? error.message : "Could not contact QuickGet");
+  }
+}
+
+/**
  * Click handler registered on document during the capture phase.
+ *
+ * Always attached, because Shift has to work even when both automatic modes are off — that is
+ * the whole point of it. Nothing happens on an ordinary click in that configuration.
  */
 function onDocumentClick(event: MouseEvent): void {
+  const shiftSendUrl = getShiftSendUrl(event);
+  if (shiftSendUrl) {
+    // Shift's native meaning is "open in a new window", which for a `.torrent` would flash a
+    // window and start a download we then have to chase. Cancelling and handing the worker the
+    // URL keeps it on the same path the context menu uses.
+    event.preventDefault();
+    sendLinkToWorker(shiftSendUrl);
+    return;
+  }
+
   const uri = getMagnetUri(event);
   if (!uri) return;
+  if (!event.shiftKey && !magnetCaptureEnabled) return;
 
   // Crucial: Synchronous cancel of browser navigation before any async operation.
   event.preventDefault();
@@ -274,32 +373,25 @@ function onDocumentClick(event: MouseEvent): void {
  * Initialize listener based on storage configuration.
  */
 export function initMagnetInterception(): () => void {
-  let isListenerAttached = false;
-
-  const updateListener = (enabled: boolean): void => {
-    if (enabled && !isListenerAttached) {
-      document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
-      isListenerAttached = true;
-    } else if (!enabled && isListenerAttached) {
-      document.removeEventListener("click", onDocumentClick, true);
-      isListenerAttached = false;
-    }
-  };
+  // Attached unconditionally. The setting decides what an *ordinary* click does; the listener has
+  // to exist either way, or Shift — the gesture whose entire purpose is working when automatic
+  // capture is off — would be dead in exactly the configuration it exists for.
+  document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
 
   try {
     chrome.storage.local.get(["autoCaptureMagnets", "theme"], (items) => {
-      const enabled =
-        typeof items?.autoCaptureMagnets === "boolean" ? items.autoCaptureMagnets : DEFAULTS.autoCaptureMagnets;
+      setMagnetCaptureEnabled(
+        typeof items?.autoCaptureMagnets === "boolean" ? items.autoCaptureMagnets : DEFAULTS.autoCaptureMagnets,
+      );
       if (items?.theme && ["auto", "light", "dark"].includes(items.theme as string)) {
         currentTheme = items.theme as "auto" | "light" | "dark";
       }
-      updateListener(enabled);
     });
 
     const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string): void => {
       if (areaName === "local") {
         if ("autoCaptureMagnets" in changes) {
-          updateListener(Boolean(changes.autoCaptureMagnets.newValue));
+          setMagnetCaptureEnabled(Boolean(changes.autoCaptureMagnets.newValue));
         }
         if ("theme" in changes && changes.theme.newValue) {
           currentTheme = changes.theme.newValue as "auto" | "light" | "dark";
@@ -311,10 +403,14 @@ export function initMagnetInterception(): () => void {
 
     return () => {
       chrome.storage.onChanged.removeListener(storageListener);
-      updateListener(false);
+      document.removeEventListener("click", onDocumentClick, true);
     };
   } catch {
-    return () => {};
+    // Storage unreachable (torn-down extension context): the Shift gesture still works, it just
+    // cannot learn whether automatic capture is on.
+    return () => {
+      document.removeEventListener("click", onDocumentClick, true);
+    };
   }
 }
 

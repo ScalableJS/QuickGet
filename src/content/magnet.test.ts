@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findAnchor,
   getMagnetUri,
+  getShiftSendUrl,
   initMagnetInterception,
   isEligibleClick,
   resolveTheme,
@@ -75,13 +76,18 @@ describe("magnet content script", () => {
       expect(isEligibleClick(event)).toBe(false);
     });
 
-    it("rejects modified clicks (Ctrl, Cmd, Shift, Alt)", () => {
-      const modifiers = [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }];
-
-      for (const mod of modifiers) {
+    /**
+     * Shift is the "send this one" gesture and must reach the handler; the other three keep
+     * their native browser meanings (new tab, new window, download the link).
+     */
+    it("rejects Ctrl, Cmd and Alt clicks but lets Shift through", () => {
+      for (const mod of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
         const event = createClickEvent({ button: 0, cancelable: true, isTrusted: true, ...mod });
         expect(isEligibleClick(event)).toBe(false);
       }
+
+      const shifted = createClickEvent({ button: 0, cancelable: true, isTrusted: true, shiftKey: true });
+      expect(isEligibleClick(shifted)).toBe(true);
     });
   });
 
@@ -327,7 +333,12 @@ describe("magnet content script", () => {
       cleanup();
     });
 
-    it("reacts live to storage changes without reload", () => {
+    /**
+     * The listener is attached unconditionally now. Gating it on `autoCaptureMagnets` left the
+     * Shift gesture dead in exactly the configuration it exists for — automatic capture off.
+     * The setting decides what an *ordinary* click does, and that is checked in the handler.
+     */
+    it("keeps the listener attached whatever the setting says", () => {
       const addEventListenerSpy = vi.spyOn(document, "addEventListener");
       const removeEventListenerSpy = vi.spyOn(document, "removeEventListener");
 
@@ -343,27 +354,72 @@ describe("magnet content script", () => {
           removeListener: vi.fn(),
         },
       };
-      (globalThis as unknown as { chrome: unknown }).chrome = {
-        storage: mockStorage,
-      };
+      (globalThis as unknown as { chrome: unknown }).chrome = { storage: mockStorage };
 
       const cleanup = initMagnetInterception();
 
-      // Initially false, not added
-      expect(addEventListenerSpy).not.toHaveBeenCalled();
-
-      // Toggled on
-      storageListener?.({ autoCaptureMagnets: { newValue: true, oldValue: false } }, "local");
+      // Attached even though automatic capture is off.
       expect(addEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), {
         capture: true,
         passive: false,
       });
 
-      // Toggled off
+      // Toggling the setting must not detach it — only teardown does that.
+      storageListener?.({ autoCaptureMagnets: { newValue: true, oldValue: false } }, "local");
       storageListener?.({ autoCaptureMagnets: { newValue: false, oldValue: true } }, "local");
-      expect(removeEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), true);
+      expect(removeEventListenerSpy).not.toHaveBeenCalled();
 
       cleanup();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), true);
     });
+  });
+});
+
+/**
+ * Shift-clicking a `.torrent` link is the per-click opt-in: it sends that one link whatever the
+ * automatic settings say. Recognition happens from the href alone, which is what bounds it.
+ */
+describe("getShiftSendUrl", () => {
+  function shiftClickOn(href: string, init: MouseEventInit & { isTrusted?: boolean } = {}): MouseEvent {
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    document.body.appendChild(anchor);
+    return createClickEvent({
+      button: 0,
+      cancelable: true,
+      isTrusted: true,
+      shiftKey: true,
+      composedPath: [anchor, document.body, document, window],
+      ...init,
+    });
+  }
+
+  it("claims a Shift-clicked link that looks like a torrent", () => {
+    expect(getShiftSendUrl(shiftClickOn("https://tracker.example.com/ubuntu.torrent"))).toBe(
+      "https://tracker.example.com/ubuntu.torrent",
+    );
+    // TorrentPier's source-backed route: no extension, still a torrent.
+    expect(getShiftSendUrl(shiftClickOn("https://tracker.example.com/dl.php?id=12345"))).toBe(
+      "https://tracker.example.com/dl.php?id=12345",
+    );
+  });
+
+  it("leaves ordinary links alone — the gesture must not hijack Shift-click across the web", () => {
+    expect(getShiftSendUrl(shiftClickOn("https://example.com/article"))).toBeNull();
+    expect(getShiftSendUrl(shiftClickOn("https://example.com/photo.jpg"))).toBeNull();
+  });
+
+  it("ignores every modifier except Shift alone", () => {
+    const url = "https://tracker.example.com/ubuntu.torrent";
+    expect(getShiftSendUrl(shiftClickOn(url, { shiftKey: false }))).toBeNull();
+    for (const mod of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+      expect(getShiftSendUrl(shiftClickOn(url, mod))).toBeNull();
+    }
+  });
+
+  it("ignores synthetic clicks, so a page cannot make the extension send links", () => {
+    expect(
+      getShiftSendUrl(shiftClickOn("https://tracker.example.com/ubuntu.torrent", { isTrusted: false })),
+    ).toBeNull();
   });
 });

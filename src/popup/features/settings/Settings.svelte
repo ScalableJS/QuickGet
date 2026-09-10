@@ -603,12 +603,19 @@
     <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500">
       <Checkbox
         id="torrentInterceptMode"
+        aria-describedby="shiftClickHint"
         checked={form.torrentInterceptMode === "always"}
         onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
       >
         Send .torrent downloads to NAS
       </Checkbox>
     </div>
+    <!-- The gesture is worth a line here because nobody discovers a modifier on their own, and it
+         is what makes these checkboxes low-stakes: leave them off and still send a link at will. -->
+    <p id="shiftClickHint" class="m-0 ml-[var(--spacing-lg)] text-12px text-[var(--color-text-secondary)]">
+      Hold <kbd class="font-600">Shift</kbd> when clicking any torrent or magnet link to send just that
+      one — whether these are on or off.
+    </p>
 
     <!-- A refinement of the setting above, not a peer: kept visible but disabled until
          interception is on, so its effect stays discoverable while the dependency stays clear.

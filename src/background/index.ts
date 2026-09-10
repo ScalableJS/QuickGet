@@ -10,7 +10,7 @@ import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
 import { initDownloadInterception } from "./downloads.js";
 import { handleMagnetAdd } from "./magnetHandler.js";
-import { createContextMenus, handleContextMenuClick } from "./menus.js";
+import { createContextMenus, handleContextMenuClick, sendDownloadToStation } from "./menus.js";
 import { type BadgeSnapshotMessage, MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "./monitorMessage.js";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -124,6 +124,21 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     }
     void handleMagnetAdd(uri, typeof pageUrl === "string" ? pageUrl : undefined)
       .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+    return true;
+  }
+
+  // Shift-click: send this one link whatever the automatic settings say. Unlike "task:add" the
+  // URL can be any supported kind, so it goes through the same branch the context menu uses —
+  // a `.torrent` is fetched in the page's session, a magnet goes straight to AddUrl.
+  if (type === "link:send") {
+    const { url } = message as { url?: unknown };
+    if (typeof url !== "string" || !/^https?:\/\//i.test(url)) {
+      sendResponse({ ok: false, error: "Invalid link" });
+      return;
+    }
+    void sendDownloadToStation(url, _sender.tab?.url)
+      .then(() => sendResponse({ ok: true }))
       .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
     return true;
   }

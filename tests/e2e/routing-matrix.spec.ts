@@ -306,3 +306,88 @@ function renderTable(rows: Array<{ what: string; expected: string; actual: strin
     .join("\n");
   return `${header}\n${body}\n`;
 }
+
+/**
+ * Shift is the per-click opt-in: it sends the link under the cursor whatever the automatic
+ * settings say. Asserted with **both settings off**, because that is the configuration the
+ * gesture exists for — and the one where it used to be dead, since the click listener was
+ * attached only when magnet capture was on.
+ */
+// biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
+test("Shift-click sends a link even with every automatic mode switched off", async ({}, testInfo) => {
+  test.setTimeout(90_000);
+
+  const mockNas = await startMockNas();
+  const testStand = await startTestStandHost();
+  const session = await launchExtensionPopup(extensionDistPath);
+
+  try {
+    await waitForPopupReady(session.page);
+    await session.worker.evaluate(
+      ({ port }) =>
+        chrome.storage.local.set({
+          NASaddress: "127.0.0.1",
+          NASport: String(port),
+          NASsecure: false,
+          NASlogin: "admin",
+          NASpassword: "demo-password",
+          NAStempdir: "Download",
+          NASdir: "Movies",
+          // Both off on purpose.
+          autoCaptureMagnets: false,
+          torrentInterceptMode: "off",
+          routingRules: [{ namePattern: "mkv", destination: "R/ShiftSent" }],
+        }),
+      { port: mockNas.port },
+    );
+
+    const standPage = await session.context.newPage();
+    await standPage.goto(testStand.url);
+
+    // A plain click first: nothing may reach the NAS while both modes are off.
+    await standPage.click("#tab-btn-torrents");
+    await standPage.click("#stand-torrent-movie");
+    await standPage.waitForTimeout(2_000);
+    expect(mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add"))).toEqual([]);
+
+    // The same link with Shift held goes, and it is routed like any other send.
+    await standPage.click("#stand-torrent-movie", { modifiers: ["Shift"] });
+    await expect
+      .poll(
+        () =>
+          mockNas.requestLog
+            .toJSON()
+            .find(
+              (entry) =>
+                entry.path === "/downloadstation/V4/Task/AddTorrent" &&
+                entry.requestBody?.includes("big_buck_bunny_1080p.mkv"),
+            )?.requestBody ?? "",
+        { timeout: 20_000 },
+      )
+      .toContain("R/ShiftSent");
+
+    // And a magnet, which takes the other transport but the same gesture.
+    await standPage.click("#tab-btn-magnets");
+    await standPage.click("#stand-magnet-movie", { modifiers: ["Shift"] });
+    await expect
+      .poll(
+        () =>
+          mockNas.requestLog
+            .toJSON()
+            .some(
+              (entry) =>
+                entry.path === "/downloadstation/V4/Task/AddUrl" &&
+                entry.requestBody?.includes("Documentary.Film.2024.1080p.mkv"),
+            ),
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+  } catch (error) {
+    await testInfo.attach("mock-nas-http-log", { body: mockNas.requestLog.toText(), contentType: "text/plain" });
+    throw error;
+  } finally {
+    await session.close();
+    await testStand.close();
+    await mockNas.close();
+  }
+});
