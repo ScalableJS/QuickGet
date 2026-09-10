@@ -43,6 +43,8 @@ coverage/
 !docs/svelte-migration-plan.md
 !docs/privacy-policy.md
 !docs/firefox-release-guide.md
+!docs/routing-coverage.md
+!docs/competitor-routing-teardown.md
 !docs/competitor-analysis.md
 !docs/feature-roadmap.md
 !docs/cache-options.md
