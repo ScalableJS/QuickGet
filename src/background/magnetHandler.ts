@@ -4,8 +4,9 @@
 
 import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
-import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
+import { resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
+import { magnetDisplayName } from "@lib/sourceKind.js";
 import { markConfigurationProblem } from "./actions.js";
 import { ensureMonitoring } from "./alarms.js";
 
@@ -15,6 +16,9 @@ const DEDUP_TTL_MS = 5_000;
 
 export async function handleMagnetAdd(
   uri: string,
+  /** The page the magnet was clicked on. A magnet has no host of its own, so this is the only
+   *  thing a domain rule can match — and the content script has always sent it. */
+  pageUrl?: string,
 ): Promise<{ ok: boolean; error?: string; deduped?: boolean }> {
   const now = Date.now();
   const lastSeen = recentMagnets.get(uri);
@@ -32,12 +36,12 @@ export async function handleMagnetAdd(
   try {
     const settings = await loadSettings();
     const targetFolder = resolveDestination(
-      { url: uri, kind: classifyUrl(uri) },
+      { url: uri, kind: "magnet", pageUrl, name: magnetDisplayName(uri) },
       settings.routingRules,
       settings.NASdir,
     );
 
-    console.log("[QuickGet] magnet interception send", { uri, targetFolder });
+    console.log("[QuickGet] magnet interception send", { uri, pageUrl, targetFolder });
 
     const client = createApiClient({ settings });
     await client.addUrl(uri, { targetFolder });

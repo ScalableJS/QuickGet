@@ -30,7 +30,12 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-14 | Export/Import sits between real settings | ui | S | **Done** |
 | UX-15 | Torrent-link handling is guessed at, not derived from tracker sources | testing | M | **Done** |
 | UX-16 | Settings held things that did not justify being there | ui | M | **Done** |
-| UX-17 | No control over how aggressively a `.torrent` is intercepted | settings | M | In Review |
+| UX-17 | No control over how aggressively a `.torrent` is intercepted | settings | M | **Done** |
+| UX-18 | The rule editor teaches patterns that cannot match | ui | M | **Done** |
+| UX-19 | Rules are write-only — nothing tells you whether they work | ui | M | Deferred |
+| UX-20 | Which rule sent a task, and where, is invisible | ui | S | Rejected |
+| UX-21 | A rule cannot be muted or duplicated | ui | S | Rejected |
+| UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
 
 ---
 
@@ -142,7 +147,7 @@ No changes at the call sites.
 
 ### UX-6 — Routing rules are unnamed field soup for screen readers
 
-**Size:** M · **Area:** ui · **Status:** Discussion
+**Size:** M · **Area:** ui · **Status:** Done
 
 Each rule is three controls plus a delete button, with no group and no name. Three rules read
 as six unlabelled fields in a row. Deleting one announces nothing.
@@ -152,6 +157,14 @@ the delete button gets `aria-label="Remove rule 1"`; removal posts a message to 
 from UX-5.
 
 **Depends on:** UX-3, UX-5.
+
+**2026-09-09 — card body brought in line with the board, and partly re-opened.** The body still
+read `Discussion` while the board had said `Done` since the fieldset/legend work landed; the
+proposal above did ship. What did *not* survive the BUG-43 card redesign is everything around
+it: condition errors are no longer associated with their fields (BUG-48), reordering is silent
+and loses focus (BUG-49), and adding a rule announces nothing (BUG-53). The gate that should
+have caught this never scanned the panel (BUG-51). Treat this card as "named groups, done" and
+the rest as those bugs.
 
 ---
 
@@ -264,7 +277,7 @@ delete `isLocked()` from the interception path, where a missing password is alre
 
 ### UX-9 — a11y regression gate in CI
 
-**Size:** S · **Area:** testing · **Status:** Discussion
+**Size:** S · **Area:** testing · **Status:** Done
 
 Nothing prevents the above from regressing once fixed.
 
@@ -272,6 +285,13 @@ Nothing prevents the above from regressing once fixed.
 CI, alongside the existing gates.
 
 **Depends on:** UX-1, UX-3, UX-5, UX-6 — pointless before there is something to protect.
+
+**2026-09-09 — shipped, and narrower than it looks.** `@storybook/addon-a11y` with
+`a11y: { test: "error" }` plus `tests/e2e/a11y.spec.ts` (axe over the real popup) are both in
+place. But the E2E pass only scans the tab that happens to be open, and `Tabs` hides the others
+with the `hidden` attribute, which axe skips. The routing rules have therefore never been
+scanned by this gate. Fixed under BUG-51; the lesson worth keeping is that seeding state into
+storage is not the same as rendering it where axe can see it.
 
 ---
 
@@ -598,7 +618,7 @@ own sake. It now sits in a header row above the tab list, which leaves two tabs:
 
 ### UX-17 — No control over how aggressively a `.torrent` is intercepted
 
-**Size:** M · **Area:** settings · **Status:** In Review
+**Size:** M · **Area:** settings · **Status:** Done
 **Files:** `src/lib/config.ts` (`torrentInterceptMode`), `src/popup/features/settings/Settings.svelte`,
 `src/background/downloads.ts`
 **Depends on:** BUG-30 (the mechanism this setting exposes)
@@ -651,3 +671,237 @@ That is a real trade-off, so it belongs to the user, not to us.
 the settings lock starts **off**. See BUG-30 for the mechanism and for the 15-second determiner
 timeout that shaped strict mode. UX-17 remains In Review until BUG-30's strict path is exercised
 in a real Chrome profile.
+
+**2026-09-09 — Done.** The card's own closing line was "UX-17 remains In Review until BUG-30's
+strict path is exercised in a real Chrome profile". It now is, automatically and in CI, with a
+control arm — see BUG-30 for the mechanism and for the one half that automation still cannot
+reach (the Save-as dialog, which a headless browser cannot show).
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
+---
+
+### UX-18 — The rule editor teaches patterns that cannot match
+
+**Size:** M · **Area:** ui · **Status:** **Done**
+**Files:** `src/popup/features/settings/Settings.svelte:728-758`
+**Depends on:** BUG-47 (what the matcher can actually see decides what the hint may promise)
+
+Every rule shows the same placeholder, `e.g. *.mkv`, regardless of the selected type. For a
+magnet the only available name is the `dn` parameter, which carries no extension and is often
+missing; for a `.torrent` link the name is the URL slug, which ends in `.torrent`. A user
+follows the example, saves, and gets silence — no match, no error, no explanation.
+
+The three controls also have no visible labels at all: they are identified by placeholder,
+which disappears the moment anything is typed.
+
+**What to build**
+
+- A header row above the grid — Type / Name / Domain — so the fields are labelled when full,
+  not only when empty.
+- A hint under the Name field that changes with the selected type, and says what the pattern is
+  actually compared against. After BUG-47 the `.torrent` hint changes from a warning into a
+  promise ("the name inside the torrent"), so word it so it survives that change.
+- The magnet/domain limitation stated the same way, and reachable by assistive tech (BUG-53).
+
+**Acceptance criteria**
+
+- [ ] Every condition control has a visible label that stays visible.
+- [ ] The Name hint names its source per type and is not a generic example.
+- [ ] No hint promises a match the engine cannot perform.
+
+**2026-09-09 — Done, trimmed to what the new syntax needs.** Shipped: column headers over the
+three condition fields (Source / Name or extension / Site), and one hint line under the grid
+showing the list syntax with real examples. The fields are renamed accordingly — "Site" rather
+than "Domain", because it matches the originating page as much as the file's host.
+
+Cut from the original scope: per-type hint text. It existed to warn that `*.mkv` cannot match a
+`.torrent` or a season pack, and both warnings are now false — a `.torrent` routes on its own
+`info.name` (BUG-47) and a pack is caught by `*S0?E0?` in the same field. One honest hint beat
+three conditional ones.
+
+**Resolved 2026-09-09** — shipped in v2.3.0.
+
+---
+
+### UX-19 — Rules are write-only — nothing tells you whether they work
+
+**Size:** M · **Area:** ui · **Status:** Deferred
+**Files:** `src/popup/features/settings/Settings.svelte` (rules section), `src/lib/routingRules.ts`
+(`resolveDestination`, already pure and exported)
+
+The only feedback about a rule ever firing is `console.log("[QuickGet] … targetFolder")` in the
+service worker. A user of a published extension will never see it. Rules are configured, saved,
+and then believed in.
+
+**What to build:** one input at the top of the rules section — paste a link, see the answer.
+"`magnet:?xt=…&dn=Some.Show.S01E01` → **rule 2** → `Multimedia/TV`", or "no rule matched — goes
+to Target folder". Highlight the card that won.
+
+The engine work is already done: `resolveDestination` is pure, synchronous and takes exactly the
+input this needs. What is missing is that it returns a string rather than which rule produced
+it — return the index, and the UI is a text field plus a line of output.
+
+**Do this before adding any more matchers.** It is the cheapest change that turns the feature
+from guesswork into something a user can verify, and every later routing change becomes
+testable by hand instead of by console.
+
+**Acceptance criteria**
+
+- [ ] A pasted URL, magnet or `.torrent` link reports the winning rule and the destination.
+- [ ] "No rule matched" is an explicit answer, not an empty result.
+- [ ] The tester uses the same code path as the background send — no second implementation.
+- [ ] Testing a link never writes anything to storage or the NAS.
+
+**2026-09-09 — Deferred, on the product owner's call.** "First phase: user-friendly rules,
+extensions are enough." A tester is a debugging aid: you notice its absence only once something is
+already wrong, and no competitor has one, so it is beyond parity rather than part of it.
+
+The engine change it needs stayed unbuilt on purpose — `resolveDestination` still returns a string
+rather than the winning rule's index. Reviving this card starts by splitting that, which is a few
+lines; the UI is the rest. **Revive it if rules start being written that do not behave as
+expected** — that is the symptom it treats.
+
+**2026-09-09 — deferral reinforced.** BUG-38 puts the destination on every task card, so the
+question the tester exists to answer — "did my rule do what I meant" — now has an answer from real
+traffic, continuously, for free. A tester answers it faster and for links you have not sent yet;
+that is a smaller gap than it was this morning.
+
+---
+
+### UX-20 — Which rule sent a task, and where, is invisible
+
+**Size:** S · **Area:** ui · **Status:** Rejected
+**Related:** BUG-38 (destination path omitted from task details), GAP-6 (destination choice on
+the automatic paths)
+
+`Task/Query` already returns `move` and `path` per task (`src/api/schema.d.ts:50-51`), so the
+folder a task landed in is one field away from being shown — that half is BUG-38. What this
+card adds is *why* it landed there: with routing rules shipped, "wrong folder" now has two
+possible causes, a bad rule or a bad default, and the popup distinguishes neither.
+
+A wrong destination is only cheap to fix while the download is still small, which makes
+visibility worth more here than it looks.
+
+**Acceptance criteria**
+
+- [ ] A task shows the folder it was sent to without opening Settings.
+- [ ] When a rule decided it, the task says which one.
+- [ ] Adds no extra NAS request — the data is already in the poll response.
+
+**2026-09-09 — Rejected.** Two halves, and they part company on cost.
+
+*Where a task went* is one field: `Task/Query` already returns `move` and `path`, they are simply
+not mapped in `tasks.ts`. That is BUG-38 and it stays open.
+
+*Which rule chose it* is the contortion. The routing decision is made in the background at send
+time; the task on the NAS is identified later by a name that, for a magnet, is not even the same
+string. Correlating them means keeping a side map from task to decision, expiring it, and
+surviving a service-worker restart — machinery whose only output is a line of explanatory text.
+The tester (UX-19) answers the same question offline and exactly, whenever it is built.
+
+**2026-09-09 — the half worth keeping shipped.** "Where a task went" is on the card (BUG-38,
+Done). What stays rejected is only "which rule chose it", for the reason above.
+
+---
+
+### UX-21 — A rule cannot be muted or duplicated
+
+**Size:** S · **Area:** ui · **Status:** Rejected
+**Files:** `src/lib/routingRules.ts` (`RoutingRule`, `sanitizeRoutingRules`),
+`src/popup/features/settings/Settings.svelte`
+**Depends on:** UX-19 (a muted rule needs somewhere to be visibly muted)
+
+To stop a rule from firing you have to delete it and type it back later — there is no way to
+turn one off while diagnosing, and no way to copy one that differs by a single field. Both are
+routine when a set of rules stops behaving.
+
+`enabled?: boolean` on the rule shape, defaulted to `true` by the sanitizer so existing stored
+data keeps working, plus a toggle and a duplicate action on the card. A disabled rule must be
+skipped by `resolveDestination` and shown as skipped by the tester from UX-19.
+
+**Acceptance criteria**
+
+- [ ] A muted rule is skipped by the engine and visibly muted in the editor.
+- [ ] Stored rules written before this change load as enabled.
+- [ ] A duplicated rule lands directly below its source and does not inherit its id.
+
+**2026-09-09 — kept, and it is genuinely small.** `enabled?: boolean` on the rule, defaulted to
+true by the sanitizer so stored data keeps working, a toggle on the card, and one condition in the
+matcher. No new concepts.
+
+Its value went **up** when UX-19 was deferred: with no tester, muting a rule is the only way to
+find out which one is doing something unexpected. That is the argument for it — not tidiness.
+Duplicate is the cheaper half of the same card and can ship alone.
+
+**2026-09-09 — the case for it narrowed but did not vanish.** The argument was "with no tester,
+muting is the only way to find which rule misbehaves". With the destination now visible on every
+card (BUG-38), you can *see* the wrong folder without muting anything — but you still cannot tell
+*which* rule chose it, and bisecting by muting is the cheapest way to find out. Still easy, still
+worth it, no longer the only diagnostic.
+
+**2026-09-09 — Rejected.** The case for it moved twice in one day and ended below the cost.
+
+It was "with no tester, muting is the only way to find which rule misbehaves". Then BUG-38 put the
+destination on every card, so a wrong folder is *visible* without muting anything. What is left is
+"which of my rules chose it", on a list that is short and ordered and readable.
+
+The cost is not nothing: `enabled` in the stored rule shape, a default in the sanitizer so old data
+keeps working, a branch in the matcher, a state in the editor, tests for each. A schema change to
+serve a diagnostic. Duplicate is pure convenience and does not carry the card on its own.
+
+Reopen if rule sets start being long enough that reading them is the hard part.
+
+---
+
+### UX-22 — Rule-editor affordances worth borrowing from Send To QNAP++
+
+**Size:** S · **Area:** ui · **Status:** Rejected
+**Source:** `docs/competitor-routing-teardown.md` section D
+**Related:** UX-18 (labels and hints), UX-19 (the rule tester), BUG-52 (no discard path)
+
+The 2026-09-09 teardown found their *engine* weaker than ours — one condition per rule, no AND, a
+`break` where a `continue` belongs that makes any domain rule shadow everything below it for
+magnets — but their *editor* does four small things we do not, each cheap and each aimed at the
+same problem: rule syntax is what users get wrong.
+
+- **Per-field `?` help with worked examples** (`Configure_QNAP_Access.html:612`): five concrete
+  patterns with plain-English glosses, next to the field, rather than a doc page nobody opens.
+- **Show the fallback inline on a rule with no destination** (`js:1150-1157`): the default folder
+  rendered greyed in the empty field, so "no destination" explains itself instead of looking
+  broken. Ours simply refuses to save, which is stricter and less informative.
+- **Nudge an unverified folder** (`js:1025-1031`): once a path is typed but not checked, highlight
+  the validate control. It prompts before an error rather than reporting one after — complementary
+  to our F1 red ring, not a replacement.
+- **Live rule count in an `aria-live` region** (`js:1120-1129`): "3 rules". One line, and it gives
+  the live region something to say when a rule is added or removed.
+
+Also worth confirming rather than copying: their validation distinguishes *not found* from *exists
+but is a file* (`common.js:738`, File Station `isfolder`). Our `Misc/Dir` check should be able to
+say which, and currently reports both as a bad path.
+
+**Not to be copied:** validation that is advisory only. They let a rule with a folder that failed
+verification be saved anyway, and a committed rule carries no validity indicator at all.
+
+**Acceptance criteria**
+
+- [ ] Pattern syntax is explained where it is typed, with examples, not only in a hint line.
+- [ ] A rule with no destination shows what it would fall back to.
+- [ ] The live region reports the rule count alongside add/remove/move.
+- [ ] Nothing here duplicates UX-18's labels or UX-19's tester — check both before starting.
+
+**2026-09-09 — Rejected after re-reading the teardown against what we actually shipped.** Of the
+four affordances:
+
+- **`?` help with worked examples** — superseded by UX-18's hint line, which puts the same
+  examples in the same place without a popover to open.
+- **Show the fallback destination in an empty field** — does not apply to us. `++` treats an empty
+  destination as "use the default"; our validator requires one, which is the stricter and clearer
+  contract. There is no empty state to explain.
+- **The unverified-folder nudge** — duplicates the red ring F1 already shows, and adds a second
+  visual state to the same field.
+- **Live rule count in the live region** — the region already announces add, remove and reorder by
+  name and position, which is more useful than a total.
+
+Recorded rather than silently dropped: the teardown is worth trusting on the engine, and it was
+right that we were behind on multi-value fields. It is not automatically right about the editor.

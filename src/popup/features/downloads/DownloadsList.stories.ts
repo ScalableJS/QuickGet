@@ -26,7 +26,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const InProgress: Story = {
-  args: { tasks: [task("Ubuntu 24.04 LTS image", "downloading"), task("Arch Linux", "queued"), task("Debian", "paused")] },
+  args: {
+    tasks: [task("Ubuntu 24.04 LTS image", "downloading"), task("Arch Linux", "queued"), task("Debian", "paused")],
+  },
 };
 
 export const EmptyInProgress: Story = {

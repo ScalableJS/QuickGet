@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickGet Remote — Test Stand & Routing Rules Verification</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1627;
+      --card: #11233a;
+      --card-hover: #152b47;
+      --card-alt: #0e1c2e;
+      --accent: #306edc;
+      --accent-hover: #4886f0;
+      --text: #e8eef7;
+      --text-muted: #8fa0b5;
+      --border: #233a59;
+      --border-light: #2d4b73;
+      --badge-bg: #1c3558;
+      --badge-text: #82b1ff;
+      --tag-torrent: #204620;
+      --tag-torrent-text: #69db7c;
+      --tag-magnet: #542d10;
+      --tag-magnet-text: #ffa94d;
+      --tag-direct: #47225c;
+      --tag-direct-text: #da77f2;
+      --success: #2b8a3e;
+      --warning: #e8590c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(175deg, #0d1a2d 0%, #08111f 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1.5rem 4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      max-width: 900px;
+      width: 100%;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .stand-container {
+      max-width: 900px;
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Tab Navigation */
+    .tabs-nav {
+      display: flex;
+      background: var(--card-alt);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 0.75rem 0;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: var(--card);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      padding: 1.5rem;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 1rem;
+    }
+
+    /* Test Cards */
+    .card {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-light);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.3;
+    }
+
+    .tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .tag-torrent {
+      background: var(--tag-torrent);
+      color: var(--tag-torrent-text);
+    }
+
+    .tag-magnet {
+      background: var(--tag-magnet);
+      color: var(--tag-magnet-text);
+    }
+
+    .tag-direct {
+      background: var(--tag-direct);
+      color: var(--tag-direct-text);
+    }
+
+    .card-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .rule-hint {
+      background: rgba(48, 110, 220, 0.12);
+      border-left: 3px solid var(--accent);
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+      color: #a8cdfc;
+      border-radius: 0 4px 4px 0;
+      word-break: break-all;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      text-align: center;
+    }
+
+    .btn-action:hover,
+    .btn-action:focus-visible {
+      background: var(--accent-hover);
+    }
+
+    .btn-action.secondary {
+      background: var(--badge-bg);
+      color: var(--badge-text);
+    }
+
+    .btn-action.secondary:hover {
+      background: #234470;
+    }
+
+    /* Interactive Log Panel */
+    .log-panel {
+      border-top: 1px solid var(--border);
+      background: #08111e;
+      padding: 1rem 1.5rem;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .log-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .log-clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .log-clear-btn:hover {
+      color: var(--text);
+      border-color: var(--border-light);
+    }
+
+    #event-log {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      max-height: 180px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+    }
+
+    .log-entry {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--border-light);
+      word-break: break-all;
+    }
+
+    .log-entry.intercepted {
+      border-left-color: var(--success);
+    }
+
+    .log-empty {
+      color: #5d718a;
+      font-style: italic;
+      padding: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>QuickGet Remote — Test Stand</h1>
+    <p class="tagline">
+      Interactive verification environment for link interception, magnet handling, and Destination Routing Rules.
+    </p>
+  </header>
+
+  <main class="stand-container">
+    <!-- Tabs Header -->
+    <div class="tabs-nav" role="tablist" aria-label="Test Categories">
+      <button id="tab-btn-torrents" type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-torrents" onclick="switchTab('torrents')">
+        📦 Torrents (.torrent)
+      </button>
+      <button id="tab-btn-magnets" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-magnets" onclick="switchTab('magnets')">
+        🧲 Magnets (magnet:)
+      </button>
+      <button id="tab-btn-direct" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-direct" onclick="switchTab('direct')">
+        🌐 Direct URLs
+      </button>
+      <button id="tab-btn-domains" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-domains" onclick="switchTab('domains')">
+        🎯 Domains &amp; Edge Cases
+      </button>
+      <button id="tab-btn-tracker" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" onclick="switchTab('tracker')">
+        Tracker endpoints
+      </button>
+    </div>
+
+    <!-- Tab 1: Torrents -->
+    <section id="tab-torrents" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-torrents">
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Debian 13.6 Netinst ISO</h2>
+            <span class="tag tag-torrent">.torrent</span>
+          </div>
+          <p class="card-meta">Standard Linux OS distribution torrent file.</p>
+          <div class="rule-hint">Match target: Pattern <code>*.iso</code> &rarr; <code>Software/OS</code></div>
+          <a id="stand-torrent-debian" class="btn-action" href="/files/debian-13.6.0-amd64-netinst.iso.torrent" download="debian-13.6.0-amd64-netinst.iso.torrent">
+            Download Debian Torrent
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Big Buck Bunny (1080p MKV)</h2>
+            <span class="tag tag-torrent">.torrent</span>
+          </div>
+          <p class="card-meta">Open movie torrent with video filename.</p>
+          <div class="rule-hint">Match target: Pattern <code>*.mkv</code> &rarr; <code>Multimedia/Movies</code></div>
+          <a id="stand-torrent-movie" class="btn-action" href="/files/big_buck_bunny_1080p.mkv.torrent" download="big_buck_bunny_1080p.mkv.torrent">
+            Download Movie Torrent
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Blender 4.0 Suite (.tar.xz)</h2>
+            <span class="tag tag-torrent">.torrent</span>
+          </div>
+          <p class="card-meta">Archive package inside a torrent payload.</p>
+          <div class="rule-hint">Match target: Pattern <code>*.tar.xz</code> &rarr; <code>Software/Packages</code></div>
+          <a id="stand-torrent-blender" class="btn-action" href="/files/blender-4.0-linux-x64.tar.xz.torrent" download="blender-4.0-linux-x64.tar.xz.torrent">
+            Download Archive Torrent
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Uppercase Extension (.TORRENT)</h2>
+            <span class="tag tag-torrent">UPPERCASE</span>
+          </div>
+          <p class="card-meta">Tests case-insensitive torrent link interception.</p>
+          <div class="rule-hint">Match target: Type <code>torrent</code> &rarr; <code>Torrents/Incoming</code></div>
+          <a id="stand-torrent-uppercase" class="btn-action" href="/files/ARCHLINUX-2024.ISO.TORRENT" download="ARCHLINUX-2024.ISO.TORRENT">
+            Download .TORRENT link
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Tab 2: Magnets -->
+    <section id="tab-magnets" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-magnets">
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Ubuntu 24.04 LTS Desktop</h2>
+            <span class="tag tag-magnet">magnet:</span>
+          </div>
+          <p class="card-meta">Standard magnet with <code>dn=Ubuntu+24.04+LTS+Desktop.iso</code>.</p>
+          <div class="rule-hint">Match target: Pattern <code>*.iso</code> &rarr; <code>OS/Linux</code></div>
+          <a id="stand-magnet-ubuntu" class="btn-action" href="magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Ubuntu+24.04+LTS+Desktop.iso&tr=udp%3A%2F%2Ftracker.example.com%3A6969">
+            Download Ubuntu Magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Documentary Film (1080p MKV)</h2>
+            <span class="tag tag-magnet">magnet:</span>
+          </div>
+          <p class="card-meta">Magnet with video filename in <code>dn</code> parameter.</p>
+          <div class="rule-hint">Match target: Pattern <code>*.mkv</code> &rarr; <code>Multimedia/Movies</code></div>
+          <a id="stand-magnet-movie" class="btn-action" href="magnet:?xt=urn:btih:abcdef0123456789abcdef0123456789abcdef01&dn=Documentary.Film.2024.1080p.mkv">
+            Download Movie Magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Name with "=" in Parameter</h2>
+            <span class="tag tag-magnet">BUG-44 Test</span>
+          </div>
+          <p class="card-meta">Tests filename with <code>=</code> symbols: <code>dn=Release_Name=Director_Cut=2024.mkv</code>.</p>
+          <div class="rule-hint">Match target: Pattern <code>*Director_Cut*</code> &rarr; <code>Multimedia/Special</code></div>
+          <a id="stand-magnet-equals" class="btn-action" href="magnet:?xt=urn:btih:3333333333444444444455555555556666666666&dn=Release_Name=Director_Cut=2024.mkv">
+            Download Equals Magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">TV Series Episode</h2>
+            <span class="tag tag-magnet">magnet:</span>
+          </div>
+          <p class="card-meta">Magnet with season and episode format (<code>Show.S02E05.720p.mkv</code>).</p>
+          <div class="rule-hint">Match target: Pattern <code>*S02E*</code> &rarr; <code>Multimedia/Series</code></div>
+          <a id="stand-magnet-series" class="btn-action" href="magnet:?xt=urn:btih:4444444444555555555566666666667777777777&dn=Show.S02E05.720p.mkv">
+            Download Episode Magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Malformed Percent Magnet</h2>
+            <span class="tag tag-magnet">Safe Decode</span>
+          </div>
+          <p class="card-meta">Malformed percent sequence: <code>dn=broken%ZZtitle.mkv</code>.</p>
+          <div class="rule-hint">Safe URI decode prevents extension crash</div>
+          <a id="stand-magnet-malformed" class="btn-action secondary" href="magnet:?xt=urn:btih:5555555555666666666677777777778888888888&dn=broken%ZZtitle.mkv">
+            Test Malformed Magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Dynamic &amp; Nested Elements</h2>
+            <span class="tag tag-magnet">DOM tests</span>
+          </div>
+          <p class="card-meta">Nested inside SVG/span and dynamically injected into DOM.</p>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a id="stand-magnet-nested" class="btn-action secondary" href="magnet:?xt=urn:btih:6666666666777777777788888888889999999999&dn=Nested.Element.mkv">
+              <span>🧲 <span>Nested Anchor</span></span>
+            </a>
+            <button id="stand-magnet-dynamic-btn" class="btn-action secondary" type="button" onclick="injectDynamicMagnet()">
+              + Create Dynamic Magnet
+            </button>
+          </div>
+          <div id="dynamic-magnet-container"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Tab 3: Direct URLs -->
+    <section id="tab-direct" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-direct">
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
+        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
+        the browser, so no routing rule can apply to it. These links are here to show where the
+        rules stop, not what they do.
+      </p>
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Direct ISO Image Link</h2>
+            <span class="tag tag-direct">Direct HTTP</span>
+          </div>
+          <p class="card-meta">Direct browser download of an ISO disc image.</p>
+          <div class="rule-hint">Not intercepted &mdash; a <code>*.iso</code> rule cannot fire here</div>
+          <a id="stand-direct-iso" class="btn-action" href="/files/linux-minimal.iso" download="linux-minimal.iso">
+            Download ISO File
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Direct MKV Clip Link</h2>
+            <span class="tag tag-direct">Direct HTTP</span>
+          </div>
+          <p class="card-meta">Direct video download intercepted via Chrome Downloads.</p>
+          <div class="rule-hint">Not intercepted &mdash; a <code>*.mkv</code> rule cannot fire here</div>
+          <a id="stand-direct-mkv" class="btn-action" href="/files/sample-clip.mkv" download="sample-clip.mkv">
+            Download MKV Clip
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Direct ZIP Archive</h2>
+            <span class="tag tag-direct">Direct HTTP</span>
+          </div>
+          <p class="card-meta">Direct download of a zip package.</p>
+          <div class="rule-hint">Not intercepted &mdash; a <code>zip</code> rule cannot fire here</div>
+          <a id="stand-direct-zip" class="btn-action" href="/files/devtools.zip" download="devtools.zip">
+            Download ZIP Archive
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Direct PDF Document</h2>
+            <span class="tag tag-direct">Direct HTTP</span>
+          </div>
+          <p class="card-meta">Document file download.</p>
+          <div class="rule-hint">Not intercepted &mdash; a <code>pdf</code> rule cannot fire here</div>
+          <a id="stand-direct-pdf" class="btn-action" href="/files/documentation.pdf" download="documentation.pdf">
+            Download PDF File
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Tab 4: URL edge cases. Domain matching moved to the Tracker tab, where it is real:
+         these two links used to point at tracker.example.com and eu-west.cdn-network.org, which
+         resolve nowhere, so they demonstrated nothing and implied coverage that did not exist. -->
+    <section id="tab-domains" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-domains">
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
+        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
+        the browser, so no routing rule can apply to it. These links are here to show where the
+        rules stop, not what they do.
+      </p>
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Percent-Encoded File Path</h2>
+            <span class="tag tag-direct">Encoded URI</span>
+          </div>
+          <p class="card-meta">Filename containing escaped spaces and brackets: <code>my%20cool%20video%20%5B1080p%5D.mkv</code>.</p>
+          <div class="rule-hint">Not intercepted &mdash; here to prove the URL decoder does not throw</div>
+          <a id="stand-edge-encoded" class="btn-action" href="/files/my%20cool%20video%20%5B1080p%5D.mkv" download="my cool video [1080p].mkv">
+            Download Encoded MKV
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Malformed Percent Sequence URL</h2>
+            <span class="tag tag-direct">URI Error</span>
+          </div>
+          <p class="card-meta">Malformed percent in HTTP path: <code>foo%ZZbar.mkv</code>.</p>
+          <div class="rule-hint">Not intercepted &mdash; here to prove a bad escape does not throw</div>
+          <a id="stand-edge-malformed" class="btn-action secondary" href="/files/broken%ZZname.mkv" download="broken%ZZname.mkv">
+            Test Broken URL
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Tab 5: Tracker-shaped endpoints — the cases a real private tracker produces -->
+    <section id="tab-tracker" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-tracker">
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Opaque endpoint (<code>dl.php</code>)</h2>
+            <span class="tag tag-torrent">No extension</span>
+          </div>
+          <p class="card-meta">A torrent served from <code>/dl.php?name=…</code>. Nothing in the URL says
+            &ldquo;torrent&rdquo; and nothing names the release &mdash; only the MIME type and
+            <code>Content-Disposition</code> do. This is what a TorrentPier-style tracker looks like.</p>
+          <div class="rule-hint">Type <code>.torrent</code> and pattern <code>*.mkv</code> must both match</div>
+          <a id="stand-tracker-dlphp" class="btn-action" href="/dl.php?name=Tracker.Release.2024.1080p.mkv">
+            Download from dl.php
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">MIME only, no filename</h2>
+            <span class="tag tag-torrent">Hardest case</span>
+          </div>
+          <p class="card-meta">Correct <code>application/x-bittorrent</code>, no <code>Content-Disposition</code>,
+            no extension in the path. The release name exists <em>only</em> inside the file.</p>
+          <div class="rule-hint">Only a bencode read of <code>info.name</code> can route this</div>
+          <a id="stand-tracker-nocd" class="btn-action" href="/get/Hidden.Name.Release.2024.mkv">
+            Download with no name outside the file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Multi-file season pack</h2>
+            <span class="tag tag-torrent">Directory torrent</span>
+          </div>
+          <p class="card-meta">A torrent with two files under a directory. <code>info.name</code> is the
+            directory, and no member file name is visible before the NAS has the task.</p>
+          <div class="rule-hint">Pattern <code>*S01*</code> matches; <code>*.mkv</code> must not</div>
+          <a id="stand-tracker-multi" class="btn-action" href="/dl.php?name=Some.Show.S01.1080p.WEB-DL&amp;multi=1">
+            Download season pack
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Same file, other hostname</h2>
+            <span class="tag tag-direct">Domain rule</span>
+          </div>
+          <p class="card-meta">The identical torrent served from <code>localhost</code> instead of
+            <code>127.0.0.1</code> &mdash; two different hosts for a domain rule, one origin for the server.</p>
+          <div class="rule-hint">Domain <code>localhost</code> &rarr; its own folder</div>
+          <a id="stand-tracker-otherhost" class="btn-action" data-host-swap="/files/Domain.Probe.2024.mkv.torrent" href="/files/Domain.Probe.2024.mkv.torrent" download>
+            Download from localhost
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Magnet without <code>dn</code></h2>
+            <span class="tag tag-magnet">No name at all</span>
+          </div>
+          <p class="card-meta">Plenty of trackers emit magnets with no display name. There is nothing for a
+            filename pattern to match until the NAS resolves metadata.</p>
+          <div class="rule-hint">Only a <code>type = magnet</code> rule can catch this</div>
+          <a id="stand-magnet-nodn" class="btn-action" href="magnet:?xt=urn:btih:8888888888999999999900000000001111111111&amp;tr=udp%3A%2F%2Ftracker.example.com%3A6969">
+            Send nameless magnet
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Magnet routed by the page, not the link</h2>
+            <span class="tag tag-magnet">Origin domain</span>
+          </div>
+          <p class="card-meta">A magnet has no host of its own, so a domain rule can only match the page it
+            was clicked on &mdash; which is what &ldquo;where I download from&rdquo; actually means.</p>
+          <div class="rule-hint">Domain of <em>this page</em> + type <code>magnet</code> &rarr; its own folder</div>
+          <a id="stand-magnet-origin" class="btn-action" href="magnet:?xt=urn:btih:9999999999000000000011111111112222222222&amp;dn=Origin.Probe.2024.avi">
+            Send magnet from this page
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">BitTorrent v2 magnet (<code>btmh</code>)</h2>
+            <span class="tag tag-magnet">v2 / hybrid</span>
+          </div>
+          <p class="card-meta">A v2 magnet uses <code>urn:btmh</code>. We forward the scheme without inspecting
+            <code>xt</code>; whether Download Station accepts it is RES-1.</p>
+          <div class="rule-hint">Should route exactly like a v1 magnet on its <code>dn</code></div>
+          <a id="stand-magnet-v2" class="btn-action secondary" href="magnet:?xt=urn:btmh:1220caf1e1f0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b&amp;dn=V2.Hybrid.Release.2024.mkv">
+            Send v2 magnet
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- Interactive Event & Interception Log -->
+    <aside class="log-panel" aria-label="Interception Activity Log">
+      <div class="log-header">
+        <span class="log-title">
+          <span>⚡ Live Event Log</span>
+        </span>
+        <button id="clear-log-btn" class="log-clear-btn" type="button" onclick="clearLog()">Clear log</button>
+      </div>
+      <ul id="event-log">
+        <li class="log-empty">Waiting for link clicks or downloads…</li>
+      </ul>
+    </aside>
+  </main>
+
+  <script>
+    // Tab switching logic
+    window.switchTab = function switchTab(tabId) {
+      const tabs = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
+      for (const t of tabs) {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const panel = document.getElementById(`tab-${t}`);
+        if (t === tabId) {
+          btn?.classList.add('active');
+          btn?.setAttribute('aria-selected', 'true');
+          panel?.classList.add('active');
+        } else {
+          btn?.classList.remove('active');
+          btn?.setAttribute('aria-selected', 'false');
+          panel?.classList.remove('active');
+        }
+      }
+    };
+
+    // A domain rule needs two hostnames. The stand is served on 127.0.0.1; the same server
+    // answers on localhost, so rewriting these links at load time gives a second host without
+    // hardcoding the port the harness picked.
+    for (const link of document.querySelectorAll("[data-host-swap]")) {
+      const otherHost = location.hostname === "localhost" ? "127.0.0.1" : "localhost";
+      link.href = `${location.protocol}//${otherHost}:${location.port}${link.dataset.hostSwap}`;
+      link.setAttribute("download", "");
+    }
+
+    // Dynamic magnet insertion
+    window.injectDynamicMagnet = function injectDynamicMagnet() {
+      const container = document.getElementById("dynamic-magnet-container");
+      if (!container) return;
+      const a = document.createElement("a");
+      a.id = "stand-magnet-dynamic";
+      a.className = "btn-action secondary";
+      a.style.marginTop = "0.5rem";
+      a.href = "magnet:?xt=urn:btih:7777777777888888888899999999990000000000&dn=Dynamic.Injected.Release.mkv";
+      a.textContent = "⚡ Injected Dynamic Magnet";
+      container.innerHTML = "";
+      container.appendChild(a);
+    };
+
+    // Interactive event logging for manual and automated verification
+    window.lastClick = null;
+    window.clickHistory = [];
+
+    function appendLog(entry) {
+      const logList = document.getElementById("event-log");
+      if (!logList) return;
+      const empty = logList.querySelector(".log-empty");
+      if (empty) empty.remove();
+
+      const li = document.createElement("li");
+      li.className = `log-entry${entry.defaultPrevented ? " intercepted" : ""}`;
+      li.textContent = `[${entry.time}] ${entry.type.toUpperCase()}: ${entry.href} (prevented: ${entry.defaultPrevented})`;
+      logList.prepend(li);
+    }
+
+    window.clearLog = function clearLog() {
+      const logList = document.getElementById("event-log");
+      if (!logList) return;
+      logList.innerHTML = '<li class="log-empty">Waiting for link clicks or downloads…</li>';
+      window.clickHistory = [];
+      window.lastClick = null;
+    };
+
+    document.addEventListener("click", (e) => {
+      const anchor = e.composedPath().find((node) => node instanceof Element && node.tagName === "A" && node.hasAttribute("href"));
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href") || "";
+      const isMagnet = href.startsWith("magnet:");
+      const isTorrent = href.endsWith(".torrent") || href.endsWith(".TORRENT");
+      const linkType = isMagnet ? "magnet" : isTorrent ? "torrent" : "direct";
+
+      const record = {
+        time: new Date().toLocaleTimeString(),
+        id: anchor.id || "anonymous-anchor",
+        href: href,
+        type: linkType,
+        defaultPrevented: e.defaultPrevented,
+        isTrusted: e.isTrusted,
+        button: e.button,
+      };
+
+      window.lastClick = record;
+      window.clickHistory.push(record);
+      appendLog(record);
+    });
+  </script>
+</body>
+</html>

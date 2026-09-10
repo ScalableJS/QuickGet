@@ -3,6 +3,7 @@
   import ArrowUp from "~icons/lucide/arrow-up";
   import ArrowUpToLine from "~icons/lucide/arrow-up-to-line";
   import EllipsisVertical from "~icons/lucide/ellipsis-vertical";
+  import Folder from "~icons/lucide/folder";
 
   import type { TaskPriorityAction } from "@api/client.js";
   import { isReorderableStatus, type Task } from "@lib/tasks.js";
@@ -13,6 +14,7 @@
 
   let {
     task,
+    defaultFolder,
     selectedHash = null,
     removing = false,
     menuOpen = false,
@@ -22,6 +24,8 @@
     onPriority,
   }: {
     task: Task;
+    /** The configured Target folder, so a task that went there does not repeat it back. */
+    defaultFolder?: string;
     selectedHash?: string | null;
     removing?: boolean;
     menuOpen?: boolean;
@@ -31,7 +35,7 @@
     onPriority?: (hash: string, priority: TaskPriorityAction) => Promise<void> | void;
   } = $props();
 
-  const view = $derived(getDownloadItemView(task));
+  const view = $derived(getDownloadItemView(task, defaultFolder));
   const selected = $derived(view.hash === selectedHash);
 
   // File selection is only possible on active multi-file tasks (the NAS rejects it
@@ -308,6 +312,7 @@
               <span>{view.etaText}</span>
             {/if}
           {/if}
+
         </div>
 
         {#if view.addedText && !view.swarmText}
@@ -315,6 +320,24 @@
         {/if}
       {/if}
     </div>
+
+    <!-- Only when a rule sent this somewhere other than the Target folder. A line saying "this
+         went where everything goes" on every card is noise, and it was: the row is back to its
+         old shape for the ordinary case and grows by one line exactly when routing did something.
+         The staging folder lives in the tooltip — it is one global setting, so on the card it
+         would be the same string repeated down the whole list.
+         No competitor shows a destination at all; the nearest one hides it behind a
+         click-to-copy on the title. -->
+    {#if view.destinationText}
+      <div
+        class="download-destination flex items-center gap-1 min-w-0 text-11px text-[var(--torrent-text-secondary)]"
+        title={view.folderTitle}
+      >
+        <Folder class="w-3 h-3 flex-none" aria-hidden="true" />
+        <span class="sr-only">Saving to</span>
+        <span class="truncate font-500">{view.destinationText}</span>
+      </div>
+    {/if}
     {#if canChooseFiles}
       <DisclosureButton
         expanded={filesOpen}

@@ -34,9 +34,12 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-5 | Listing does not claim the maintenance gap left by the segment leader | store | S | Backlog |
 | RES-1 | Verify on a live NAS how `AddUrl` handles a magnet URI | api/research | S | Backlog |
 | RES-2 | Decide whether `ftp://` links are worth supporting | api/research | S | Backlog |
-| RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Backlog |
-| GAP-6 | Destination choice is missing from the paths that send most downloads | popup/background | S | Backlog |
-| RES-4 | Can File Station move a finished download, and at what cost to seeding? | api/research | M | Backlog |
+| RES-3 | Establish what the NAS allows for per-task destination folders | api/research | M | Rejected |
+| GAP-6 | Destination choice is missing from the paths that send most downloads | popup/background | S | Rejected |
+| RES-4 | Can File Station move a finished download, and at what cost to seeding? | api/research | M | Rejected |
+| GAP-14 | Re-route a download after it has started — which windows actually exist | api/background | L | Rejected |
+| RES-6 | Is there a safe re-route window while a magnet is fetching metadata? | api/research | M | Deferred |
+| GAP-15 | A redirecting download URL is handed to the NAS unresolved | background/api | S | Backlog |
 
 ---
 
@@ -383,7 +386,7 @@ Deliberately **not** doing it speculatively: we do not add code for users we hav
 
 ### RES-3 — Establish what the NAS allows for per-task destination folders
 
-**Size:** M · **Area:** api/research · **Status:** Backlog
+**Size:** M · **Area:** api/research · **Status:** Rejected
 **Blocks:** GAP-6 (and decides whether the "change it later" half exists at all)
 
 A user wants to choose where a download lands: **when sending**, **while it runs**, and
@@ -425,11 +428,50 @@ is created") is better than users hunting for a feature that cannot exist. Recor
 in `docs/qnap-download-station-capabilities.md` either way — that document exists precisely so
 this is not re-investigated.
 
+**2026-09-09 — the question was too narrow.** A routing review asked the same thing from the
+other end and found a window this card does not consider: a magnet sits in state 103 with
+`files: 0` and nothing downloaded while Download Station fetches its metadata, and `Task/Query`
+carries a `source_name`. If the real name becomes readable there, the destination can be
+corrected by removing and re-adding at zero cost — no move, no File Station, no seeding risk,
+because no payload exists yet. That is RES-6. This card keeps its original scope: whether
+Download Station can change `move` on an existing task. GAP-14 is the umbrella that says which
+of the three windows we actually intend to use.
+
+**2026-09-09 — corroborated from the outside.** No competitor calls anything resembling a
+destination change; the census is in `docs/competitor-routing-teardown.md` section E. That is not
+proof the call does not exist, but it removes "surely someone does it" as a reason to keep
+looking. What is left worth checking on hardware is the `move`-points-at-a-missing-folder question
+in the list above, which is a validation concern rather than a re-routing one.
+
+**2026-09-09 — narrowed to one question.** The re-routing part is settled: GAP-14 is rejected,
+RES-4 is rejected, and no competitor has a destination-change call either. What is still worth a
+minute on hardware is the *validation* question from the list above, which has nothing to do with
+moving anything:
+
+- What does Download Station do when `move` names a folder that does not exist or is not writable
+  — a clear error, or an accepted task that fails silently later? `Misc/Dir` reports `writtable`
+  per entry, so a bad destination could be caught in the picker instead of discovered afterwards.
+
+Everything else on this card is answered. Retitle it if it is picked up.
+
+**2026-09-09 — Rejected; the last open question is answerable without hardware.** It had been
+narrowed to "what does Download Station do with a `move` that does not exist or is not writable".
+Three things already answer it well enough to not spend a NAS session:
+
+- The editor validates the folder through `Misc/Dir` when the rule is written (F1), so the path
+  existed at least once.
+- The residual case is a folder deleted on the NAS afterwards — rare, and not preventable by us.
+- Download Station reports it: `++`'s error table carries `6: "Destination folder not found"`, and
+  we have displayed task error codes since BUG-37.
+
+So the failure is already surfaced to the user in words. Confirming the mechanism on hardware would
+change nothing we would build.
+
 ---
 
 ### GAP-6 — Destination choice is missing from the paths that send most downloads
 
-**Size:** S · **Area:** popup/background · **Status:** Backlog
+**Size:** S · **Area:** popup/background · **Status:** Rejected
 **Files:** `src/popup/features/folderPicker/` (reuse `FolderSelect`);
 `src/background/menus.ts`; `src/api/client.ts` (already parameterised)
 
@@ -476,6 +518,12 @@ worse, and the cheapest good answer may be "show, do not ask".
 - [ ] Routing rules keep priority where they match; this must not become a second, competing
       mechanism for the same decision.
 
+**2026-09-09 — the "show, do not ask" half now has a card.** UX-20 covers surfacing the folder a
+task was given *and* which rule chose it, using `move`/`path` that `Task/Query` already returns.
+The re-route half is scoped by GAP-14, which splits it into the windows that actually exist. The
+duplicated closing paragraph below is drift from an earlier edit — the two copies say the same
+thing.
+
 **The unresolved design question, and it is the whole card:** interception is *automatic*.
 There is no natural moment to ask, and a modal on every download would ruin the feature that
 the demo is built around. Options are a default-with-override (send immediately, offer to
@@ -483,11 +531,27 @@ re-route from the popup — depends on RES-3), a per-send choice only where a UI
 (context menu, popup), or routing rules (F3) doing this without asking at all. **Settle this
 before writing code**; the wrong answer here makes the product worse.
 
+**2026-09-09 — Rejected; both halves resolved elsewhere.** The card's own text called the design
+question "the whole card": interception is automatic, so there is no natural moment to ask, and a
+modal per download would ruin the feature. That question is now moot rather than answered.
+
+- **"Ask" is unnecessary.** The reason to ask was that rules routinely got it wrong, and they did
+  because they matched on the URL. They now match on the release name and the originating site, so
+  the automatic answer is usually the right one.
+- **"Show" is BUG-38**, which stays open and is one field: `Task/Query` already returns `move` and
+  `path`.
+
+Nothing is left that this card would carry on its own.
+
+**2026-09-09 — and the "show" half is now Done too** (BUG-38): the destination is on every task
+card, folded to its last two segments with the full path in the tooltip. Nothing is left of this
+card in any form.
+
 ---
 
 ### RES-4 — Can File Station move a finished download, and at what cost to seeding?
 
-**Size:** M · **Area:** api/research · **Status:** Backlog
+**Size:** M · **Area:** api/research · **Status:** Rejected
 **Depends on:** RES-3 (which confirms Download Station itself has no move call)
 
 Download Station's own API has no set-destination call, but **File Station is a separate API
@@ -530,6 +594,174 @@ and detach the task from its files"), not a generic "are you sure?".
 full disk or a misfiled download; the reason to refuse is that we would be handing a browser
 extension the ability to move files anywhere on the NAS. Weigh both before writing code, and
 record the decision either way.
+
+**2026-09-09 — probably answerable without ever calling File Station.** Two cheaper windows
+were identified upstream of this one (GAP-14): routing a `.torrent` on the real content name
+before the task is created, and correcting a magnet's destination during the metadata stall
+(RES-6). If those land, the remaining File Station case is "the user changed their mind after
+bytes were written", which is rare enough that the permission cost argued for above almost
+certainly wins. Do GAP-14 first and re-read this card afterwards — it may close as Rejected
+rather than being built.
+
+**2026-09-09 — Rejected.** The reason to build it was "the user changed their mind after the fact".
+The reason not to is unchanged and now better supported: it means granting a browser extension the
+ability to move arbitrary files on the NAS, and moving a completed torrent's files detaches the
+task and breaks seeding, which on a private tracker costs ratio.
+
+What tipped it: routing on the real content name (BUG-47) removes most of the "wrong folder"
+cases this was meant to repair, and the endpoint census found that the one competitor holding File
+Station credentials uses exactly one function, `func=stat`, and never moves a file
+(`docs/competitor-routing-teardown.md` section E). Nobody in this category does it, the cost is a
+permission the user should not have to grant, and the need shrank.
+
+Reopen only for a concrete user report of a full disk or a misfiled download that routing could
+not have prevented.
+
+---
+
+### GAP-14 — Re-route a download after it has started — which windows actually exist
+
+**Size:** L · **Area:** api/background · **Status:** Rejected
+**Umbrella for:** BUG-47 (name source), RES-6 (magnet metadata window), RES-3 and RES-4 (the
+post-hoc move), GAP-6 (making the destination visible at all)
+
+"Change the folder after the download started" is one sentence describing three different
+problems with three different answers. This card exists so the product decides which of them
+it is promising, before any UI implies all three.
+
+**Window 1 — before the task is created. Free, and we are not using it.**
+For a `.torrent` the browser already holds the file: `sendTorrentUrlToNas` fetches the blob and
+sniffs its first two bytes. The info dictionary's `name` is the real content name, so the rule
+that decides the destination can be evaluated against the actual release rather than the URL
+slug. No NAS call, no new permission, no risk. This is the single biggest improvement available
+and it is tracked as BUG-47.
+
+**Window 2 — the metadata stall, magnets only. Plausible, unproven.**
+A magnet enters Download Station in state 103 with `files: 0` and no payload while metadata is
+fetched. If the resolved name surfaces in `Task/Query.source_name` during that window, the
+destination can be corrected by `Remove` + `AddUrl` with the right `move` — nothing has been
+downloaded, so nothing is lost. Needs hardware confirmation: RES-6.
+
+**Window 3 — after bytes have landed. Expensive, and probably never.**
+Download Station has no set-destination call (RES-3). Only File Station can move the files, and
+that detaches the task, breaks seeding, and costs ratio on a private tracker — plus it means
+granting a browser extension the ability to move arbitrary files on the NAS (RES-4).
+
+**Design position to hold.** Windows 1 and 2 are *routing decided before any bytes land*, not
+moving. Never present them as "move the folder" — that phrasing promises window 3, and a user
+who believes it exists will go looking for it after the download completes, which is the one
+moment we cannot help them. If window 3 stays closed, say so in the UI with a reason, the way
+RES-3 already argues.
+
+**Acceptance criteria**
+
+- [ ] The product states explicitly which windows exist, and the UI copy matches.
+- [ ] No control or wording implies a capability the API does not have.
+- [ ] Whatever ships is verifiable by the user before it matters — see UX-19.
+
+**2026-09-09 — window 1 shipped; window 3 is now closed on evidence.** The `.torrent` half of
+window 1 is implemented (BUG-47): `readTorrentName` reads `info.name` out of the file we already
+fetch, and the destination is resolved against it. An endpoint census of all three competing
+Firefox clients found no post-add destination call anywhere — *Send To QNAP++* holds File Station
+credentials and uses exactly one function, `func=stat`, to check a folder exists. Nobody moves a
+file. Treat window 3 as closed unless RES-3 turns up something on hardware, and say so in the UI
+rather than leaving a hole where a control looks like it should be. Full census:
+`docs/competitor-routing-teardown.md` section E.
+
+**2026-09-09 — Rejected, with one window shipped and one deferred.** The product owner excluded
+post-hoc moves outright ("send to one folder then move it when it finishes — leave that out").
+That was the right call and the card can close, but only because the useful part of it was not
+that window:
+
+- **Window 1 shipped.** A `.torrent` is routed on its own `info.name`, read from the bytes the
+  browser already fetched (BUG-47), and a magnet on the page it was clicked on. No moving
+  required; the destination is simply correct the first time.
+- **Window 2 deferred** to RES-6 — hardware-blocked, and adjacent enough to the excluded idea that
+  it does not get revived without a reason.
+- **Window 3 rejected** — RES-4.
+
+The design position stands and is why this closes cleanly rather than lingering: windows 1 and 2
+are *routing decided before any bytes land*, not moving. Nothing in the UI should suggest
+otherwise.
+
+---
+
+### RES-6 — Is there a safe re-route window while a magnet is fetching metadata?
+
+**Size:** M · **Area:** api/research · **Status:** Deferred
+**Depends on:** RES-3 · **Feeds:** GAP-14 window 2, BUG-47 (magnet half)
+
+A magnet is the case where routing is weakest — the only name available at send time is the
+optional `dn` parameter — and also the case where the NAS learns the real name a few seconds
+later. This card establishes whether that gap can be used.
+
+Recorded from earlier hardware work: a magnet parks in state 103 with `files: 0` until metadata
+arrives, and `Task/Query` exposes `source_name` alongside `move`, `path`, `progress` and
+`down_size` (`src/api/schema.d.ts:40-71`).
+
+**Questions, in the order that decides whether anything gets built:**
+
+- [ ] Does `source_name` change from the magnet URI to the real torrent name once metadata
+      resolves, and is there any other field that carries it sooner?
+- [ ] Is state 103 reliably "metadata only" — do `progress` and `down_size` stay at 0 until
+      metadata is in, so a re-add provably discards nothing?
+- [ ] What does `Remove(clean=1)` + `AddUrl` of the same magnet at that moment cost? Re-announce
+      delay, tracker rate-limiting, a duplicate task, a changed hash in the task list?
+- [ ] How long is the window in practice, and what happens if metadata never resolves — does the
+      task have to be left where it was, and is that visible to the user?
+
+**Known blocker on our own hardware.** Magnets do not resolve metadata at all on
+`192.168.88.185` — both test magnets sat in state 103 with `files: 0` for minutes (2026-06-19),
+which looks like no outbound UDP/DHT. This research needs either a NAS with working DHT or a
+magnet whose tracker is reachable over HTTP; a `.torrent` upload is not a substitute, because
+its metadata is already embedded and the window under test never opens.
+
+**If the answer is no,** magnet routing is permanently limited to `dn`, and UX-18 must say so
+plainly rather than leaving users to discover it one silent non-match at a time.
+
+**2026-09-09 — Deferred.** Blocked on hardware: magnets do not resolve metadata at all on
+`192.168.88.185`, so the window this card is about never opens where we can watch it. It is also
+adjacent to the post-hoc move the owner excluded, which means it does not get picked up
+opportunistically.
+
+Its value is narrow but real and unclaimed: it is the only path by which a magnet could ever be
+routed on its actual content name. Everything else about magnets is already handled — `dn` when
+present, the originating page's domain when not.
+
+---
+
+### GAP-15 — A redirecting download URL is handed to the NAS unresolved
+
+**Size:** S · **Area:** background/api · **Status:** Backlog
+**Files:** `src/api/client.ts` (`addUrl`), `src/background/menus.ts`, `src/background/magnetHandler.ts`
+
+*Send To QNAP++* fetches a link itself and forwards `response.url` — the address after redirects —
+rather than what the user clicked, with a comment naming a real case (`itorrents.org` redirecting
+to `itorrents.net`) where Download Station's own fetcher does not follow and the task lands dead
+(`plus/SendLink.js:566-570`, `docs/competitor-routing-teardown.md` section F).
+
+Our `.torrent` path is already immune: we fetch in the browser and upload the file, so a redirect
+is resolved before the NAS ever sees anything. `AddUrl` is not — a plain HTTP link goes to the NAS
+exactly as the page wrote it. Magnets are unaffected.
+
+**Establish before building.** It is not known whether QNAP's fetcher follows redirects; if it
+does, this is nothing. A HEAD or ranged GET before `AddUrl` costs a round trip on every ordinary
+download, so it is only worth it if the failure is real.
+
+**Acceptance criteria**
+
+- [ ] Confirmed on hardware whether Download Station follows a 30x on an `AddUrl` target.
+- [ ] If it does not, the URL is resolved before sending, without adding a request to the common
+      case where no redirect occurs.
+- [ ] A dead task caused by a redirect is distinguishable from a dead task caused by anything
+      else — silence here is what makes it expensive.
+
+**2026-09-09 — filed under routing by accident; it is send correctness.** Nothing here depends on
+a rule or a destination: a redirecting URL handed to the NAS produces a dead task whatever folder
+it was going to. Keeping it in the routing list made that list look longer than it is. Unchanged
+otherwise — still small, still gated on one question to a real NAS.
+
+---
 
 ### GAP-7 — Global NAS transfer rates in popup header (`↓ 24.8 MB/s ↑ 3.1 MB/s`)
 

@@ -199,8 +199,17 @@ This is the biggest functional differentiator among QNAP FF clients.
       `sendAndNotify`) and the Chooser pre-fill (`Chooser.svelte`) now resolve the destination
       from rules via `sendTorrentUrlToNas`'s `folder` arg. Popup quick-add (`CreateUrls.svelte`)
       keeps its explicit folder picker, so rules are intentionally not forced there.
-- [ ] *(follow-up)* Rule reorder (drag/up-down) and gate save on an invalid rule destination.
-- [ ] *(follow-up)* E2E: rule matches → correct `move` sent (matcher is unit-covered).
+- [x] *(follow-up)* Rule reorder (up/down, keyboard-accessible) and save gated on an invalid rule
+      destination — shipped with the BUG-43 card redesign.
+- [x] *(follow-up)* E2E: rule matches → correct `move` sent (`tests/e2e/routing-rules.spec.ts`).
+- [x] **The matched string is no longer the URL** (2026-09-09, BUG-46/BUG-47). The design above
+      said "`type` from the link kind we already detect when sending", and that is now literally
+      true — `classifySource` produces one answer for both the transport and the router. The name
+      a pattern is compared against comes from the `.torrent`'s own `info.name`
+      (`src/lib/torrentMeta.ts`) or, failing that, from `DownloadItem.filename`; only a magnet
+      still falls back to `dn`. Matching on the URL's last path segment was the reason `*.mkv`
+      never fired on a torrent. No competitor does this — `docs/competitor-routing-teardown.md`.
+- [ ] *(open)* Nothing lets a user verify a rule before trusting it — UX-19 on the settings board.
 
 ---
 
@@ -338,3 +347,138 @@ reality. Goal: a listing that converts as well as competitors' but leads with ou
 - External-CDN auth-helper manifest (Google Drive) for cookie/referer injection — dubious
   trust model; only consider a fully-local equivalent with explicit consent.
 - Hardcoded numeric state strings (`state === "5"`) and global `var` soup.
+
+---
+
+## F8 — Routing that expresses the two needs people actually have
+
+Agreed 2026-09-09 after the engine was fixed to match on the real content name (BUG-46/47) and
+`docs/routing-coverage.md` made the gaps measurable. The rule set exists; what it cannot express
+is what people want from it.
+
+**The two needs, stated by the product owner:**
+
+1. **"Is this video or not" → a folder.** Not "the name matches `*.mkv`" — the *class* of content.
+2. **"Where am I downloading it from" → a folder.** The source site.
+
+Everything else in routing is secondary and gets no investment until these work.
+
+### Why neither works today
+
+**Need 1.** One rule holds one `namePattern`, so "video → Movies" is eight rules — one per
+extension — each with its own three fields and folder picker. Worse, a multi-file torrent's
+`info.name` is the *directory* (`Some.Show.S01.1080p.WEB-DL`), which has no extension at all, so
+none of those eight rules fire on the most common video torrent there is. Asserted as row 6 of the
+matrix in `docs/routing-coverage.md`.
+
+**Need 2.** `getHost` returns `null` for `magnet:`, so a domain rule never matches a magnet — the
+single most common way a download starts. The page origin is not unavailable: the content script
+already sends `pageUrl` (`src/content/magnet.ts:231`) and `src/background/index.ts:120` drops it
+on the floor. For a `.torrent` the host matched is the file's, not the site's, so a tracker serving
+from a mirror or CDN defeats the rule; `item.referrer` and `tab?.url` are both available and both
+unused.
+
+### Scope decision — content class is not tied to torrents
+
+The "is it video" condition is designed source-agnostic from the start, so it applies to whatever
+paths exist now and to any added later. Intercepting ordinary browser downloads (RES-5) stays a
+separate decision on the gaps board: until it lands, a `.mp4` clicked on a web page still never
+reaches the NAS, and no rule can change that.
+
+### Wave 1 — "where from" starts working
+
+- [x] **Domain matches the file host *or* the originating page host.** `RoutingInput` carries the
+      origin; `handleMagnetAdd` accepts the `pageUrl` it is already sent; `downloads.ts` passes
+      `item.referrer`; the context menu passes `tab?.url`. Closes domain rules for magnets and for
+      mirror/CDN-served torrents in one change.
+- [x] **A list of values in one field.** `mkv mp4 avi`, `rutracker.org nnmclub.to` — OR within a
+      field, AND between fields. Eight rules collapse into one. A token without a wildcard is an
+      extension (`mkv` = `.mkv` = `*.mkv`); `*` is for everything else. Deliberately *not*
+      "extension or substring" the way `++` does it, because that makes `mp4` quietly match
+      `mp4converter.zip`. This was the only place its engine beat ours.
+- [x] BUG-54 — the popup `.torrent` upload stops bypassing rules.
+- [x] BUG-56 — the test stand stops advertising cases it cannot exercise.
+
+**2026-09-09 — Wave 1 half done, and the routing code was cleaned out first.** Four crutches went
+before any feature landed on top of them:
+
+- **Two classifiers became one.** `isTorrentSource` and `classifyUrl` lived in different modules
+  and disagreed; both are now `src/lib/sourceKind.ts`, which is dependency-free so the router and
+  the sender can each import it without importing the other. `classifyUrl` no longer exists.
+- **The matcher stopped re-implementing the storage contract.** It used to re-trim destinations,
+  re-normalise domains and skip empty rules on every call — a silent second copy of
+  `sanitizeRoutingRules`, which already runs at both boundaries. It now only matches.
+- **`serializeRoutingRuleDraft` stopped being the third copy** of "trim, normalise the domain,
+  drop it for magnets": it builds the object and hands it to the sanitizer.
+- **`sendTorrentUrlToNas` stopped faking the destination** by spreading a modified `Settings`.
+  `addTorrent` takes `{ targetFolder }`, the way `addUrl` always has.
+- The router also stopped knowing what a magnet URI looks like: `magnetDisplayName` lives with the
+  other link knowledge, and callers supply the name.
+
+**2026-09-09 — Wave 1 complete, and Wave 2 was cut on the owner's call.** "First phase:
+user-friendly rules, extensions are enough." A list in one field already expresses "video →
+Movies" as `mkv mp4 avi` on one line, and a season pack as `*S0?E0?`, so a built-in content-kind
+condition buys only "we maintain the extension list instead of you". Everything below is parked
+until extension rules have been lived with; the argument for reviving it is someone finding
+themselves appending extensions to a rule.
+
+Also cut for the same reason: reading the torrent's file list to classify a multi-file pack (a
+real differentiator, but `*S0?E0?` gets there for a quarter of the cost), and the rule tester
+(nobody has one; you notice its absence only when something is already wrong).
+
+### Wave 2 — "is it video" becomes a concept — PARKED
+
+- [ ] **A "content kind" condition** — Video / Audio / Images / Archives / Documents / Software /
+      Any, backed by an extension list *we* maintain. The rule reads "Video → Multimedia/Movies" in
+      one line. Matches on `info.name` for a single-file torrent, `dn` for a magnet, the file name
+      for a direct link.
+- [ ] **Classify a multi-file torrent by its contents.** `torrentMeta.ts` already walks the info
+      dictionary; read `files[].path` and `length` too. "Video" means *the largest file in the
+      torrent is video* — more robust than "contains one", because every pack carries `.nfo`,
+      `.srt` and a `sample`. Bounded like the rest of that parser. **Wave 2 is not done without
+      this**: without it the condition fails on season packs, which is the case it exists for.
+      No competitor does this.
+
+### Wave 3 — it can be checked — PARKED except the labels
+
+- [x] UX-18, trimmed to what the list syntax needs: column headers over the three condition
+      fields (a placeholder stops being a label the moment anything is typed), and one hint line
+      showing the syntax with real examples. The fields are now "Source", "Name or extension" and
+      "Site" — "Site" because it is the page as much as the host.
+- [ ] UX-19 — the rule tester. Parked.
+
+### What is left in routing, triaged by cost (2026-09-09)
+
+Re-triaged on the owner's instruction: keep what is easy and does not require contortions, close
+the rest rather than leaving it to rot in a backlog. The boards carry the reasoning per card; this
+is the index.
+
+| Card | What | Cost | Status |
+|---|---|---|---|
+| BUG-52 | Move the delete control away from the reorder arrows — 32px apart today | easy | Backlog |
+| BUG-55 | Two routing edge cases in the unit suite; no seam needed | easy | Backlog |
+| UX-19 | The rule tester | medium | Deferred |
+| RES-6 | Magnet metadata window | medium | Deferred — hardware |
+| BUG-38, UX-18, BUG-46..51, 53, 54, 56 | — | — | Done |
+| BUG-57, UX-20, UX-21, UX-22, GAP-6, GAP-14, RES-3, RES-4 | — | — | Rejected, reasons on the cards |
+
+Two easy cards is the whole remaining routing surface. GAP-15 (resolve redirects before `AddUrl`)
+and RES-5 (intercept ordinary downloads) were in this list and should not have been: neither
+depends on a rule or a destination. They live with send correctness and with features
+respectively.
+
+Three easy cards and two small ones are the whole remaining surface. Nothing in it blocks anything
+else, and nothing in it is a prerequisite for the parked Wave 2.
+
+**BUG-38 was pulled forward the same day and shipped**, on the observation that the destination
+belongs on the task card rather than in a details panel. It changes the shape of what is left: the
+destination is now visible for every task, continuously, which is a better answer to "did my rule
+work" than any notification would have been and most of what the deferred tester (UX-19) was for.
+No competitor does it — see the addendum in `docs/competitor-routing-teardown.md`.
+
+### Deliberately out
+
+Post-hoc folder moves (GAP-14 window 3, RES-4) — excluded by the product owner. Per-rule
+mute/duplicate (UX-21), the borrowed editor affordances beyond hints (UX-22), "which rule sent
+this" in the task list (UX-20, the tester answers it better), and the quick-add folder picker,
+which predates routing entirely and is left alone.

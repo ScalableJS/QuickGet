@@ -269,6 +269,51 @@ describe("context-menu torrent handling", () => {
     expect(calls.addTorrent).toBe(0);
   });
 
+  /**
+   * A tracker can answer with bytes bencoded enough to pass the sniff and still unreadable. The
+   * send must not route on nothing: the context menu has no `DownloadItem` to borrow a name from,
+   * so it degrades to the URL — which for a `.torrent` link names the metadata file, not the
+   * release. That is a real limit and it is asserted here rather than left to be rediscovered.
+   */
+  it("degrades to the URL's own name when the torrent's contents cannot be read", async () => {
+    seedChromeStorage(
+      createTestSettings({
+        NASdir: "/share/Multimedia/Default",
+        routingRules: [
+          { namePattern: "mkv", destination: "/share/Multimedia/Movies" },
+          { namePattern: "torrent", destination: "/share/Unresolved" },
+        ],
+      }),
+    );
+
+    let move: string | null = null;
+    server.use(
+      http.get("https://tracker.example.com/Some.Movie.2024.mkv.torrent", () =>
+        // Starts `d` + digit, so the sniff accepts it; the structure is nonsense.
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async ({ request }) => {
+        const body = await request.text();
+        move = /name="move"\r?\n\r?\n([^\r\n]*)/.exec(body)?.[1] ?? null;
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await handleContextMenuClick({
+      editable: false,
+      linkUrl: "https://tracker.example.com/Some.Movie.2024.mkv.torrent",
+      menuItemId: "quickget-send-link",
+    });
+
+    // Not Movies: without the file's own `info.name` the release name does not exist here.
+    expect(move).toBe("Unresolved");
+  });
+
   it("routes the fetched torrent to the folder its rule selects", async () => {
     seedChromeStorage(
       createTestSettings({

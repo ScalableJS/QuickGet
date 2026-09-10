@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { showStatus } from "@/popup/components";
+import { createTestSettings } from "../../../../tests/fixtures/settings.js";
+import { seedChromeStorage } from "../../../../tests/mocks/chrome.js";
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
 import { uploadTorrent } from "./torrentUpload.js";
@@ -23,6 +25,7 @@ describe("torrentUpload", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockAddTorrent.mockReset();
+    seedChromeStorage(createTestSettings({ NASdir: "Multimedia/Default" }));
     vi.mocked(getApiClient).mockResolvedValue({
       addTorrent: mockAddTorrent,
     } as any);
@@ -43,7 +46,7 @@ describe("torrentUpload", () => {
     const onSuccess = vi.fn();
     await uploadTorrent(file, { onSuccess });
 
-    expect(mockAddTorrent).toHaveBeenCalledWith(file);
+    expect(mockAddTorrent).toHaveBeenCalledWith(file, { targetFolder: "Multimedia/Default" });
     expect(requestMonitoring).toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalled();
   });
@@ -78,4 +81,30 @@ describe("torrentUpload", () => {
 
     expect(showStatus).toHaveBeenCalledWith("Error: Network disconnect", "error");
   });
+
+  /**
+   * The same torrent clicked on a tracker obeys routing rules; dropped into the popup it used to
+   * ignore them and land in the global Target. The file itself carries the release name.
+   */
+  it("routes an uploaded torrent by its content name, like every other send path", async () => {
+    seedChromeStorage(
+      createTestSettings({
+        NASdir: "Multimedia/Default",
+        routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }],
+      }),
+    );
+    const torrent = new File([buildTorrentBytes("Some.Movie.2024.mkv")], "1234.torrent", {
+      type: "application/x-bittorrent",
+    });
+    mockAddTorrent.mockResolvedValueOnce({ added: true });
+
+    await uploadTorrent(torrent);
+
+    expect(mockAddTorrent).toHaveBeenCalledWith(torrent, { targetFolder: "Multimedia/Movies" });
+  });
 });
+
+/** A minimal single-file torrent: only `info.name` matters to routing. */
+function buildTorrentBytes(contentName: string): string {
+  return `d4:infod6:lengthi1e4:name${contentName.length}:${contentName}12:piece lengthi16384eee`;
+}

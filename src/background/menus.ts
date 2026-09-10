@@ -5,12 +5,12 @@
 
 import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
-import { classifyUrl, resolveDestination } from "@lib/routingRules.js";
+import { resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
-import { isTorrentSource, sendTorrentUrlToNas } from "@lib/torrentSender.js";
-
-import { ensureMonitoring } from "./alarms.js";
+import { classifySource } from "@lib/sourceKind.js";
+import { sendTorrentUrlToNas } from "@lib/torrentSender.js";
 import { markConfigurationProblem } from "./actions.js";
+import { ensureMonitoring } from "./alarms.js";
 import { notifyDirect } from "./notifier.js";
 
 /**
@@ -76,15 +76,27 @@ export async function handleContextMenuClick(
  */
 async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
   const settings = await loadSettings();
-  const targetFolder = resolveDestination({ url, kind: classifyUrl(url) }, settings.routingRules, settings.NASdir);
-  console.log("[QuickGet] context menu send", { url, torrent: isTorrentSource(url), targetFolder });
+  // One classification decides both the transport and the routing, so the two can never
+  // disagree about what a link is — a `dl.php` torrent used to be uploaded as a torrent and
+  // routed as a plain URL at the same time.
+  const kind = classifySource(url);
+  const route = (name?: string) => {
+    const targetFolder = resolveDestination(
+      { url, kind, name, pageUrl: referrer },
+      settings.routingRules,
+      settings.NASdir,
+    );
+    console.log("[QuickGet] context menu send", { url, kind, name, pageUrl: referrer, targetFolder });
+    return targetFolder;
+  };
 
   try {
-    if (isTorrentSource(url)) {
-      await sendTorrentUrlToNas(settings, url, targetFolder, referrer);
+    if (kind === "torrent") {
+      // Resolved inside: the release name only exists once the .torrent has been fetched.
+      await sendTorrentUrlToNas(settings, url, route, referrer);
     } else {
       const client = createApiClient({ settings });
-      await client.addUrl(url, { targetFolder });
+      await client.addUrl(url, { targetFolder: route() });
     }
 
     void ensureMonitoring();

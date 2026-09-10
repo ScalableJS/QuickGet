@@ -5,7 +5,8 @@
 
 import type { ThemeMode } from "./config.js";
 
-const media = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+const media =
+  typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
 let autoListener: ((e: MediaQueryListEvent) => void) | null = null;
 

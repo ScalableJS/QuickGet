@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestSettings } from "../../tests/fixtures/settings.js";
 import {
   createDownloadItem,
+  getChromeActionMock,
   getChromeDownloadsMock,
   getChromeNotificationsMock,
-  getChromeActionMock,
   getChromeScriptingMock,
   getChromeTabsMock,
   seedChromeSessionStorage,
@@ -137,6 +137,42 @@ describe("download interception", () => {
 
     expect(downloads.cancel).not.toHaveBeenCalled();
     expect(downloads.pause).not.toHaveBeenCalled();
+  });
+
+  /**
+   * When the torrent's own contents cannot be read, this path — unlike the context menu — still
+   * has a name: the one Chrome derived from `Content-Disposition`. It is the only meaningful name
+   * an opaque `dl.php` endpoint ever has, and dropping it would route the download on nothing.
+   */
+  it("routes on the filename Chrome derived when the torrent's contents cannot be read", async () => {
+    seedChromeStorage(createTestSettings({ routingRules: [{ namePattern: "mkv", destination: "Multimedia/Movies" }] }));
+
+    let move: string | null = null;
+    server.use(
+      http.get("https://tracker.example.com/dl.php", () =>
+        HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+          headers: { "content-type": "application/x-bittorrent" },
+        }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async ({ request }) => {
+        const body = await request.text();
+        move = /name="move"\r?\n\r?\n([^\r\n]*)/.exec(body)?.[1] ?? null;
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await handleDownloadCreated(
+      createDownloadItem({
+        url: "https://tracker.example.com/dl.php?id=1",
+        finalUrl: "https://tracker.example.com/dl.php?id=1",
+        filename: "/Users/someone/Downloads/Some.Movie.2024.mkv",
+      }),
+    );
+
+    expect(move).toBe("Multimedia/Movies");
   });
 
   it("leaves non-torrent downloads to the browser", async () => {
@@ -351,35 +387,33 @@ describe("download interception", () => {
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])(
-    "does not intercept when a live NAS connection cannot be established (suppressLocalTorrentFile=%s)",
-    async (suppressLocalTorrentFile) => {
-      seedChromeStorage(createTestSettings({ suppressLocalTorrentFile }));
-      const item = createDownloadItem();
-      const suggest = vi.fn();
-      let torrentFetches = 0;
-      server.use(
-        http.get(TORRENT_URL, () => {
-          torrentFetches += 1;
-          return HttpResponse.arrayBuffer(new ArrayBuffer(0));
-        }),
-        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
-          HttpResponse.error(),
-        ),
-      );
+  it.each([
+    false,
+    true,
+  ])("does not intercept when a live NAS connection cannot be established (suppressLocalTorrentFile=%s)", async (suppressLocalTorrentFile) => {
+    seedChromeStorage(createTestSettings({ suppressLocalTorrentFile }));
+    const item = createDownloadItem();
+    const suggest = vi.fn();
+    let torrentFetches = 0;
+    server.use(
+      http.get(TORRENT_URL, () => {
+        torrentFetches += 1;
+        return HttpResponse.arrayBuffer(new ArrayBuffer(0));
+      }),
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => HttpResponse.error()),
+    );
 
-      reserveDownloadForHold(item);
-      expect(handleDeterminingFilename(item, suggest)).toBe(true);
-      await handleDownloadCreated(item);
+    reserveDownloadForHold(item);
+    expect(handleDeterminingFilename(item, suggest)).toBe(true);
+    await handleDownloadCreated(item);
 
-      expect(suggest).toHaveBeenCalledTimes(1);
-      expect(torrentFetches).toBe(0);
-      expect(downloads.pause).not.toHaveBeenCalled();
-      expect(downloads.cancel).not.toHaveBeenCalled();
-      expect(downloads.resume).not.toHaveBeenCalled();
-      expect(downloads.erase).not.toHaveBeenCalled();
-    },
-  );
+    expect(suggest).toHaveBeenCalledTimes(1);
+    expect(torrentFetches).toBe(0);
+    expect(downloads.pause).not.toHaveBeenCalled();
+    expect(downloads.cancel).not.toHaveBeenCalled();
+    expect(downloads.resume).not.toHaveBeenCalled();
+    expect(downloads.erase).not.toHaveBeenCalled();
+  });
 
   it("sends the torrent even though a settings password is set", async () => {
     // The settings lock guards the settings screen, never the hand-off. A download starts when

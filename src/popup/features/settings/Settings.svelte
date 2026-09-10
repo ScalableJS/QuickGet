@@ -1,5 +1,7 @@
 <script lang="ts">
   import { tick, untrack } from "svelte";
+  import ChevronDown from "~icons/lucide/chevron-down";
+  import ChevronUp from "~icons/lucide/chevron-up";
   import Monitor from "~icons/lucide/monitor";
   import Moon from "~icons/lucide/moon";
   import Plus from "~icons/lucide/plus";
@@ -10,7 +12,14 @@
   import { applyTheme } from "@lib/applyTheme.js";
   import { DEFAULTS, type Settings, type ThemeMode } from "@lib/config.js";
   import { getErrorMessage } from "@lib/errors.js";
-  import type { RoutingMatchType } from "@lib/routingRules.js";
+  import {
+    type RoutingRule,
+    type RoutingRuleDraft,
+    serializeRoutingRuleDraft,
+    toRoutingRuleDraft,
+    validateRoutingRuleDraft,
+  } from "@lib/routingRules.js";
+  import type { SourceKind } from "@lib/sourceKind.js";
   import { findConfigProblem } from "@lib/configHealth.js";
   import { connectionFailure, type ConnectionState, readConnectionState } from "@lib/connectionHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
@@ -127,12 +136,16 @@
     return REQUIRED_FIELDS.find((field) => errors[field.id])?.id;
   }
 
+  let routingRuleDrafts = $state<RoutingRuleDraft[]>([]);
+  let routingErrors = $state<Record<string, { destination?: string; conditions?: string }>>({});
+
   function settingsSignature(): string {
     // The theme is applied and stored the moment it is picked, so it must not make the form
     // dirty — a preference that takes effect immediately has nothing left to save.
-    const { theme: _appliedImmediately, ...pending } = form;
+    const { theme: _appliedImmediately, routingRules: _storedRules, ...pending } = form;
     return JSON.stringify({
       form: pending,
+      routingRuleDrafts,
       serverUrl,
       lockPasswordInput,
       confirmLockPasswordInput,
@@ -170,27 +183,95 @@
     }
   }
 
-  function addRule(): void {
-    form = {
-      ...form,
-      routingRules: [...form.routingRules, { namePattern: "", domain: "", destination: "" }],
-    };
+  /** Mirrors the id `Field` derives for its error message, so siblings can point at it. */
+  function conditionErrorId(index: number): string {
+    return `routing-${index}-namePattern-error`;
+  }
+
+  function clearDraftError(id: string, field: "destination" | "conditions"): void {
+    if (!routingErrors[id]) return;
+    const current = { ...routingErrors[id] };
+    delete current[field];
+    if (!current.destination && !current.conditions) {
+      const next = { ...routingErrors };
+      delete next[id];
+      routingErrors = next;
+    } else {
+      routingErrors = { ...routingErrors, [id]: current };
+    }
+  }
+
+  async function addRule(): Promise<void> {
+    const newDraft = toRoutingRuleDraft({ destination: "" });
+    routingRuleDrafts = [...routingRuleDrafts, newDraft];
+    // The new card appears at the bottom of a scrolling list while focus stays on the button.
+    // Without moving it, adding a rule is indistinguishable from a no-op without sight.
+    const index = routingRuleDrafts.length - 1;
+    await tick();
+    document.getElementById(`routing-${index}-type`)?.focus();
+    showStatus(`Rule ${index + 1} added`, "info", { autoHideMs: 2000 });
   }
 
   function removeRule(index: number): void {
-    form.routingRules.splice(index, 1);
+    const removed = routingRuleDrafts[index];
+    routingRuleDrafts.splice(index, 1);
+    if (removed && routingErrors[removed.id]) {
+      const next = { ...routingErrors };
+      delete next[removed.id];
+      routingErrors = next;
+    }
     // Removing a row is silent otherwise: focus moves and nothing says what happened.
     showStatus(`Rule ${index + 1} removed`, "info", { autoHideMs: 2000 });
   }
 
+  /**
+   * Priority order is the whole meaning of a rule set — first match wins — so changing it
+   * cannot be silent, and it cannot cost the keyboard user their place: the button that did the
+   * move is disabled the moment the rule reaches an end, and Chrome then drops focus to <body>.
+   */
+  async function moveRule(index: number, delta: -1 | 1): Promise<void> {
+    const target = index + delta;
+    if (target < 0 || target >= routingRuleDrafts.length) return;
+
+    const copy = [...routingRuleDrafts];
+    const moved = copy[index];
+    copy[index] = copy[target];
+    copy[target] = moved;
+    routingRuleDrafts = copy;
+
+    const direction = delta < 0 ? "up" : "down";
+    showStatus(`Rule ${index + 1} moved ${direction} — now rule ${target + 1}`, "info", { autoHideMs: 2000 });
+
+    await tick();
+    focusMoveControl(target, direction);
+  }
+
+  /** Prefer the button that was just used; fall back to its sibling when it is now disabled. */
+  function focusMoveControl(index: number, direction: "up" | "down"): void {
+    const preferred = document.getElementById(`routing-${index}-move-${direction}`);
+    if (preferred instanceof HTMLButtonElement && !preferred.disabled) {
+      preferred.focus();
+      return;
+    }
+    document.getElementById(`routing-${index}-move-${direction === "up" ? "down" : "up"}`)?.focus();
+  }
+
   function setRuleType(index: number, raw: string): void {
-    form.routingRules[index].type = raw === "" ? undefined : (raw as RoutingMatchType);
+    const nextType = raw === "" || raw === "all" ? "all" : (raw as SourceKind);
+    routingRuleDrafts[index].type = nextType;
+    clearDraftError(routingRuleDrafts[index].id, "conditions");
   }
 
   let importInput = $state<HTMLInputElement | null>(null);
 
   function exportBackup(): void {
-    const json = exportSettings($state.snapshot(form));
+    const backupForm = {
+      ...form,
+      routingRules: routingRuleDrafts
+        .map(serializeRoutingRuleDraft)
+        .filter((r): r is RoutingRule => r !== null),
+    };
+    const json = exportSettings($state.snapshot(backupForm));
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -235,25 +316,17 @@
 
     Object.assign(form, pendingImport.patch);
     serverUrl = composeServerUrl(form);
+    routingRuleDrafts = form.routingRules.map((r) => toRoutingRuleDraft(r));
+    routingErrors = {};
     pendingImport = null;
     showStatus("Settings imported — review and Save", "success", { autoHideMs: 2500 });
-  }
-
-  // Drop incomplete rules and normalise blank conditions to "no condition".
-  function normalizeRoutingRules(): void {
-    form.routingRules = form.routingRules
-      .map((r) => ({
-        type: r.type,
-        namePattern: r.namePattern?.trim() ? r.namePattern.trim() : undefined,
-        domain: r.domain?.trim() ? r.domain.trim() : undefined,
-        destination: (r.destination ?? "").trim(),
-      }))
-      .filter((r) => r.destination !== "");
   }
 
   export async function load(): Promise<void> {
     try {
       form = await loadSettings();
+      routingRuleDrafts = form.routingRules.map((r) => toRoutingRuleDraft(r));
+      routingErrors = {};
       serverUrl = composeServerUrl(form);
 
       connection = await readConnectionState(form);
@@ -299,7 +372,41 @@
         return;
       }
 
-      normalizeRoutingRules();
+      // Validate all routing rule drafts before touching storage or form
+      const newRoutingErrors: Record<string, { destination?: string; conditions?: string }> = {};
+      let firstInvalidDraftId: string | null = null;
+      let firstInvalidFieldId: string | null = null;
+
+      for (let i = 0; i < routingRuleDrafts.length; i++) {
+        const draft = routingRuleDrafts[i];
+        const validation = validateRoutingRuleDraft(draft);
+        if (!validation.valid) {
+          newRoutingErrors[draft.id] = validation.errors;
+          if (!firstInvalidDraftId) {
+            firstInvalidDraftId = draft.id;
+            firstInvalidFieldId = validation.errors.destination
+              ? `routing-${i}-destination`
+              : `routing-${i}-namePattern`;
+          }
+        }
+      }
+
+      if (firstInvalidDraftId) {
+        routingErrors = newRoutingErrors;
+        activeTab = "advanced";
+        await tick();
+        if (firstInvalidFieldId) {
+          document.getElementById(firstInvalidFieldId)?.focus();
+        }
+        showStatus("Fix the highlighted routing rule errors before saving", "error");
+        return;
+      }
+
+      routingErrors = {};
+      const serializedRules = routingRuleDrafts
+        .map(serializeRoutingRuleDraft)
+        .filter((r): r is RoutingRule => r !== null);
+      form.routingRules = serializedRules;
 
       // The settings lock is independent of the NAS credentials: it guards this screen, and
       // never the background hand-off. Turning it on is the only case that needs a password.
@@ -333,6 +440,9 @@
       lockWasEnabled = settingsLockEnabled;
       lockPasswordInput = "";
       confirmLockPasswordInput = "";
+
+      routingRuleDrafts = serializedRules.map((r) => toRoutingRuleDraft(r));
+      routingErrors = {};
 
       connection = await readConnectionState(form);
       editingConnection = false;
@@ -581,40 +691,146 @@
   <div class="routing-header flex items-center justify-between mb-[var(--space-2)]">
     <button type="button" class="add-rule inline-flex items-center gap-[var(--space-1)] p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
+  <!-- Said once for the whole section. It was on every rule card, which turned three rules into
+       three copies of the same paragraph. -->
   <Alert tone="hint">
     Route downloads to folders automatically. First matching rule wins. Unmatched downloads use the Target folder.
+    List several values in a field — <code>mkv mp4 avi</code>, <code>rutracker.org nnmclub.to</code> — and any one of
+    them matches. Use <code>*</code> for anything that is not an extension: <code>*S0?E0?*</code>, <code>*1080p*</code>.
   </Alert>
 
-  {#if form.routingRules.length === 0}
+  {#if routingRuleDrafts.length === 0}
     <p class="routing-empty text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target folder.</p>
   {:else}
-    {#each form.routingRules as rule, i (rule)}
-      <!-- Each rule is its own group with a name. Without it a screen reader reads three
-           unlabelled controls per rule, with nothing saying where one rule ends. -->
-      <fieldset class="routing-rule flex flex-col gap-[var(--space-1)] py-[var(--space-2)] border-0 m-0 p-0 min-w-0">
-        <legend class="visually-hidden sr-only">Rule {i + 1}</legend>
-        <div class="routing-conditions flex gap-[var(--space-1)] items-center">
-          <div class="routing-match-type flex-1 min-w-0">
-            <Select aria-label={`Rule ${i + 1} match type`} value={rule.type ?? ""} onchange={(e) => setRuleType(i, e.currentTarget.value)}>
-              <option value="">Any type</option>
-              <option value="url">URL</option>
-              <option value="magnet">Magnet</option>
-              <option value="torrent">.torrent</option>
-            </Select>
+    <div class="routing-rules-list flex flex-col gap-[var(--space-3)] mt-[var(--space-2)]">
+      {#each routingRuleDrafts as draft, i (draft.id)}
+        {@const draftError = routingErrors[draft.id]}
+        <fieldset
+          class={[
+            "routing-rule flex flex-col gap-[var(--space-2)] p-[var(--space-2)] rounded-[var(--radius)] border border-solid border-[var(--color-control-border)] bg-[var(--color-bg-alt)] transition-[border-color,box-shadow] duration-[var(--duration-fast)]",
+            (draftError?.destination || draftError?.conditions) && "!border-[var(--color-error)]"
+          ]}
+        >
+          <legend class="sr-only">Rule {i + 1}</legend>
+          <div class="routing-rule-header flex items-center justify-between pb-1 border-b border-solid border-[var(--color-control-border)]">
+            <!-- The legend above already names the group; repeating it would announce twice. -->
+            <span class="font-600 text-12px text-[var(--color-text)]" aria-hidden="true">Rule {i + 1}</span>
+            <!-- The destructive control is deliberately not in the same group as the two
+                 navigational ones: `↑ ↓ ✕` as three identical 28px buttons 4px apart put "reorder"
+                 and "delete for good" a mis-click away from each other, and there is no undo. -->
+            <div class="routing-rule-actions flex items-center gap-[var(--space-3)]">
+              <div class="flex items-center gap-1">
+                <IconButton
+                  id={`routing-${i}-move-up`}
+                  size="sm"
+                  aria-label={`Move rule ${i + 1} up`}
+                  title="Move up"
+                  disabled={i === 0}
+                  onclick={() => moveRule(i, -1)}
+                >
+                  <ChevronUp aria-hidden="true" />
+                </IconButton>
+                <IconButton
+                  id={`routing-${i}-move-down`}
+                  size="sm"
+                  aria-label={`Move rule ${i + 1} down`}
+                  title="Move down"
+                  disabled={i === routingRuleDrafts.length - 1}
+                  onclick={() => moveRule(i, 1)}
+                >
+                  <ChevronDown aria-hidden="true" />
+                </IconButton>
+              </div>
+              <IconButton
+                size="sm"
+                class="text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_12%,var(--color-bg-alt))]"
+                aria-label={`Remove rule ${i + 1}`}
+                title="Remove rule"
+                onclick={() => removeRule(i)}
+              >
+                <X aria-hidden="true" />
+              </IconButton>
+            </div>
           </div>
-          <div class="routing-text-field flex-1 min-w-0">
-            <Field placeholder="e.g. *.mkv" aria-label={`Rule ${i + 1} filename pattern`} bind:value={rule.namePattern} />
+
+          <!-- IF section: conditions -->
+          <div class="routing-conditions flex flex-col gap-[var(--space-1)]">
+            <div class="flex items-center justify-between text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">
+              <span>If</span>
+              <span class="text-11px font-normal normal-case">all filled conditions must match</span>
+            </div>
+            <!-- Headers rather than placeholders: a placeholder stops being a label the moment
+                 anything is typed, which is exactly when you need to know which field is which. -->
+            <div class="grid grid-cols-3 gap-[var(--space-1)] text-11px text-[var(--text-secondary)]" aria-hidden="true">
+              <span>Source</span>
+              <span>Name or extension</span>
+              <span>Site</span>
+            </div>
+            <div class="grid grid-cols-3 gap-[var(--space-1)]">
+              <div class="routing-match-type min-w-0">
+                <Select
+                  id={`routing-${i}-type`}
+                  size="sm"
+                  aria-label={`Rule ${i + 1} match type`}
+                  aria-invalid={draftError?.conditions ? "true" : undefined}
+                  aria-describedby={draftError?.conditions ? conditionErrorId(i) : undefined}
+                  value={draft.type}
+                  onchange={(e) => setRuleType(i, e.currentTarget.value)}
+                >
+                  <option value="all">Any type</option>
+                  <option value="url">URL</option>
+                  <option value="magnet">Magnet</option>
+                  <option value="torrent">.torrent</option>
+                </Select>
+              </div>
+              <div class="routing-text-field min-w-0">
+                <!-- The condition error belongs to the group, but it has to live on a control
+                     to be announced: `Field` renders it, and the other two point at it. -->
+                <Field
+                  id={`routing-${i}-namePattern`}
+                  size="sm"
+                  placeholder="mkv mp4 avi"
+                  aria-label={`Rule ${i + 1} name or extension`}
+                  error={draftError?.conditions}
+                  bind:value={draft.namePattern}
+                  oninput={() => clearDraftError(draft.id, "conditions")}
+                />
+              </div>
+              <div class="routing-text-field min-w-0">
+                <Field
+                  id={`routing-${i}-domain`}
+                  size="sm"
+                  placeholder="rutracker.org"
+                  aria-label={`Rule ${i + 1} site`}
+                  aria-invalid={draftError?.conditions ? "true" : undefined}
+                  aria-describedby={draftError?.conditions ? conditionErrorId(i) : undefined}
+                  bind:value={draft.domain}
+                  oninput={() => clearDraftError(draft.id, "conditions")}
+                />
+              </div>
+            </div>
+            {#if draft.type === "magnet"}
+              <p class="m-0 text-11px text-[var(--text-secondary)] italic">
+                A magnet has no site of its own, so Site matches the page it was clicked on.
+              </p>
+            {/if}
           </div>
-          <div class="routing-text-field flex-1 min-w-0">
-            <Field placeholder="e.g. *.site.com" aria-label={`Rule ${i + 1} domain`} bind:value={rule.domain} />
+
+          <!-- THEN SAVE TO section: destination -->
+          <div class="routing-then flex flex-col gap-[var(--space-1)]">
+            <span class="text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">Then save to</span>
+            <FolderSelect
+              id={`routing-${i}-destination`}
+              placeholder="e.g. Multimedia/Movies"
+              settings={$state.snapshot(form)}
+              bind:value={draft.destination}
+              formError={draftError?.destination}
+              oninput={() => clearDraftError(draft.id, "destination")}
+            />
           </div>
-          <IconButton class="flex-none text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_12%,var(--color-bg-alt))]" aria-label={`Remove rule ${i + 1}`} title="Remove rule" onclick={() => removeRule(i)}>
-            <X aria-hidden="true" />
-          </IconButton>
-        </div>
-        <FolderSelect id={`routing-${i}-destination`} placeholder="e.g. Multimedia/Films" settings={$state.snapshot(form)} bind:value={rule.destination} />
-      </fieldset>
-    {/each}
+        </fieldset>
+      {/each}
+    </div>
   {/if}
   </FormSection>
 </section>

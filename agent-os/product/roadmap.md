@@ -26,14 +26,27 @@ Open defects are tracked separately in `bugs-kanban.md`.
 - **Conditional swarm health (`seeds / peers`):** Render `S15 P5` compactly, shipped in v2.2.1 (BUG-35).
 - **Global NAS transfer rates in header:** Real-time combined `↓ 12.0 MB/s  ↑ 0.8 MB/s` with zero-gap arrows, $\le 3$ digits cap, and `KB/s` base unit, shipped in v2.2.1 (GAP-7).
 - **Task queue priority management:** Reorder downloads (`Move to top`, `Up`, `Down`) via card contextual menu with Skeleton Wintry styling and optimistic updates, shipped in v2.2.1 (GAP-10).
+- **Streamlined UI copy & competitor-standard phrasing:** Concise toolbar actions ("Remove with files…"), clean empty states, natural pluralization, and tightened settings/security text shipped in v2.2.2.
+- **Routing that matches what a download actually is:** rules read the release name out of the
+  `.torrent` itself instead of the URL, so an opaque tracker endpoint routes correctly; a domain
+  matches the originating page as well as the file's host, which is the only thing a magnet has;
+  and a condition field holds a list (`mkv mp4 avi`). Shipped in v2.3.0 (BUG-46, BUG-47, F8).
+- **Destination folder on the task card:** shown only when a rule sent the download somewhere
+  other than the Target folder, with the staging folder in the tooltip. No competitor shows this.
+  Shipped in v2.3.0 (BUG-38).
+- **Routing accessibility and editor clarity:** condition errors reach the fields they describe,
+  reordering announces itself and keeps focus, the axe gate finally opens the panel the rules live
+  on, and the destructive control no longer sits 32px from the reorder arrows. Shipped in v2.3.0
+  (BUG-48..BUG-53, UX-18).
+
 
 ## Phase 2 — High Value Task Controls
 
 Contextual task actions exposed through clean interactions without bloating the primary card:
 
-- **Safe task removal dialog:** Single trash action opening a confirmation modal with an optional `☐ Also delete downloaded files from NAS` checkbox (`clean: 1 | 0`) (GAP-8).
 - **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
-- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11).
+- **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11, deferred).
+
 
 ## Phase 3 — Advanced Settings & Diagnostics
 

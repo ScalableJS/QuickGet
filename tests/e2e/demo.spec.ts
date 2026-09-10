@@ -205,8 +205,6 @@ async function openSettings(popup: Page, cursor: SystemCursor): Promise<void> {
   await expect(popup.locator("#settings-panel")).toBeVisible({ timeout: 10_000 });
 }
 
-
-
 /** Reads the task's progress straight from the NAS, not by scraping the popup — see DEMO-5. */
 async function nasProgress(port: number): Promise<number> {
   const response = await fetch(`http://127.0.0.1:${port}/downloadstation/V4/Task/Query`, {

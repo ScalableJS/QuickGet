@@ -4,13 +4,13 @@ import "./styles/base.css";
 
 import { applyTheme } from "@lib/applyTheme.js";
 import { getErrorMessage } from "@lib/errors.js";
-import { showStatus } from "@/popup/components";
 import { loadSettings } from "@lib/settings.js";
+import { showStatus } from "@/popup/components";
+import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "../background/attentionMessage.js";
 import { type DownloadsFeature, initializeDownloads } from "./features/downloads";
 import { initializeSettings } from "./features/settings";
 import { initializeToolbar } from "./features/toolbar";
 import { initializeUpload } from "./features/upload";
-import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "../background/attentionMessage.js";
 
 function handleInitializationError(error: unknown): void {
   showStatus(`Popup initialization failed: ${getErrorMessage(error)}`, "error");

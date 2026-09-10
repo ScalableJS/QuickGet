@@ -155,6 +155,12 @@ Worth taking: **task completion notification with dedup** (++) — the most valu
 **add-error notification** (Synology) — useful for feedback; interception notification — if
 we ever build download interception.
 
+> **Folder routing was torn down separately and in depth** on 2026-09-09, after our own engine
+> turned out to match on the wrong string:
+> [competitor-routing-teardown.md](./competitor-routing-teardown.md). It supersedes anything said
+> about routing here, and carries the endpoint census proving no competitor changes a task's
+> destination after the task exists.
+
 > **Open gaps from this analysis are tracked as cards** in
 > [`../agent-os/product/competitive-gaps-kanban.md`](../agent-os/product/competitive-gaps-kanban.md),
 > together with the user-review evidence gathered on 2026-08-31 and the list of things we

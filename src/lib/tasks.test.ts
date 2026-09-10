@@ -208,3 +208,29 @@ describe("QNAP task status contract", () => {
     });
   });
 });
+
+/**
+ * Where a task is going is on the card now, so it has to survive normalisation. `path` is
+ * deliberately not a fallback: it is where the bytes physically are and it includes the task's
+ * own name, so it is not a folder anybody chose.
+ */
+describe("QNAP destination folder", () => {
+  it("carries the move folder through", () => {
+    const [task] = normalizeTasks("qnap", {
+      data: [{ hash: "a", source_name: "x", state: 104, move: "Multimedia/Movies", path: "/Download/x" }],
+    });
+    expect(task.destination).toBe("Multimedia/Movies");
+  });
+
+  it("reports absence rather than falling back to the physical path", () => {
+    const [noMove] = normalizeTasks("qnap", {
+      data: [{ hash: "a", source_name: "x", state: 104, path: "/Download/x" }],
+    });
+    expect(noMove.destination).toBeUndefined();
+
+    const [blank] = normalizeTasks("qnap", {
+      data: [{ hash: "b", source_name: "y", state: 104, move: "   " }],
+    });
+    expect(blank.destination).toBeUndefined();
+  });
+});

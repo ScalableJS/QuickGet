@@ -71,7 +71,10 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.NASlogin === "string") result.NASlogin = source.NASlogin;
   if (typeof source.NAStempdir === "string") result.NAStempdir = source.NAStempdir;
   if (typeof source.NASdir === "string") result.NASdir = source.NASdir;
-  if (typeof source.torrentInterceptMode === "string" && (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)) {
+  if (
+    typeof source.torrentInterceptMode === "string" &&
+    (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)
+  ) {
     result.torrentInterceptMode = source.torrentInterceptMode as Settings["torrentInterceptMode"];
   }
   if (typeof source.autoCaptureMagnets === "boolean") {
@@ -114,4 +117,3 @@ export function describeImport(patch: Partial<Settings>): string[] {
     .map((key) => (key === "routingRules" ? `Routing rules (${patch.routingRules?.length ?? 0})` : IMPORT_LABELS[key]))
     .filter((label): label is string => Boolean(label));
 }
-

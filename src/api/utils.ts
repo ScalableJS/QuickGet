@@ -57,7 +57,8 @@ export function createApiError(prefix: string, result: unknown): Error {
   const payload = toApiResult(result);
   const errorCode = coerceNumber(payload.error, -1);
   const reason = coerceString(payload.reason).trim();
-  const message = explainReason(errorCode, reason) ?? (reason ? `${prefix} (${errorCode}): ${reason}` : `${prefix} (${errorCode})`);
+  const message =
+    explainReason(errorCode, reason) ?? (reason ? `${prefix} (${errorCode}): ${reason}` : `${prefix} (${errorCode})`);
 
   const error = new Error(message) as Error & {
     code: number;

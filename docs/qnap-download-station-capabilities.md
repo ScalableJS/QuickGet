@@ -65,6 +65,14 @@ The practical consequence: within Download Station the destination is almost cer
 at creation time**. If RES-3 confirms it, say so in the UI rather than leaving users to hunt
 for a control that cannot exist.
 
+**Independent corroboration (2026-09-09).** An endpoint census of the three competing Firefox
+clients found no destination-change call either: *Send To QNAP++* touches only `Addon/*`,
+`Misc/Login`, `Task/{AddTorrent,AddUrl,Pause,Query,Remove,Resume,Start,Stop}`, and the single
+File Station function `func=stat` — it holds File Station credentials and still never moves a
+file. The Synology client is the same shape. Details in
+[competitor-routing-teardown.md](./competitor-routing-teardown.md) section E. This is not proof
+that no undocumented call exists, but it removes "surely someone does it" as a reason to look.
+
 **File Station is a real but expensive escape hatch.** It can move the files, but the task
 keeps pointing at the old path, so seeding breaks — which for a private tracker means ratio
 loss, and ratio loss can mean the account. It also requires granting the extension the ability

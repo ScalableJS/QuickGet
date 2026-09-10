@@ -6,8 +6,8 @@ import Icons from "unplugin-icons/vite";
 import { defineConfig, type PluginOption } from "vite";
 
 import { alias } from "./aliases.config";
-import chromeManifestJson from "./manifest.json";
 import firefoxManifestJson from "./manifest.firefox.json";
+import chromeManifestJson from "./manifest.json";
 
 /** The plain-object arm of `ManifestV3Export`; the plugin also accepts a promise or a function. */
 type Manifest = Extract<ManifestV3Export, { manifest_version: number }>;
@@ -33,11 +33,7 @@ const isFirefox = process.env.BROWSER_TARGET === "firefox";
  */
 const isDevBuild = process.env.DEV_UNPACKED === "1";
 
-const manifest: Manifest = isFirefox
-  ? firefoxManifest
-  : isDevBuild
-    ? devManifest(chromeManifest)
-    : chromeManifest;
+const manifest: Manifest = isFirefox ? firefoxManifest : isDevBuild ? devManifest(chromeManifest) : chromeManifest;
 
 function devManifest(base: Manifest): Manifest {
   const { key: _key, ...rest } = base;

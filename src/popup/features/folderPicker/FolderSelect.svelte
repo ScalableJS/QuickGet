@@ -20,6 +20,7 @@
     settings,
     status = $bindable<FolderFieldStatus>("idle"),
     formError,
+    oninput,
   }: {
     id?: string;
     value: string;
@@ -31,6 +32,7 @@
      * `status`, which reports what the NAS said about a path that was actually entered.
      */
     formError?: string;
+    oninput?: (e: Event) => void;
   } = $props();
 
   // A field the form has rejected is invalid regardless of what folder validation thinks: it
@@ -130,9 +132,10 @@
     status = "valid";
     statusReason = "";
     showSuccess();
+    oninput?.(new Event("input"));
   }
 
-  function onInput(): void {
+  function onInput(e: Event): void {
     open = true;
     // The filtered list just changed under us — drop the stale highlight.
     activeIndex = -1;
@@ -141,6 +144,7 @@
     status = "idle";
     statusReason = "";
     clearSuccess();
+    oninput?.(e);
   }
 
   // Skip read-only entries when moving the highlight with the keyboard.

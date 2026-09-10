@@ -111,6 +111,9 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
       .toMatchObject({ clientHeight: 600, toolbarPosition: "sticky" });
     expect(await page.evaluate(() => document.body.scrollHeight > document.body.clientHeight)).toBe(true);
 
+    await page.getByRole("button", { name: "Remove rule 1" }).click();
+    await expect(page.locator(".routing-rule")).toHaveCount(0);
+
     await switchSettingsTab(page, "Connection");
     await page.fill("#serverUrl", `http://127.0.0.1:${mockNas.port}`);
     await page.fill("#NASlogin", "admin");
@@ -139,6 +142,14 @@ test("popup full cycle: configure, connect, list, control, upload, remove", asyn
     await expect(page.locator("#downloads-list .download-item .download-name").first()).toContainText("Ubuntu ISO", {
       timeout: 15_000,
     });
+
+    // Where a task is and where it is going are both on the card. This is the only feedback a
+    // routing rule ever gives — before it, a rule sending downloads to the wrong folder looked
+    // exactly like one that worked. The mock stages in `Download` and moves to `Movies`, so an
+    // unfinished task shows both.
+    const firstCard = page.locator("#downloads-list .download-item").first();
+    await expect(firstCard).toContainText("Movies");
+    await expect(firstCard.getByTitle("Currently in Download, will be saved to Movies")).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.body.getBoundingClientRect().height)).toBeLessThan(600);
 
     await page.click("#downloads-list .download-item");

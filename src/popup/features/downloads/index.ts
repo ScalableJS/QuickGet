@@ -1,5 +1,5 @@
-import { showStatus } from "@/popup/components";
 import { summarizeProgress } from "@lib/tasks.js";
+import { showStatus } from "@/popup/components";
 
 import { requestMonitoring, sendBadgeSnapshot } from "../../shared/monitor.js";
 

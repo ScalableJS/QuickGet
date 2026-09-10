@@ -1,5 +1,5 @@
-import { MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "@/background/monitorMessage.js";
 import type { ProgressSummary } from "@lib/tasks.js";
+import { MONITOR_MESSAGE, SNAPSHOT_MESSAGE } from "@/background/monitorMessage.js";
 
 /**
  * Ask the background service worker to (re)arm the badge poll. Called after any

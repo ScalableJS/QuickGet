@@ -28,8 +28,6 @@ export function findConfigProblem(settings: Settings): ConfigProblem | undefined
   return {
     missing,
     summary:
-      missing.length === 1
-        ? `${missing[0]} is not set in Settings.`
-        : `Not set in Settings: ${missing.join(", ")}.`,
+      missing.length === 1 ? `${missing[0]} is not set in Settings.` : `Not set in Settings: ${missing.join(", ")}.`,
   };
 }
