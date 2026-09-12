@@ -301,7 +301,7 @@ for more than 10 seconds (up to 30s depending on OS/Chromium TCP timeout). The U
 3. **Only show final status:** Announce "Settings saved. Testing connection…" or defer the status alert until
    the connection verification concludes.
 
-**Done 2026-09-12** — all four root causes, plus one the analysis did not name.
+**Resolved 2026-09-12** — shipped in v2.4.1. All four root causes, plus one the analysis did not name.
 
 1. **The check is a ping, not a task query.** `pingNas()` (`src/lib/connectionHealth.ts`) asks
    Download Station one question — will you log me in right now — inside a 5 s budget, and
