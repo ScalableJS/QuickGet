@@ -28,9 +28,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
     NASpassword: "demo-password",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    autoCaptureMagnets: true,
-    torrentInterceptMode: "always",
-    suppressLocalTorrentFile: false,
+    interceptTorrentLinks: true,
     routingRules: [],
     theme: "auto",
     ...overrides,
@@ -38,14 +36,14 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
 }
 
 test.describe("magnet link interception (GAP-1)", () => {
-  test("intercepts direct magnet link click when autoCaptureMagnets is on", async () => {
+  test("intercepts a direct magnet click when interception is on", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
     const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -82,7 +80,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -106,14 +104,14 @@ test.describe("magnet link interception (GAP-1)", () => {
     }
   });
 
-  test("does not intercept clicks when autoCaptureMagnets is off", async () => {
+  test("does not intercept clicks when interception is off", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
     const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: false }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -138,7 +136,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     }
   });
 
-  test("reacts live to toggling autoCaptureMagnets without page reload", async () => {
+  test("reacts live to toggling interception without a page reload", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
@@ -146,7 +144,7 @@ test.describe("magnet link interception (GAP-1)", () => {
 
     try {
       // Start disabled
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: false }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -163,7 +161,7 @@ test.describe("magnet link interception (GAP-1)", () => {
       );
 
       // Toggle setting to true live via storage
-      await seedSettings(session.worker, { autoCaptureMagnets: true });
+      await seedSettings(session.worker, { interceptTorrentLinks: true });
       await page.waitForTimeout(300);
 
       // Second click in the same tab: now intercepted
@@ -188,7 +186,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -217,7 +215,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { autoCaptureMagnets: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 

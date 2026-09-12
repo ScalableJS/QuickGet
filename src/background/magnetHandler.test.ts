@@ -20,9 +20,7 @@ vi.mock("@lib/settings.js", () => ({
     NASpassword: "pwd",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    autoCaptureMagnets: true,
-    torrentInterceptMode: "always",
-    suppressLocalTorrentFile: false,
+    interceptTorrentLinks: true,
     routingRules: [
       {
         type: "magnet",

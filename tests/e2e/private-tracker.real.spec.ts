@@ -53,7 +53,7 @@ test.describe("private tracker (live)", () => {
         NASpassword: "demo-password",
         NAStempdir: "Download",
         NASdir: "Multimedia/Movies",
-        torrentInterceptMode: "always",
+        interceptTorrentLinks: true,
       } as Record<string, unknown>);
 
       const page = await session.context.newPage();

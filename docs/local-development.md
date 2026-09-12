@@ -57,7 +57,7 @@ The interception path narrates every decision, so a download that is ignored say
 | Log line | Meaning |
 | --- | --- |
 | `intercepting torrent download` | recognised, hand-off started |
-| `skipped: interception is off in Settings` | `torrentInterceptMode` is `off` |
+| `skipped: interception is off in Settings` | `interceptTorrentLinks` is `false` |
 | `skipped: not recognised as a torrent` | prints the url, mime and filename it judged |
 | `skipped: already claimed by another listener` | `onCreated` and `onChanged` both saw it; one wins |
 | `context menu send` | right-click path, with the resolved folder |

@@ -1,6 +1,9 @@
 # Popup Architecture
 
-This document describes the target organization of the popup extension code — what modules are needed, how they interact, and where shared dependencies live. This is not a "work plan" but a reference to align with during refactoring.
+Status: **the structure described here is the structure that exists.** This is a reference for
+what lives where and why, not a work plan — the refactoring it guided is done.
+
+It describes the organization of the popup extension code: what modules exist, how they interact, and where shared dependencies live.
 
 ## Goals and principles
 

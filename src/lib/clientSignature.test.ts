@@ -12,7 +12,7 @@ describe("clientSignature", () => {
   it("ignores UI-only fields that don't change how requests are sent", () => {
     const base = createTestSettings();
     const tweaked = createTestSettings({
-      torrentInterceptMode: "always",
+      interceptTorrentLinks: true,
       routingRules: [{ destination: "Movies" }],
     });
     expect(clientSignature(tweaked)).toBe(clientSignature(base));

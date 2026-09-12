@@ -283,8 +283,7 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
           NASpassword: "demo-password",
           NAStempdir: "Download",
           NASdir: "Multimedia/Default",
-          autoCaptureMagnets: true,
-          torrentInterceptMode: "always",
+          interceptTorrentLinks: true,
           routingRules: [
             { namePattern: "*Director_Cut*", destination: "Routed/Special" },
             { namePattern: "*.mkv", destination: "Routed/Movies" },

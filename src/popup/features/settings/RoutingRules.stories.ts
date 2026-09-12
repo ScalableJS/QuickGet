@@ -23,7 +23,7 @@ const BASE_SETTINGS = {
   NASpassword: "hunter2",
   NAStempdir: "Download",
   NASdir: "Multimedia/Movies",
-  torrentInterceptMode: "always",
+  interceptTorrentLinks: true,
   theme: "auto",
 };
 

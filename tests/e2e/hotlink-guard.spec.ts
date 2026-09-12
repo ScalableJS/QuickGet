@@ -38,7 +38,7 @@ test.describe("tracker hotlink guard", () => {
         NASpassword: "demo-password",
         NAStempdir: "Download",
         NASdir: "Multimedia/Movies",
-        torrentInterceptMode: "always",
+        interceptTorrentLinks: true,
       } as Record<string, unknown>);
 
       // The tab has to be open on the tracker — that is the context the fetch borrows.
@@ -88,7 +88,7 @@ test.describe("tracker hotlink guard", () => {
         NASpassword: "demo-password",
         NAStempdir: "Download",
         NASdir: "Multimedia/Movies",
-        torrentInterceptMode: "always",
+        interceptTorrentLinks: true,
       } as Record<string, unknown>);
 
       // No tab on the tracker, so the fetch falls back to the worker and the guard refuses it.

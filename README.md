@@ -6,6 +6,7 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
 - Intercept browser `.torrent` downloads and clicks on `magnet:` links — route them directly to your NAS.
+- Hold <kbd>Shift</kbd> when clicking a torrent or magnet link to send just that one, whether automatic interception is on or off.
 - Monitor active tasks in real time: combined NAS transfer rates (`↓ / ↑`) in the header, transferred payload size (`done / size`), and swarm health (seeds and peers).
 - Manage download priority in the queue (`Top`, `Up`, `Down`) directly from each task card.
 - Track seeding items with upload volume, target share ratio progress, and dedicated status indicators.
@@ -21,13 +22,15 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 <details>
 <summary>How torrent interception behaves</summary>
 
-The hand-off is transactional: the browser download is paused, the torrent is offered to the
-NAS, and the browser download is cancelled **only** once the NAS has accepted it. If the send
-fails — the NAS is unreachable, credentials are wrong, the URL is single-use — the download
-resumes and the browser finishes it, so the file is never lost.
+A live NAS login runs before the browser transfer is touched at all, so an unreachable NAS
+leaves the download entirely alone and the browser finishes it normally.
 
-Chromium additionally offers an opt-in strict mode that suppresses the save prompt and the
-local copy entirely, so an intercepted torrent never touches the disk.
+Once the NAS has answered, what happens next is decided by the browser rather than by a
+setting. Chromium can hold a download at the filename stage, so the torrent is cancelled before
+any file is written and no "Save as" prompt appears. Firefox has no equivalent
+(`downloads.onDeterminingFilename`, Bugzilla 1245652, open since 2016), so it keeps the older
+transaction: pause, offer the torrent to the NAS, and cancel only once the NAS has accepted it.
+A small `.torrent` can still land there before the cancel bites.
 
 </details>
 
@@ -55,7 +58,7 @@ To load a local build instead:
    - Port number
    - Username and password
    - Server URL (`http://` or `https://`), temporary directory, and destination directory
-   - Torrent interception
+   - Torrent link interception
    - Optional routing rules that send matching tasks to a folder of their own
    - Color theme (*Auto* / *Light* / *Dark*, default: *Auto*, which follows the OS)
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
@@ -65,9 +68,7 @@ To load a local build instead:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| **Send .torrent downloads to NAS** | On | Safe hand-off. If the NAS cannot accept the torrent, the browser resumes the normal download. |
-| **Don't save .torrent locally** | Off (Chromium only) | Avoids a local file and "Save as" prompt. If the NAS cannot accept it, click the link again. Requires torrent interception. |
-| **Intercept magnet links** | Off | Forwards clicked `magnet:` links on web pages directly to Download Station instead of launching an external BitTorrent application. |
+| **Send torrent links to Download Station** | On | Covers both `.torrent` downloads and clicked `magnet:` links. Turning it off is not a dead end — <kbd>Shift</kbd>-clicking a link still sends that one. |
 | **Lock settings with password** | Off | Protects access to the settings screen. Background downloads continue while locked. |
 
 

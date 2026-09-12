@@ -1,5 +1,5 @@
 import type { Settings } from "@lib/config.js";
-import { INTERCEPT_MODES, THEME_MODES } from "@lib/config.js";
+import { THEME_MODES } from "@lib/config.js";
 import { sanitizeRoutingRules } from "@lib/routingRules.js";
 
 const BACKUP_APP = "quickget-remote";
@@ -14,8 +14,7 @@ const PORTABLE_KEYS = [
   "NASlogin",
   "NAStempdir",
   "NASdir",
-  "torrentInterceptMode",
-  "autoCaptureMagnets",
+  "interceptTorrentLinks",
   "routingRules",
   "theme",
 ] as const;
@@ -71,14 +70,11 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.NASlogin === "string") result.NASlogin = source.NASlogin;
   if (typeof source.NAStempdir === "string") result.NAStempdir = source.NAStempdir;
   if (typeof source.NASdir === "string") result.NASdir = source.NASdir;
-  if (
-    typeof source.torrentInterceptMode === "string" &&
-    (INTERCEPT_MODES as readonly string[]).includes(source.torrentInterceptMode)
-  ) {
-    result.torrentInterceptMode = source.torrentInterceptMode as Settings["torrentInterceptMode"];
-  }
-  if (typeof source.autoCaptureMagnets === "boolean") {
-    result.autoCaptureMagnets = source.autoCaptureMagnets;
+  // A backup written before the three interception flags became one still carries the old keys.
+  if (typeof source.interceptTorrentLinks === "boolean") {
+    result.interceptTorrentLinks = source.interceptTorrentLinks;
+  } else if (typeof source.torrentInterceptMode === "string") {
+    result.interceptTorrentLinks = source.torrentInterceptMode !== "off";
   }
   if (typeof source.theme === "string" && (THEME_MODES as readonly string[]).includes(source.theme)) {
     result.theme = source.theme as Settings["theme"];
@@ -106,8 +102,7 @@ const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
   NASlogin: "Username",
   NAStempdir: "Temp Folder",
   NASdir: "Target Folder",
-  torrentInterceptMode: "Interception mode",
-  autoCaptureMagnets: "Magnet capture",
+  interceptTorrentLinks: "Torrent link interception",
   routingRules: "Routing rules",
   theme: "Theme",
 };
