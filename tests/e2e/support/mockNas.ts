@@ -21,6 +21,14 @@ interface MockNasOptions {
    * ordinary e2e runs stay deterministic.
    */
   progressFixture?: ProgressFixtureOptions;
+  /**
+   * Credentials the mock accepts. Left out — the default — it accepts anything, which is what
+   * every spec that is not about logging in wants. Set it and the mock answers a wrong password
+   * the way Download Station does: HTTP 200 with `{error: 4}`, never a 401.
+   *
+   * Both encodings are accepted, because the extension tries base64 first and raw second.
+   */
+  credentials?: { user: string; password: string };
 }
 
 export interface ProgressFixtureOptions {
@@ -302,6 +310,13 @@ function advanceProgressFixture(tasks: DownloadJob[], fixture: ProgressFixtureOp
   }
 }
 
+function acceptsCredentials(expected: { user: string; password: string }, rawBody: string): boolean {
+  const user = readFormValue(rawBody, "user") ?? "";
+  const pass = readFormValue(rawBody, "pass") ?? "";
+  const encoded = Buffer.from(expected.password, "utf8").toString("base64");
+  return user === expected.user && (pass === encoded || pass === expected.password);
+}
+
 export async function startMockNas(options: MockNasOptions = {}): Promise<MockNasHandle> {
   const requestLog = new RedactedHttpLog();
   const tasks = (options.initialTasks ?? [createTask("Ubuntu ISO", 1)]).map((task, index) =>
@@ -327,6 +342,10 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
     };
 
     if (path === "/downloadstation/V4/Misc/Login" && method === "POST") {
+      if (options.credentials && !acceptsCredentials(options.credentials, body)) {
+        reply(200, { error: 4, reason: "" });
+        return;
+      }
       reply(200, {
         admin: 1,
         error: 0,

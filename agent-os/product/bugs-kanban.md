@@ -19,7 +19,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-37 | Task failure codes (`error`) from QNAP are ignored instead of displaying failure reason | popup/UX | medium | Done |
 | BUG-38 | Destination NAS path (`path` / `move`) is omitted from task details | popup/UX | medium | Done |
 | BUG-39 | Toolbar badge background poll fetches full task list instead of lightweight `Task/Status` | background/perf | low | Backlog |
-| BUG-40 | Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid | popup/settings | medium | Backlog |
+| BUG-40 | Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid | popup/settings | medium | Done |
 | BUG-41 | Saving routing rules with empty optional fields crashes Svelte with props_invalid_value, freezing "Add rule" | popup/settings | high | Done |
 | BUG-42 | Routing rules parser edge cases: case-sensitive .torrent, fragile magnet dn parsing, and unhandled URI errors | core/routing | high | Done |
 | BUG-43 | Routing rules UX in popup: cramped single-line layout, missing priority reorder controls, and silent rule drop | popup/UX | high | Done |
@@ -37,6 +37,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-55 | Routing edge cases have no test at the level that can reach them | testing | low | Done |
 | BUG-56 | The test stand advertises cases it cannot exercise | testing | low | Done |
 | BUG-57 | A wildcard-only pattern is a catch-all the sanitizer was written to prevent | core/routing | medium | Rejected |
+| BUG-58 | The background task poller writes its errors into the settings screen's status pill | popup/UX | low | Backlog |
 | BUG-33 | Torrent interception starts before a live NAS connection is established | background | high | Done |
 | BUG-32 | Optimistic toolbar paint left dangling references after the badge refactor | background | high | Done |
 | BUG-31 | Successful torrent hand-offs retain a Chrome DownloadItem after restart | background | high | Done |
@@ -267,8 +268,8 @@ with minimal CPU and network overhead on both the browser and the NAS.
 
 ### BUG-40 — Saving settings hangs on "Saving…" for >10s when NAS is unreachable or credentials invalid
 
-**Severity:** medium · **Area:** popup/settings · **Status:** Backlog
-**Files:** `src/popup/features/settings/Settings.svelte`, `src/api/index.ts`, `src/api/client.ts`
+**Severity:** medium · **Area:** popup/settings · **Status:** Done
+**Files:** `src/popup/features/settings/Settings.svelte`, `src/api/index.ts`, `src/lib/connectionHealth.ts`
 
 When saving connection settings while the NAS server is unreachable (offline, sleeping host, wrong IP/port,
 firewall dropping packets, or invalid credentials), the UI button displays `Saving…` and blocks the interface
@@ -299,6 +300,56 @@ for more than 10 seconds (up to 30s depending on OS/Chromium TCP timeout). The U
    and show an explicit "Testing connection…" state or inline card spinner for the network check.
 3. **Only show final status:** Announce "Settings saved. Testing connection…" or defer the status alert until
    the connection verification concludes.
+
+**Done 2026-09-12** — all four root causes, plus one the analysis did not name.
+
+1. **The check is a ping, not a task query.** `pingNas()` (`src/lib/connectionHealth.ts`) asks
+   Download Station one question — will you log me in right now — inside a 5 s budget, and
+   returns health rather than throwing. It replaced a login *followed by* a `Task/Query`, so the
+   test is now one round-trip instead of two and its three outcomes map exactly onto the three
+   states worth telling apart.
+2. **Every login carries a deadline.** `performLogin` defaults to `LOGIN_TIMEOUT_MS` (8 s) and
+   accepts a caller's signal, shared across both password-encoding attempts so the raw-password
+   retry spends the same budget instead of a second one. This bounds *every* call in the
+   extension, not only the settings screen: each one starts with a login.
+3. **Saving and checking are two actions.** `isSaving` is released when storage is written — a
+   millisecond — and the connection test runs after the try/finally with its own `isTesting`.
+   The button can no longer be held by the network.
+4. **No premature green.** Success is withheld while a check is pending: the pill reads
+   "Settings saved — checking the NAS…" until the ping answers.
+5. **The verdict stopped being guessed from message text.** This was the unnamed one. Health was
+   classified by matching words in the error, so `NAS login failed: Bad Gateway` — a proxy, not a
+   password — read as "Authentication failed". A `LoginError` class now carries the code
+   Download Station answered with; the transport-level messages were reworded to stop
+   impersonating it. (A `code` *property* was the first attempt and was wrong: `DOMException`
+   has one too, so an aborted request passed for a rejected password.)
+
+The card now shows what the check found — which host did not answer, and within what budget —
+instead of a bare label. Covered by 11 unit tests and 4 E2E arms in
+`tests/e2e/settings-connection.spec.ts`: reachable, wrong password, refused connection, and a
+host that accepts the connection and then goes silent. The last two assert the clock, because
+the verdict was never the broken part — its arrival time was.
+
+---
+
+### BUG-58 — The background task poller writes its errors into the settings screen's status pill
+
+**Severity:** low · **Area:** popup/UX · **Status:** Backlog
+**Files:** `src/popup/features/downloads/downloadsManager.ts`, `src/popup/components/statusPill`
+
+There is one status pill in the popup and two writers. While the user is in Settings, the
+periodic task refresh can replace whatever Settings just said with "Failed to list downloads:
+TypeError: Failed to fetch" — which, right after saving a connection to a NAS that is off, is
+both redundant and less useful than the message it covers.
+
+Found while writing `settings-connection.spec.ts`: an assertion on the pill failed roughly one
+run in three, always with the poller's message. The spec was rewritten to assert the connection
+card instead, which is state rather than a transient announcement — so the bug is not hidden by
+its own test.
+
+**Proposed fix:** either scope the poller's failures to the downloads list where they belong, or
+give the pill a notion of precedence so a direct answer to a user action outranks a background
+report.
 
 ---
 
