@@ -263,7 +263,7 @@ describe("magnet content script", () => {
       const storageListeners: Array<(changes: Record<string, chrome.storage.StorageChange>, area: string) => void> = [];
       const mockStorage = {
         local: {
-          get: vi.fn((_keys, cb) => cb({ autoCaptureMagnets: true })),
+          get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: true })),
         },
         onChanged: {
           addListener: vi.fn((listener) => storageListeners.push(listener)),
@@ -295,7 +295,7 @@ describe("magnet content script", () => {
       const sendMessageMock = vi.fn((_msg, cb) => cb?.({ ok: true }));
       (globalThis as unknown as { chrome: unknown }).chrome = {
         storage: {
-          local: { get: vi.fn((_keys, cb) => cb({ autoCaptureMagnets: true })) },
+          local: { get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: true })) },
           onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
         },
         runtime: {
@@ -345,7 +345,7 @@ describe("magnet content script", () => {
       let storageListener: ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void) | undefined;
       const mockStorage = {
         local: {
-          get: vi.fn((_keys, cb) => cb({ autoCaptureMagnets: false })),
+          get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: false })),
         },
         onChanged: {
           addListener: vi.fn((listener) => {

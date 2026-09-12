@@ -2,12 +2,12 @@
  * Download interception (Chrome only)
  *
  * Watches for .torrent downloads and routes them to QNAP Download Station.
- * Behaviour is driven by settings.torrentInterceptMode:
+ * Behaviour is driven by settings.interceptTorrentLinks:
  *   - "off"    → do nothing (normal browser download)
  *   - "always" → hand the torrent to the NAS, cancelling the browser download only once
  *                the NAS has accepted it
  *
- * `settings.suppressLocalTorrentFile` then chooses *when* the browser transfer ends:
+ * Whether the filename stage can be held then decides *when* the browser transfer ends:
  *   - false (default) → transactional. Pause, hand off, cancel on success / resume on
  *     failure. A failed hand-off costs nothing: the browser just finishes the download.
  *   - true (Chrome only) → cancel at the `onDeterminingFilename` stage, before Chrome can
@@ -57,8 +57,8 @@ const reservedForHold = new Set<number>();
 /**
  * Decide, without awaiting anything, whether this download might be one we take over.
  * Deliberately permissive: over-reserving costs a released hold, under-reserving costs the
- * whole feature. Settings are not readable here, so `suppressLocalTorrentFile` is checked
- * later — a reservation alone never changes what the browser does.
+ * whole feature. Settings are not readable here, so interception is confirmed later — a
+ * reservation alone never changes what the browser does.
  */
 function reserveForFilenameHold(item: chrome.downloads.DownloadItem): boolean {
   if (!chrome.downloads.onDeterminingFilename) return false;
@@ -159,7 +159,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
 
   try {
     const settings = await loadSettings();
-    if (settings.torrentInterceptMode === "off") {
+    if (!settings.interceptTorrentLinks) {
       console.log("[QuickGet] skipped: interception is off in Settings", { id: item.id });
       return;
     }
@@ -231,7 +231,10 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // any toolbar work, and while `onDeterminingFilename` is still holding the file back. Any
     // later and a small `.torrent` from a fast host has already landed. The hand-off re-fetches
     // the URL itself, so cancelling first costs a re-download on failure, not the file.
-    const strict = settings.suppressLocalTorrentFile && heldFilenames.has(item.id);
+    // Strict is no longer a preference: "send it to the NAS" means the NAS gets it and the
+    // browser does not. It happens wherever the filename stage can be held — Chrome — and the
+    // older pause-and-cancel path remains everywhere else.
+    const strict = heldFilenames.has(item.id);
     let cancelledAtFilenameStage = false;
     if (strict) {
       cancelledAtFilenameStage = await cancelBrowserDownload(item.id);

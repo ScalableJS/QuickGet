@@ -305,10 +305,21 @@ function sendMagnetToWorker(uri: string): void {
  * Whether plain clicks on magnets are taken automatically. Shift-clicks do not consult it — that
  * gesture is the per-click opt-in and works whatever the checkbox says.
  */
-let magnetCaptureEnabled = DEFAULTS.autoCaptureMagnets;
+let magnetCaptureEnabled = DEFAULTS.interceptTorrentLinks;
 
 export function setMagnetCaptureEnabled(enabled: boolean): void {
   magnetCaptureEnabled = enabled;
+}
+
+/**
+ * The interception switch as stored, falling back to the three keys that preceded it. The worker
+ * migrates storage on its own schedule, and a content script can load into a page before that has
+ * happened; reading the old key here keeps the first page after an update behaving correctly.
+ */
+function readInterception(items: Record<string, unknown> | undefined): boolean {
+  if (typeof items?.interceptTorrentLinks === "boolean") return items.interceptTorrentLinks;
+  if (items?.torrentInterceptMode === "off") return false;
+  return DEFAULTS.interceptTorrentLinks;
 }
 
 /**
@@ -379,10 +390,8 @@ export function initMagnetInterception(): () => void {
   document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
 
   try {
-    chrome.storage.local.get(["autoCaptureMagnets", "theme"], (items) => {
-      setMagnetCaptureEnabled(
-        typeof items?.autoCaptureMagnets === "boolean" ? items.autoCaptureMagnets : DEFAULTS.autoCaptureMagnets,
-      );
+    chrome.storage.local.get(["interceptTorrentLinks", "torrentInterceptMode", "theme"], (items) => {
+      setMagnetCaptureEnabled(readInterception(items));
       if (items?.theme && ["auto", "light", "dark"].includes(items.theme as string)) {
         currentTheme = items.theme as "auto" | "light" | "dark";
       }
@@ -390,8 +399,8 @@ export function initMagnetInterception(): () => void {
 
     const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string): void => {
       if (areaName === "local") {
-        if ("autoCaptureMagnets" in changes) {
-          setMagnetCaptureEnabled(Boolean(changes.autoCaptureMagnets.newValue));
+        if ("interceptTorrentLinks" in changes) {
+          setMagnetCaptureEnabled(Boolean(changes.interceptTorrentLinks.newValue));
         }
         if ("theme" in changes && changes.theme.newValue) {
           currentTheme = changes.theme.newValue as "auto" | "light" | "dark";

@@ -37,6 +37,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-21 | A rule cannot be muted or duplicated | ui | S | Rejected |
 | UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
 | UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | In Review |
+| UX-24 | Three interception checkboxes become one | settings | M | In Review |
 
 ---
 
@@ -967,3 +968,55 @@ click sends nothing first.
 
 **Next in this chain:** with a per-click way in, the three interception checkboxes can collapse
 into one. That is the follow-up, not this card.
+
+---
+
+### UX-24 — Three interception checkboxes become one
+
+**Size:** M · **Area:** settings · **Status:** In Review
+**Files:** `src/lib/config.ts`, `src/lib/settings.ts`, `src/background/downloads.ts`,
+`src/content/magnet.ts`, `src/popup/features/settings/Settings.svelte`,
+`src/popup/features/settings/settingsBackup.ts`
+**Depends on:** UX-23 (the per-click way in), BUG-30 (strict mode verified automatically)
+
+The product owner's observation, and it was right: `.torrent` and `magnet:` are not two ideas.
+They are two Chrome APIs for one intent, and the split leaked into the UI as two top-level
+checkboxes plus a third refining one.
+
+**The evidence that settled it:** the two halves shipped with *opposite defaults* —
+`torrentInterceptMode: "always"` and `autoCaptureMagnets: false`. Nobody could name a reason. A
+user who installs a "send downloads to my NAS" extension and clicks a magnet got nothing, and the
+setting that would have fixed it was a separate box with different wording.
+
+```
+Send torrent links to Download Station            [on]
+  Both .torrent downloads and magnet links, instead of your browser or a local app.
+  Hold Shift when clicking a link to send just that one — whether this is on or off.
+```
+
+**`suppressLocalTorrentFile` is gone, not merged.** It was never a preference; it was a hedge
+against our own uncertainty, and BUG-30 removed the uncertainty by making the strict path run on
+every CI. Whether a local copy survives is now a browser capability: Chrome can cancel before the
+file exists, Firefox has no `downloads.onDeterminingFilename` and keeps the older
+pause-and-cancel path. Asking a user about a difference they cannot act on is not a setting.
+
+**Migration, and the one thing it overrides.** `torrentInterceptMode: "off"` was a deliberate
+opt-out and is honoured; everything else becomes on. `autoCaptureMagnets: false` is **not**
+honoured — it defaulted to off while `.torrent` interception defaulted to on, so a stored `false`
+is overwhelmingly the untouched default rather than a decision, and one switch has nowhere to keep
+"torrents yes, magnets no". Anyone who did mean it turns the switch off and Shift-clicks instead.
+This is the only stored choice the migration overrides, and it is stated in the release notes
+rather than hidden.
+
+The content script reads the old key as a fallback: the worker migrates storage on its own
+schedule, and a page can load before that has happened.
+
+**Risk worth naming.** Strict interception becomes the behaviour for existing Chrome users who
+never opted in. The failure it was guarded against — an unreachable NAS eating the download — is
+handled upstream by the live login preflight (BUG-33), which leaves the download entirely alone.
+What remains is a NAS that logs in and then refuses the task; there the file is gone and the user
+re-clicks, with the error reported.
+
+**Covered by** migration tests over the three legacy shapes, the strict/fallback pair in
+`downloads.test.ts`, and an E2E asserting one checkbox, the absence of the other two, and that the
+Shift hint is its accessible description.

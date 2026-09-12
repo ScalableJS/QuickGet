@@ -3,8 +3,8 @@
  * Consolidated storage I/O for application configuration
  */
 
-import type { Settings, ThemeMode, TorrentInterceptMode } from "./config.js";
-import { DEFAULTS, INTERCEPT_MODES, THEME_MODES } from "./config.js";
+import type { Settings, ThemeMode } from "./config.js";
+import { DEFAULTS, THEME_MODES } from "./config.js";
 import { sanitizeRoutingRules } from "./routingRules.js";
 
 /**
@@ -59,12 +59,23 @@ export async function loadSettings(): Promise<Settings> {
          * default change can no longer override, which is how interception silently
          * stayed off for every existing profile.
          */
-        const modeWithDefault = (key: keyof Settings, fallback: TorrentInterceptMode): TorrentInterceptMode => {
-          const raw = localItems[key];
-          if (typeof raw === "string" && (INTERCEPT_MODES as readonly string[]).includes(raw)) {
-            return raw as TorrentInterceptMode;
-          }
-          return fallback;
+        /**
+         * The single interception switch, and the migration off the three that preceded it.
+         *
+         * Old profiles carry `torrentInterceptMode`, `autoCaptureMagnets` and
+         * `suppressLocalTorrentFile`. Only the first survives as a signal: `"off"` was a
+         * deliberate opt-out and is honoured. Everything else becomes on.
+         *
+         * `interceptTorrentLinks: false` is deliberately **not** honoured, and it is the one place
+         * this migration overrides a stored choice. It defaulted to off while `.torrent`
+         * interception defaulted to on, so the stored `false` is overwhelmingly the untouched
+         * default rather than a decision — and a single switch has nowhere to put "torrents yes,
+         * magnets no". Anyone who did mean it can turn the switch off and Shift-click instead.
+         */
+        const resolveInterception = (): boolean => {
+          const current = localItems.interceptTorrentLinks;
+          if (typeof current === "boolean") return current;
+          return localItems.torrentInterceptMode !== "off";
         };
 
         const themeWithDefault = (key: keyof Settings, fallback: ThemeMode): ThemeMode => {
@@ -100,9 +111,7 @@ export async function loadSettings(): Promise<Settings> {
           NASpassword,
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
-          torrentInterceptMode: modeWithDefault("torrentInterceptMode", DEFAULTS.torrentInterceptMode),
-          suppressLocalTorrentFile: booleanWithDefault("suppressLocalTorrentFile", DEFAULTS.suppressLocalTorrentFile),
-          autoCaptureMagnets: booleanWithDefault("autoCaptureMagnets", DEFAULTS.autoCaptureMagnets, false),
+          interceptTorrentLinks: resolveInterception(),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };

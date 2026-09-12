@@ -85,7 +85,7 @@ describe("download interception", () => {
     notifications = getChromeNotificationsMock();
   });
 
-  describe("suppressLocalTorrentFile", () => {
+  describe("no local copy when the filename stage can be held", () => {
     /** Put a download through the filename stage the way Chrome would, then hand it over. */
     async function runWithFilenameHold(settings: ReturnType<typeof createTestSettings>) {
       const item = createDownloadItem();
@@ -100,7 +100,7 @@ describe("download interception", () => {
     it("cancels at the filename stage instead of pausing, so no file is committed", async () => {
       mockSuccessfulHandoff();
 
-      const { held, suggest } = await runWithFilenameHold(createTestSettings({ suppressLocalTorrentFile: true }));
+      const { held, suggest } = await runWithFilenameHold(createTestSettings({ interceptTorrentLinks: true }));
 
       expect(held).toBe(true);
       // The download dies before Chrome can prompt or write; pausing would be too late.
@@ -111,14 +111,21 @@ describe("download interception", () => {
       expect(suggest).toHaveBeenCalled();
     });
 
-    it("keeps the transactional pause/cancel path when the option is off", async () => {
+    /**
+     * The fallback, and it is a browser capability rather than a preference: Firefox has no
+     * `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016), and nothing can be
+     * held there. The older transaction still protects the download — it just cannot stop a
+     * small file from landing first.
+     */
+    it("falls back to pause and cancel when no filename hold was taken", async () => {
       mockSuccessfulHandoff();
 
-      const { suggest } = await runWithFilenameHold(createTestSettings({ suppressLocalTorrentFile: false }));
+      const item = createDownloadItem();
+      seedChromeStorage(createTestSettings({ interceptTorrentLinks: true }));
+      await handleDownloadCreated(item);
 
-      // Default stays safe: the browser holds the file until the NAS has confirmed it.
       expect(downloads.pause).toHaveBeenCalled();
-      expect(suggest).toHaveBeenCalled();
+      expect(downloads.cancel).toHaveBeenCalled();
     });
 
     it("does not hold downloads it was never asked to claim", async () => {
@@ -131,7 +138,7 @@ describe("download interception", () => {
   });
 
   it("ignores the download entirely when interception is off", async () => {
-    seedChromeStorage(createTestSettings({ torrentInterceptMode: "off" }));
+    seedChromeStorage(createTestSettings({ interceptTorrentLinks: false }));
 
     await handleDownloadCreated(createDownloadItem());
 
@@ -387,11 +394,8 @@ describe("download interception", () => {
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it.each([
-    false,
-    true,
-  ])("does not intercept when a live NAS connection cannot be established (suppressLocalTorrentFile=%s)", async (suppressLocalTorrentFile) => {
-    seedChromeStorage(createTestSettings({ suppressLocalTorrentFile }));
+  it("does not intercept when a live NAS connection cannot be established", async () => {
+    seedChromeStorage(createTestSettings());
     const item = createDownloadItem();
     const suggest = vi.fn();
     let torrentFetches = 0;
@@ -435,7 +439,7 @@ describe("download interception", () => {
   it("never touches the download when the session password was cleared by a restart", async () => {
     // The password lives only in storage.session, which a browser
     // restart empties. isLocked() reports false here, so it alone is not a sufficient guard.
-    seedChromeStorage(createTestSettings({ NASpassword: "", torrentInterceptMode: "always" }));
+    seedChromeStorage(createTestSettings({ NASpassword: "", interceptTorrentLinks: true }));
 
     await handleDownloadCreated(createDownloadItem());
 

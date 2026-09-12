@@ -5,10 +5,6 @@
 
 import type { RoutingRule } from "./routingRules.js";
 
-/** Valid torrent-intercept modes — the single source of truth for runtime validation. */
-export const INTERCEPT_MODES = ["off", "always"] as const;
-export type TorrentInterceptMode = (typeof INTERCEPT_MODES)[number];
-
 /** Valid theme preferences — "auto" follows the OS color-scheme. */
 export const THEME_MODES = ["auto", "light", "dark"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
@@ -21,19 +17,20 @@ export type Settings = {
   NASpassword: string; // kept in session storage; encrypted at rest when "remember" is on
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
-  torrentInterceptMode: TorrentInterceptMode; // how to handle .torrent downloads
   /**
-   * Cancel at the filename stage before Chrome can show "Save as" or leave the `.torrent` in
-   * Downloads. The NAS hand-off then re-fetches the URL; if it fails, the user clicks again.
-   * Chrome-only: Firefox has no `downloads.onDeterminingFilename` (Bugzilla 1245652, open since
-   * 2016), and there it is simply ignored. Off by default — see DEFAULTS.
+   * Send torrent links to Download Station without being asked — `.torrent` downloads and
+   * `magnet:` clicks alike.
+   *
+   * One switch, because the two were never two ideas: they are two Chrome APIs for the same
+   * intent, and they used to carry opposite defaults for no reason anyone could name. Whether a
+   * local copy is left behind is not a choice either — it is what the browser allows. Chrome
+   * cancels at the filename stage so nothing reaches Downloads; Firefox has no
+   * `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016) and keeps the older
+   * pause-and-cancel path, where a small file can still land.
+   *
+   * Off is not a dead end: Shift-clicking a link sends that one regardless.
    */
-  suppressLocalTorrentFile: boolean;
-  /**
-   * Automatically intercept clicks on magnet: links and forward them to QNAP Download Station
-   * via AddUrl instead of launching an external BitTorrent application. Off by default (opt-in).
-   */
-  autoCaptureMagnets: boolean;
+  interceptTorrentLinks: boolean;
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
@@ -57,16 +54,13 @@ export const DEFAULTS: Settings = {
    */
   NAStempdir: "Download",
   NASdir: "Download",
-  torrentInterceptMode: "always",
   /**
-   * Off by default deliberately. The permissive path (pause → hand off → cancel) fails
-   * benignly: an unreachable NAS just resumes the browser download and the user still gets
-   * their file. Strict mode cancels that fallback before it re-fetches the URL for the NAS, so
-   * a failed hand-off requires a deliberate retry instead. That trade-off stays the user's
-   * choice, not ours.
+   * On, because a NAS client that waits to be asked before doing its one job is a worse
+   * default than one that acts. The risk that once justified caution is handled elsewhere: a
+   * live NAS login runs before the browser transfer is touched, so an unreachable NAS leaves
+   * the download alone entirely rather than cancelling it (BUG-33).
    */
-  suppressLocalTorrentFile: false,
-  autoCaptureMagnets: false,
+  interceptTorrentLinks: true,
   routingRules: [],
   theme: "auto",
 };

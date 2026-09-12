@@ -57,7 +57,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
     NASpassword: "demo-password",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    torrentInterceptMode: "always",
+    interceptTorrentLinks: true,
     ...overrides,
   };
 }
@@ -354,7 +354,7 @@ test("strict mode leaves no .torrent in Downloads when the NAS accepts it", asyn
   const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
 
   try {
-    await seedSettings(session.worker, nasSettings(mockNas.port, { suppressLocalTorrentFile: true }));
+    await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
 
     const page = await session.context.newPage();
     await page.goto(torrentHost.url).catch(() => {

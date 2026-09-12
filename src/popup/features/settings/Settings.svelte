@@ -41,7 +41,6 @@
    * never implemented `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016),
    * and offering a switch that silently does nothing there is worse than not offering it.
    */
-  const supportsFilenameHold = typeof chrome !== "undefined" && Boolean(chrome.downloads?.onDeterminingFilename);
 
   let form = $state<Settings>({ ...DEFAULTS });
 
@@ -598,65 +597,29 @@
   </div>
 
   <div class="form-group mb-[var(--spacing-md)] flex flex-col gap-[var(--spacing-sm)]">
-    <!-- Two states, so a checkbox rather than a two-item select: the setting reads as the
-         sentence it is, and needs no menu to discover what the alternative even is. -->
+    <!-- One switch, because `.torrent` and `magnet:` were never two ideas — they are two Chrome
+         APIs for the same intent, and they used to carry opposite defaults for no reason anyone
+         could name. Whether a local copy is left behind is not a choice either: Chrome can cancel
+         before the file exists and Firefox cannot, and asking the user about a capability
+         difference they cannot act on is not a setting, it is a shrug. -->
     <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500">
       <Checkbox
-        id="torrentInterceptMode"
-        aria-describedby="shiftClickHint"
-        checked={form.torrentInterceptMode === "always"}
-        onchange={(event) => (form.torrentInterceptMode = event.currentTarget.checked ? "always" : "off")}
+        id="interceptTorrentLinks"
+        aria-describedby="interceptTorrentLinksHint shiftClickHint"
+        bind:checked={form.interceptTorrentLinks}
       >
-        Send .torrent downloads to NAS
+        Send torrent links to Download Station
       </Checkbox>
     </div>
-    <!-- The gesture is worth a line here because nobody discovers a modifier on their own, and it
-         is what makes these checkboxes low-stakes: leave them off and still send a link at will. -->
-    <p id="shiftClickHint" class="m-0 ml-[var(--spacing-lg)] text-12px text-[var(--color-text-secondary)]">
-      Hold <kbd class="font-600">Shift</kbd> when clicking any torrent or magnet link to send just that
-      one — whether these are on or off.
-    </p>
-
-    <!-- A refinement of the setting above, not a peer: kept visible but disabled until
-         interception is on, so its effect stays discoverable while the dependency stays clear.
-         Chrome-only — Firefox has no `downloads.onDeterminingFilename`, so the control is hidden
-         there instead of being shown dead. -->
-    {#if supportsFilenameHold}
-      <div class="ml-[var(--spacing-lg)]">
-        <Checkbox
-          id="suppressLocalTorrentFile"
-          disabled={form.torrentInterceptMode !== "always"}
-          aria-describedby="suppressLocalTorrentFileHint"
-          bind:checked={form.suppressLocalTorrentFile}
-        >
-          Don't save .torrent locally
-        </Checkbox>
-        <div class="mt-[var(--spacing-xs)] ml-[var(--spacing-lg)]">
-          {#if form.torrentInterceptMode === "always"}
-            <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-              Sends torrent directly to NAS without saving locally. If the transfer fails, download locally.
-            </p>
-          {:else}
-            <p id="suppressLocalTorrentFileHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-              Requires .torrent interception.
-            </p>
-          {/if}
-        </div>
-      </div>
-    {/if}
-
-    <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500 mt-[var(--spacing-sm)]">
-      <Checkbox
-        id="autoCaptureMagnets"
-        aria-describedby="autoCaptureMagnetsHint"
-        bind:checked={form.autoCaptureMagnets}
-      >
-        Intercept magnet links
-      </Checkbox>
-    </div>
-    <div class="ml-[var(--spacing-lg)]">
-      <p id="autoCaptureMagnetsHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-        Send clicked magnet links to Download Station instead of local app.
+    <div class="ml-[var(--spacing-lg)] flex flex-col gap-[var(--spacing-xs)]">
+      <p id="interceptTorrentLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+        Both <code>.torrent</code> downloads and magnet links, instead of your browser or a local app.
+      </p>
+      <!-- The gesture is worth a line here because nobody discovers a modifier on their own, and
+           it is what makes this switch low-stakes: leave it off and still send a link at will. -->
+      <p id="shiftClickHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+        Hold <kbd class="font-600">Shift</kbd> when clicking a link to send just that one — whether
+        this is on or off.
       </p>
     </div>
   </div>

@@ -24,7 +24,7 @@ describe("settings", () => {
       NASport: "",
       NASlogin: "",
       NASpassword: "",
-      torrentInterceptMode: "always",
+      interceptTorrentLinks: true,
     });
 
     // Download Station requires a temporary folder, and QNAP creates a `Download` share when
@@ -57,8 +57,8 @@ describe("settings", () => {
     expect(snapshot.NAStempdir).toBeUndefined();
     // Behavioural flags resolve in memory but must never be written back: persisting one
     // freezes it as a user choice that no later default change can override.
-    expect(settings.torrentInterceptMode).toBe("always");
-    expect(snapshot.torrentInterceptMode).toBeUndefined();
+    expect(settings.interceptTorrentLinks).toBe(true);
+    expect(snapshot.interceptTorrentLinks).toBeUndefined();
   });
 
   describe("migrateSettings", () => {
@@ -71,6 +71,8 @@ describe("settings", () => {
     });
 
     it("flags interception left off by the 1.0.2 default leak without rewriting it", async () => {
+      // Legacy storage on purpose: this migration is about the key 1.0.2 wrote, not the one that
+      // replaced it.
       seedChromeStorage({ torrentInterceptMode: "off" });
 
       const { interceptionLeftOff } = await migrateSettings("1.0.2");
@@ -84,10 +86,10 @@ describe("settings", () => {
     it("stays quiet for releases that shipped the correct default", async () => {
       // 307c78a flipped the default and bumped to 1.0.2 in one commit, so 1.0.0/1.0.1 shipped
       // "always" — an "off" stored by them is the user's own choice.
-      seedChromeStorage({ torrentInterceptMode: "off" });
+      seedChromeStorage({ interceptTorrentLinks: false });
       expect((await migrateSettings("1.0.0")).interceptionLeftOff).toBe(false);
 
-      seedChromeStorage({ torrentInterceptMode: "off" });
+      seedChromeStorage({ interceptTorrentLinks: false });
       expect((await migrateSettings("1.0.1")).interceptionLeftOff).toBe(false);
     });
 
@@ -96,7 +98,7 @@ describe("settings", () => {
       seedChromeStorage({});
       expect((await migrateSettings(undefined)).interceptionLeftOff).toBe(false);
 
-      seedChromeStorage({ torrentInterceptMode: "always" });
+      seedChromeStorage({ interceptTorrentLinks: true });
       expect((await migrateSettings("1.0.2")).interceptionLeftOff).toBe(false);
     });
 
@@ -224,5 +226,37 @@ describe("folder defaults", () => {
 
     expect(settings.NAStempdir).toBe("Multimedia/Incoming");
     expect(settings.NASdir).toBe("Multimedia/Movies");
+  });
+});
+
+/**
+ * Three flags became one. Only a deliberate `"off"` survives the collapse — `autoCaptureMagnets`
+ * defaulted to off while `.torrent` interception defaulted to on, so a stored `false` there is
+ * the untouched default far more often than a decision, and one switch has nowhere to keep
+ * "torrents yes, magnets no".
+ */
+describe("migration to the single interception switch", () => {
+  it("honours a deliberate opt-out", async () => {
+    seedChromeStorage({ torrentInterceptMode: "off", autoCaptureMagnets: true });
+    expect((await loadSettings()).interceptTorrentLinks).toBe(false);
+  });
+
+  it("turns on for a profile that never chose, whatever magnet capture said", async () => {
+    seedChromeStorage({ torrentInterceptMode: "always", autoCaptureMagnets: false });
+    expect((await loadSettings()).interceptTorrentLinks).toBe(true);
+
+    seedChromeStorage({});
+    expect((await loadSettings()).interceptTorrentLinks).toBe(true);
+  });
+
+  it("prefers the new key once it exists", async () => {
+    seedChromeStorage({ interceptTorrentLinks: false, torrentInterceptMode: "always" });
+    expect((await loadSettings()).interceptTorrentLinks).toBe(false);
+  });
+
+  it("still resolves in memory only — the switch is never written back", async () => {
+    seedChromeStorage({ torrentInterceptMode: "off" });
+    await loadSettings();
+    expect(getChromeStorageSnapshot().interceptTorrentLinks).toBeUndefined();
   });
 });
