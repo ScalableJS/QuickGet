@@ -257,7 +257,7 @@ describe("magnet content script", () => {
   });
 
   describe("initMagnetInterception", () => {
-    it("attaches click listener when storage has autoCaptureMagnets true", () => {
+    it("attaches the click listener when interception is on in storage", () => {
       const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
       const storageListeners: Array<(changes: Record<string, chrome.storage.StorageChange>, area: string) => void> = [];
@@ -334,7 +334,7 @@ describe("magnet content script", () => {
     });
 
     /**
-     * The listener is attached unconditionally now. Gating it on `autoCaptureMagnets` left the
+     * The listener is attached unconditionally now. Gating it on the setting left the
      * Shift gesture dead in exactly the configuration it exists for — automatic capture off.
      * The setting decides what an *ordinary* click does, and that is checked in the handler.
      */
@@ -365,8 +365,8 @@ describe("magnet content script", () => {
       });
 
       // Toggling the setting must not detach it — only teardown does that.
-      storageListener?.({ autoCaptureMagnets: { newValue: true, oldValue: false } }, "local");
-      storageListener?.({ autoCaptureMagnets: { newValue: false, oldValue: true } }, "local");
+      storageListener?.({ interceptTorrentLinks: { newValue: true, oldValue: false } }, "local");
+      storageListener?.({ interceptTorrentLinks: { newValue: false, oldValue: true } }, "local");
       expect(removeEventListenerSpy).not.toHaveBeenCalled();
 
       cleanup();

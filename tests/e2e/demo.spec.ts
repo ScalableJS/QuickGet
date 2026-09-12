@@ -118,15 +118,14 @@ test.describe("promo demo", () => {
       await popup.locator("#NASpassword").pressSequentially("demo-password", { delay: 45 });
       await recorder.hold(READ.normal);
 
-      // ---- 2. Folders are already right, and the .torrent stays off this machine ----------
+      // ---- 2. Folders are already right, and interception is already on -------------------
       //
       // Temp and Target come pre-filled from `DEFAULTS` (`Download`), so nothing is typed here —
-      // the shot is about what the user does *not* have to do. Only the interception refinement
-      // is toggled.
-      recorder.mark("Folders come ready to use — and the .torrent never touches this computer");
+      // the shot is about what the user does *not* have to do. Interception is one switch and it
+      // is on out of the box, so there is nothing to toggle either: the shot shows both.
+      recorder.mark("Folders come ready to use — and torrent links already go to the NAS");
       await expect(popup.locator("#NAStempdir")).toHaveValue("Download");
-      await popupCursor.click(popup.locator("#suppressLocalTorrentFile"));
-      await expect(popup.locator("#suppressLocalTorrentFile")).toBeChecked();
+      await expect(popup.locator("#interceptTorrentLinks")).toBeChecked();
       await recorder.hold(READ.normal);
 
       // ---- 3. Save & test — one action, and a real round-trip to the NAS -------------------

@@ -1,6 +1,8 @@
 # Svelte Migration Plan — QuickGet Remote
 
-Status: **largely complete** · Target: Svelte 5 (runes) · Owner: TBD
+Status: **complete** · Target: Svelte 5 (runes)
+
+Historical: the popup is Svelte 5 throughout. Kept for the decisions it records, not as work left to do.
 
 ## Migration status (final)
 

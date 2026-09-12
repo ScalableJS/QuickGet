@@ -25,7 +25,8 @@ QuickGet Remote for QNAP connects directly to the NAS you configure and gives yo
 - View active, completed, and seeding tasks with live speed and progress information.
 - Start, pause, stop, and remove Download Station tasks.
 - Configure a default destination folder and routing rules for matching downloads.
-- Send `.torrent` downloads to the NAS automatically; this behavior is enabled by default and can be turned off in Settings.
+- Send `.torrent` downloads and clicked magnet links to the NAS automatically; this behavior is enabled by default and can be turned off in Settings.
+- Hold Shift when clicking a torrent or magnet link to send just that one, whether automatic interception is on or off.
 - Keep credentials and settings in the local browser profile; no analytics, advertising, or third-party service is used.
 
 ### Requirements
@@ -55,7 +56,7 @@ The extension handles personally identifiable information (the NAS username and 
 | `storage` | Stores the NAS address, user settings, routing rules, and (only when the user opts in) local password storage in the browser profile. |
 | `alarms` | Periodically refreshes active Download Station tasks while monitoring is enabled, without relying on a persistent MV3 service worker. |
 | `notifications` | Shows the user a notification when an intercepted torrent needs action or a background send operation fails. |
-| `downloads` | Detects `.torrent` downloads only when the user enables the optional torrent-interception feature; it can then offer or send that torrent to the configured NAS. |
+| `downloads` | Detects `.torrent` downloads so they can be sent to the configured NAS. Enabled by default and switchable off in Settings. |
 | `http://*/`, `https://*/` | The extension must connect directly to a NAS hostname or IP address chosen by each user. The host is not known at install time and may use HTTP or HTTPS. |
 
 ### Remote code
