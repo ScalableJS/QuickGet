@@ -110,6 +110,26 @@ export const ShortSettingsPasswordError: Story = {
 };
 
 /**
+ * What a failed check looks like on the card. Port 1 refuses instantly, so the story is a real
+ * ping against a real dead address rather than a mocked-up state — which is the only way to
+ * review the wording that actually ships.
+ *
+ * The rejected-credentials state cannot be staged this way: only a NAS can reject a password.
+ * It is covered end to end in `tests/e2e/settings-connection.spec.ts` instead.
+ */
+export const ConnectionUnreachable: Story = {
+  args: { storage: { ...CONNECTED, NASaddress: "127.0.0.1", NASport: "1" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Test connection" }));
+    await expect(await canvas.findByText("NAS unreachable")).toBeVisible();
+    await expect(canvas.getByText(/Could not reach 127\.0\.0\.1:1/)).toBeVisible();
+    // The settings are not wrong just because the NAS did not answer, and the card says so.
+    await expect(canvas.getByText("Saved connection settings still active.")).toBeVisible();
+  },
+};
+
+/**
  * One story per tab, all on the same configured settings, so each panel's layout can be
  * reviewed without clicking through the others.
  */

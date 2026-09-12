@@ -1,10 +1,10 @@
-import { HttpResponse, http } from "msw";
+import { delay, HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
 import { createTestSettings } from "../../tests/fixtures/settings";
 import { server } from "../../tests/msw/server";
 
-import { buildNASBaseUrl, createOpenApiFetchClient, performLogin } from ".";
+import { buildNASBaseUrl, createOpenApiFetchClient, LOGIN_TIMEOUT_MS, LoginError, performLogin } from ".";
 
 function serializeUrlEncoded(body: Record<string, unknown>): URLSearchParams {
   const params = new URLSearchParams();
@@ -91,6 +91,70 @@ describe("api/index", () => {
       );
 
       await expect(performLogin(settings)).rejects.toThrow(/NAS login failed/i);
+    });
+
+    it("labels a rejected password with the code the NAS gave, not with words to grep for", async () => {
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => HttpResponse.json({ error: 4 })),
+      );
+
+      const error = await performLogin(createTestSettings()).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(LoginError);
+      expect((error as LoginError).code).toBe(4);
+    });
+
+    it("stops waiting for a NAS that accepts the connection and never answers", async () => {
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", async () => {
+          await delay(5_000);
+          return HttpResponse.json({ error: 0, sid: "TOO-LATE", user: "admin" });
+        }),
+      );
+
+      const startedAt = Date.now();
+      const error = await performLogin(createTestSettings(), { signal: AbortSignal.timeout(150) }).catch(
+        (reason: unknown) => reason,
+      );
+
+      expect((error as Error).name).toBe("TimeoutError");
+      expect(Date.now() - startedAt).toBeLessThan(2_000);
+    });
+
+    it("spends one budget across both attempts rather than restarting it for the retry", async () => {
+      let attempts = 0;
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", async () => {
+          attempts += 1;
+          await delay(200);
+          return HttpResponse.json({ error: 4, reason: "" });
+        }),
+      );
+
+      // Either attempt alone fits inside 300 ms; the two together cannot. A per-request timeout
+      // would let both finish and surface the login error — which is how "wrong password" used to
+      // cost twice the wait of a single request against a NAS that answers slowly.
+      const error = await performLogin(createTestSettings(), { signal: AbortSignal.timeout(300) }).catch(
+        (reason: unknown) => reason,
+      );
+
+      expect((error as Error).name).toBe("TimeoutError");
+      expect(attempts).toBe(2);
+    });
+
+    it("carries a deadline of its own when the caller sets none", async () => {
+      let hadSignal = false;
+      server.use(
+        http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", ({ request }) => {
+          hadSignal = request.signal instanceof AbortSignal && !request.signal.aborted;
+          return HttpResponse.json({ error: 0, sid: "SID-1", user: "admin" });
+        }),
+      );
+
+      await performLogin(createTestSettings());
+
+      expect(hadSignal).toBe(true);
+      expect(LOGIN_TIMEOUT_MS).toBeGreaterThan(0);
     });
   });
 

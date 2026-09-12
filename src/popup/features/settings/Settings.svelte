@@ -21,13 +21,13 @@
   } from "@lib/routingRules.js";
   import type { SourceKind } from "@lib/sourceKind.js";
   import { findConfigProblem } from "@lib/configHealth.js";
-  import { connectionFailure, type ConnectionState, readConnectionState } from "@lib/connectionHealth.js";
+  import { type ConnectionState, pingNas, readConnectionState } from "@lib/connectionHealth.js";
   import { composeServerUrl, parseServerUrl } from "@lib/serverUrl.js";
   import { loadSettings, saveSettings } from "@lib/settings.js";
   import { disableSettingsLock, enableSettingsLock, getSettingsLockState } from "@lib/settingsLock.js";
   import { Alert, Button, Checkbox, Field, FormSection, IconButton, Link, SegmentedControl, Select, Tabs } from "@ui";
 
-  import { getApiClient, invalidateClientCache } from "../../shared/api";
+  import { invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
   import type { FolderFieldStatus } from "../folderPicker/validateFolder.js";
   import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
@@ -343,6 +343,15 @@
   export async function save(): Promise<void> {
     if (isSaving || !isDirty) return;
 
+    /**
+     * Whether to follow the save with a connection check — decided inside the try, acted on after
+     * it. Saving is a write to browser storage and takes a millisecond; checking the NAS is a
+     * network round-trip that can take seconds. Running the second one inside the first one's
+     * `isSaving` is what left the button reading "Saving…" for half a minute while a sleeping NAS
+     * was waited on (BUG-40).
+     */
+    let verifyAfterSave = false;
+
     try {
       isSaving = true;
       applyServerUrl(serverUrl);
@@ -449,35 +458,47 @@
       invalidateClientCache();
       applyTheme(form.theme);
       markClean();
-      showStatus("Settings saved", "success");
 
-      // Save and test are one action: settings that cannot reach the NAS should say so now,
-      // not hours later when a download quietly fails.
-      if (shouldVerifyConnection) await testConnection();
+      verifyAfterSave = shouldVerifyConnection;
+      // The green "Settings saved" is held back while a check is pending. Announcing success and
+      // then replacing it with a network error two seconds later told the user twice, and the
+      // first telling was wrong.
+      if (verifyAfterSave) {
+        showStatus("Settings saved — checking the NAS…", "info");
+      } else {
+        showStatus("Settings saved", "success");
+      }
     } catch (error) {
       showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
     } finally {
       isSaving = false;
     }
+
+    // Outside the block above on purpose: the save is over, and the button says so.
+    // Settings that cannot reach the NAS should still say so now, not hours later when a
+    // download quietly fails.
+    if (verifyAfterSave) await testConnection();
   }
 
   /**
    * One action behind two labels: "Save & test" while editing, "Test connection" on the card.
    * A third "Connect" would imply a session that is held open, which none of this does.
+   *
+   * `pingNas` answers within a fixed budget and never throws, so this cannot be the thing that
+   * leaves a button spinning — which is exactly what it used to be.
    */
   async function testConnection(): Promise<void> {
     if (isTesting) return;
 
     try {
       isTesting = true;
-      const client = await getApiClient({ settings: $state.snapshot(form) });
-      await client.queryTasks({ params: { limit: 1 } });
-      const now = Date.now();
-      connection = { configured: true, health: { kind: "ready", lastCheckedAt: now, lastSuccessAt: now } };
-      showStatus("Connected to the NAS", "success", { autoHideMs: 2500 });
-    } catch (error) {
-      connection = { configured: findConfigProblem(form) === undefined, health: connectionFailure(error) };
-      showStatus(getErrorMessage(error), "error");
+      const health = await pingNas($state.snapshot(form));
+      connection = { configured: findConfigProblem(form) === undefined, health };
+      if (health.kind === "ready") {
+        showStatus("Connected to the NAS", "success", { autoHideMs: 2500 });
+      } else {
+        showStatus(health.detail ?? HEALTH_LABEL[health.kind], "error");
+      }
     } finally {
       isTesting = false;
     }
@@ -545,10 +566,13 @@
       <p class={["connection-health m-0 text-12px", connection.health.kind !== "ready" ? "text-[var(--color-warning)]" : "text-[var(--text-secondary)]"]}>
         {HEALTH_LABEL[connection.health.kind]}
       </p>
+      <!-- The detail is what the check actually found — which host did not answer, and within
+           what budget. "NAS unreachable" alone is a label; this is the part a user can act on. -->
+      {#if connection.health.kind !== "ready" && connection.health.detail}
+        <p class="connection-detail text-[0.85rem] text-[var(--text-secondary)]">{connection.health.detail}</p>
+      {/if}
       {#if connection.health.kind === "unreachable"}
         <p class="text-[0.85rem] text-[var(--text-secondary)]">Saved connection settings still active.</p>
-      {:else if connection.health.kind === "auth-failed"}
-        <p class="text-[0.85rem] text-[var(--text-secondary)]">NAS rejected saved credentials.</p>
       {/if}
 
       <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">

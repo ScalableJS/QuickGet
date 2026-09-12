@@ -38,6 +38,15 @@ Open defects are tracked separately in `bugs-kanban.md`.
   reordering announces itself and keeps focus, the axe gate finally opens the panel the rules live
   on, and the destructive control no longer sits 32px from the reorder arrows. Shipped in v2.3.0
   (BUG-48..BUG-53, UX-18).
+- **One switch for torrent links, and Shift to send just one:** three interception checkboxes
+  became one, and holding Shift sends the link under the cursor whether automatic interception is
+  on or off — so the default matters far less. Strict interception is now a browser capability
+  rather than an opt-in, verified on every CI run instead of by hand. Shipped in v2.4.0
+  (UX-23, UX-24, BUG-30).
+- **A connection test that answers in five seconds and says what it found:** the check is a login
+  ping with a budget, saving no longer waits on the network, and a rejected password is told apart
+  from an absent NAS by the code Download Station answered with rather than by matching words in
+  an error message. Shipped in v2.4.1 (BUG-40).
 
 
 ## Phase 2 — High Value Task Controls

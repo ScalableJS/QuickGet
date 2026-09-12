@@ -36,8 +36,8 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-20 | Which rule sent a task, and where, is invisible | ui | S | Rejected |
 | UX-21 | A rule cannot be muted or duplicated | ui | S | Rejected |
 | UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
-| UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | In Review |
-| UX-24 | Three interception checkboxes become one | settings | M | In Review |
+| UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | Done |
+| UX-24 | Three interception checkboxes become one | settings | M | Done |
 
 ---
 
@@ -912,7 +912,7 @@ right that we were behind on multi-value fields. It is not automatically right a
 
 ### UX-23 — Shift-click sends one link, whatever the automatic settings say
 
-**Size:** M · **Area:** settings · **Status:** In Review
+**Size:** M · **Area:** settings · **Status:** Done
 **Files:** `src/content/magnet.ts`, `src/background/index.ts`, `src/background/menus.ts`,
 `src/popup/features/settings/Settings.svelte`
 
@@ -969,11 +969,13 @@ click sends nothing first.
 **Next in this chain:** with a per-click way in, the three interception checkboxes can collapse
 into one. That is the follow-up, not this card.
 
+**Resolved 2026-09-12** — shipped in v2.4.0.
+
 ---
 
 ### UX-24 — Three interception checkboxes become one
 
-**Size:** M · **Area:** settings · **Status:** In Review
+**Size:** M · **Area:** settings · **Status:** Done
 **Files:** `src/lib/config.ts`, `src/lib/settings.ts`, `src/background/downloads.ts`,
 `src/content/magnet.ts`, `src/popup/features/settings/Settings.svelte`,
 `src/popup/features/settings/settingsBackup.ts`
@@ -1020,3 +1022,5 @@ re-clicks, with the error reported.
 **Covered by** migration tests over the three legacy shapes, the strict/fallback pair in
 `downloads.test.ts`, and an E2E asserting one checkbox, the absence of the other two, and that the
 Shift hint is its accessible description.
+
+**Resolved 2026-09-12** — shipped in v2.4.0.

@@ -193,21 +193,50 @@ export type LoginResult = {
   user: string;
 };
 
+/**
+ * How long a login may take before we stop waiting.
+ *
+ * Without a budget the browser decides, and its answer is TCP's: an address that accepts nothing
+ * is retried for 10-30 seconds before `fetch` rejects. Every call here starts with a login, so
+ * that wait is the floor for *every* operation against an absent NAS — including the one the
+ * settings screen runs after Save, which is what made saving look frozen (BUG-40).
+ *
+ * Eight seconds is far longer than a login on a LAN ever takes and still fails while the user is
+ * watching. The connection test uses a tighter budget of its own.
+ */
+export const LOGIN_TIMEOUT_MS = 8_000;
+
+export type LoginOptions = {
+  /**
+   * Deadline for the whole login, both attempts together. Defaults to `LOGIN_TIMEOUT_MS`.
+   * Pass one signal, not one per request — the point is to bound the total wait.
+   */
+  signal?: AbortSignal;
+};
+
 export type LoggerAdapter = {
   error: (msg: string, err?: unknown) => void;
   debug: (msg: string, data?: unknown) => void;
 };
 
-export async function performLogin(settings: Settings): Promise<LoginResult> {
+export async function performLogin(settings: Settings, options: LoginOptions = {}): Promise<LoginResult> {
   const baseUrl = buildNASBaseUrl(settings);
-  const encodedAttempt = await requestLogin(baseUrl, settings.NASlogin, encodeQnapPassword(settings.NASpassword));
+  // One signal for both attempts: the retry below is part of the same login as far as the caller
+  // is concerned, so it spends the same budget rather than starting a fresh one.
+  const signal = options.signal ?? AbortSignal.timeout(LOGIN_TIMEOUT_MS);
+  const encodedAttempt = await requestLogin(
+    baseUrl,
+    settings.NASlogin,
+    encodeQnapPassword(settings.NASpassword),
+    signal,
+  );
   if (encodedAttempt.sid) {
     return { sid: encodedAttempt.sid, user: encodedAttempt.user };
   }
 
   const shouldRetryWithRawPassword = encodedAttempt.payload.error === 4 && settings.NASpassword.length > 0;
   if (shouldRetryWithRawPassword) {
-    const rawAttempt = await requestLogin(baseUrl, settings.NASlogin, settings.NASpassword);
+    const rawAttempt = await requestLogin(baseUrl, settings.NASlogin, settings.NASpassword, signal);
     if (rawAttempt.sid) {
       return { sid: rawAttempt.sid, user: rawAttempt.user };
     }
@@ -222,7 +251,12 @@ type LoginAttemptResult = {
   payload: Record<string, unknown>;
 };
 
-async function requestLogin(baseUrl: string, username: string, passwordValue: string): Promise<LoginAttemptResult> {
+async function requestLogin(
+  baseUrl: string,
+  username: string,
+  passwordValue: string,
+  signal?: AbortSignal,
+): Promise<LoginAttemptResult> {
   const formData = new URLSearchParams();
   formData.append("user", username);
   formData.append("pass", passwordValue);
@@ -230,21 +264,26 @@ async function requestLogin(baseUrl: string, username: string, passwordValue: st
   const response = await fetch(`${baseUrl}/downloadstation/V4/Misc/Login`, {
     method: "POST",
     body: formData,
+    signal,
   });
 
+  // These three never carry a code: something answered, but not Download Station with a verdict
+  // on the credentials. Saying "login failed" here would make a proxy error read as a wrong
+  // password, which is the one thing the caller must be able to tell apart.
   if (!response.ok) {
-    throw new Error(`NAS login failed: ${response.statusText}`);
+    const status = [response.status, response.statusText].filter(Boolean).join(" ");
+    throw new Error(`The NAS answered the login request with HTTP ${status}.`);
   }
 
   let data: unknown;
   try {
     data = await response.json();
   } catch {
-    throw new Error("NAS login failed: invalid JSON response");
+    throw new Error("The NAS answered the login request with something that is not JSON.");
   }
 
   if (typeof data !== "object" || data === null) {
-    throw new Error("NAS login failed: malformed response");
+    throw new Error("The NAS answered the login request with an unexpected payload.");
   }
 
   const payload = data as Record<string, unknown>;
@@ -258,19 +297,52 @@ async function requestLogin(baseUrl: string, username: string, passwordValue: st
   };
 }
 
-function buildLoginError(payload: Record<string, unknown>): Error {
+/**
+ * A login Download Station itself answered and declined, carrying the code it declined with.
+ *
+ * The code travels with the error so callers can tell "wrong password" from "NAS is off" by
+ * asking, rather than by matching on the message text — which is a translation or a reword away
+ * from silently reclassifying every failure as a network problem. It is a class rather than a
+ * `code` property on a plain Error because `code` is not ours alone: `DOMException` has one too,
+ * so an aborted request would have passed for a rejected password.
+ */
+export class LoginError extends Error {
+  readonly code: number;
+
+  constructor(message: string, code: number) {
+    super(message);
+    this.name = "LoginError";
+    this.code = code;
+  }
+}
+
+/**
+ * The code Download Station answered the login with, or `undefined` when the failure happened
+ * before it could answer — a refused connection, a timeout, a gateway in the way. That
+ * distinction is the whole difference between "your password is wrong" and "your NAS is off".
+ */
+export function loginErrorCode(error: unknown): number | undefined {
+  return error instanceof LoginError ? error.code : undefined;
+}
+
+/** Download Station's "wrong username or password". */
+const QNAP_LOGIN_REJECTED = 4;
+
+function buildLoginError(payload: Record<string, unknown>): LoginError {
   const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
   const errorCode = typeof payload.error === "number" ? payload.error : Number(payload.error ?? -1);
+  const code = Number.isNaN(errorCode) ? -1 : errorCode;
+
   // Error 4 is Download Station's "wrong username or password". Repeating the code tells the
   // user nothing about which of the two settings to look at.
-  if (errorCode === 4) {
-    return new Error("The NAS rejected the username or password. Check them in Settings.");
+  if (code === QNAP_LOGIN_REJECTED) {
+    return new LoginError("The NAS rejected the username or password. Check them in Settings.", code);
   }
 
-  if (!Number.isNaN(errorCode) && errorCode >= 0) {
-    return new Error(reason ? `NAS login failed (${errorCode}): ${reason}` : `NAS login failed (${errorCode})`);
+  if (code >= 0) {
+    return new LoginError(reason ? `NAS login failed (${code}): ${reason}` : `NAS login failed (${code})`, code);
   }
-  return new Error("NAS login failed: no SID in response");
+  return new LoginError("NAS login failed: no SID in response", code);
 }
 
 function encodeQnapPassword(password: string): string {
