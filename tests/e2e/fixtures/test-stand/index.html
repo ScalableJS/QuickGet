@@ -207,6 +207,23 @@
       word-break: break-all;
     }
 
+    /* The link a card actually points at. A showcase that hides its own URLs cannot be used
+       to check which URL was sent, and the RES-5 classifier turns on exactly that difference —
+       `/movie.mkv?token=abc` is a file, `/page?file=movie.mkv` is not. Filled in from the
+       anchor's own href at load, never hand-written, so it cannot drift from the link. */
+    .card-url {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      word-break: break-all;
+      user-select: all;
+      cursor: text;
+    }
+
     .btn-action {
       display: inline-flex;
       align-items: center;
@@ -498,7 +515,7 @@
             <h2 class="card-title">Direct MKV Clip Link</h2>
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
-          <p class="card-meta">Direct video download intercepted via Chrome Downloads.</p>
+          <p class="card-meta">Direct browser download of a video file.</p>
           <div class="rule-hint">Not intercepted &mdash; a <code>*.mkv</code> rule cannot fire here</div>
           <a id="stand-direct-mkv" class="btn-action" href="/files/sample-clip.mkv" download="sample-clip.mkv">
             Download MKV Clip
@@ -733,7 +750,7 @@
 
       const li = document.createElement("li");
       li.className = `log-entry${entry.defaultPrevented ? " intercepted" : ""}`;
-      li.textContent = `[${entry.time}] ${entry.type.toUpperCase()}: ${entry.href} (prevented: ${entry.defaultPrevented})`;
+      li.textContent = `[${entry.time}] ${entry.type.toUpperCase()}: ${entry.absoluteHref ?? entry.href} (prevented: ${entry.defaultPrevented})`;
       logList.prepend(li);
     }
 
@@ -744,6 +761,26 @@
       window.clickHistory = [];
       window.lastClick = null;
     };
+
+    // Show each card the URL it will actually send. Derived from the anchor rather than written
+    // into the markup: a hand-typed copy rots the first time an href changes, and a stand that
+    // lies about its own links is worse than one that shows nothing.
+    function renderCardUrls() {
+      for (const anchor of document.querySelectorAll("a.btn-action[href]")) {
+        const card = anchor.closest(".card");
+        if (!card || card.querySelector(".card-url")) continue;
+        const raw = anchor.getAttribute("href") || "";
+        const absolute = raw.startsWith("magnet:") ? raw : new URL(raw, location.href).href;
+        const line = document.createElement("div");
+        line.className = "card-url";
+        line.textContent = absolute;
+        line.title = absolute;
+        anchor.before(line);
+      }
+    }
+    renderCardUrls();
+    // The Domains tab builds its link at runtime, so re-run after any of them appear.
+    new MutationObserver(renderCardUrls).observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener("click", (e) => {
       const anchor = e.composedPath().find((node) => node instanceof Element && node.tagName === "A" && node.hasAttribute("href"));
@@ -758,6 +795,9 @@
         time: new Date().toLocaleTimeString(),
         id: anchor.id || "anonymous-anchor",
         href: href,
+        // The log is read to find out what would be handed to the NAS, and that is the resolved
+        // URL, not the relative attribute the markup happens to carry.
+        absoluteHref: isMagnet ? href : new URL(href, location.href).href,
         type: linkType,
         defaultPrevented: e.defaultPrevented,
         isTrusted: e.isTrusted,
