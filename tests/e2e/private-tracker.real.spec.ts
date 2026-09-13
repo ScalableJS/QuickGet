@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { prodBuildPath } from "./support/builds.js";
 import { loadTrackerEnv } from "./support/e2eEnv.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "../..");
-const extensionDistPath = path.resolve(rootDir, "dist");
 const profileDir = path.join(rootDir, ".e2e-artifacts", "tracker-profile");
 const env = loadTrackerEnv(rootDir);
 
@@ -38,7 +38,7 @@ test.describe("private tracker (live)", () => {
   test("the tracker accepts the extension's request and yields a real .torrent", async () => {
     const mockNas = await startMockNas();
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-tracker-"));
-    const session = await launchExtensionPopup(extensionDistPath, {
+    const session = await launchExtensionPopup(prodBuildPath, {
       downloadsPath,
       // Only a tracker that requires an account needs the saved profile; an open one does not.
       userDataDir: existsSync(profileDir) ? profileDir : undefined,

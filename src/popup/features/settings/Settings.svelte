@@ -633,6 +633,24 @@
       </p>
     </div>
   </div>
+
+  <!-- Off by default, and deliberately a second switch rather than a mode of the one above: that
+       one covers a file type whose only sensible destination is a download client, this one
+       changes what happens to ordinary web downloads. -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center gap-2 font-500">
+      <Checkbox id="interceptFileLinks" aria-describedby="interceptFileLinksHint" bind:checked={form.interceptFileLinks}>
+        Send file links to Download Station
+      </Checkbox>
+    </div>
+    <div class="ml-6 flex flex-col gap-1">
+      <p id="interceptFileLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
+        A click on a link to a file — <code>.iso</code>, <code>.zip</code>, <code>.mkv</code> and
+        the like — goes to the NAS instead of the browser, at any size. Links behind a login are
+        not supported: the NAS fetches them on its own and has no access to your session.
+      </p>
+    </div>
+  </div>
 </FormSection>
     {:else if tab.id === "advanced"}
 <FormSection legend="Security">

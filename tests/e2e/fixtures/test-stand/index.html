@@ -191,6 +191,12 @@
       color: var(--tag-direct-text);
     }
 
+    /* Cards that exist to prove a negative: the classifier must leave these alone. */
+    .tag-edge {
+      background: rgba(220, 80, 80, 0.18);
+      color: #ffb4b4;
+    }
+
     .card-meta {
       font-size: 0.85rem;
       color: var(--text-muted);
@@ -204,7 +210,24 @@
       font-size: 0.8rem;
       color: #a8cdfc;
       border-radius: 0 4px 4px 0;
+      overflow-wrap: anywhere;
+    }
+
+    /* The link a card actually points at. A showcase that hides its own URLs cannot be used
+       to check which URL was sent, and the RES-5 classifier turns on exactly that difference —
+       `/movie.mkv?token=abc` is a file, `/page?file=movie.mkv` is not. Filled in from the
+       anchor's own href at load, never hand-written, so it cannot drift from the link. */
+    .card-url {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
       word-break: break-all;
+      user-select: all;
+      cursor: text;
     }
 
     .btn-action {
@@ -334,6 +357,9 @@
       </button>
       <button id="tab-btn-tracker" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" onclick="switchTab('tracker')">
         Tracker endpoints
+      </button>
+      <button id="tab-btn-delivery" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-delivery" onclick="switchTab('delivery')">
+        🐌 Delivery &amp; speed
       </button>
     </div>
 
@@ -475,10 +501,17 @@
     <!-- Tab 3: Direct URLs -->
     <section id="tab-direct" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-direct">
       <p class="card-meta" style="margin: 0 0 0.75rem;">
-        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
-        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
-        the browser, so no routing rule can apply to it. These links are here to show where the
-        rules stop, not what they do.
+        <strong>Testing against a real NAS? Use the LAN address, not <code>127.0.0.1</code>.</strong>
+        The NAS fetches these URLs itself, so loopback points at the NAS's own machine and Download
+        Station answers <code>error 12288</code>, "does not support this URL". Restart the stand with
+        <code>QNAP_STAND_LAN=1</code> and it prints an address the NAS can reach. Against the bundled
+        mock NAS, <code>127.0.0.1</code> is fine.
+      </p>
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>This tab depends on one setting.</strong> With <em>Send file links to Download
+        Station</em> off &mdash; the default &mdash; nothing here reaches the NAS and every link is an
+        ordinary browser download. With it on, the cards marked <em>Must not send</em> still have to
+        behave exactly as they do now; that is what the classifier is for.
       </p>
       <div class="grid-cards">
         <article class="card">
@@ -487,7 +520,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct browser download of an ISO disc image.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>*.iso</code> rule cannot fire here</div>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>*.iso</code> rule routes it</div>
           <a id="stand-direct-iso" class="btn-action" href="/files/linux-minimal.iso" download="linux-minimal.iso">
             Download ISO File
           </a>
@@ -498,8 +531,8 @@
             <h2 class="card-title">Direct MKV Clip Link</h2>
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
-          <p class="card-meta">Direct video download intercepted via Chrome Downloads.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>*.mkv</code> rule cannot fire here</div>
+          <p class="card-meta">Direct browser download of a video file.</p>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>*.mkv</code> rule routes it</div>
           <a id="stand-direct-mkv" class="btn-action" href="/files/sample-clip.mkv" download="sample-clip.mkv">
             Download MKV Clip
           </a>
@@ -511,7 +544,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct download of a zip package.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>zip</code> rule cannot fire here</div>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>zip</code> rule routes it</div>
           <a id="stand-direct-zip" class="btn-action" href="/files/devtools.zip" download="devtools.zip">
             Download ZIP Archive
           </a>
@@ -522,10 +555,97 @@
             <h2 class="card-title">Direct PDF Document</h2>
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
-          <p class="card-meta">Document file download.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>pdf</code> rule cannot fire here</div>
+          <p class="card-meta">Document file download, labelled with <code>download</code>.</p>
+          <div class="rule-hint">Sent when the file switch is on &mdash; the page called it a download</div>
           <a id="stand-direct-pdf" class="btn-action" href="/files/documentation.pdf" download="documentation.pdf">
             Download PDF File
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Bare PDF link</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">The same document without <code>download</code>.</p>
+          <div class="rule-hint">Never sent &mdash; a PDF link is expected to open in the viewer</div>
+          <a id="stand-direct-pdf-bare" class="btn-action" href="/files/handbook.pdf">
+            Open PDF
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Large file, throttled</h2>
+            <span class="tag tag-direct">256 MB @ 2 MB/s</span>
+          </div>
+          <p class="card-meta">
+            Generated on the fly with a real <code>Content-Length</code>, so Download Station shows a
+            percentage. Every other file here is a few dozen bytes and finishes before you can look.
+          </p>
+          <div class="rule-hint">Change it: <code>?kbps=512</code>, or <code>large-2048mb.bin</code></div>
+          <a id="stand-direct-large" class="btn-action" href="/files/large-256mb.bin">
+            Download 256 MB
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Plain MKV, no <code>download</code></h2>
+            <span class="tag tag-direct">Extension only</span>
+          </div>
+          <p class="card-meta">A bare link. Only the path's extension says it is a file.</p>
+          <div class="rule-hint">File switch ON &rarr; sent &middot; OFF &rarr; browser</div>
+          <a id="stand-direct-plain-mkv" class="btn-action" href="/files/plain-clip.mkv">
+            Download Plain MKV
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extension in path, token in query</h2>
+            <span class="tag tag-direct">Query</span>
+          </div>
+          <p class="card-meta">A signed-looking link whose path still ends in a real extension.</p>
+          <div class="rule-hint">Must be sent &mdash; the query is not the file name</div>
+          <a id="stand-direct-token" class="btn-action" href="/files/token-clip.mkv?token=abc123">
+            Download Token MKV
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Page naming a file in its query</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">The trap the classifier exists for: an HTML page mentioning a zip.</p>
+          <div class="rule-hint">Never sent &mdash; it would put a web page into Download Station</div>
+          <a id="stand-direct-query-page" class="btn-action" href="/page.html?next=bundle.zip">
+            Open Page (?next=bundle.zip)
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extensionless, labelled a download</h2>
+            <span class="tag tag-direct">download attr</span>
+          </div>
+          <p class="card-meta">No extension anywhere; the anchor carries <code>download</code>.</p>
+          <div class="rule-hint">Sent on the page's own word, not on a guess</div>
+          <a id="stand-direct-extensionless-download" class="btn-action" href="/files/opaque-get" download="build.bin">
+            Download Opaque (labelled)
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extensionless, unlabelled</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">Nothing readable says this is a file, so nothing claims it.</p>
+          <div class="rule-hint">Never sent &mdash; guessing here sends an unknown resource</div>
+          <a id="stand-direct-extensionless" class="btn-action" href="/files/opaque-get">
+            Open Opaque (unlabelled)
           </a>
         </article>
       </div>
@@ -665,6 +785,114 @@
       </div>
     </section>
 
+    <!-- Tab 6: Delivery -->
+    <section id="tab-delivery" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-delivery">
+      <div class="banner">
+        Every file on this tab is generated on the fly at whatever size and speed the query asks
+        for. Against a <strong>real</strong> NAS, reach the stand by its LAN address &mdash;
+        Download Station fetches the link itself, so a <code>127.0.0.1</code> URL points at the NAS.
+      </div>
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Slow trickle</h2>
+            <span class="tag tag-direct">64 MB @ 512 kB/s</span>
+          </div>
+          <p class="card-meta">About two minutes of visible progress. Speed is a property of any file here, not a separate endpoint &mdash; append <code>?kbps=</code> to anything.</p>
+          <div class="rule-hint"><code>?mb=64&amp;kbps=512</code></div>
+          <a id="stand-delivery-slow" class="btn-action" href="/files/trickle.bin?mb=64&kbps=512">
+            Download slowly
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Fast</h2>
+            <span class="tag tag-direct">64 MB @ 8 MB/s</span>
+          </div>
+          <p class="card-meta">The same file, the same route, a different rate. Useful for checking that a transfer which finishes quickly still reports honestly.</p>
+          <div class="rule-hint"><code>?mb=64&amp;kbps=8192</code></div>
+          <a id="stand-delivery-fast" class="btn-action" href="/files/quick.bin?mb=64&kbps=8192">
+            Download quickly
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Slow to start</h2>
+            <span class="tag tag-direct">5 s to first byte</span>
+          </div>
+          <p class="card-meta">Headers arrive at once, the body five seconds later. This is what &ldquo;accepted, nothing yet&rdquo; looks like on the wire.</p>
+          <div class="rule-hint"><code>?delayMs=5000</code></div>
+          <a id="stand-delivery-firstbyte" class="btn-action" href="/files/late.bin?mb=8&kbps=4096&delayMs=5000">
+            Download after a pause
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">No <code>Content-Length</code></h2>
+            <span class="tag tag-direct">Unknown total</span>
+          </div>
+          <p class="card-meta">Chunked, with no declared size. A client cannot compute a percentage from this &mdash; a progress bar becomes a spinner.</p>
+          <div class="rule-hint"><code>?nolength=1</code></div>
+          <a id="stand-delivery-nolength" class="btn-action" href="/files/unknown.bin?mb=32&kbps=2048&nolength=1">
+            Download without a total
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Ends early, cleanly</h2>
+            <span class="tag tag-direct">Lies about its size</span>
+          </div>
+          <p class="card-meta">Promises 32 MB, sends 4, then closes without error. The nastiest of the failures here: nothing signals a problem, so a client trusting the close over the declared length calls a partial file complete.</p>
+          <div class="rule-hint"><code>?truncateAt=4194304</code></div>
+          <a id="stand-delivery-truncated" class="btn-action" href="/files/short.bin?mb=32&kbps=4096&truncateAt=4194304">
+            Download a truncated file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Connection reset</h2>
+            <span class="tag tag-direct">Dies mid-transfer</span>
+          </div>
+          <p class="card-meta">Destroys the connection after 4 MB. Unlike the truncated file this one is loud &mdash; the question is whether the task ends in a clear error state or retries.</p>
+          <div class="rule-hint"><code>?abortAt=4194304</code></div>
+          <a id="stand-delivery-abort" class="btn-action" href="/files/broken.bin?mb=32&kbps=4096&abortAt=4194304">
+            Download a doomed file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Redirect chain</h2>
+            <span class="tag tag-direct">3 hops</span>
+          </div>
+          <p class="card-meta">Three 302s before the real file. A download link on a real site is very often a redirect to a CDN, while the extension decides from the URL that was clicked.</p>
+          <div class="rule-hint"><code>/redirect?hops=3&amp;to=…</code></div>
+          <a id="stand-delivery-redirect" class="btn-action" href="/redirect?hops=3&to=/files/redirected.bin%3Fmb%3D16%26kbps%3D2048">
+            Follow the chain
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Plain 404</h2>
+            <span class="tag tag-direct">Error status</span>
+          </div>
+          <p class="card-meta">A download client meets far more missing files than exotic bandwidth profiles. <code>/status/403</code> and <code>/status/503</code> exist too.</p>
+          <div class="rule-hint"><code>/status/404</code></div>
+          <a id="stand-delivery-404" class="btn-action" href="/status/404">
+            Request a missing file
+          </a>
+        </article>
+
+      </div>
+    </section>
+
+
     <!-- Interactive Event & Interception Log -->
     <aside class="log-panel" aria-label="Interception Activity Log">
       <div class="log-header">
@@ -680,23 +908,48 @@
   </main>
 
   <script>
-    // Tab switching logic
-    window.switchTab = function switchTab(tabId) {
-      const tabs = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
-      for (const t of tabs) {
+    const TABS = ['torrents', 'magnets', 'direct', 'domains', 'tracker', 'delivery'];
+
+    /**
+     * Tabs are addressable: every one has a URL, so a tab can be linked, bookmarked and shared.
+     *
+     * `http://host:3300/#direct` opens the Direct URLs tab. Without this the address bar never
+     * moved, so "look at this case" meant "open the stand, then click the third tab" — which is
+     * the wrong instruction to give about a page whose entire job is showing specific cases.
+     *
+     * The hash is written with replaceState/pushState rather than by assigning `location.hash`,
+     * because that assignment scrolls the panel under the header. Back and forward work through
+     * the `hashchange` listener below.
+     */
+    function renderTab(tabId) {
+      for (const t of TABS) {
         const btn = document.getElementById(`tab-btn-${t}`);
         const panel = document.getElementById(`tab-${t}`);
-        if (t === tabId) {
-          btn?.classList.add('active');
-          btn?.setAttribute('aria-selected', 'true');
-          panel?.classList.add('active');
-        } else {
-          btn?.classList.remove('active');
-          btn?.setAttribute('aria-selected', 'false');
-          panel?.classList.remove('active');
-        }
+        const selected = t === tabId;
+        btn?.classList.toggle('active', selected);
+        btn?.setAttribute('aria-selected', String(selected));
+        panel?.classList.toggle('active', selected);
       }
+    }
+
+    function tabFromHash() {
+      const fromHash = location.hash.replace(/^#/, '');
+      return TABS.includes(fromHash) ? fromHash : TABS[0];
+    }
+
+    window.switchTab = function switchTab(tabId) {
+      if (!TABS.includes(tabId)) return;
+      renderTab(tabId);
+      if (tabFromHash() !== tabId) history.pushState(null, '', `#${tabId}`);
     };
+
+    window.addEventListener('hashchange', () => renderTab(tabFromHash()));
+    window.addEventListener('popstate', () => renderTab(tabFromHash()));
+
+    // Honour a hash the page was opened with, and give the default tab a URL of its own so the
+    // address bar is never blank about which tab is showing.
+    renderTab(tabFromHash());
+    if (!location.hash) history.replaceState(null, '', `#${TABS[0]}`);
 
     // A domain rule needs two hostnames. The stand is served on 127.0.0.1; the same server
     // answers on localhost, so rewriting these links at load time gives a second host without
@@ -733,7 +986,7 @@
 
       const li = document.createElement("li");
       li.className = `log-entry${entry.defaultPrevented ? " intercepted" : ""}`;
-      li.textContent = `[${entry.time}] ${entry.type.toUpperCase()}: ${entry.href} (prevented: ${entry.defaultPrevented})`;
+      li.textContent = `[${entry.time}] ${entry.type.toUpperCase()}: ${entry.absoluteHref ?? entry.href} (prevented: ${entry.defaultPrevented})`;
       logList.prepend(li);
     }
 
@@ -744,6 +997,26 @@
       window.clickHistory = [];
       window.lastClick = null;
     };
+
+    // Show each card the URL it will actually send. Derived from the anchor rather than written
+    // into the markup: a hand-typed copy rots the first time an href changes, and a stand that
+    // lies about its own links is worse than one that shows nothing.
+    function renderCardUrls() {
+      for (const anchor of document.querySelectorAll("a.btn-action[href]")) {
+        const card = anchor.closest(".card");
+        if (!card || card.querySelector(".card-url")) continue;
+        const raw = anchor.getAttribute("href") || "";
+        const absolute = raw.startsWith("magnet:") ? raw : new URL(raw, location.href).href;
+        const line = document.createElement("div");
+        line.className = "card-url";
+        line.textContent = absolute;
+        line.title = absolute;
+        anchor.before(line);
+      }
+    }
+    renderCardUrls();
+    // The Domains tab builds its link at runtime, so re-run after any of them appear.
+    new MutationObserver(renderCardUrls).observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener("click", (e) => {
       const anchor = e.composedPath().find((node) => node instanceof Element && node.tagName === "A" && node.hasAttribute("href"));
@@ -758,6 +1031,9 @@
         time: new Date().toLocaleTimeString(),
         id: anchor.id || "anonymous-anchor",
         href: href,
+        // The log is read to find out what would be handed to the NAS, and that is the resolved
+        // URL, not the relative attribute the markup happens to carry.
+        absoluteHref: isMagnet ? href : new URL(href, location.href).href,
         type: linkType,
         defaultPrevented: e.defaultPrevented,
         isTrusted: e.isTrusted,

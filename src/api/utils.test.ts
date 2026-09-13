@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createApiError, getErrorMessage, isSuccessResponse } from "./utils.js";
+import { createApiError, explainLoopbackUrl, getErrorMessage, isSuccessResponse } from "./utils.js";
 
 describe("api/utils", () => {
   describe("createApiError", () => {
@@ -39,5 +39,29 @@ describe("api/utils", () => {
     it("returns the reason when present", () => {
       expect(getErrorMessage({ error: 1, reason: "temp" })).toBe("temp");
     });
+  });
+});
+
+describe("explainLoopbackUrl", () => {
+  it("explains a loopback link when the NAS is somewhere else", () => {
+    const message = explainLoopbackUrl("http://127.0.0.1:3300/files/x.iso", "192.168.88.185");
+    expect(message).toContain("fetches links itself");
+    expect(message).toContain("127.0.0.1");
+  });
+
+  it.each(["localhost", "127.0.0.1", "127.1.2.3", "[::1]"])("recognises %s as loopback", (host) => {
+    expect(explainLoopbackUrl(`http://${host}/x.iso`, "nas.local")).toBeDefined();
+  });
+
+  it("stays quiet when the NAS is on this machine — the mock NAS case", () => {
+    // A loopback URL is exactly right against a NAS running here; saying otherwise would just
+    // be a different wrong message.
+    expect(explainLoopbackUrl("http://127.0.0.1:3300/files/x.iso", "127.0.0.1")).toBeUndefined();
+    expect(explainLoopbackUrl("http://localhost:3300/files/x.iso", "localhost")).toBeUndefined();
+  });
+
+  it("stays quiet for an ordinary link, and for input it cannot parse", () => {
+    expect(explainLoopbackUrl("https://releases.ubuntu.com/x.iso", "192.168.88.185")).toBeUndefined();
+    expect(explainLoopbackUrl("not a url", "192.168.88.185")).toBeUndefined();
   });
 });

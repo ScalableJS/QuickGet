@@ -1,13 +1,8 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * An uncaught error in the popup is invisible unless someone happens to have DevTools open on
@@ -18,7 +13,7 @@ test.describe("popup console", () => {
 
   test("opening the popup and the settings raises no page errors", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
     const problems: string[] = [];
 
     session.page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));

@@ -105,58 +105,69 @@ async function saveState(state: ToolbarState): Promise<void> {
 }
 
 function buildTitle(stats: ProgressSummary): string {
-  return `Active: ${stats.active}\nTotal: ${stats.all}\nDownload: ${formatRate(stats.downRate)}\nUpload: ${formatRate(stats.upRate)}`;
+  // Two named lines rather than one "Active" count: the badge can read empty while the NAS is
+  // busy seeding, and the tooltip is the only place that can say so (BUG-62).
+  return [
+    `Downloading: ${stats.downloading}`,
+    `Seeding: ${stats.seeding}`,
+    `Total: ${stats.all}`,
+    `Download: ${formatRate(stats.downRate)}`,
+    `Upload: ${formatRate(stats.upRate)}`,
+  ].join("\n");
 }
 
 /**
  * Apply a confident, successful poll to the toolbar — the ONLY function that
  * writes the badge/icon. It is diff-guarded against the persisted last-rendered
- * state. Returns whether NAS reports idle (so the caller can stop polling).
- * Do NOT call on a failed/aborted/skipped poll.
+ * state. Do NOT call on a failed/aborted/skipped poll.
+ *
+ * Two independent channels (BUG-62):
+ *
+ *  - the **number** is `downloading` — how many requested items are not on disk yet — and is
+ *    blank when that is zero. Seeding never inflates it.
+ *  - the **icon** is lit whenever the NAS is doing anything at all, downloading or seeding.
+ *
+ * So the last download finishing turns `green 1` into `green, no number`, and that transition is
+ * itself the "your file is ready" signal. No notification, sound or temporary glyph is involved.
+ *
+ * Returns both counts, so a caller can keep polling while either is non-zero, plus
+ * `idleConfirmed` for the only state where polling may stop.
  */
-export async function applyBadgeStats(stats: ProgressSummary): Promise<{ active: number; idleConfirmed: boolean }> {
+export async function applyBadgeStats(
+  stats: ProgressSummary,
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean }> {
   return updateState(async (state) => {
     const needsAttention = state.badgeText === CONFIG_BADGE;
+    const hasActivity = stats.downloading > 0 || stats.seeding > 0;
+    const text = stats.downloading > 0 ? String(stats.downloading) : "";
 
     // Refresh the tooltip only when we actually apply a state — during an idle
     // hold the tooltip keeps matching the count still on the badge.
-    const refreshTitle = async () => {
+    if (!needsAttention) {
       const title = buildTitle(stats);
       if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
         state.title = title;
       }
-    };
-
-    if (stats.active > 0) {
-      if (!needsAttention) await refreshTitle();
-      const text = String(stats.active);
-      if (!needsAttention && text !== state.badgeText) {
-        if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text }))) state.badgeText = text;
-      }
-      if (!needsAttention && state.badgeColor !== "green") {
-        if (await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }))) {
-          state.badgeColor = "green";
-        }
-      }
-      if (state.icon !== "active") {
-        if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: ACTIVE_ICON_PATH }))) {
-          state.icon = "active";
-        }
-      }
-      return { active: stats.active, idleConfirmed: false };
     }
 
     // A successful NAS snapshot is authoritative, including the first zero.
-    if (!needsAttention) await refreshTitle();
-    if (!needsAttention && state.badgeText !== "") {
-      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" }))) state.badgeText = "";
+    if (!needsAttention && text !== state.badgeText) {
+      if (await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text }))) state.badgeText = text;
     }
-    if (state.icon !== "idle") {
-      if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path: IDLE_ICON_PATH }))) {
-        state.icon = "idle";
+    // Only meaningful behind visible text; an empty badge has no colour to see.
+    if (!needsAttention && text !== "" && state.badgeColor !== "green") {
+      if (await tryActionUpdate("badge color", () => chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" }))) {
+        state.badgeColor = "green";
       }
     }
-    return { active: 0, idleConfirmed: true };
+
+    const icon: IconState = hasActivity ? "active" : "idle";
+    if (state.icon !== icon) {
+      const path = hasActivity ? ACTIVE_ICON_PATH : IDLE_ICON_PATH;
+      if (await tryActionUpdate("icon", () => chrome.action.setIcon({ path }))) state.icon = icon;
+    }
+
+    return { downloading: stats.downloading, seeding: stats.seeding, idleConfirmed: !hasActivity };
   });
 }
 

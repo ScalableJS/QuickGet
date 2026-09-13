@@ -1,14 +1,9 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 test("multi-file torrent selection loads files and saves changed priorities", async () => {
   const mockNas = await startMockNas({
@@ -28,7 +23,7 @@ test("multi-file torrent selection loads files and saves changed priorities", as
       },
     ],
   });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {

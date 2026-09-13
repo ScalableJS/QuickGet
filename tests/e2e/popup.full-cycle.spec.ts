@@ -5,12 +5,12 @@ import { expect, test } from "@playwright/test";
 
 import type { Task } from "../../src/lib/tasks.js";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const sampleTorrentPath = path.resolve(__dirname, "./fixtures/sample.torrent");
 
 test("popup renders the QNAP transition states with their official meaning", async () => {
@@ -41,7 +41,7 @@ test("popup renders the QNAP transition states with their official meaning", asy
     source: "qnap",
   }));
   const mockNas = await startMockNas({ initialTasks });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     await session.worker.evaluate((values) => chrome.storage.local.set(values), {
@@ -88,7 +88,7 @@ test("popup renders the QNAP transition states with their official meaning", asy
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("popup full cycle: configure, connect, list, control, upload, remove", async ({}, testInfo) => {
   const mockNas = await startMockNas({ removeDelayMs: 250 });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {

@@ -2,8 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { acknowledgeAttention, applyBadgeStats, markConfigurationProblem, resetActionState } from "./actions.js";
 
-const stats = (active: number, extra: Partial<{ all: number; downRate: number; upRate: number }> = {}) => ({
-  active,
+/** `stats(downloading, seeding)` — the two channels the toolbar renders separately (BUG-62). */
+const stats = (
+  downloading: number,
+  seeding = 0,
+  extra: Partial<{ all: number; downRate: number; upRate: number }> = {},
+) => ({
+  downloading,
+  seeding,
   all: extra.all ?? 6,
   downRate: extra.downRate ?? 0,
   upRate: extra.upRate ?? 0,
@@ -28,7 +34,7 @@ describe("applyBadgeStats", () => {
   it("keeps a valid NAS snapshot usable when Chrome rejects the icon repaint", async () => {
     vi.mocked(chrome.action.setIcon).mockRejectedValueOnce(new Error("action unavailable"));
 
-    await expect(applyBadgeStats(stats(2))).resolves.toEqual({ active: 2, idleConfirmed: false });
+    await expect(applyBadgeStats(stats(2))).resolves.toEqual({ downloading: 2, seeding: 0, idleConfirmed: false });
   });
 
   it("diff guard: an unchanged count is written only once", async () => {
@@ -96,14 +102,97 @@ describe("applyBadgeStats", () => {
   });
 
   it("writes a formatted multiline tooltip with rates", async () => {
-    await applyBadgeStats(stats(1, { downRate: 1_258_291, upRate: 419_430 }));
+    await applyBadgeStats(stats(1, 2, { downRate: 1_258_291, upRate: 419_430 }));
 
     const calls = vi.mocked(chrome.action.setTitle).mock.calls;
     const title = calls[calls.length - 1]?.[0].title;
-    expect(title).toContain("Active: 1");
+    expect(title).toContain("Downloading: 1");
+    expect(title).toContain("Seeding: 2");
     expect(title).toContain("Total: 6");
     expect(title).toContain("Download: 1.2 MB/s");
     expect(title).toContain("Upload: 410 KB/s");
+    // The one count the old tooltip had is gone: it could not tell these two numbers apart.
+    expect(title).not.toContain("Active:");
+  });
+
+  it("names the seeding count in the tooltip when the badge itself is empty", async () => {
+    await applyBadgeStats(stats(0, 3, { upRate: 419_430 }));
+
+    const calls = vi.mocked(chrome.action.setTitle).mock.calls;
+    const title = calls[calls.length - 1]?.[0].title;
+    expect(title).toContain("Downloading: 0");
+    expect(title).toContain("Seeding: 3");
+    expect(title).toContain("Upload: 410 KB/s");
+  });
+
+  describe("two-channel presentation (BUG-62)", () => {
+    const ACTIVE = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
+    const IDLE = { 32: "icons/32_download.png", 128: "icons/128_download.png" };
+
+    it("shows only the download count when downloads and seeds run together", async () => {
+      await applyBadgeStats(stats(2, 3));
+
+      // Never 5. That number was the whole defect: it could not be read.
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "2" });
+      expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: ACTIVE });
+    });
+
+    it("keeps the icon lit but empties the badge while only seeding", async () => {
+      await applyBadgeStats(stats(2, 0)); // badge "2", icon lit
+      vi.clearAllMocks();
+
+      const result = await applyBadgeStats(stats(0, 3));
+
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+      // Not rewritten, because it is already lit — which is exactly "stays lit".
+      expect(chrome.action.setIcon).not.toHaveBeenCalled();
+      expect(result.idleConfirmed).toBe(false); // seeding still has to be polled
+    });
+
+    it("goes idle only when neither channel has work", async () => {
+      await applyBadgeStats(stats(2, 1));
+      vi.clearAllMocks();
+
+      const result = await applyBadgeStats(stats(0, 0));
+
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+      expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: IDLE });
+      expect(result.idleConfirmed).toBe(true);
+    });
+
+    it("does not paint a badge colour behind an empty badge", async () => {
+      await applyBadgeStats(stats(0, 3));
+
+      expect(chrome.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
+    });
+
+    it("the last download finishing clears the number without flashing idle", async () => {
+      await applyBadgeStats(stats(1, 1));
+      vi.clearAllMocks();
+
+      // The download completes and the NAS moves it to seeding.
+      const seedingOnly = await applyBadgeStats(stats(0, 2));
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+      expect(seedingOnly.idleConfirmed).toBe(false);
+      // The icon was already lit and stays lit — no write, so no flicker through idle.
+      expect(chrome.action.setIcon).not.toHaveBeenCalled();
+
+      // Seeding finishes too.
+      vi.clearAllMocks();
+      const idle = await applyBadgeStats(stats(0, 0));
+      expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: IDLE });
+      expect(idle.idleConfirmed).toBe(true);
+      // The badge was already empty; nothing to rewrite.
+      expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+    });
+
+    it("reports both counts so a caller can keep polling for either", async () => {
+      await expect(applyBadgeStats(stats(2, 3))).resolves.toEqual({
+        downloading: 2,
+        seeding: 3,
+        idleConfirmed: false,
+      });
+    });
   });
 
   it("keeps an error badge red while another task is successfully active", async () => {

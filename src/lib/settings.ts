@@ -112,6 +112,7 @@ export async function loadSettings(): Promise<Settings> {
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
           interceptTorrentLinks: resolveInterception(),
+          interceptFileLinks: booleanWithDefault("interceptFileLinks", DEFAULTS.interceptFileLinks),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };

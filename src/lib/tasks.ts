@@ -80,6 +80,37 @@ export function isInProgress(status: TaskStatus): boolean {
   return IN_PROGRESS_STATUSES.includes(status);
 }
 
+/**
+ * Statuses where the content the user asked for is **not ready yet** — the toolbar badge's
+ * number, and nothing else.
+ *
+ * Deliberately not `IN_PROGRESS_STATUSES` minus `seeding`, even though it happens to be that
+ * list today. The two answer different questions: the popup's tab asks "is the NAS still working
+ * on this", which seeding is, while the badge asks "how many things am I still waiting for",
+ * which seeding is not — a seeding torrent is already on disk. Deriving one from the other would
+ * silently move the badge the next time a status joins the popup filter.
+ *
+ * Broader than "is transferring": `moving`, `checking`, `finishing` and `allocating` are counted
+ * so the number does not blink out mid-way through QNAP's `downloading → moving → seeding` chain.
+ */
+export const DOWNLOAD_PHASE_STATUSES: readonly TaskStatus[] = [
+  "queued",
+  "queuedChecking",
+  "downloading",
+  "downloadingMetadata",
+  "paused",
+  "checking",
+  "repairing",
+  "extracting",
+  "finishing",
+  "moving",
+  "allocating",
+];
+
+export function isDownloadPhase(status: TaskStatus): boolean {
+  return DOWNLOAD_PHASE_STATUSES.includes(status);
+}
+
 export function isCompleted(status: TaskStatus): boolean {
   return status === "finished" || status === "seeding";
 }
@@ -101,28 +132,37 @@ export function isReorderableStatus(status: TaskStatus): boolean {
   return REORDERABLE_STATUSES.includes(status);
 }
 
+/**
+ * The toolbar's view of a task list. `downloading` and `seeding` are kept apart on purpose:
+ * one aggregate `active` count meant a steady `3` could be three files still arriving, three
+ * already-complete files being shared, or any mixture — three different situations wearing the
+ * same number (BUG-62). The badge shows `downloading`; `seeding` only decides whether the icon
+ * stays lit, and is named in the tooltip.
+ */
 export type ProgressSummary = {
-  active: number;
+  downloading: number;
+  seeding: number;
   all: number;
   downRate: number;
   upRate: number;
 };
 
 /**
- * Reduce a task list to the toolbar's view of it: in-progress count + total +
- * combined transfer rates. Shared by the popup (which sends it to the
+ * Reduce a task list to the toolbar's view of it. Shared by the popup (which sends it to the
  * background) and the background poll, so both agree on the numbers.
  */
 export function summarizeProgress(tasks: Task[]): ProgressSummary {
-  let active = 0;
+  let downloading = 0;
+  let seeding = 0;
   let downRate = 0;
   let upRate = 0;
   for (const task of tasks) {
-    if (isInProgress(task.status)) active += 1;
+    if (isDownloadPhase(task.status)) downloading += 1;
+    else if (task.status === "seeding") seeding += 1;
     downRate += task.downSpeedBps;
     upRate += task.upSpeedBps;
   }
-  return { active, all: tasks.length, downRate, upRate };
+  return { downloading, seeding, all: tasks.length, downRate, upRate };
 }
 
 const synologyToUnified: Record<string, TaskStatus> = {

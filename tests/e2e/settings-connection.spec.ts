@@ -1,16 +1,12 @@
 import { once } from "node:events";
 import { createServer } from "node:http";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * The three answers the connection test can give, driven through the real settings screen.
@@ -74,7 +70,7 @@ async function startSilentHost(): Promise<{ port: number; close: () => Promise<v
 
 test("a reachable NAS with the right password reports ready", async () => {
   const mockNas = await startMockNas({ credentials: { user: FIELDS.login, password: FIELDS.password } });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
@@ -92,7 +88,7 @@ test("a reachable NAS with the right password reports ready", async () => {
 
 test("a wrong password is named as a wrong password, not as a network problem", async () => {
   const mockNas = await startMockNas({ credentials: { user: FIELDS.login, password: FIELDS.password } });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
@@ -123,7 +119,7 @@ test("an absent NAS answers within the budget, and never holds the Save button h
   const deadPort = vanished.port;
   await vanished.close();
 
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
@@ -158,7 +154,7 @@ test("an absent NAS answers within the budget, and never holds the Save button h
 
 test("a NAS that accepts the connection and then goes quiet is given up on, not waited out", async () => {
   const silent = await startSilentHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {

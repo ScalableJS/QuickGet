@@ -1,14 +1,9 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * Runs axe over the real popup rather than a Storybook rendering of it, so what is checked is
@@ -38,7 +33,7 @@ test.describe("accessibility", () => {
 
   test("the settings form has no detectable violations", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -85,7 +80,7 @@ test.describe("accessibility", () => {
    */
   test("the routing rules on the Advanced tab have no detectable violations", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -133,7 +128,7 @@ test.describe("accessibility", () => {
    */
   test("reordering a rule with the keyboard keeps focus inside the rule that moved", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -163,7 +158,7 @@ test.describe("accessibility", () => {
 
   test("an incomplete form marks its fields rather than only describing them", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -205,7 +200,7 @@ test.describe("accessibility", () => {
    */
   test("Save switches to the tab holding the first invalid field", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -241,7 +236,7 @@ test.describe("accessibility", () => {
    */
   test("an imported backup is not applied until it is confirmed", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -297,7 +292,7 @@ test.describe("accessibility", () => {
    */
   test("interception is one checkbox on the connection tab, and it persists", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(
@@ -335,7 +330,7 @@ test.describe("accessibility", () => {
 
   test("a settings-password error marks and focuses its field", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate(

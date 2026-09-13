@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifySource, isTorrentSource, magnetDisplayName } from "./sourceKind.js";
+import { DOWNLOADABLE_FILE_EXTENSIONS, classifySource, isDownloadableFileUrl, isTorrentSource, magnetDisplayName } from "./sourceKind.js";
 
 describe("isTorrentSource", () => {
   it.each([
@@ -169,5 +169,60 @@ describe("magnetDisplayName", () => {
     expect(magnetDisplayName("magnet:?xt=urn:btih:abc")).toBeUndefined();
     expect(magnetDisplayName("magnet:?xt=urn:btih:abc&dn=%20%20")).toBeUndefined();
     expect(magnetDisplayName("magnet:")).toBeUndefined();
+  });
+});
+
+describe("isDownloadableFileUrl — what a plain click may send (RES-5)", () => {
+  it.each(["http://h/ubuntu.iso", "https://h/pack.zip", "http://h/clip.mkv", "http://h/app.dmg", "http://h/firmware.bin"])(
+    "accepts %s",
+    (url) => {
+      expect(isDownloadableFileUrl(url)).toBe(true);
+    },
+  );
+
+  it("reads the extension from the path, never from the query", () => {
+    // The distinction the whole classifier turns on: one of these is a file, the other is a page
+    // that merely names one, and sending it would put an HTML document into Download Station.
+    expect(isDownloadableFileUrl("http://h/movie.mkv?token=abc")).toBe(true);
+    expect(isDownloadableFileUrl("http://h/page?file=movie.mkv")).toBe(false);
+    expect(isDownloadableFileUrl("http://h/download?name=x.iso&id=7")).toBe(false);
+  });
+
+  it("ignores case and a fragment", () => {
+    expect(isDownloadableFileUrl("http://h/IMAGE.ISO")).toBe(true);
+    expect(isDownloadableFileUrl("http://h/deep/path/file.zip#part2")).toBe(true);
+  });
+
+  it("leaves torrents alone — they already have a path that keeps the local copy", () => {
+    expect(isDownloadableFileUrl("http://h/release.torrent")).toBe(false);
+    expect(isDownloadableFileUrl("http://tracker/dl.php?id=1")).toBe(false);
+    expect(DOWNLOADABLE_FILE_EXTENSIONS).not.toContain("torrent");
+  });
+
+  it("does not claim a PDF, because the browser expectation is the viewer", () => {
+    expect(isDownloadableFileUrl("http://h/manual.pdf")).toBe(false);
+    expect(DOWNLOADABLE_FILE_EXTENSIONS).not.toContain("pdf");
+  });
+
+  it("rejects schemes the NAS cannot fetch at all", () => {
+    for (const url of [
+      "magnet:?xt=urn:btih:abc",
+      "blob:http://h/8a7d",
+      "data:application/zip;base64,AAAA",
+      "file:///tmp/x.iso",
+      "ftp://h/x.iso",
+      "javascript:void(0)",
+      "mailto:a@b.c",
+    ]) {
+      expect(isDownloadableFileUrl(url)).toBe(false);
+    }
+  });
+
+  it("rejects a page, an extensionless path, and unparseable input", () => {
+    expect(isDownloadableFileUrl("http://h/page.html")).toBe(false);
+    expect(isDownloadableFileUrl("http://h/downloads/")).toBe(false);
+    expect(isDownloadableFileUrl("http://h/get")).toBe(false);
+    expect(isDownloadableFileUrl("not a url")).toBe(false);
+    expect(isDownloadableFileUrl("")).toBe(false);
   });
 });

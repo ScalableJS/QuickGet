@@ -11,7 +11,7 @@
  */
 
 import { DEFAULTS } from "@lib/config.js";
-import { isTorrentSource } from "@lib/sourceKind.js";
+import { isDownloadableFileUrl, isTorrentSource } from "@lib/sourceKind.js";
 
 export type MagnetMessage = {
   type: "task:add";
@@ -78,6 +78,34 @@ export function getShiftSendUrl(event: MouseEvent): string | null {
   if (!href || !/^https?:/i.test(href)) return null;
 
   return isTorrentSource(href) ? href : null;
+}
+
+/**
+ * The absolute URL of a plainly-clicked link to an ordinary file, or `null` (RES-5).
+ *
+ * Two signals, both readable synchronously, because `preventDefault()` cannot wait for a network
+ * round trip: the anchor's own `download` attribute — the page saying outright that this is a
+ * file — or a known extension in the URL's path. Nothing here inspects a response; a link that
+ * only reveals itself as a file through its `Content-Type` is left to the browser.
+ *
+ * Shift is not consulted. That gesture already means "send this one whatever the settings say"
+ * and is handled above; this is the automatic path and answers only to its own checkbox.
+ */
+export function getFileSendUrl(event: MouseEvent): string | null {
+  if (!isEligibleClick(event)) return null;
+  if (event.shiftKey) return null;
+
+  const anchor = findAnchor(event);
+  if (!(anchor instanceof HTMLAnchorElement)) return null;
+
+  const href = anchor.href;
+  if (!href || !/^https?:/i.test(href)) return null;
+  // A torrent has its own path, which mirrors and keeps the local copy. Claiming it here would
+  // quietly change that to NAS-only the moment this checkbox is ticked.
+  if (isTorrentSource(href)) return null;
+
+  if (anchor.hasAttribute("download")) return href;
+  return isDownloadableFileUrl(href) ? href : null;
 }
 
 /**
@@ -336,6 +364,13 @@ export function setMagnetCaptureEnabled(enabled: boolean): void {
   magnetCaptureEnabled = enabled;
 }
 
+/** Whether a plain click on an ordinary file link is sent to the NAS (RES-5). Off by default. */
+let fileCaptureEnabled = DEFAULTS.interceptFileLinks;
+
+export function setFileCaptureEnabled(enabled: boolean): void {
+  fileCaptureEnabled = enabled;
+}
+
 /**
  * The interception switch as stored, falling back to the three keys that preceded it. The worker
  * migrates storage on its own schedule, and a content script can load into a page before that has
@@ -403,12 +438,20 @@ function onDocumentClick(event: MouseEvent): void {
   }
 
   const uri = getMagnetUri(event);
-  if (!uri) return;
-  if (!event.shiftKey && !magnetCaptureEnabled) return;
+  if (uri) {
+    if (!event.shiftKey && !magnetCaptureEnabled) return;
+    if (event.shiftKey) claimLinkClick(event);
+    sendMagnetToWorker(uri);
+    return;
+  }
 
-  if (event.shiftKey) claimLinkClick(event);
+  // Last, so a magnet or a torrent is never reached by the file rule.
+  if (!fileCaptureEnabled) return;
+  const fileUrl = getFileSendUrl(event);
+  if (!fileUrl) return;
 
-  sendMagnetToWorker(uri);
+  claimLinkClick(event);
+  sendLinkToWorker(fileUrl);
 }
 
 /**
@@ -431,8 +474,11 @@ export function initMagnetInterception(): () => void {
   document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
 
   try {
-    chrome.storage.local.get(["interceptTorrentLinks", "torrentInterceptMode", "theme"], (items) => {
+    chrome.storage.local.get(["interceptTorrentLinks", "interceptFileLinks", "torrentInterceptMode", "theme"], (items) => {
       setMagnetCaptureEnabled(readInterception(items));
+      setFileCaptureEnabled(
+        typeof items?.interceptFileLinks === "boolean" ? items.interceptFileLinks : DEFAULTS.interceptFileLinks,
+      );
       if (items?.theme && ["auto", "light", "dark"].includes(items.theme as string)) {
         currentTheme = items.theme as "auto" | "light" | "dark";
       }
@@ -442,6 +488,9 @@ export function initMagnetInterception(): () => void {
       if (areaName === "local") {
         if ("interceptTorrentLinks" in changes) {
           setMagnetCaptureEnabled(Boolean(changes.interceptTorrentLinks.newValue));
+        }
+        if ("interceptFileLinks" in changes) {
+          setFileCaptureEnabled(Boolean(changes.interceptFileLinks.newValue));
         }
         if ("theme" in changes && changes.theme.newValue) {
           currentTheme = changes.theme.newValue as "auto" | "light" | "dark";

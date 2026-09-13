@@ -171,31 +171,21 @@ npm run test:e2e:mock
 4. Update the mock and related tests
 5. Repeat the safe mock-only run
 
-## 5. Real NAS: how to run it without breaking your environment
-
-### Read-only smoke
+## 5. Real NAS: the production spot check
 
 ```bash
-npm run build
-npm run test:e2e:real
+npm run test:prod-spotcheck
 ```
 
-Only checks:
-- saving settings
-- test connection
-- loading the task list
+The gate run before a release. It builds `dist` first and runs four scenarios that a mock cannot
+answer — connection, `AddTorrent`, magnet `AddUrl`, and a direct link the NAS fetches from this
+machine and then pauses, resumes and removes. About fifteen seconds.
 
-### Mutating real NAS flow
+Everything it creates is named `qgr-spotcheck-…` and removed three ways over: a ledger written
+before creation, cleanup in `afterAll` whose failure fails the gate, and a preflight sweep of
+anything carrying the prefix that no ledger entry claims. Nothing else is ever touched.
 
-```bash
-npm run build
-npm run test:e2e:real:mutating
-```
-
-This scenario:
-- creates only its own test task, prefixed `quickget-e2e-`
-- then deletes it
-- additionally cleans up any leftover tasks with that prefix before starting
+Full detail, including why it cannot run in CI: `tests/e2e/README.md`.
 
 ### Recommended local variables
 
@@ -244,32 +234,26 @@ artifacts.
 
 The main update cycle:
 
-1. Run the real smoke locally:
+1. Run the spot check locally:
 
 ```bash
-npm run build
-npm run test:e2e:real
+npm run test:prod-spotcheck
 ```
 
-2. If you need an upload/remove capture, run:
+2. Look at the artifacts in `.e2e-artifacts/`:
+- `spotcheck-connection.log` — readable by eye
+- `spotcheck-connection.json` — easier to diff, and the source for mock fixtures
 
-```bash
-npm run build
-npm run test:e2e:real:mutating
-```
+Both are redacted (`sid`, `pass`, `password`). They cover the connection scenario, the one place
+where the browser itself talks to the NAS; the other scenarios drive the API client directly from
+Node.
 
-3. Look at the artifacts in `.e2e-artifacts/`:
-- `real-nas-smoke.log`
-- `real-nas-smoke.json`
-- `real-nas-mutating.log`
-- `real-nas-mutating.json`
-
-4. Compare the real payloads against:
+3. Compare the real payloads against:
 - `tests/e2e/support/mockNas.ts`
 - `src/api/schema.d.ts`
 - `src/lib/tasks.ts`
 
-5. After updating the mock, always run:
+4. After updating the mock, always run:
 
 ```bash
 npm run typecheck

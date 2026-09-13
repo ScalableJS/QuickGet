@@ -31,10 +31,69 @@ Station's own behaviour. A magnet resolves to peers through DHT without us suppl
 `.torrent`, which is why the magnet path is structurally simpler than torrent interception:
 no file, no `DownloadItem`, no pause/cancel/resume.
 
-**Connection count and segmentation are not exposed to API callers.** Whether Download Station
-splits a single HTTP file across ranges is undocumented and, for this extension, immaterial:
-there is no parameter we could send to change it. Requests for "download like IDM / Download
-Master" cannot be satisfied from here — see the rejected aria2 proposal on the gaps board.
+**Connection count and segmentation are not exposed to API callers**, and this is now measured
+rather than assumed — see the `Config/Get` dump below. There is no per-download connection,
+thread or segment setting for HTTP anywhere in the NAS's own configuration: the only
+connection-count knobs it has (`bt.max_conn`, `bt.torrent_max_conn`) are BitTorrent-only.
+Requests for "download like IDM / Download Master" cannot be satisfied from here — see the
+rejected aria2 proposal on the gaps board.
+
+## What is configurable, per protocol — read from the NAS on 2026-09-13
+
+`Config/Get` (verified working; **`Config/Set` is still unverified — do not build on it without
+testing against hardware**). Read from QTS5 / Download Station 5.10.2.313 with a read-only call.
+
+The shape that matters: **HTTP, FTP and BT each have their own section**, so "the download
+settings" is not one thing.
+
+| Section | Field | Value seen | Meaning |
+|---|---|---|---|
+| `http` | `max_num` | `20` | concurrent HTTP **tasks** — see the label check below |
+| `http` | `max_down_rate` | `0` | download rate cap in **KB/s**, `0` = unlimited |
+| `ftp` | `max_num` | `10` | concurrent FTP downloads |
+| `ftp` | `max_down_rate` | `0` | as above |
+| `bt` | `max_num` | `10` | concurrent BT tasks |
+| `bt` | `max_down_rate` / `max_up_rate` | `0` / `0` | BT rate caps |
+| `bt` | `max_conn` | `300` | global peer connections |
+| `bt` | `torrent_max_conn` / `torrent_max_up` | `0` / `0` | per-torrent peer and upload-slot caps |
+| `bt` | `share_ratio` / `share_time` | `1.5` / `30` | default seeding limits (GAP-13) |
+| `bt` | `peer_mode` / `peer_id` / `peer_agent` / `peer_version` | `1` / `LT` / `libtorrent/1.2.11` / `1.2.11` | client identity (GAP-12) |
+| `bt` | `dht` / `lsd` / `nat` / `upnp_forward` / `encrypt` | `1` / `1` / `1` / `1` / `0` | swarm behaviour |
+| `bt` | `port_from` / `port_to` | `6881` / `6889` | listen range |
+| `bt` | `proxy_*` | off | `proxy_type 0`, hostname empty |
+| `global` | `down_folder` / `move_folder` | `Download` / `Download` | the NAS-side temp/target defaults |
+| `global` | `schedule0..6` / `schedule_enable` | 24 chars each / `0` | the 168-hour grid we deliberately do not mirror |
+| `global` | `search_enable` | `1` | BT search |
+| `rss` | `enable` / `check_update_time` | `1` / `12` | enabled here even though `RSS/Query` does not exist on QTS5 |
+
+Three consequences worth carrying forward:
+
+1. **For plain links there are exactly two settings, and neither is per-download.**
+   `http.max_num` and `http.max_down_rate`. Nothing about threads, segments or connections per
+   file exists for HTTP at all — the question "in how many streams does it fetch a link" has no
+   setting to answer it, on either side of the API.
+
+   **`max_num` is not a thread count**, which is the obvious thing to mistake it for. Checked
+   against the NAS's own UI bundle rather than guessed: in
+   `/downloadstation/libs/ds-all.js` the fields `http_max_num`, `ftp_max_num` and `bt_max_num`
+   all carry `fieldLabel: LANG.ACTION_SET_GMCD`, and `/downloadstation/lang/ENG.js` defines
+   `ACTION_SET_GMCD` as **"Global maximum concurrent downloads"**. Their `maxValue` is bound to
+   `DS.env.task_limit`, a *task* limit. The same bundle labels `max_down_rate` with
+   `ACTION_SET_GMDR` ("Global maximum download rate") next to a `SIZE_UNIT_KB` box, which is
+   where the KB/s unit above comes from, and `ACTION_SET_0_UNLIMIT` ("0 means unlimited")
+   confirms the zero.
+
+   There is a per-task section in that UI — `ACTION_SET_BA_LIMIT2`, "Single Task Bandwidth
+   Limit" — but it is a *rate*, not a connection count, and on the BT page only.
+
+   Fetching these two files needs no credentials, which makes it the cheapest way to settle
+   "what does this field actually mean" without SSH:
+   `curl -s http://<nas>:8080/downloadstation/libs/ds-all.js` and `.../lang/ENG.js`.
+2. **A speed throttle is per protocol, not global** (GAP-9). Setting one number would mean
+   choosing which of `bt` / `http` / `ftp` it applies to, or writing three.
+3. **GAP-12 and GAP-13 have confirmed fields to write to** — `bt.peer_*` and
+   `bt.share_ratio`/`share_time` — but all three of those cards still depend on `Config/Set`,
+   which nobody has exercised yet.
 
 ## NAS-side features we deliberately do not mirror
 

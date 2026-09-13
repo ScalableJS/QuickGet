@@ -16,7 +16,14 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-59 | Shift-click reports "Could not contact QuickGet" and still opens the browser save flow | content/background | high | Done |
 | BUG-60 | Shift-click E2E passes without proving the real browser outcome or extension-lifecycle failure | testing | high | Done |
 | BUG-61 | Torrent interception setting uses oversized copy and promises behavior the product does not guarantee | popup/settings UX | low | Done |
-| BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Backlog |
+| BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Done |
+| BUG-63 | Shift-click E2E captures its baseline before the first download reaches disk | testing | medium | Done |
+| BUG-64 | `--color-text-muted` is referenced but never defined | popup/ui | low | Backlog |
+| BUG-65 | A light-theme text input has no visible boundary (WCAG 1.4.11) | popup/a11y | medium | Backlog |
+| BUG-66 | `npm run stand` cannot run — `tsx` is not a dependency | tooling | medium | Backlog |
+| BUG-67 | The real-NAS E2E spec targets a settings form that no longer exists | testing | high | Done |
+| BUG-68 | The test stand is a hand-rolled `node:http` switch; it should be a small Hono server | testing/tooling | medium | Done |
+| BUG-69 | No release gate touches the real NAS — every green check before a publish is a claim about the mock | testing/release | high | Done |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -211,7 +218,7 @@ click.
 
 ### BUG-62 — Toolbar badge number includes seeding instead of counting downloads only
 
-**Severity:** medium · **Area:** background/UX · **Status:** Backlog
+**Severity:** medium · **Area:** background/UX · **Status:** Done
 **Production files:** `src/lib/tasks.ts`, `src/background/actions.ts`, `src/background/alarms.ts`,
 `src/background/index.ts`, `src/background/monitorMessage.ts`, `src/popup/shared/monitor.ts`,
 `src/popup/features/downloads/index.ts`
@@ -332,6 +339,32 @@ When a non-torrent download finishes without entering seeding, the toolbar retur
 8. The updated unit suite, production build, and mock-extension E2E pass:
    `npm run typecheck`, `npm run check:svelte`, `npm run lint`, `npm test`, `npm run build`, and
    `npm run test:e2e:mock`.
+
+**2026-09-13 — done.** Built as specified. `ProgressSummary.active` became `downloading` +
+`seeding`; `isDownloadPhase()` is a new predicate written out in full rather than derived as
+`IN_PROGRESS_STATUSES` minus `seeding`, so a status joining the popup's filter later cannot move
+the badge by accident. `applyBadgeStats()` collapsed to one path — text is `downloading` or empty,
+the icon follows `downloading > 0 || seeding > 0`, and badge colour is only written behind visible
+text. It returns both counts, and `src/background/index.ts` re-arms the poll for either, so a seed
+finishing after the popup closes still returns the icon to idle. The tooltip is `Downloading: N` /
+`Seeding: N`; `Active:` is gone and a test asserts its absence.
+
+Tests: +31 unit (483 total) and the extended E2E transition. The exhaustive status table in
+`tasks.test.ts` also pins the one intended difference from the popup filter — `differ` must equal
+exactly `["seeding"]`. The E2E now runs `1 download + 2 seeds → 3 seeds → idle` and asserts the
+real `chrome.action` badge text alongside the persisted icon, with the icon written exactly twice
+across the whole sequence: lit at the start, dimmed at the end, and deliberately **not** repainted
+at the download→seeding step, which is what keeps that transition from flickering through idle.
+
+`check:contrast` 24/24, `test:e2e:mock` 41/41, typecheck/svelte-check/lint clean.
+
+**One step of this card was not completed:** the competitor survey ("inspect the current
+toolbar/menu-bar surfaces of qBittorrent-adjacent browser extensions … record what their badge
+number counts"). The extension sources from the earlier teardown are no longer on disk, a web
+search turned up nothing about badge semantics in those extensions, and `docs/competitor-*.md`
+records nothing about badge behaviour. The design shipped is the one this card had already chosen;
+it was not validated against a fresh competitor sample, and that is worth knowing before treating
+the two-channel scheme as externally confirmed rather than internally reasoned.
 
 ---
 
@@ -510,6 +543,13 @@ card displays the routed folder, and that a task which went to the Target shows 
 ---
 
 ### BUG-39 — Toolbar badge background poll fetches full task list instead of lightweight `Task/Status`
+
+> **Constraint added by BUG-62 (2026-09-13):** the toolbar now has two channels — a badge number
+> that counts only the download phase, and an icon lit by downloading *or* seeding. Any migration
+> to `Task/Status` must preserve that. Its `downloading` field is not the same set: the badge also
+> counts `moving`, `checking`, `finishing` and `allocating`, which the aggregate cannot see, so a
+> naive swap would make the number blink out mid-way through QNAP's `downloading → moving →
+> seeding` chain. Reverting to a single aggregate `active` is not an option.
 
 **Severity:** low · **Area:** background/perf · **Status:** Backlog
 **Files:** `src/background/alarms.ts`, `src/background/actions.ts`, `src/api/client.ts`
@@ -2075,3 +2115,355 @@ transaction therefore protects against *loss*, not against a stray file. The spe
 contract that actually holds — the download is never left in progress — rather than a
 `interrupted` state that only occurs when the transfer is slow enough. The torrent host in the
 test delays its body specifically so the transaction under test can happen at all.
+
+---
+
+### BUG-63 — Shift-click E2E captures its baseline before the first download reaches disk
+
+**Severity:** medium · **Area:** testing · **Status:** Done
+**Files:** `tests/e2e/routing-matrix.spec.ts:386`
+
+`Shift-click sends a link even with every automatic mode switched off` failed once on GitHub
+Actions during the v2.4.3 release, at `expect.poll(() => readdir(downloadsPath))`.
+
+The first attempt's log names the cause exactly:
+
+```
+Error: expect(received).toHaveLength(expected)
+Expected length: 0
+Received length: 1
+Received array:  ["big_buck_bunny_1080p.mkv.torrent"]
+- Timeout 10000ms exceeded while waiting on the predicate
+```
+
+The test plain-clicks a `.torrent` with both interception modes off, asserts the browser kept it,
+and snapshots `localDownloadCount` as the baseline. It took that snapshot the moment
+`chrome.downloads.search()` reported one item — but Chrome registers a download **before** its
+bytes reach the disk, so on a loaded runner `readdir` answered `[]` and the baseline was recorded
+as **0**. The first download's file landed a moment later, and the assertion after the Shift-click
+then waited 10 s for a directory to hold zero files while holding one, which it never would.
+
+Two things this rules out, both worth stating because both were the obvious first guesses:
+
+- **Not a product regression.** The received file is the *plain* click's download, not a leftover
+  from the Shift-click. The preceding assertion — that `chrome.downloads.search()` count is
+  unchanged — passed, so the Shift-click created no download at all. The mock-NAS log shows
+  `Misc/Login` and `Task/AddTorrent` both answering 200. The v2.4.3 change touched no background,
+  content-script or interception code.
+- **Not a poll budget that is too small.** An earlier version of this card said so and proposed
+  raising the timeout. That was wrong: the expected value was captured incorrectly, so no timeout
+  is long enough. A bigger budget would have made the failure slower, not rarer.
+
+Establishing that it was a test defect rather than a product one took three runs of the same
+commit `f116a5c`: the pull_request run passed 41/41, the push run failed 1/41, and the re-run of
+that push passed. Locally it passed 6/6 in ~1.7 s — a fast disk never opens the window, which is
+why this is a CI-only failure.
+
+**Fixed** by waiting for the first download to reach `state === "complete"` before snapshotting,
+so the baseline describes a settled directory. What the test asserts is unchanged — BUG-60 added
+these local-outcome assertions precisely so the test could not pass without proving the real
+browser outcome, and that is still what they do.
+
+**2026-09-13 — done.** Shipped on `env/dev` after v2.4.3. Verified 5/5 locally plus
+`test:e2e:mock` 41/41.
+
+---
+
+### BUG-64 — `--color-text-muted` is referenced but never defined
+
+**Severity:** low · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/styles/tokens.css`, `src/popup/components/downloadItem/DownloadItem.svelte`,
+`src/popup/features/toolbar/SpeedShowcase.svelte`
+
+`tokens.css` defines `--text-muted`. It does not define `--color-text-muted` — but that name is
+what several components ask for:
+
+- `DownloadItem.svelte` — six separator bullets between the metric groups
+- `SpeedShowcase.svelte` — a 10px label
+
+An undefined `var()` with no fallback makes the whole `color` declaration invalid, so those
+elements silently render at the inherited colour instead of the muted one. Nothing is broken
+enough to look broken, which is why it survived.
+
+**Proposed fix:** point the usages at `--text-muted` rather than defining a second token. The
+repo already had an alias sprawl problem and UX-26 was about reducing it; a new token would add
+one back. If the two genuinely need to differ, say why on the card first.
+
+Found while measuring contrast for UX-26.
+
+---
+
+### BUG-65 — A light-theme text input has no visible boundary (WCAG 1.4.11)
+
+**Severity:** medium · **Area:** popup/a11y · **Status:** Backlog
+**Files:** `src/popup/styles/tokens.css`, `src/popup/ui/Field.svelte`,
+`src/popup/ui/SearchField.svelte`, `src/popup/ui/Select.svelte`, `scripts/check-contrast.mjs`
+
+Measured, not estimated:
+
+| Pair | light | dark |
+| --- | ---: | ---: |
+| `--color-control-border` `#c7d0dc` vs `--color-bg` `#f7f7f7` | **1.45:1** | 5.57:1 |
+| resting textbox fill vs page (`--textbox-bg` `#ffffff` vs `#f7f7f7`) | **1.06:1** | — |
+
+`Field`, `SearchField` and `Select` all set `border-transparent` at rest and only reveal
+`--color-control-border` on hover. So in the light theme the only thing marking where an input is
+sits at 1.06:1 — a boundary nobody can see. WCAG 2.2 SC 1.4.11 asks 3:1 of visual information
+needed to identify a control, and this is that information. The dark theme is fine.
+
+`scripts/check-contrast.mjs` has no rule for this pair, even though its own header says it exists
+because control borders regressed to 1.40:1 unnoticed in `f20daf0`. That is the same class of
+defect, still uncovered.
+
+**Proposed fix:** give inputs a visible resting border and/or darken `--color-control-border` in
+the light theme, then add `["--color-control-border", "--color-bg", 3.0, "control boundary"]` to
+`RULES` so it cannot regress again. Leave the dark theme alone unless the numbers say otherwise,
+and do not trade away the focus ring or the `aria-invalid` border to get there.
+
+Found while measuring contrast for UX-26; deliberately left out of that change because it is a
+palette decision, not a spacing one.
+
+---
+
+### BUG-66 — `npm run stand` cannot run — `tsx` is not a dependency
+
+**Severity:** medium · **Area:** tooling · **Status:** Backlog
+**Files:** `package.json`
+
+```
+> quickget-remote@2.4.3 stand
+> tsx scripts/start-stand.ts
+sh: tsx: command not found
+```
+
+`"stand": "tsx scripts/start-stand.ts"` is the documented way to bring up the manual test stand
+and the mock NAS, and `tsx` appears in **neither `dependencies` nor `devDependencies`**. So the
+script cannot work on a clean checkout — it only ever worked for someone with `tsx` installed
+globally. `node scripts/start-stand.ts` is not a substitute: Node's type stripping does not
+rewrite the repo's `.js` import specifiers back to `.ts`, so it fails with `ERR_MODULE_NOT_FOUND`
+on `tests/e2e/support/mockNas.js`.
+
+Workaround while it is open: `npx -y tsx scripts/start-stand.ts`.
+
+**Proposed fix:** add `tsx` to `devDependencies`. It is the only thing the script needs and the
+only script that needs it.
+
+**Worth deciding at the same time:** the mock NAS binds to a random port on every start, so the
+port has to be re-entered into extension settings for each manual session. A fixed default with an
+override would make the stand usable without that ritual.
+
+Found while bringing the stand up to hand over for manual testing.
+
+---
+
+### BUG-67 — The real-NAS E2E spec targets a settings form that no longer exists
+
+**Severity:** high · **Area:** testing · **Status:** Backlog
+**Files:** `tests/e2e/popup.real-nas.spec.ts`
+
+`npm run test:e2e:real` fails on a 60 s timeout. It is not flaky and it is not the NAS: the spec
+drives a settings form that was replaced.
+
+It fills `#NASaddress`, `#NASport` and clicks `#test-btn`, then asserts on `#downloads-list`.
+**None of those four selectors exist any more.** The address and port became a single
+`#serverUrl` field, the connection check became a "Test connection" button inside the connection
+card, and the list has a different id. `grep` finds no `NASaddress`, `NASport`, `test-btn` or
+`downloads-list` anywhere in `Settings.svelte` or `index.html`.
+
+The last commit to touch `#test-btn` in the settings UI is `4f80131` (2026-06-21); the spec was
+last edited `8dead6b` (2026-08-28) without being run. So **this has been broken for months** and
+nobody saw it, because the real-NAS suite is opt-in (`QNAP_E2E_REAL=1`), is not in CI, and its
+absence looks exactly like its silence.
+
+Why this is severity high despite being test-only: it is the **only** thing standing between a
+green mock suite and a claim about real hardware, and while it is broken every "it works" is a
+statement about the mock. Found when a hand-test against the real NAS failed on a feature whose
+mock E2E was fully green.
+
+**Proposed fix:** rewrite the spec against the current form — `#serverUrl`, the connection card,
+the current list id — and decide whether a subset belongs in CI. It cannot be in the default
+gate (it needs hardware and credentials), but a spec that only runs when someone remembers is a
+spec that rots; a scheduled run or a pre-release checklist item would at least surface the rot.
+
+**Resolved 2026-09-13** — replaced rather than repaired. `popup.real-nas.spec.ts` is gone; the
+real-NAS run is now `tests/e2e/prod-spotcheck.spec.ts` (BUG-69), which drives the settings form
+that actually exists and fails with a message naming the contract it was waiting on.
+
+---
+
+### BUG-68 — The test stand is a hand-rolled `node:http` switch; it should be a small Hono server
+
+**Severity:** medium · **Area:** testing/tooling · **Status:** Backlog
+**Files:** `tests/e2e/support/testStandHost.ts`, `scripts/start-stand.ts`, `package.json`
+
+`testStandHost.ts` is a single `createServer` callback with a chain of `if (pathname === …)`
+branches, a `send()` helper that only writes whole buffers, and one hand-written streaming branch
+bolted on beside it. It has grown past what that shape carries well, and every fixture the
+RES-5 work needed was another branch in the same `if`-chain.
+
+**Proposal: rewrite it as a small [Hono](https://hono.dev) app.** Hono is routing-only, has no
+runtime dependencies to speak of, and runs on `@hono/node-server`, so this stays a dev dependency
+and does not touch the extension bundle.
+
+What that buys, concretely:
+
+- **Real routes** — `/files/:name`, `/page.html`, `/dl.php` — instead of ordered `if`s, with
+  params and query parsing rather than manual `URL` picking.
+- **Streaming as a first-class thing.** The throttled large-file endpoint is currently a
+  hand-written `pump()` with its own drain handling; a framework with a streaming helper makes
+  variable-rate serving a parameter rather than a special case.
+- **Rate as a dimension, not one endpoint.** The point of this card: any file should be servable
+  at any speed. `?kbps=` on everything, plus a first-byte delay, plus optional mid-transfer stall
+  and abort — the shapes a download client actually has to survive. Today only
+  `large-<n>mb.bin` can be slowed, and `bodyDelayMs` is a whole-host setting.
+- **Middleware for the cross-cutting parts** — the request log, `no-store`, CORS if it is ever
+  needed — instead of repeating headers per branch.
+
+**Requirements the rewrite must keep**, all of them load-bearing today:
+
+1. `requestLog` with `{ path, method }`, which E2E asserts against (`getsFor` in
+   `file-interception.spec.ts` counts GETs to prove no bytes flowed).
+2. Per-link generated torrents — `buildTorrent(contentName)` — so routing can be tested on the
+   real `info.name` rather than on a shared fixture.
+3. `Content-Disposition` and MIME behaviour per path, including the tracker-style routes that
+   reveal a name only through a header, and `/dl.php` which reveals nothing.
+4. Binding: loopback by default, every interface under `QNAP_STAND_LAN=1`, with the LAN address
+   printed. A real NAS cannot fetch loopback.
+5. `no-store` on the page. It is edited while it is open.
+6. Ephemeral port by default, fixed `3300` for the manual stand.
+
+**Worth deciding during the rewrite, not before:** whether the served page moves out of one
+1100-line `index.html`, and whether the mock NAS (`mockNas.ts`, a separate hand-rolled server
+with the same shape) should move too or stay as it is. Doing both at once is the tempting mistake
+— the mock NAS has a contract spec of its own (`mockNas.contract.spec.ts`) and a different risk
+profile.
+
+**Not urgent.** The stand works; `large-<n>mb.bin` covers the immediate need for a watchable
+transfer, and this card exists so that stopgap is replaced deliberately rather than grown.
+
+**Resolved 2026-09-13** — rewritten as a Hono app: `testStand/app.ts` for routes,
+`transfer.ts` for delivery, `barriers.ts` for determinism. Every requirement listed above is kept.
+Delivery became a dimension as planned (`?kbps=`, `?delayMs=`, `?barrierAt=`, `?abortAt=`,
+`?truncateAt=`, `?nolength=`, Range, redirect chains, error statuses), the fixture gained a
+contract spec of its own under a separate vitest project, and the stand page gained a `#delivery`
+tab. `mockNas.ts` was deliberately left alone.
+
+Two findings the rewrite surfaced, both invisible before:
+
+- **`serve()` from `@hono/node-server` replaces `globalThis.Response`.** Any library doing an
+  `instanceof Response` check then fails — `openapi-fetch` throws *"onResponse: must return new
+  Response()"* the moment the stand runs in the same process as the API client. Fixed with
+  `overrideGlobalObjects: false`; measured, not guessed.
+- **The fixture torrent was invalid.** One 20-byte `pieces` hash described a 1 MiB file at a 16 KiB
+  piece length — 64 pieces' worth. The mock never looked; a real Download Station answered `16384`.
+  `pieces` is now sized from the content.
+
+---
+
+### BUG-69 — No release gate touches the real NAS
+
+**Severity:** high · **Area:** testing/release · **Status:** Backlog
+**Files:** `.claude/skills/release/SKILL.md`, `tests/e2e/popup.real-nas.spec.ts`, `package.json`,
+`tests/e2e/README.md`
+**Blocked by:** BUG-67 — the real-NAS spec does not currently run at all.
+
+Everything the release procedure checks before promoting `env/dev` to `env/prod` — typecheck,
+Biome, 512 unit tests, 45 E2E, three builds, CI — runs against `mockNas.ts`. The mock answers
+exactly the questions it was written to answer, which is the one thing a pre-production check must
+not do. Two failures this month were invisible to all of it:
+
+- **RES-5 file interception** passed its mock E2E and was reported working, while against the real
+  NAS the first click returned `12288`. The mock accepts any URL; Download Station fetches it
+  itself, from its own machine, and a loopback URL is unreachable from there.
+- **BUG-67** — the real-NAS spec has been broken since `4f80131` (2026-06-21) and nobody noticed
+  for two months, because an opt-in suite that is never run is indistinguishable from one that
+  passes.
+
+So the gap is not "we lack a test". It is that **nothing in the path to the Web Store ever speaks
+to a QNAP**, and users are the first integration test. That is the risk this card closes.
+
+#### What the spot check is
+
+One named, scripted run — `npm run test:prod-spotcheck` — executed locally against the real NAS,
+**after the quality gates and before the release PR is opened**. Its output is pasted into the PR
+body, so a promotion carries evidence rather than an assertion.
+
+It is deliberately **not in CI**: GitHub runners have no route to the NAS, and the credentials live
+in `.env.e2e.local`, outside git and outside Actions by design. Trying to move it into CI is the
+tempting wrong turn — it would mean putting NAS credentials into repository secrets and exposing
+Download Station to the internet.
+
+#### Which build it runs against
+
+**The production build, always** — `dist`, the bundle the Web Store receives. The mock suite owns
+the dev build (`dist-dev`); the real NAS owns the release artifact. The invariant is the whole
+point of a spot check: *what was validated is what ships*. A green real-NAS run on a dev bundle
+proves something about an artifact nobody installs.
+
+**Established 2026-09-13**, ahead of the implementation: `tests/e2e/support/builds.ts` now holds
+the two paths, all 17 specs were split between them, and each script builds its own artifact via
+`pretest:e2e:*`, so no suite can pass against a stale bundle.
+
+#### What it must cover
+
+The base functionality a client loses if it breaks, each with what actually proves it. "The NAS
+returned `error: 0`" is **not** proof for any of these — that is precisely what `12288` taught:
+acceptance and downloading are different events.
+
+| # | Flow | Proof required |
+|---|------|----------------|
+| 1 | Connection test from Settings | Real `Misc/Login`, "Connection successful", credentials round-trip after a reload |
+| 2 | Task list renders live NAS state | At least one task from `Task/Query` rendered with name, size and progress |
+| 3 | `.torrent` file upload from the popup | `AddTorrent` accepted **and** the task appears in the list under its real `info.name` |
+| 4 | `.torrent` link click on a page | Intercepted, no file on disk, task created |
+| 5 | Magnet click | `AddUrl` with the magnet, task created |
+| 6 | Direct file link (RES-5) | Task reaches a **download phase with progress > 0**, not merely accepted |
+| 7 | Pause / resume / remove | State actually changes on the NAS, verified by re-query, not by the popup's optimism |
+| 8 | Toolbar badge | Count matches the NAS's own downloading count while a real transfer runs |
+| 9 | Routing rule | A rule sends a task to a different destination folder, confirmed in the task's `path` |
+
+Flow 6 needs the test stand bound to the LAN (`QNAP_STAND_LAN=1`) and the NAS on the same network;
+the throttled `large-<n>mb.bin` endpoint exists so this one can be observed rather than raced.
+
+#### Rules the run must obey
+
+1. **It only ever touches tasks it created.** Owned prefix (`quickget-e2e-`) plus
+   `cleanupTasksByPrefix` on the way in and out, as the current mutating test already does. The NAS
+   is a live machine with the user's own downloads on it.
+2. **It leaves the NAS as it found it** — including when it fails halfway. Cleanup belongs in
+   `finally`, not at the end of the happy path.
+3. **It fails loudly and specifically.** A timeout that says only "60 s exceeded" is what let
+   BUG-67 hide; each flow should say which call it was waiting on.
+4. **It records evidence.** The redacted HTTP bundle already written to
+   `.e2e-artifacts/real-nas-*.log` is the right mechanism — extend it, do not invent a second one.
+
+#### Open questions, to settle when implementing
+
+- **One spec or several?** Today it is one file with a read-only test and a `@mutating` one. Nine
+  flows in one file will be unreadable; splitting them means deciding what shares a browser session,
+  since launching the extension and saving settings is the slow part.
+- **How long may it take?** A spot check nobody runs because it takes fifteen minutes is BUG-67
+  again in a new costume. The throttled file makes flow 6 as slow as we choose — pick a size that
+  proves progress and no more.
+- **What happens when the NAS is unreachable at release time?** Skipping silently is how this class
+  of gap forms. It should be a deliberate, recorded decision to release without it.
+
+**Resolved 2026-09-13** — implemented as `npm run test:prod-spotcheck`, and shaped down from the
+nine flows above to **four** after review: connection, `AddTorrent`, magnet `AddUrl`, and the
+direct-link lifecycle, which absorbed the list's task-rendering, pause/resume/remove and routing
+checks. Interception, badge arithmetic and rendering stayed hermetic — rebuilding the 45 mock tests
+against the owner's hardware would only produce a second suite to rot.
+
+Runs in **13 s** against the live NAS. Determinism comes from a server-side barrier rather than
+sleeps: the stand sends exactly 4 MB, announces it, and holds until released, so "partial progress"
+is a fact rather than a race.
+
+Ownership turned out to need three overlapping mechanisms, not one. The prefix and an in-memory
+list were not enough: three orphaned tasks were left on the real NAS during development, all of
+them dying between `AddTorrent` succeeding and the test learning the task's identifier. The ledger
+now records intent *before* creation, cleanup failure fails the gate, and preflight sweeps anything
+carrying the prefix that no ledger entry claims.
+
+Not done, and recorded here rather than silently dropped: the Download Station V4 API exposes no
+firmware version (`Misc/Version`, `Misc/Config`, `Misc/About` all answer `no such api`), so the run
+records the target it can verify instead of a fabricated version field.

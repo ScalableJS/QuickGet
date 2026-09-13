@@ -53,6 +53,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # The mock suite loads `dist-dev`, built by this script's own `pretest` step. The production
+      # build above still runs: it must compile, and the store assets are cut from it.
       - name: Run mock E2E tests
         run: npm run test:e2e:mock
 

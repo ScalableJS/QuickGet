@@ -38,9 +38,15 @@ Before finishing any change run, at minimum:
 npm run typecheck && npm run check:svelte && npm run lint && npm test && npm run build
 ```
 
+Everything above answers questions asked of `mockNas.ts`, a mock written to answer them. **Before a
+release, `npm run test:prod-spotcheck` runs four scenarios against the real NAS** — the only step in
+the path to the Web Store that speaks to a QNAP. It cannot run in CI (no route to the NAS, and the
+credentials are deliberately outside Actions), so it is a local gate: see `tests/e2e/README.md`.
+Skipping it silently is how a feature shipped that returned `12288` on its first real click.
+
 ## Conventions specific to this repo
 
-- **Branching and releases:** work and push directly in `env/dev`; do not create pull requests targeting it. Release only through a pull request from `env/dev` to `env/prod`. `env/prod` is the only branch allowed to publish to the Chrome Web Store; do not push routine changes to it directly.
+- **Branching and releases:** work and push directly in `env/dev`; do not create pull requests targeting it. Release only through a pull request from `env/dev` to `env/prod`. `env/prod` is the only branch allowed to publish to the Chrome Web Store; do not push routine changes to it directly. A release PR is opened only after the production spot check has passed, or with an explicit note in the body saying why it could not run.
 - **Commits:** conventional-commit style with optional scope (`feat(settings): …`, `fix(background): …`, `chore: …`). This repo is **not** a keabank repo — do not use KSP-ticket commit prefixes.
 - **Logging:** the only sanctioned logger is `src/lib/logger.ts` (used by the API client). No `console.*` in popup/UI/Svelte code (Biome `noConsole`); background/service-worker `console.*` is exempt by config.
 - **API:** QNAP DS V4 `AddUrl`/`AddTorrent` require both `temp` and `move` — see `src/api/client.ts`.

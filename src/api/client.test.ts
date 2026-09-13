@@ -526,4 +526,43 @@ describe("AddTorrent folder requirements", () => {
 
     await expect(client.addTorrent(torrent)).rejects.toThrow(/Target Folder/i);
   });
+
+  it("turns a NAS refusal of a loopback URL into the reason it actually happened", async () => {
+    // The real failure a hand-test hit: Download Station fetches the link itself, so a localhost
+    // URL asks the NAS to download from its own machine. It answers 12288 with the URL echoed
+    // back as `reason`, which on its own reads as "your link is malformed" — and it is not.
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", () =>
+        HttpResponse.json({ error: 12288, reason: "http://127.0.0.1:3300/files/x.iso" }),
+      ),
+    );
+
+    await expect(client.addUrl("http://127.0.0.1:3300/files/x.iso")).rejects.toThrow(/fetches links itself/);
+    // Never the bare URL that told the user nothing.
+    await expect(client.addUrl("http://127.0.0.1:3300/files/x.iso")).rejects.not.toThrow(
+      /^Add URL failed: http:\/\/127\.0\.0\.1/,
+    );
+  });
+
+  it("keeps the vendor sentence for a 12288 that is not about loopback", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", () =>
+        HttpResponse.json({ error: 12288, reason: "ftp://example.org/x.iso" }),
+      ),
+    );
+
+    await expect(client.addUrl("ftp://example.org/x.iso")).rejects.toThrow(/does not support this URL/);
+  });
 });

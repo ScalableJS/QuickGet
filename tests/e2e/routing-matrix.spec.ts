@@ -1,17 +1,14 @@
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { waitForPopupReady } from "./support/popup.js";
 import { startTestStandHost } from "./support/testStandHost.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * One rule set, every source shape the test stand can produce, one assertion each: what folder
@@ -174,7 +171,7 @@ test("routing matrix: every source shape the stand can produce lands in the fold
 
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   const results: Array<{ what: string; expected: string; actual: string; via: string }> = [];
 
@@ -324,7 +321,7 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
   const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-shift-click-downloads-"));
-  const session = await launchExtensionPopup(extensionDistPath, { downloadsPath, nativeDownloads: true });
+  const session = await launchExtensionPopup(devBuildPath, { downloadsPath, nativeDownloads: true });
 
   try {
     await waitForPopupReady(session.page);
@@ -351,10 +348,14 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
     // An extension update does not navigate tabs that were already open. The worker reinjects
     // its declarative script instead, so exercise that exact API on this persistent page before
     // clicking: the resulting click must still have one handler and one browser outcome.
+    // Without the fragment: `chrome.tabs.query` takes match patterns, and a match pattern cannot
+    // contain one — the stand puts the open tab in the address bar (`#torrents`), and passing
+    // that through would match nothing.
+    const standUrlWithoutHash = standPage.url().split("#")[0];
     const tabId = await session.worker.evaluate(async (url) => {
       const tabs = await chrome.tabs.query({ url });
       return tabs[0]?.id;
-    }, standPage.url());
+    }, standUrlWithoutHash);
     if (tabId === undefined) throw new Error("Could not resolve the persistent test-stand tab");
     await session.worker.evaluate(async (id) => {
       const files = chrome.runtime.getManifest().content_scripts?.[0]?.js;
@@ -378,13 +379,20 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
     await standPage.click("#tab-btn-torrents");
     await standPage.click("#stand-torrent-movie");
     await expect
-      .poll(
-        () => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length,
-        { timeout: 2_000 },
-      )
+      .poll(() => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length, {
+        timeout: 2_000,
+      })
       .toBe(0);
     const browserDownloadCount = await session.worker.evaluate(async () => (await chrome.downloads.search({})).length);
     expect(browserDownloadCount).toBe(1);
+    // Chrome registers a download before its bytes reach the disk, so a baseline taken the moment
+    // `downloads.search` answers can record an empty directory. The assertion after the Shift-click
+    // then waits for a count that the first download has already made impossible — which is how
+    // this test failed once in CI with `Expected length: 0 / Received: ["…mkv.torrent"]` (BUG-63).
+    // Wait for the file to land, so the baseline describes a settled directory.
+    await expect
+      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({}))[0]?.state))
+      .toBe("complete");
     const localDownloadCount = (await readdir(downloadsPath)).length;
 
     // The same link with Shift held goes, and it is routed like any other send.
@@ -402,14 +410,12 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
         { timeout: 20_000 },
       )
       .toContain("R/ShiftSent");
-    await expect.poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length)).toBe(
-      browserDownloadCount,
-    );
+    await expect
+      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length))
+      .toBe(browserDownloadCount);
     await expect.poll(() => readdir(downloadsPath)).toHaveLength(localDownloadCount);
     await expect
-      .poll(() =>
-        standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
-      )
+      .poll(() => standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""))
       .toContain("Sent to Download Station");
     expect(
       await standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),

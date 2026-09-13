@@ -2,8 +2,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type BrowserContext, chromium, expect, type Page, test, type Worker } from "@playwright/test";
-
 import { closePopupWindow, openActionPopup, openPopupWindow, waitForActionPopupTarget } from "./support/actionPopup.js";
+import { prodBuildPath } from "./support/builds.js";
 import { startDemoPageHost } from "./support/demoPageHost.js";
 import { createDemoProfile, demoWindowArgs, placeDemoWindow } from "./support/demoProfile.js";
 import { startMockNas } from "./support/mockNas.js";
@@ -11,7 +11,6 @@ import { finishMaster, READ, SceneRecorder } from "./support/sceneRecorder.js";
 import { SystemCursor } from "./support/systemCursor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionPath = path.resolve(__dirname, "../../dist");
 const outputDir = path.resolve(__dirname, "../../demo-output");
 
 /**
@@ -49,7 +48,7 @@ test.describe("promo demo", () => {
       // Without this Playwright's viewport overrides the window size and the frame is wrong.
       viewport: null,
       acceptDownloads: true,
-      args: demoWindowArgs(extensionPath),
+      args: demoWindowArgs(prodBuildPath),
     });
 
     const recorder = new SceneRecorder({

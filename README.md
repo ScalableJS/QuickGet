@@ -98,7 +98,7 @@ npm run package:firefox  # Create unsigned AMO upload package
 npm run typecheck        # Run TypeScript without emitting files
 npm run test             # Run unit/integration tests with Vitest
 npm run test:e2e:mock    # Run safe mock-only Playwright E2E tests
-npm run test:e2e:real    # Run read-only E2E against a real NAS (see tests/README.md)
+npm run test:prod-spotcheck # Pre-release gate against the real NAS (see tests/e2e/README.md)
 npm run test:coverage    # Unit tests with coverage
 npm run lint             # Lint with Biome
 npm run lint:fix         # Auto-fix lint issues with Biome
@@ -157,6 +157,7 @@ Additional documentation is available in the `docs/` directory:
 - [qnap-download-station-capabilities.md](./docs/qnap-download-station-capabilities.md) — What the NAS supports vs. what this extension exposes; read before adding a source format
 - [design-system-spacing-research.md](./docs/design-system-spacing-research.md) — The popup's spacing scale, section rhythm and surfaces, and the contrast measurements behind them
 - [routing-coverage.md](./docs/routing-coverage.md) — Which send paths the routing rules reach
+- [manual-test-download-targets.md](./docs/manual-test-download-targets.md) — Measured public ISO/ZIP URLs for hand-testing file interception: direct, redirecting, expiring-signed, and the ones that must *not* be intercepted
 - [competitor-analysis.md](./docs/competitor-analysis.md), [competitor-routing-teardown.md](./docs/competitor-routing-teardown.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
 
 Contributor-facing conventions, standards, and the open-defect board live in

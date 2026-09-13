@@ -3,12 +3,12 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startGuardedTrackerHost } from "./support/guardedTrackerHost.js";
 import { startMockNas } from "./support/mockNas.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const torrentFixture = path.resolve(__dirname, "fixtures/sample.torrent");
 
 /**
@@ -27,7 +27,7 @@ test.describe("tracker hotlink guard", () => {
   test("a torrent behind a hotlink guard still reaches the NAS", async () => {
     const tracker = await startGuardedTrackerHost(torrentFixture);
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {
@@ -77,7 +77,7 @@ test.describe("tracker hotlink guard", () => {
   test("reports the refusal instead of uploading the guard's page as a torrent", async () => {
     const tracker = await startGuardedTrackerHost(torrentFixture);
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {

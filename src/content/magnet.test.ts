@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findAnchor,
+  getFileSendUrl,
   getMagnetUri,
   getShiftSendUrl,
   initMagnetInterception,
@@ -472,5 +473,80 @@ describe("getShiftSendUrl", () => {
     expect(
       getShiftSendUrl(shiftClickOn("https://tracker.example.com/ubuntu.torrent", { isTrusted: false })),
     ).toBeNull();
+  });
+});
+
+/**
+ * A plain click on an ordinary file link, when the file switch is on (RES-5). The decision has to
+ * be made synchronously — `preventDefault()` cannot wait for a network round trip — so everything
+ * here is readable off the anchor and the URL, and nothing inspects a response.
+ */
+describe("getFileSendUrl", () => {
+  function clickOn(
+    href: string,
+    options: { download?: string | null; init?: MouseEventInit & { isTrusted?: boolean } } = {},
+  ): MouseEvent {
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    if (options.download != null) anchor.setAttribute("download", options.download);
+    document.body.appendChild(anchor);
+    return createClickEvent({
+      button: 0,
+      cancelable: true,
+      isTrusted: true,
+      composedPath: [anchor, document.body, document, window],
+      ...options.init,
+    });
+  }
+
+  it("claims a known file extension", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/ubuntu.iso"))).toBe("https://example.com/ubuntu.iso");
+    expect(getFileSendUrl(clickOn("https://example.com/clip.mkv"))).toBe("https://example.com/clip.mkv");
+  });
+
+  it("claims an extensionless link when the page itself calls it a download", () => {
+    // The `download` attribute is the page saying outright that this is a file, which is a
+    // stronger signal than any guess we could make from the URL.
+    expect(getFileSendUrl(clickOn("https://example.com/get", { download: "build.bin" }))).toBe(
+      "https://example.com/get",
+    );
+  });
+
+  it("leaves an extensionless link without that attribute alone", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/get"))).toBeNull();
+  });
+
+  it("does not confuse a query string with a file name", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/movie.mkv?token=abc"))).toBe(
+      "https://example.com/movie.mkv?token=abc",
+    );
+    expect(getFileSendUrl(clickOn("https://example.com/page?file=movie.mkv"))).toBeNull();
+  });
+
+  it("never claims a torrent — that path mirrors and keeps the local copy", () => {
+    expect(getFileSendUrl(clickOn("https://tracker.example.com/ubuntu.torrent"))).toBeNull();
+    expect(getFileSendUrl(clickOn("https://tracker.example.com/dl.php?id=12345"))).toBeNull();
+    // Even when the page labels it a download.
+    expect(getFileSendUrl(clickOn("https://tracker.example.com/ubuntu.torrent", { download: "x.torrent" }))).toBeNull();
+  });
+
+  it("leaves pages and PDFs alone", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/article.html"))).toBeNull();
+    expect(getFileSendUrl(clickOn("https://example.com/manual.pdf"))).toBeNull();
+  });
+
+  it("stands aside for Shift, which is the other gesture's job", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/ubuntu.iso", { init: { shiftKey: true } }))).toBeNull();
+  });
+
+  it("ignores modified and non-primary clicks, leaving the browser's own behaviour intact", () => {
+    const href = "https://example.com/ubuntu.iso";
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { button: 1 }]) {
+      expect(getFileSendUrl(clickOn(href, { init }))).toBeNull();
+    }
+  });
+
+  it("ignores synthetic clicks, so a page cannot make the extension send links", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/ubuntu.iso", { init: { isTrusted: false } }))).toBeNull();
   });
 });
