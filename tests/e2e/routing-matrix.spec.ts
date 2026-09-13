@@ -351,10 +351,14 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
     // An extension update does not navigate tabs that were already open. The worker reinjects
     // its declarative script instead, so exercise that exact API on this persistent page before
     // clicking: the resulting click must still have one handler and one browser outcome.
+    // Without the fragment: `chrome.tabs.query` takes match patterns, and a match pattern cannot
+    // contain one — the stand puts the open tab in the address bar (`#torrents`), and passing
+    // that through would match nothing.
+    const standUrlWithoutHash = standPage.url().split("#")[0];
     const tabId = await session.worker.evaluate(async (url) => {
       const tabs = await chrome.tabs.query({ url });
       return tabs[0]?.id;
-    }, standPage.url());
+    }, standUrlWithoutHash);
     if (tabId === undefined) throw new Error("Could not resolve the persistent test-stand tab");
     await session.worker.evaluate(async (id) => {
       const files = chrome.runtime.getManifest().content_scripts?.[0]?.js;

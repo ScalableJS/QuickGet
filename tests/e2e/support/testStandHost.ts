@@ -52,7 +52,14 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
     };
 
     if (pathname === "/" || pathname === "/index.html") {
-      send(200, { "content-type": "text/html; charset=utf-8" }, standHtml);
+      // `no-store`, because this page is edited while it is open. Without it the browser serves
+      // a cached copy and an edit to the stand looks like an edit that did not happen — which
+      // has already cost one round of "did you actually change it?".
+      send(
+        200,
+        { "content-type": "text/html; charset=utf-8", "cache-control": "no-store, must-revalidate" },
+        standHtml,
+      );
       return;
     }
 

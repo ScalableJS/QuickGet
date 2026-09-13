@@ -210,7 +210,7 @@
       font-size: 0.8rem;
       color: #a8cdfc;
       border-radius: 0 4px 4px 0;
-      word-break: break-all;
+      overflow-wrap: anywhere;
     }
 
     /* The link a card actually points at. A showcase that hides its own URLs cannot be used
@@ -510,7 +510,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct browser download of an ISO disc image.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>*.iso</code> rule cannot fire here</div>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>*.iso</code> rule routes it</div>
           <a id="stand-direct-iso" class="btn-action" href="/files/linux-minimal.iso" download="linux-minimal.iso">
             Download ISO File
           </a>
@@ -522,7 +522,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct browser download of a video file.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>*.mkv</code> rule cannot fire here</div>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>*.mkv</code> rule routes it</div>
           <a id="stand-direct-mkv" class="btn-action" href="/files/sample-clip.mkv" download="sample-clip.mkv">
             Download MKV Clip
           </a>
@@ -534,7 +534,7 @@
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
           <p class="card-meta">Direct download of a zip package.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>zip</code> rule cannot fire here</div>
+          <div class="rule-hint">Switch on &rarr; sent, and a <code>zip</code> rule routes it</div>
           <a id="stand-direct-zip" class="btn-action" href="/files/devtools.zip" download="devtools.zip">
             Download ZIP Archive
           </a>
@@ -775,23 +775,48 @@
   </main>
 
   <script>
-    // Tab switching logic
-    window.switchTab = function switchTab(tabId) {
-      const tabs = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
-      for (const t of tabs) {
+    const TABS = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
+
+    /**
+     * Tabs are addressable: every one has a URL, so a tab can be linked, bookmarked and shared.
+     *
+     * `http://host:3300/#direct` opens the Direct URLs tab. Without this the address bar never
+     * moved, so "look at this case" meant "open the stand, then click the third tab" — which is
+     * the wrong instruction to give about a page whose entire job is showing specific cases.
+     *
+     * The hash is written with replaceState/pushState rather than by assigning `location.hash`,
+     * because that assignment scrolls the panel under the header. Back and forward work through
+     * the `hashchange` listener below.
+     */
+    function renderTab(tabId) {
+      for (const t of TABS) {
         const btn = document.getElementById(`tab-btn-${t}`);
         const panel = document.getElementById(`tab-${t}`);
-        if (t === tabId) {
-          btn?.classList.add('active');
-          btn?.setAttribute('aria-selected', 'true');
-          panel?.classList.add('active');
-        } else {
-          btn?.classList.remove('active');
-          btn?.setAttribute('aria-selected', 'false');
-          panel?.classList.remove('active');
-        }
+        const selected = t === tabId;
+        btn?.classList.toggle('active', selected);
+        btn?.setAttribute('aria-selected', String(selected));
+        panel?.classList.toggle('active', selected);
       }
+    }
+
+    function tabFromHash() {
+      const fromHash = location.hash.replace(/^#/, '');
+      return TABS.includes(fromHash) ? fromHash : TABS[0];
+    }
+
+    window.switchTab = function switchTab(tabId) {
+      if (!TABS.includes(tabId)) return;
+      renderTab(tabId);
+      if (tabFromHash() !== tabId) history.pushState(null, '', `#${tabId}`);
     };
+
+    window.addEventListener('hashchange', () => renderTab(tabFromHash()));
+    window.addEventListener('popstate', () => renderTab(tabFromHash()));
+
+    // Honour a hash the page was opened with, and give the default tab a URL of its own so the
+    // address bar is never blank about which tab is showing.
+    renderTab(tabFromHash());
+    if (!location.hash) history.replaceState(null, '', `#${TABS[0]}`);
 
     // A domain rule needs two hostnames. The stand is served on 127.0.0.1; the same server
     // answers on localhost, so rewriting these links at load time gives a second host without
