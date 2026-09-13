@@ -38,6 +38,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-22 | Rule-editor affordances worth borrowing from Send To QNAP++ | ui | S | Rejected |
 | UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | Done |
 | UX-24 | Three interception checkboxes become one | settings | M | Done |
+| UX-25 | Routing fields should use forgiving hybrid matching | ui/core | M | Done |
 
 ---
 
@@ -1024,3 +1025,87 @@ re-clicks, with the error reported.
 Shift hint is its accessible description.
 
 **Resolved 2026-09-12** — shipped in v2.4.0.
+
+---
+
+### UX-25 — Routing fields should use forgiving hybrid matching
+
+**Size:** M · **Area:** ui/core · **Status:** Done
+**Files:** `src/lib/routingRules.ts`, `src/lib/routingRules.test.ts`,
+`src/popup/features/settings/Settings.svelte`,
+`src/popup/features/settings/RoutingRules.stories.ts`
+**Supersedes the authoring syntax introduced by:** UX-18
+
+The current editor looks like three ordinary text fields but secretly assigns different
+languages to them. A bare value in Name means “file extension”, a value containing `*` or `?`
+becomes a glob, and Site accepts only an exact hostname or the special `*.` prefix. The UI then
+expects the user to infer that `rutracker`, `*rutracker*`, and `rutracker.org` have materially
+different outcomes. This is why a visually plausible rule can save successfully and never fire.
+
+**Product decision (2026-09-13):** every text condition is a forgiving, case-insensitive
+hybrid search. A value without wildcard characters is matched as a substring. A value containing
+`*` or `?` is matched as a glob, where `*` means zero or more characters and `?` means exactly one
+character. This is the established hybrid used by Python `unittest -k`: ordinary values use
+substring matching, while wildcard values use `fnmatch`. The common case therefore needs no
+syntax, while the existing advanced capability remains available.
+
+**Reference:** Python documentation for [`unittest -k`](https://docs.python.org/3/library/unittest.html#command-line-options)
+defines this same substring-without-wildcards / `fnmatch`-with-wildcards split.
+
+The same rule applies to Name and Site. `mkv` and `*mkv*` both find a name containing `mkv`;
+`rutracker` and `*rutracker*` both find a hostname containing `rutracker`. Wildcards refine a
+pattern rather than unlock substring matching.
+
+**What to build**
+
+- Change Name matching so a plain value is searched anywhere in the resolved torrent/download
+  name, while a value containing `*` or `?` uses glob matching.
+- Apply exactly the same hybrid rule to the normalised hostname of either the download URL or its
+  originating page. `rutracker` therefore matches `rutracker.org` and its subdomains without
+  requiring stars.
+- Keep the existing rule composition: values inside one field are OR-ed; different filled fields
+  are AND-ed; the first matching rule wins.
+- Keep the visible columns **Name contains any** and **Site contains any**. The concise hint leads
+  with plain examples and mentions wildcard syntax once as optional refinement.
+- Preserve previously saved wildcard rules unchanged; do not strip or migrate `*` and `?`.
+
+**Acceptance criteria**
+
+- [x] `mkv` and `*mkv*` both match `Movie.mkv`, `Movie.mkv.torrent`, and `Movie.mkv.REMUX`.
+- [x] `1080p` matches any case variant and at any position in the resolved name.
+- [x] `S0?E0?` matches `S01E02` but not `S01E002`; `*` and `?` retain their documented meanings.
+- [x] `rutracker` and `*rutracker*` both match `rutracker.org`, `www.rutracker.org`, and a torrent
+      whose download host is elsewhere but whose originating page hostname contains `rutracker`.
+- [x] `mkv, mp4, avi` and the currently accepted whitespace-separated form both mean “matches
+      any of these values”; existing saved lists do not change meaning during the upgrade.
+- [x] With both Name and Site filled, both fields must match; the UI says this in plain language.
+- [x] Existing wildcard rules remain byte-for-byte unchanged after load, save, export, and import.
+- [x] Name still uses the best name already available to the router (`info.name`, magnet `dn`,
+      Chrome/HTTP filename, then URL fallback); the change does not claim to inspect every file
+      inside a multi-file torrent.
+- [x] Unit tests cover substring and glob branches, case folding, value OR, field AND, first-match
+      priority, download host versus originating-page host, and legacy-rule compatibility.
+- [x] The routing-rule Storybook state and popup accessibility test cover the persistent
+      labels and concise hint.
+
+**2026-09-13 — reopened after implementation review.** The first implementation changed both
+fields to contains-only matching and stripped wildcard punctuation. Review established the more
+useful contract above: plain values are forgiving substrings, while explicitly written wildcard
+patterns remain advanced syntax. The contains-only code is an intermediate state, not completion.
+
+**2026-09-13 — done.** `matchesValue` in `routingRules.ts` now branches on the presence of `*`/`?`:
+no wildcard is a case-insensitive substring search, either one compiles to a whole-string `RegExp`
+the same way `fnmatch.fnmatchcase()` does. `normalizeContainsValue` (the stripper the first
+implementation added) is gone; `sanitizeRoutingRules` passes wildcard characters through untouched.
+
+One nuance worth recording since it is exactly the kind of thing that caused the first
+reopen: because the glob branch matches the *whole* subject, a pattern with no wildcard at its
+edges (`S0?E0?`) matches a name that is exactly that shape, not one merely containing it — a
+release named `Show.S01E02.mkv` needs `*S0?E0?*`, not `S0?E0?`. This is not a new rule invented for
+this feature; it is inherited byte-for-byte from `fnmatch`/shell-glob semantics, confirmed against
+the [Python docs](https://docs.python.org/3/library/unittest.html#command-line-options) rather than
+assumed. Anyone reaching for `*`/`?` already knows it from shell use; the hint in `Settings.svelte`
+mentions the syntax only as an optional refinement and does not restate this caveat, matching the
+“concise hint” requirement above. `routingRules.test.ts` has a dedicated case
+(`resolveDestination — hybrid substring/glob matching (UX-25)`) pinning this down so a future change
+cannot silently regress it back to contains-only.
