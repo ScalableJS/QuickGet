@@ -799,6 +799,13 @@ download/upload rates directly in the header (`↓ 12.4 MB/s  ↑ 1.2 MB/s`).
 **Size:** M · **Area:** popup/ui · **Status:** Backlog
 **Files:** `src/popup/features/toolbar/`, `src/api/client.ts` (`Config/Get`, `Config/Set`)
 
+> **Measured on the live NAS, 2026-09-13 (`Config/Get`, read-only):** there is **no single
+> download rate**. `bt`, `http` and `ftp` each carry their own `max_down_rate`, and `bt` also has
+> `max_up_rate`. All were `0` (unlimited). So a one-button "2 MB/s" has to decide what it throttles
+> — BT only, or all three — and that is a product decision this card does not yet make. `Config/Get`
+> is verified; **`Config/Set` is not**, and this card cannot be sized until it is. Full dump in
+> `docs/qnap-download-station-capabilities.md`.
+
 When the NAS saturates the local network connection, users need an instant way to throttle download/upload
 speeds without logging into QTS or navigating through deep settings tabs.
 
@@ -1073,6 +1080,11 @@ arm `page.waitForEvent("download")` **before** the click.
 
 Private trackers (Rutracker, Gazelle, etc.) frequently blacklist Download Station's default `libtorrent`
 peer ID. QNAP Download Station V4 natively includes client emulation in `Config.Set`:
+
+> **Confirmed live, 2026-09-13:** `Config/Get` on QTS5 returns `bt.peer_mode: 1`,
+> `bt.peer_id: "LT"`, `bt.peer_agent: "libtorrent/1.2.11"`, `bt.peer_version: "1.2.11"` — the
+> fields this card assumes really are there, with the default `libtorrent` identity this card
+> exists to change. `Config/Set` remains **unverified**.
 - `0`: Libtorrent default
 - `1`: Deluge 1.3.12 (`DE`)
 - `2`: Transmission 2.94 (`TR`)
@@ -1093,6 +1105,10 @@ peer ID. QNAP Download Station V4 natively includes client emulation in `Config.
 
 Download Station configures seeding stopping conditions via `bt.share_time` (minutes) and
 `bt.share_ratio` (ratio limit). Currently, users must configure these directly on the NAS.
+
+> **Confirmed live, 2026-09-13:** `Config/Get` returns `bt.share_ratio: 1.5` and
+> `bt.share_time: 30`, so both fields and their current defaults are real. `Config/Set` remains
+> **unverified** — no card in this group can be sized until someone writes to it once.
 
 **Acceptance criteria:**
 - [ ] Settings inputs for default seeding duration (minutes, `-1` for unlimited) and share ratio limit.
