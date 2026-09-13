@@ -60,13 +60,32 @@ Open defects are tracked separately in `bugs-kanban.md`.
   rather than by nothing at all. Export and Import share a row; the import confirmation puts
   Cancel before a destructive Replace. Light `--text-muted` measured 4.207:1 and was raised to
   4.96:1. Shipped in v2.4.3 (UX-26).
+- **An ordinary file download goes to the NAS on a click:** an ISO, an archive or a video is handed
+  to Download Station instead of the browser, at any size, because no bytes pass through this
+  machine. Off by default, behind its own switch. Phase one claims only unambiguous links — a known
+  extension in the path or a `download` attribute — so a page that merely names a file in its query
+  string is left alone. Links behind a login are unsupported and say so. Shipped in v2.5.0 (RES-5).
+- **The toolbar badge counts downloads, not seeding:** the number no longer stays up while the NAS
+  is only seeding, so the last download finishing clears it, and that transition is itself the
+  "your file is ready" signal. Shipped in v2.5.0 (BUG-62).
+- **Download Station's refusals are readable:** its own error codes are translated into its own
+  wording, read out of the appliance's web bundle, and a loopback URL is explained rather than
+  merely refused. Shipped in v2.5.0.
+- **A release gate that talks to real hardware:** four scenarios run against a live NAS before a
+  publish, replacing a real-NAS spec that had been broken for two months unnoticed. The test stand
+  became a Hono app where delivery — rate, stall, reset, truncation, ranges, redirects — is a
+  dimension rather than an endpoint. Shipped in v2.5.0 (BUG-67, BUG-68, BUG-69).
 
 
 ## Phase 2 — High Value Task Controls
 
 Contextual task actions exposed through clean interactions without bloating the primary card:
 
-- **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
+- **Quick speed limit throttle:** Speedometer icon in header opening a preset popover, using
+  `Config/Set` (GAP-9). **Unsized until two things are settled:** the NAS keeps separate rate limits
+  for `http`, `ftp` and `bt` — read live, see `docs/qnap-download-station-capabilities.md` — so a
+  single preset must decide what it limits; and `Config/Set` has never been written to. Both are
+  cheap to resolve and neither has been.
 - **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11, deferred).
 
 

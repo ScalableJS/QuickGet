@@ -3,7 +3,6 @@ import path from "node:path";
 
 export interface RealNasEnv {
   enabled: boolean;
-  allowMutations: boolean;
   captureHttp: boolean;
   secure: boolean;
   host: string;
@@ -45,7 +44,6 @@ export function loadRealNasEnv(rootDir: string): RealNasEnv {
 
   return {
     enabled: envFlag(merged.QNAP_E2E_REAL, false),
-    allowMutations: envFlag(merged.QNAP_E2E_ALLOW_MUTATIONS, false),
     captureHttp: envFlag(merged.QNAP_E2E_CAPTURE_HTTP, true),
     secure: envFlag(merged.QNAP_E2E_HTTPS, false),
     host: merged.QNAP_E2E_HOST ?? "",

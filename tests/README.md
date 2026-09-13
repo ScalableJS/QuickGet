@@ -36,17 +36,23 @@ Key files:
 - `tests/e2e/support/popup.ts` — popup UI helpers
 - `tests/e2e/support/redactedHttpLog.ts` — redacted request/response log
 
-### Real NAS E2E (`playwright`, opt-in)
+### Production spot check (`playwright`, real NAS, opt-in)
 
-Run locally only, and only with explicit environment variables set.
+The pre-release gate. Runs locally only, and only with explicit environment variables set.
 
 Key files:
-- `tests/e2e/popup.real-nas.spec.ts` — read-only smoke + opt-in mutating scenario
+- `tests/e2e/prod-spotcheck.spec.ts` — the four scenarios
+- `tests/e2e/support/spotcheck.ts` — task ownership, the ledger, and semantic waits
 - `tests/e2e/support/e2eEnv.ts` — loads env for the real NAS
 - `tests/e2e/support/httpCapture.ts` — captures client and network requests
-- `tests/e2e/support/realNasClient.ts` — cleans up only the suite's own tasks
-- `tests/e2e/support/torrentFixture.ts` — generates a test `.torrent`
+- `tests/e2e/support/realNasClient.ts` — the API client pointed at the real NAS
+- `tests/e2e/support/lan.ts` — the address the NAS can reach this machine on
 - `tests/e2e/README.md` — narrower detail specific to the e2e flow
+
+### Fixture contracts (`vitest`, node)
+
+- `tests/e2e/support/testStand/app.test.ts` — what the stand serves and how it delivers it
+- `tests/e2e/mockNas.contract.spec.ts` — the mock NAS against a real-like QNAP payload
 
 ## 2. What to run most often
 
@@ -165,7 +171,7 @@ npm run test:e2e:mock
 
 ### Scenario C: the real NAS started responding differently
 
-1. Run the real smoke locally, and the mutating flow if needed
+1. Run the spot check locally
 2. Save the new captures to `.e2e-artifacts/`
 3. Compare the new `.json`/`.log` against the current `mockNas`
 4. Update the mock and related tests
@@ -200,18 +206,13 @@ QNAP_E2E_DEST_DIR=...
 QNAP_E2E_CAPTURE_HTTP=1
 ```
 
-For the mutating flow, additionally:
-
-```dotenv
-QNAP_E2E_ALLOW_MUTATIONS=1
-```
-
 ### Safety rules
 
 - use a dedicated NAS account for tests
 - use dedicated test-owned folders for `TEMP_DIR` and `DEST_DIR`
 - never commit real SIDs / tokens / passwords / raw unredacted logs
-- only run the mutating flow deliberately
+- the spot check creates tasks on a live machine: everything it makes is named `qgr-spotcheck-…`
+  and removed three ways over, and nothing without that prefix is ever touched
 
 ## 6. CI in GitHub Actions
 
@@ -303,7 +304,7 @@ always enough:
 - `.github/workflows/ci.yml`
 - `tests/e2e/support/mockNas.ts`
 - `tests/e2e/popup.full-cycle.spec.ts`
-- `tests/e2e/popup.real-nas.spec.ts`
+- `tests/e2e/prod-spotcheck.spec.ts`
 - `src/api/client.ts`
 - `src/lib/tasks.ts`
 - `src/api/schema.d.ts`
@@ -317,8 +318,9 @@ The tests currently verify:
 - duplicate torrent handling (`24593`)
 - a dedicated mock-only contract test for `mockNas`
 - popup full cycle against the mock NAS
-- real NAS read-only smoke
-- real NAS mutating flow, limited to a suite-owned torrent
+- a clicked file link going to the NAS instead of the browser, with no bytes through Chrome
+- the test stand's own delivery contract — ranges, truncation, resets, barriers
+- the production spot check against real hardware, limited to suite-owned tasks
 - `mockNas` contract against a more real-like QNAP payload
 
 ## 11. Recommended check order in a PR

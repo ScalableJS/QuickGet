@@ -75,7 +75,7 @@ the matcher only ever looked at the link's own host. Row 13 is asserted delibera
 | **Chrome's native context menu** | Playwright cannot drive it. The handler itself *is* covered — `menus.test.ts` invokes `handleContextMenuClick` through MSW and asserts the `move` field, including for a fetched torrent. Only the OS-level menu wiring is untested, and reaching it needs a seam in a production build. Deliberately left. | BUG-55 |
 | ~~Popup `.torrent` file upload~~ | **Fixed** — `uploadTorrent` now reads the file's `info.name` and routes like every other send path. Unit-covered; no stand card, because the popup's file input is not something the stand can drive. | BUG-54 |
 | **Popup quick-add** | Deliberate: `CreateUrls.svelte` has an explicit folder picker, and an explicit choice must beat a rule. Worth an assertion so nobody "fixes" it. | BUG-55 |
-| **Plain HTTP download interception** | The feature does not exist — only `.torrent` downloads are intercepted. Asserted as row 12 so the limitation stays visible. | RES-5 |
+| ~~Plain HTTP download interception~~ | **Shipped in v2.5.0 (RES-5).** A clicked file link goes to the NAS behind an off-by-default switch, and routing applies to it like any other send path. Covered by `file-interception.spec.ts`. | RES-5 |
 | **Login-walled tracker + routing** | `hotlink-guard.spec.ts` covers the page-context fetch and the refusal, but not what folder a successfully fetched torrent lands in. | BUG-55 |
 | **Unreadable bencode with a valid MIME** | Falls back to `DownloadItem.filename`; unit-covered in `torrentMeta.test.ts`, not exercised end to end. | BUG-55 |
 | **Non-ASCII / `name.utf-8` release names** | Unit-covered only. | BUG-55 |
