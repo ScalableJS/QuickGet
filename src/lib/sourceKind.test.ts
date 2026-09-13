@@ -173,7 +173,7 @@ describe("magnetDisplayName", () => {
 });
 
 describe("isDownloadableFileUrl — what a plain click may send (RES-5)", () => {
-  it.each(["http://h/ubuntu.iso", "https://h/pack.zip", "http://h/clip.mkv", "http://h/app.dmg"])(
+  it.each(["http://h/ubuntu.iso", "https://h/pack.zip", "http://h/clip.mkv", "http://h/app.dmg", "http://h/firmware.bin"])(
     "accepts %s",
     (url) => {
       expect(isDownloadableFileUrl(url)).toBe(true);

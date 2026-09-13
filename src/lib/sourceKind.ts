@@ -66,6 +66,7 @@ export const DOWNLOADABLE_FILE_EXTENSIONS: readonly string[] = [
   "apk",
   "appimage",
   "avi",
+  "bin",
   "bz2",
   "dmg",
   "exe",
