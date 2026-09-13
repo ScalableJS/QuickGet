@@ -1,22 +1,32 @@
-import { once } from "node:events";
 import { readFile } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { type ServerType, serve } from "@hono/node-server";
+
+import { createTestStandApp, type RequestLogEntry } from "./testStand/app.js";
+import { Barriers } from "./testStand/barriers.js";
+import type { TransferShape } from "./testStand/transfer.js";
 
 const fixtureDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures");
 const standHtmlPath = path.join(fixtureDir, "test-stand/index.html");
 
+export type { RequestLogEntry } from "./testStand/app.js";
+export { buildTorrent } from "./testStand/torrent.js";
+
 export type TestStandHostHandle = {
   url: string;
   port: number;
-  requestLog: Array<{ path: string; method: string }>;
+  requestLog: RequestLogEntry[];
+  /** Wait for a transfer to reach `?barrier=<name>`, and let it continue. See `Barriers`. */
+  barriers: Barriers;
   close: () => Promise<void>;
 };
 
 export type TestStandHostOptions = {
   port?: number;
-  bodyDelayMs?: number;
+  /** Default delivery for file routes whose URL asks for no shape of its own. */
+  shape?: TransferShape;
   /**
    * Interface to bind. Defaults to loopback, which is right for the automated suite.
    *
@@ -29,233 +39,41 @@ export type TestStandHostOptions = {
 };
 
 /**
- * Serves the manual test stand, and — the part that matters for routing — serves a *different*
- * torrent per link.
+ * Serve the manual test stand and its fixtures.
  *
- * A single shared `sample.torrent` made every `.torrent` on the stand identical inside, so
- * nothing could tell whether the extension routed on the URL or on the file's real content name.
- * Here `info.name` is derived from what was requested, and the tracker-style endpoints reveal
- * that name only through `Content-Disposition` or not at all — which is the situation on a real
- * private tracker and the reason routing on the URL fails there.
+ * The routing lives in `testStand/app.ts` (Hono); this is only the Node binding, kept separate so
+ * the app can be exercised without a socket.
  */
 export async function startTestStandHost(options: TestStandHostOptions = {}): Promise<TestStandHostHandle> {
   const standHtml = await readFile(standHtmlPath);
-  const requestLog: Array<{ path: string; method: string }> = [];
+  const requestLog: RequestLogEntry[] = [];
+  const barriers = new Barriers();
 
-  const server: Server = createServer((request, response) => {
-    const rawUrl = request.url ?? "/";
-    let url: URL;
-    try {
-      url = new URL(rawUrl, "http://127.0.0.1");
-    } catch {
-      url = new URL("/", "http://127.0.0.1");
-    }
-    const pathname = url.pathname;
-    requestLog.push({ path: pathname, method: request.method ?? "GET" });
+  const app = createTestStandApp({ standHtml, requestLog, barriers, defaultShape: options.shape });
 
-    const send = (status: number, headers: Record<string, string>, payload: Buffer): void => {
-      response.writeHead(status, { ...headers, "content-length": String(payload.byteLength) });
-      const delay = options.bodyDelayMs ?? 0;
-      if (delay === 0) response.end(payload);
-      else setTimeout(() => response.end(payload), delay);
-    };
-
-    if (pathname === "/" || pathname === "/index.html") {
-      // `no-store`, because this page is edited while it is open. Without it the browser serves
-      // a cached copy and an edit to the stand looks like an edit that did not happen — which
-      // has already cost one round of "did you actually change it?".
-      send(
-        200,
-        { "content-type": "text/html; charset=utf-8", "cache-control": "no-store, must-revalidate" },
-        standHtml,
-      );
-      return;
-    }
-
-    // A tracker's opaque download endpoint: nothing in the URL says "torrent" or names the
-    // release. The MIME type and Content-Disposition are the only signals, exactly as on
-    // TorrentPier-style sites.
-    if (pathname === "/dl.php") {
-      const name = url.searchParams.get("name") ?? "Tracker.Release.2024.1080p.mkv";
-      const multi = url.searchParams.get("multi") === "1";
-      send(
-        200,
-        {
-          "content-type": "application/x-bittorrent",
-          "content-disposition": `attachment; filename="${name}.torrent"`,
-        },
-        buildTorrent(name, multi),
-      );
-      return;
-    }
-
-    // The harder variant of the same thing: correct MIME, no Content-Disposition, no extension.
-    // Chrome has no filename to offer, so the only name in existence is inside the file.
-    if (pathname.startsWith("/get/")) {
-      const name = decodeURIComponent(path.basename(pathname));
-      send(200, { "content-type": "application/x-bittorrent" }, buildTorrent(name));
-      return;
-    }
-
-    // A file big enough and slow enough to watch. Everything else the stand serves is a few
-    // dozen bytes, which is right for the automated suite and useless for a hand-test: the NAS
-    // finishes before the popup has refreshed once, so a completed task is all anyone ever sees
-    // and "no progress" looks like a broken feature.
-    //
-    // `/files/large-<n>mb.bin?kbps=<rate>` streams `n` megabytes at roughly `rate` kB/s, with a
-    // real `Content-Length` so Download Station can show a percentage rather than an unknown
-    // total. Defaults: 256 MB at 2 MB/s, so about two minutes.
-    const largeMatch = /^\/files\/large-(\d{1,5})mb\.bin$/i.exec(pathname);
-    if (largeMatch) {
-      const megabytes = Math.min(Number(largeMatch[1]) || 256, 8192);
-      const kbps = Math.max(Number(url.searchParams.get("kbps")) || 2048, 64);
-      const total = megabytes * 1024 * 1024;
-      const chunk = Buffer.alloc(64 * 1024, 0x51);
-      const delayMs = Math.max(Math.round((chunk.byteLength / 1024 / kbps) * 1000), 1);
-
-      response.writeHead(200, {
-        "content-type": "application/octet-stream",
-        "content-disposition": `attachment; filename="large-${megabytes}mb.bin"`,
-        "content-length": String(total),
-        "accept-ranges": "none",
-      });
-
-      let sent = 0;
-      let cancelled = false;
-      request.on("close", () => {
-        cancelled = true;
-      });
-      const pump = (): void => {
-        if (cancelled || sent >= total) {
-          if (!cancelled) response.end();
-          return;
-        }
-        const slice = sent + chunk.byteLength > total ? chunk.subarray(0, total - sent) : chunk;
-        sent += slice.byteLength;
-        // Respect backpressure: without the drain wait a fast client buffers the whole file in
-        // memory and the throttle becomes decorative.
-        if (response.write(slice)) setTimeout(pump, delayMs);
-        else response.once("drain", () => setTimeout(pump, delayMs));
-      };
-      pump();
-      return;
-    }
-
-    // An ordinary page. It exists so the stand can prove the *negative*: a link that merely
-    // mentions a file in its query string must never be handed to the NAS.
-    if (pathname === "/page.html") {
-      send(
-        200,
-        { "content-type": "text/html; charset=utf-8" },
-        Buffer.from("<!doctype html><title>Ordinary page</title><p>This is a web page, not a file.</p>"),
-      );
-      return;
-    }
-
-    if (pathname.startsWith("/files/")) {
-      const filename = decodeURIComponent(path.basename(pathname));
-      const isTorrent = filename.toLowerCase().endsWith(".torrent");
-
-      if (isTorrent) {
-        // `Big.Buck.Bunny.mkv.torrent` describes `Big.Buck.Bunny.mkv`.
-        const contentName = filename.replace(/\.torrent$/i, "");
-        send(
-          200,
-          {
-            "content-type": "application/x-bittorrent",
-            "content-disposition": `attachment; filename="${filename}"`,
-          },
-          buildTorrent(contentName),
-        );
-        return;
-      }
-
-      const contentType = filename.endsWith(".mkv")
-        ? "video/x-matroska"
-        : filename.endsWith(".iso")
-          ? "application/x-iso9660-image"
-          : "application/octet-stream";
-      send(
-        200,
-        { "content-type": contentType, "content-disposition": `attachment; filename="${filename}"` },
-        Buffer.from(`DUMMY DATA FOR ${filename}\n`),
-      );
-      return;
-    }
-
-    send(404, { "content-type": "text/plain; charset=utf-8" }, Buffer.from("Not found"));
+  const server: ServerType = await new Promise((resolve) => {
+    const created = serve({ fetch: app.fetch, port: options.port ?? 0, hostname: options.host ?? "127.0.0.1" }, () =>
+      resolve(created),
+    );
   });
-
-  server.listen(options.port ?? 0, options.host ?? "127.0.0.1");
-  await once(server, "listening");
 
   const address = server.address();
   if (typeof address === "string" || address === null) {
     throw new Error("Failed to determine test stand host port");
   }
 
-  const port = address.port;
   const advertisedHost = options.host && options.host !== "0.0.0.0" ? options.host : "127.0.0.1";
   return {
-    url: `http://${advertisedHost}:${port}/`,
-    port,
+    url: `http://${advertisedHost}:${address.port}/`,
+    port: address.port,
     requestLog,
+    barriers,
     close: async () => {
+      // Release anything still holding, or `close` waits for a socket that will never finish.
+      barriers.reset();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
     },
   };
-}
-
-/** A real, parseable `.torrent` whose `info.name` is the release name we want to route on. */
-export function buildTorrent(contentName: string, multiFile = false): Buffer {
-  const info: [string, Buffer][] = multiFile
-    ? [
-        [
-          "files",
-          blist([
-            bdict([
-              ["length", bint(900_000)],
-              ["path", blist([bstr("Season 1"), bstr("episode-01.mkv")])],
-            ]),
-            bdict([
-              ["length", bint(950_000)],
-              ["path", blist([bstr("Season 1"), bstr("episode-02.mkv")])],
-            ]),
-          ]),
-        ],
-      ]
-    : [["length", bint(1_048_576)]];
-
-  return bdict([
-    ["announce", bstr("http://127.0.0.1/announce-test")],
-    ["creation date", bint(1)],
-    [
-      "info",
-      bdict([
-        ...info,
-        ["name", bstr(contentName)],
-        ["piece length", bint(16_384)],
-        ["pieces", bstr(Buffer.alloc(20, 0xab))],
-      ]),
-    ],
-  ]);
-}
-
-function bstr(value: string | Buffer): Buffer {
-  const raw = Buffer.isBuffer(value) ? value : Buffer.from(value, "utf8");
-  return Buffer.concat([Buffer.from(`${raw.length}:`), raw]);
-}
-
-function bint(value: number): Buffer {
-  return Buffer.from(`i${value}e`);
-}
-
-function blist(items: Buffer[]): Buffer {
-  return Buffer.concat([Buffer.from("l"), ...items, Buffer.from("e")]);
-}
-
-function bdict(entries: [string, Buffer][]): Buffer {
-  return Buffer.concat([Buffer.from("d"), ...entries.flatMap(([key, value]) => [bstr(key), value]), Buffer.from("e")]);
 }
