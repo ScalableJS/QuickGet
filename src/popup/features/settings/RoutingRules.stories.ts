@@ -46,7 +46,7 @@ export const SingleRule: Story = {
       routingRules: [
         {
           type: "torrent",
-          namePattern: "*.mkv",
+          namePattern: "mkv",
           destination: "Multimedia/Movies",
         },
       ],
@@ -70,12 +70,12 @@ export const MultiplePrioritizedRules: Story = {
       routingRules: [
         {
           type: "torrent",
-          namePattern: "*.iso",
+          namePattern: "iso",
           destination: "Software/Linux",
         },
         {
           domain: "tracker.example.com",
-          namePattern: "*S01*",
+          namePattern: "S01",
           destination: "TV/Shows",
         },
         {
@@ -105,7 +105,7 @@ export const MagnetSiteMatchesThePage: Story = {
       routingRules: [
         {
           type: "magnet",
-          namePattern: "*ubuntu*",
+          namePattern: "ubuntu",
           destination: "Downloads/Linux",
         },
       ],
@@ -117,7 +117,7 @@ export const MagnetSiteMatchesThePage: Story = {
     // The Site field used to be disabled for magnets, on the reasoning that a magnet has no
     // host. It has none of its own — but it was clicked on a page, and that is what the rule
     // matches now, so the field has to be usable.
-    const siteInput = canvas.getByLabelText("Rule 1 site");
+    const siteInput = canvas.getByLabelText("Rule 1 site contains any");
     await expect(siteInput).toBeEnabled();
     await expect(
       canvas.getByText("A magnet has no site of its own, so Site matches the page it was clicked on."),
@@ -137,7 +137,7 @@ export const ValidationErrorMissingDestination: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Add rule" }));
-    await userEvent.type(canvas.getByLabelText("Rule 1 name or extension"), "*.avi");
+    await userEvent.type(canvas.getByLabelText("Rule 1 name contains any"), "avi");
     await userEvent.click(canvas.getByRole("button", { name: "Save settings" }));
     await userEvent.keyboard("{Escape}");
 
@@ -164,7 +164,7 @@ export const ValidationErrorNoConditions: Story = {
     }
     await userEvent.click(canvas.getByRole("button", { name: "Save settings" }));
 
-    await expect(canvas.getByText("Set at least one condition: source, name or extension, or site")).toBeVisible();
+    await expect(canvas.getByText("Set at least one condition: source, name, or site")).toBeVisible();
   },
 };
 
@@ -197,10 +197,10 @@ export const ReorderPriorityInteraction: Story = {
     await userEvent.click(moveDownBtn);
 
     // After swapping, the first rule's pattern field now contains SECOND_RULE
-    const rule1Pattern = canvas.getByLabelText("Rule 1 name or extension");
+    const rule1Pattern = canvas.getByLabelText("Rule 1 name contains any");
     await expect(rule1Pattern).toHaveValue("SECOND_RULE");
 
-    const rule2Pattern = canvas.getByLabelText("Rule 2 name or extension");
+    const rule2Pattern = canvas.getByLabelText("Rule 2 name contains any");
     await expect(rule2Pattern).toHaveValue("FIRST_RULE");
 
     // Save button should be enabled because order changed (isDirty)
@@ -218,7 +218,7 @@ export const LongPatternsAndDeepPaths: Story = {
         {
           type: "torrent",
           domain: "very-long-subdomain.tracker-network-distribution.internal.company.com",
-          namePattern: "*very.long.release.name.with.many.dots.and.tags.2160p.hdr.remux*",
+          namePattern: "very.long.release.name.with.many.dots.and.tags.2160p.hdr.remux",
           destination: "/share/CACHEDEV1_DATA/Multimedia/Archive/4K/HDR/Uncompressed/Films",
         },
       ],

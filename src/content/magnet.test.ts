@@ -321,7 +321,7 @@ describe("magnet content script", () => {
 
       clickHandler?.(event);
 
-      expect(preventDefaultSpy).toHaveBeenCalled();
+      expect(preventDefaultSpy).not.toHaveBeenCalled();
       expect(sendMessageMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "task:add",
@@ -329,6 +329,57 @@ describe("magnet content script", () => {
         }),
         expect.any(Function),
       );
+
+      cleanup();
+    });
+
+    it("consumes a failed Shift-click and offers an explicit recovery instead of a page download", () => {
+      let clickHandler: ((event: MouseEvent) => void) | undefined;
+      vi.spyOn(document, "addEventListener").mockImplementation((type, listener, options) => {
+        if (type === "click" && (options as { capture?: boolean })?.capture) {
+          clickHandler = listener as (event: MouseEvent) => void;
+        }
+      });
+
+      const sendMessageMock = vi.fn((_msg, cb) => cb?.(undefined));
+      (globalThis as unknown as { chrome: unknown }).chrome = {
+        storage: {
+          local: { get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: false })) },
+          onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
+        runtime: {
+          sendMessage: sendMessageMock,
+          lastError: { message: "Could not establish connection. Receiving end does not exist." },
+          id: "test-extension-id",
+        },
+      };
+
+      const cleanup = initMagnetInterception();
+      const anchor = document.createElement("a");
+      anchor.href = "https://tracker.example.com/release.torrent";
+      document.body.appendChild(anchor);
+      const event = createClickEvent({
+        button: 0,
+        cancelable: true,
+        isTrusted: true,
+        shiftKey: true,
+        composedPath: [anchor, document.body],
+      });
+      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      const stopImmediatePropagationSpy = vi.spyOn(event, "stopImmediatePropagation");
+
+      clickHandler?.(event);
+
+      expect(preventDefaultSpy).toHaveBeenCalledOnce();
+      expect(stopImmediatePropagationSpy).toHaveBeenCalledOnce();
+      expect(sendMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "link:send", url: anchor.href }),
+        expect.any(Function),
+      );
+      const feedback = document.getElementById("quickget-feedback-host")?.shadowRoot;
+      expect(feedback?.textContent).toContain("Could not contact QuickGet");
+      expect(feedback?.getElementById("qg-action-0")?.textContent).toBe("Retry");
+      expect(feedback?.getElementById("qg-action-1")?.textContent).toBe("Open locally");
 
       cleanup();
     });

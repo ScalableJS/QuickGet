@@ -36,7 +36,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
 }
 
 test.describe("magnet link interception (GAP-1)", () => {
-  test("intercepts a direct magnet click when interception is on", async () => {
+  test("sends a direct magnet click to the NAS while retaining the browser handler", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
@@ -61,11 +61,12 @@ test.describe("magnet link interception (GAP-1)", () => {
       expect(addUrlRequests.length).toBe(1);
       expect(decodeURIComponent(addUrlRequests[0].requestBody ?? "")).toContain("Ubuntu+ISO");
 
-      // Verify page was prevented from default action
+      // Browser protocol handlers are the only portable local fallback for a magnet. The
+      // extension sends in parallel but must not suppress the page's default action here.
       const lastClick = await page.evaluate(
         () => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick,
       );
-      expect(lastClick?.defaultPrevented).toBe(true);
+      expect(lastClick?.defaultPrevented).toBe(false);
     } finally {
       await session.close();
       await fixtureHost.close();

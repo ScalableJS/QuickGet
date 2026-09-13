@@ -19,7 +19,7 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { handleDeterminingFilename, handleDownloadCreated, reserveDownloadForHold } from "./downloads.js";
+import { handleDownloadCreated } from "./downloads.js";
 
 const TORRENT_URL = "https://tracker.example.com/file.torrent";
 
@@ -85,58 +85,6 @@ describe("download interception", () => {
     notifications = getChromeNotificationsMock();
   });
 
-  describe("no local copy when the filename stage can be held", () => {
-    /** Put a download through the filename stage the way Chrome would, then hand it over. */
-    async function runWithFilenameHold(settings: ReturnType<typeof createTestSettings>) {
-      const item = createDownloadItem();
-      const suggest = vi.fn();
-      seedChromeStorage(settings);
-      reserveDownloadForHold(item);
-      const held = handleDeterminingFilename(item, suggest);
-      await handleDownloadCreated(item);
-      return { item, suggest, held };
-    }
-
-    it("cancels at the filename stage instead of pausing, so no file is committed", async () => {
-      mockSuccessfulHandoff();
-
-      const { held, suggest } = await runWithFilenameHold(createTestSettings({ interceptTorrentLinks: true }));
-
-      expect(held).toBe(true);
-      // The download dies before Chrome can prompt or write; pausing would be too late.
-      expect(downloads.cancel).toHaveBeenCalled();
-      expect(downloads.pause).not.toHaveBeenCalled();
-      // Released only after the cancel, so the filename stage never stalls on Chromium's
-      // 15s determiner timeout.
-      expect(suggest).toHaveBeenCalled();
-    });
-
-    /**
-     * The fallback, and it is a browser capability rather than a preference: Firefox has no
-     * `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016), and nothing can be
-     * held there. The older transaction still protects the download — it just cannot stop a
-     * small file from landing first.
-     */
-    it("falls back to pause and cancel when no filename hold was taken", async () => {
-      mockSuccessfulHandoff();
-
-      const item = createDownloadItem();
-      seedChromeStorage(createTestSettings({ interceptTorrentLinks: true }));
-      await handleDownloadCreated(item);
-
-      expect(downloads.pause).toHaveBeenCalled();
-      expect(downloads.cancel).toHaveBeenCalled();
-    });
-
-    it("does not hold downloads it was never asked to claim", async () => {
-      const suggest = vi.fn();
-      const stranger = createDownloadItem({ id: 4242, url: "https://example.com/report.pdf" });
-
-      expect(handleDeterminingFilename(stranger, suggest)).toBe(false);
-      expect(suggest).not.toHaveBeenCalled();
-    });
-  });
-
   it("ignores the download entirely when interception is off", async () => {
     seedChromeStorage(createTestSettings({ interceptTorrentLinks: false }));
 
@@ -198,23 +146,17 @@ describe("download interception", () => {
     expect(downloads.pause).not.toHaveBeenCalled();
   });
 
-  it("removes a successful hand-off from Chrome's download history only after NAS acceptance", async () => {
+  it("sends an ordinary torrent to the NAS without changing its browser download", async () => {
     seedChromeStorage(createTestSettings());
     const nas = mockSuccessfulHandoff();
 
     await handleDownloadCreated(createDownloadItem());
 
     expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.pause).toHaveBeenCalledWith(1);
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
-    expect(downloads.erase).toHaveBeenCalledWith({ id: 1 });
+    expect(downloads.pause).not.toHaveBeenCalled();
+    expect(downloads.cancel).not.toHaveBeenCalled();
+    expect(downloads.erase).not.toHaveBeenCalled();
     expect(downloads.resume).not.toHaveBeenCalled();
-
-    const pausedAt = downloads.pause.mock.invocationCallOrder[0];
-    const cancelledAt = downloads.cancel.mock.invocationCallOrder[0];
-    const erasedAt = downloads.erase.mock.invocationCallOrder[0];
-    expect(pausedAt).toBeLessThan(cancelledAt);
-    expect(cancelledAt).toBeLessThan(erasedAt);
   });
 
   it("continues the NAS hand-off when Chrome cannot repaint the action icon", async () => {
@@ -225,12 +167,10 @@ describe("download interception", () => {
     await handleDownloadCreated(createDownloadItem());
 
     expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it("holds the cancel until AddTorrent actually resolves", async () => {
-    // Ordering alone is too weak: `pause → cancel → send` satisfies it. Gate the NAS response
-    // so the assertion happens while the hand-off is still in flight.
+  it("leaves the browser download untouched while AddTorrent is in flight", async () => {
     seedChromeStorage(createTestSettings());
 
     let releaseAddTorrent!: () => void;
@@ -261,18 +201,17 @@ describe("download interception", () => {
     const handling = handleDownloadCreated(createDownloadItem());
     await addTorrentReached;
 
-    expect(downloads.pause).toHaveBeenCalledWith(1);
+    expect(downloads.pause).not.toHaveBeenCalled();
     expect(downloads.cancel).not.toHaveBeenCalled();
 
     releaseAddTorrent();
     await handling;
 
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it("does not resume a download that was never paused", async () => {
+  it("does not touch a browser download when the NAS rejects the torrent", async () => {
     seedChromeStorage(createTestSettings());
-    downloads.pause.mockRejectedValueOnce(new Error("download already complete"));
     mockFailedHandoff();
 
     await handleDownloadCreated(createDownloadItem());
@@ -281,39 +220,34 @@ describe("download interception", () => {
     expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
-  it("puts the transfer back to the browser when the cancel fails after a successful send", async () => {
+  it("does not need browser recovery after a successful send", async () => {
     seedChromeStorage(createTestSettings());
     mockSuccessfulHandoff();
-    downloads.cancel.mockRejectedValueOnce(new Error("not cancellable"));
 
     await handleDownloadCreated(createDownloadItem());
 
-    // The NAS has the torrent, but the browser transfer must not be left hanging paused.
-    expect(downloads.resume).toHaveBeenCalledWith(1);
-    // The still-running browser copy is the recovery path, so it must remain in history.
+    expect(downloads.resume).not.toHaveBeenCalled();
     expect(downloads.erase).not.toHaveBeenCalled();
   });
 
-  it("reports the paused state honestly when the resume also fails", async () => {
+  it("reports that the browser copy continues when NAS hand-off fails", async () => {
     seedChromeStorage(createTestSettings());
     mockFailedHandoff();
-    downloads.resume.mockRejectedValueOnce(new Error("cannot resume"));
 
     await handleDownloadCreated(createDownloadItem());
 
     const calls = notifications.create.mock.calls;
     const options = calls[calls.length - 1][0] as { message: string };
-    expect(options.message).toContain("paused");
-    expect(options.message).not.toContain("resumed");
+    expect(options.message).toContain("continues locally");
   });
 
-  it("resumes the browser download when the NAS rejects the torrent", async () => {
+  it("keeps browser APIs untouched when the NAS rejects the torrent", async () => {
     seedChromeStorage(createTestSettings());
     mockFailedHandoff();
 
     await handleDownloadCreated(createDownloadItem());
 
-    expect(downloads.resume).toHaveBeenCalledWith(1);
+    expect(downloads.resume).not.toHaveBeenCalled();
     expect(downloads.cancel).not.toHaveBeenCalled();
     expect(downloads.erase).not.toHaveBeenCalled();
   });
@@ -327,7 +261,7 @@ describe("download interception", () => {
     await handleDownloadCreated(createDownloadItem());
 
     expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
   it("handles a torrent whose extension is followed by a fragment", async () => {
@@ -343,7 +277,7 @@ describe("download interception", () => {
 
     await handleDownloadCreated(createDownloadItem({ url, finalUrl: url, mime: "application/octet-stream" }));
 
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
   it("recognises a torrent by filename when the URL and MIME say nothing", async () => {
@@ -366,7 +300,7 @@ describe("download interception", () => {
       }),
     );
 
-    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
   it("sends only once when both listeners fire concurrently", async () => {
@@ -379,7 +313,7 @@ describe("download interception", () => {
     await Promise.all([handleDownloadCreated(item), handleDownloadCreated(item), handleDownloadCreated(item)]);
 
     expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalledTimes(1);
+    expect(downloads.cancel).not.toHaveBeenCalled();
     const persistedKeys = vi.mocked(chrome.storage.session.set).mock.calls.flatMap(([items]) => Object.keys(items));
     expect(persistedKeys).not.toContain("qg-pending-1");
     expect(persistedKeys).not.toContain("qg-claimed-1");
@@ -397,7 +331,6 @@ describe("download interception", () => {
   it("does not intercept when a live NAS connection cannot be established", async () => {
     seedChromeStorage(createTestSettings());
     const item = createDownloadItem();
-    const suggest = vi.fn();
     let torrentFetches = 0;
     server.use(
       http.get(TORRENT_URL, () => {
@@ -407,11 +340,8 @@ describe("download interception", () => {
       http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () => HttpResponse.error()),
     );
 
-    reserveDownloadForHold(item);
-    expect(handleDeterminingFilename(item, suggest)).toBe(true);
     await handleDownloadCreated(item);
 
-    expect(suggest).toHaveBeenCalledTimes(1);
     expect(torrentFetches).toBe(0);
     expect(downloads.pause).not.toHaveBeenCalled();
     expect(downloads.cancel).not.toHaveBeenCalled();
@@ -433,7 +363,7 @@ describe("download interception", () => {
     await handleDownloadCreated(createDownloadItem());
 
     expect(nas.addTorrentCalls).toBe(1);
-    expect(downloads.cancel).toHaveBeenCalled();
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
   it("never touches the download when the session password was cleared by a restart", async () => {
@@ -562,7 +492,7 @@ describe("download interception — page-context fetch", () => {
 
     // The worker must not have fetched the tracker itself — that is the request that gets a 403.
     expect(fetchSpy.mock.calls.map((call) => String(call[0]))).not.toContain(GUARDED_URL);
-    expect(downloads.cancel).toHaveBeenCalledWith(60);
+    expect(downloads.cancel).not.toHaveBeenCalled();
   });
 
   it("prefers the tab the download started from over another tab on the site", async () => {

@@ -8,6 +8,7 @@ import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
 import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
+import { refreshContentScripts } from "./contentScripts.js";
 import { initDownloadInterception } from "./downloads.js";
 import { handleMagnetAdd } from "./magnetHandler.js";
 import { createContextMenus, handleContextMenuClick, sendDownloadToStation } from "./menus.js";
@@ -44,6 +45,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
   void runSettingsMigration(details.previousVersion);
+  if (details.reason === "update") void refreshContentScripts();
   // Reflect any already-running downloads right away after an install/update.
   void ensureMonitoring();
 });

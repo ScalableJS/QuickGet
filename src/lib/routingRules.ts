@@ -31,7 +31,7 @@ export type RoutingInput = {
    * The name the download will actually have, when the caller knows it.
    *
    * Deriving a name from the URL is a last resort: for a `.torrent` it yields the metadata
-   * file (`1234.torrent`), not the release inside, and a rule written as `*.mkv` then matches
+   * file (`1234.torrent`), not the release inside, and a rule written as `mkv` then matches
    * nothing. Callers that hold something better — the `.torrent`'s own `info.name`, or the
    * filename Chrome derived from `Content-Disposition` — pass it here.
    */
@@ -73,7 +73,7 @@ export function validateRoutingRuleDraft(draft: RoutingRuleDraft): RoutingRuleVa
     valid: hasDestination && hasCondition,
     errors: {
       destination: hasDestination ? undefined : "Destination folder is required",
-      conditions: hasCondition ? undefined : "Set at least one condition: source, name or extension, or site",
+      conditions: hasCondition ? undefined : "Set at least one condition: source, name, or site",
     },
   };
 }
@@ -81,7 +81,7 @@ export function validateRoutingRuleDraft(draft: RoutingRuleDraft): RoutingRuleVa
 /**
  * Turn an editor draft into a stored rule, or `null` when it is not a rule yet.
  *
- * Trimming, domain normalisation and "a magnet has no domain" are not restated here: the
+ * Trimming and domain normalisation are not restated here: the
  * sanitizer is the one place that knows what a valid stored rule looks like, and a second copy
  * of those decisions is how the editor and storage drifted apart in the first place.
  */
@@ -115,9 +115,6 @@ export function normalizeDomain(raw: string): string {
  * 1. A non-whitespace `destination`
  * 2. At least one active condition (type, domain, or namePattern).
  *    Catch-all rules without conditions are prohibited (unmatched downloads use global Target folder).
- *    A pattern of `*` passes deliberately: it is a condition someone typed, ordering is theirs to
- *    choose, and a stray one announces itself on the next task card. This is data validation, not
- *    a review of intent — see the rejected BUG-57 before adding a guard here.
  *
  * A domain used to be stripped from magnet rules, on the reasoning that a magnet has no host.
  * It has no host *of its own* — but it was clicked on a page, and that page is what a user means
@@ -225,24 +222,39 @@ function listValues(field: string): string[] {
   return field.split(/[\s,]+/).filter(Boolean);
 }
 
-function matchesName(name: string, patterns: string): boolean {
-  return listValues(patterns).some((token) => matchNameToken(name, token));
+/**
+ * A value without `*`/`?` is a forgiving substring search; a value written with them is a glob
+ * matched against the whole subject, the same split `unittest -k` makes between a plain
+ * substring and `fnmatch`. Both arguments are already lower-cased by the caller.
+ *
+ * Because `fnmatch` matches the *entire* subject, a glob with no wildcard at the edges (`S0?E0?`)
+ * only matches a name that is exactly that shape, not one containing it — same as writing
+ * `-k 'foo'` versus `-k '*foo*'`. Anyone reaching for `*`/`?` already knows this from shell globs;
+ * the plain, star-free form covers the common case and needs no such caveat.
+ */
+function matchesValue(subjectLower: string, valueLower: string): boolean {
+  return /[*?]/.test(valueLower) ? globToRegExp(valueLower).test(subjectLower) : subjectLower.includes(valueLower);
 }
 
-/**
- * A token containing a wildcard is a glob; anything else is an extension, so `mkv`, `.mkv` and
- * `*.mkv` all mean the same thing. Deliberately not "extension or substring" — that would make
- * `mp4` quietly match `mp4converter.zip`, and a rule you cannot predict is worse than one you
- * have to spell out. Substring matching is what `*` is for.
- */
-function matchNameToken(name: string, token: string): boolean {
-  if (token.includes("*") || token.includes("?")) return matchGlob(name, token);
-  const extension = token.startsWith(".") ? token : `.${token}`;
-  return name.toLowerCase().endsWith(extension.toLowerCase());
+/** Translate a `*`/`?` pattern into a whole-string RegExp, as `fnmatch.fnmatchcase()` does. */
+function globToRegExp(pattern: string): RegExp {
+  const body = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${body}$`);
+}
+
+function matchesName(name: string, values: string): boolean {
+  const nameLower = name.toLowerCase();
+  return listValues(values).some((value) => matchesValue(nameLower, value.toLowerCase()));
 }
 
 function matchesAnyDomain(hosts: string[], domains: string): boolean {
-  return listValues(domains).some((pattern) => hosts.some((host) => matchDomain(host, pattern)));
+  return listValues(domains).some((value) => {
+    const valueLower = value.toLowerCase();
+    return hosts.some((host) => matchesValue(host, valueLower));
+  });
 }
 
 /** Every host a domain rule may legitimately match: the file's own, and the page it came from. */
@@ -260,51 +272,4 @@ function hostOf(url: string | undefined): string | null {
   } catch {
     return null;
   }
-}
-
-function matchDomain(host: string, pattern: string): boolean {
-  const patternLower = pattern.toLowerCase();
-  if (patternLower.startsWith("*.")) {
-    const suffix = patternLower.substring(2);
-    return host === suffix || host.endsWith(`.${suffix}`);
-  }
-  return host === patternLower;
-}
-
-/**
- * Linear-time wildcard matcher supporting `*` (zero or more characters) and `?` (any single character).
- * Case-insensitive. Completely immune to RegExp ReDoS / catastrophic backtracking.
- * Treats all other characters (including regex metacharacters `[]()+${}^`) as exact literals.
- */
-export function matchGlob(filename: string, pattern: string): boolean {
-  const s = filename.toLowerCase();
-  const p = pattern.toLowerCase();
-
-  let sIdx = 0;
-  let pIdx = 0;
-  let starIdx = -1;
-  let sTmpIdx = -1;
-
-  while (sIdx < s.length) {
-    if (pIdx < p.length && (p[pIdx] === "?" || p[pIdx] === s[sIdx])) {
-      sIdx++;
-      pIdx++;
-    } else if (pIdx < p.length && p[pIdx] === "*") {
-      starIdx = pIdx;
-      sTmpIdx = sIdx;
-      pIdx++;
-    } else if (starIdx !== -1) {
-      pIdx = starIdx + 1;
-      sTmpIdx++;
-      sIdx = sTmpIdx;
-    } else {
-      return false;
-    }
-  }
-
-  while (pIdx < p.length && p[pIdx] === "*") {
-    pIdx++;
-  }
-
-  return pIdx === p.length;
 }

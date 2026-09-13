@@ -17,10 +17,10 @@ describe("exportSettings", () => {
   });
 
   it("round-trips through parseImportedSettings", () => {
-    const settings = createTestSettings({ routingRules: [{ namePattern: "*.mkv", destination: "Movies" }] });
+    const settings = createTestSettings({ routingRules: [{ namePattern: "mkv", destination: "Movies" }] });
     const restored = parseImportedSettings(exportSettings(settings));
     expect(restored.NASaddress).toBe(settings.NASaddress);
-    expect(restored.routingRules).toEqual([{ namePattern: "*.mkv", destination: "Movies" }]);
+    expect(restored.routingRules).toEqual([{ namePattern: "mkv", destination: "Movies" }]);
     expect(restored).not.toHaveProperty("NASpassword");
   });
 });
@@ -84,7 +84,7 @@ describe("describeImport", () => {
   it("counts routing rules, since the number is what the user is losing", () => {
     const changes = describeImport({
       routingRules: [
-        { namePattern: "*.mkv", destination: "Movies" },
+        { namePattern: "mkv", destination: "Movies" },
         { domain: "example.com", destination: "Other" },
       ],
     });

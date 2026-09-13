@@ -36,8 +36,8 @@ describe("context-menu routing", () => {
       createTestSettings({
         NASdir: "/share/Multimedia/Default",
         routingRules: [
-          { namePattern: "*.mkv", destination: "/share/Multimedia/Movies" },
-          { domain: "*.example.com", destination: "/share/Multimedia/Other" },
+          { namePattern: "mkv", destination: "/share/Multimedia/Movies" },
+          { domain: "example.com", destination: "/share/Multimedia/Other" },
         ],
       }),
     );
@@ -310,8 +310,8 @@ describe("context-menu torrent handling", () => {
       menuItemId: "quickget-send-link",
     });
 
-    // Not Movies: without the file's own `info.name` the release name does not exist here.
-    expect(move).toBe("Unresolved");
+    // Contains matching can still use the release text visible in the URL fallback.
+    expect(move).toBe("Multimedia/Movies");
   });
 
   it("routes the fetched torrent to the folder its rule selects", async () => {

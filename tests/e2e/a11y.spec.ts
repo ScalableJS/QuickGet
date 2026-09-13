@@ -31,8 +31,8 @@ test.describe("accessibility", () => {
     NASdir: "Multimedia/Movies",
     interceptTorrentLinks: true,
     routingRules: [
-      { namePattern: "*.mkv", destination: "Multimedia/Movies" },
-      { domain: "*.example.com", destination: "Multimedia/Other" },
+      { namePattern: "mkv", destination: "Multimedia/Movies" },
+      { domain: "example.com", destination: "Multimedia/Other" },
     ],
   });
 
@@ -318,7 +318,7 @@ test.describe("accessibility", () => {
       await expect(session.page.getByLabel("Intercept magnet links")).toHaveCount(0);
 
       // The gesture that makes the switch low-stakes has to be stated, or nobody finds it.
-      await expect(intercept).toHaveAccessibleDescription(/Hold Shift/);
+      await expect(intercept).toHaveAccessibleDescription(/Shift-click/);
 
       await intercept.uncheck();
       await session.page.click("#save-btn");

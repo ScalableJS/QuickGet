@@ -15,12 +15,11 @@ const extensionDistPath = path.resolve(__dirname, "../../dist");
 const torrentFixture = path.resolve(__dirname, "fixtures/sample.torrent");
 
 /**
- * Unit tests prove the extension calls the right `chrome.downloads` methods in the right order.
- * Only here does a real Chrome start, pause, cancel and resume a download — a mocked
- * `chrome.downloads.resume()` can never show that the browser actually finishes the transfer.
+ * Unit tests prove that ordinary interception never calls a destructive downloads API. Only
+ * here does real Chromium prove the paired user outcome: NAS receives the torrent and the
+ * browser still retains its own local download.
  *
- * The torrent host delays its body: a small `.torrent` from localhost otherwise completes
- * before the extension can pause it, and the transaction under test never happens.
+ * The torrent host can delay its body when a test needs a stable in-progress browser download.
  */
 const BODY_DELAY_MS = 3_000;
 
@@ -73,7 +72,7 @@ async function startSession(options: { bodyDelayMs?: number; userDataDir?: strin
   return { torrentHost, session, downloadsPath };
 }
 
-test("does not retain an intercepted torrent through a browser restart", async () => {
+test("retains an ordinary intercepted torrent through a browser restart", async () => {
   const mockNas = await startMockNas();
   const userDataDir = await mkdtemp(path.join(tmpdir(), "qg-e2e-restart-profile-"));
   const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS, userDataDir });
@@ -101,7 +100,8 @@ test("does not retain an intercepted torrent through a browser restart", async (
       .filter((request) => request.path === "/downloadstation/V4/Task/AddTorrent").length;
     expect(addTorrentCount).toBe(1);
 
-    // A successful hand-off must leave no DownloadItem in the persistent Chrome profile.
+    // Ordinary interception is intentionally a dual outcome: NAS receives the task, while the
+    // browser keeps its own file and DownloadItem as the user's local fallback.
     const retained = await reopenedSession.worker.evaluate(async () =>
       (await chrome.downloads.search({})).map((item) => ({
         filename: item.filename,
@@ -110,7 +110,8 @@ test("does not retain an intercepted torrent through a browser restart", async (
         url: item.finalUrl || item.url,
       })),
     );
-    expect(retained).toEqual([]);
+    expect(retained).toHaveLength(1);
+    expect(retained[0]).toMatchObject({ state: "complete", url: torrentHost.url });
   } finally {
     await reopenedSession?.close();
     await torrentHost.close();
@@ -301,36 +302,9 @@ test("leaves the download alone when no NAS credentials are available", async ()
   }
 });
 
-/**
- * Cannot be verified here, and skipping is the honest outcome rather than asserting something
- * weaker and calling it proof.
- *
- * `chrome.downloads.onDeterminingFilename` never fires under Playwright's persistent context:
- * the automation harness assigns each download a target path itself (files land in
- * `.playwright-artifacts-*`), so the filename-determination stage — the only point where the
- * transfer can be cancelled before Chrome commits a file — is bypassed entirely. Verified by
- * probing the running worker: the listener registers, the event never arrives.
- *
- * Strict mode therefore has to be checked by hand in a real Chrome profile:
- *   1. Settings → tick "Don't keep the .torrent file locally".
- *   2. Chrome Settings → turn ON "Ask where to save each file before downloading".
- *   3. Click a .torrent link: no "Save as" prompt, no file in Downloads, task on the NAS.
- */
-/**
- * Two tests, and the first one exists so the second cannot pass vacuously.
- *
- * Both need `nativeDownloads`: `launchPersistentContext` sends `Browser.setDownloadBehavior`
- * with `allowAndName`, which skips the filename-determination stage entirely, so
- * `onDeterminingFilename` never fires and strict mode cannot engage at all. That is why this
- * case sat `test.skip` with manual steps for ten days.
- */
-test("downloads land in the directory the strict-mode test watches", async () => {
-  // The control for the test below. "The directory is empty" proves nothing unless something
-  // is known to arrive there, and it must be something the extension never touches — an
-  // ordinary .mkv, not a torrent. An earlier version used a torrent with interception in
-  // permissive mode and was flaky by construction: that path pauses, hands off and cancels, so
-  // whether a file survives is a race the code is *designed to win*. It held on macOS and lost
-  // on the Linux runner.
+test("native download test writes its control file to the browser directory", async () => {
+  // Proves that `nativeDownloads` points Chromium at the directory inspected by the paired
+  // ordinary-torrent test below.
   const stand = await startTestStandHost();
   const { session, downloadsPath } = await startSession({ nativeDownloads: true });
 
@@ -347,10 +321,8 @@ test("downloads land in the directory the strict-mode test watches", async () =>
   }
 });
 
-test("strict mode leaves no .torrent in Downloads when the NAS accepts it", async () => {
+test("ordinary torrent click sends to NAS and keeps the local file", async () => {
   const mockNas = await startMockNas();
-  // No body delay on purpose: a small .torrent from localhost is committed before any cancel
-  // could bite, so a file that is still absent was kept away by the filename-stage cancel.
   const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
 
   try {
@@ -365,9 +337,8 @@ test("strict mode leaves no .torrent in Downloads when the NAS accepts it", asyn
       .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), { timeout: 30_000 })
       .toBe(true);
 
-    // The whole point of the mode: nothing is left for the user to find in Downloads.
-    await page.waitForTimeout(3_000);
-    expect(await readdir(downloadsPath)).toEqual([]);
+    await expect.poll(() => readdir(downloadsPath), { timeout: 30_000 }).toContain("sample.torrent");
+    await expect.poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length)).toBe(1);
   } finally {
     await session.close();
     await torrentHost.close();

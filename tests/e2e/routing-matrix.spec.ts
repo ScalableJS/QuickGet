@@ -1,3 +1,5 @@
+import { mkdtemp, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,7 +35,7 @@ const RULES = [
   { type: "magnet", domain: "127.0.0.1", namePattern: "avi", destination: "R/FromThisSite" },
   { type: "magnet", namePattern: "mkv", destination: "R/MagnetMovies" },
   { type: "magnet", destination: "R/MagnetsAny" },
-  { type: "torrent", namePattern: "*S01*", destination: "R/Series" },
+  { type: "torrent", namePattern: "S01", destination: "R/Series" },
   { type: "torrent", namePattern: "mkv", destination: "R/TorrentMovies" },
   { type: "torrent", namePattern: "iso", destination: "R/Images" },
   { type: "url", namePattern: "mkv", destination: "R/DirectMovies" },
@@ -199,7 +201,10 @@ test("routing matrix: every source shape the stand can produce lands in the fold
 
     for (const testCase of CASES) {
       await standPage.click(`#tab-btn-${testCase.tab}`);
-      await standPage.click(testCase.selector);
+      // The matrix asserts routing rather than the browser fallback. Its links include magnets,
+      // whose native protocol handler may leave the page, so use the explicit one-link send.
+      // Ordinary `.torrent` and magnet fallback outcomes have dedicated E2E coverage below.
+      await standPage.click(testCase.selector, { modifiers: ["Shift"] });
 
       const endpoint = `/downloadstation/V4/Task/${testCase.via}`;
       await expect
@@ -318,7 +323,8 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
 
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-shift-click-downloads-"));
+  const session = await launchExtensionPopup(extensionDistPath, { downloadsPath, nativeDownloads: true });
 
   try {
     await waitForPopupReady(session.page);
@@ -342,11 +348,44 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
     const standPage = await session.context.newPage();
     await standPage.goto(testStand.url);
 
+    // An extension update does not navigate tabs that were already open. The worker reinjects
+    // its declarative script instead, so exercise that exact API on this persistent page before
+    // clicking: the resulting click must still have one handler and one browser outcome.
+    const tabId = await session.worker.evaluate(async (url) => {
+      const tabs = await chrome.tabs.query({ url });
+      return tabs[0]?.id;
+    }, standPage.url());
+    if (tabId === undefined) throw new Error("Could not resolve the persistent test-stand tab");
+    await session.worker.evaluate(async (id) => {
+      const files = chrome.runtime.getManifest().content_scripts?.[0]?.js;
+      if (!files || files.length === 0) throw new Error("Missing declared content script");
+      await chrome.scripting.executeScript({ target: { tabId: id, allFrames: true }, files });
+    }, tabId);
+    await expect
+      .poll(() =>
+        session.worker.evaluate(async (id) => {
+          const [injection] = await chrome.scripting.executeScript({
+            target: { tabId: id },
+            world: "ISOLATED",
+            func: () => typeof Reflect.get(globalThis, "quickget:magnet-content-cleanup") === "function",
+          });
+          return injection?.result === true;
+        }, tabId),
+      )
+      .toBe(true);
+
     // A plain click first: nothing may reach the NAS while both modes are off.
     await standPage.click("#tab-btn-torrents");
     await standPage.click("#stand-torrent-movie");
-    await standPage.waitForTimeout(2_000);
-    expect(mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add"))).toEqual([]);
+    await expect
+      .poll(
+        () => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length,
+        { timeout: 2_000 },
+      )
+      .toBe(0);
+    const browserDownloadCount = await session.worker.evaluate(async () => (await chrome.downloads.search({})).length);
+    expect(browserDownloadCount).toBe(1);
+    const localDownloadCount = (await readdir(downloadsPath)).length;
 
     // The same link with Shift held goes, and it is routed like any other send.
     await standPage.click("#stand-torrent-movie", { modifiers: ["Shift"] });
@@ -363,6 +402,18 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
         { timeout: 20_000 },
       )
       .toContain("R/ShiftSent");
+    await expect.poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length)).toBe(
+      browserDownloadCount,
+    );
+    await expect.poll(() => readdir(downloadsPath)).toHaveLength(localDownloadCount);
+    await expect
+      .poll(() =>
+        standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
+      )
+      .toContain("Sent to Download Station");
+    expect(
+      await standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
+    ).not.toContain("Could not contact QuickGet");
 
     // And a magnet, which takes the other transport but the same gesture.
     await standPage.click("#tab-btn-magnets");
