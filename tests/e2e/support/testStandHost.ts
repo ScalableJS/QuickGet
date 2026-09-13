@@ -97,6 +97,50 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
       return;
     }
 
+    // A file big enough and slow enough to watch. Everything else the stand serves is a few
+    // dozen bytes, which is right for the automated suite and useless for a hand-test: the NAS
+    // finishes before the popup has refreshed once, so a completed task is all anyone ever sees
+    // and "no progress" looks like a broken feature.
+    //
+    // `/files/large-<n>mb.bin?kbps=<rate>` streams `n` megabytes at roughly `rate` kB/s, with a
+    // real `Content-Length` so Download Station can show a percentage rather than an unknown
+    // total. Defaults: 256 MB at 2 MB/s, so about two minutes.
+    const largeMatch = /^\/files\/large-(\d{1,5})mb\.bin$/i.exec(pathname);
+    if (largeMatch) {
+      const megabytes = Math.min(Number(largeMatch[1]) || 256, 8192);
+      const kbps = Math.max(Number(url.searchParams.get("kbps")) || 2048, 64);
+      const total = megabytes * 1024 * 1024;
+      const chunk = Buffer.alloc(64 * 1024, 0x51);
+      const delayMs = Math.max(Math.round((chunk.byteLength / 1024 / kbps) * 1000), 1);
+
+      response.writeHead(200, {
+        "content-type": "application/octet-stream",
+        "content-disposition": `attachment; filename="large-${megabytes}mb.bin"`,
+        "content-length": String(total),
+        "accept-ranges": "none",
+      });
+
+      let sent = 0;
+      let cancelled = false;
+      request.on("close", () => {
+        cancelled = true;
+      });
+      const pump = (): void => {
+        if (cancelled || sent >= total) {
+          if (!cancelled) response.end();
+          return;
+        }
+        const slice = sent + chunk.byteLength > total ? chunk.subarray(0, total - sent) : chunk;
+        sent += slice.byteLength;
+        // Respect backpressure: without the drain wait a fast client buffers the whole file in
+        // memory and the throttle becomes decorative.
+        if (response.write(slice)) setTimeout(pump, delayMs);
+        else response.once("drain", () => setTimeout(pump, delayMs));
+      };
+      pump();
+      return;
+    }
+
     // An ordinary page. It exists so the stand can prove the *negative*: a link that merely
     // mentions a file in its query string must never be handed to the NAS.
     if (pathname === "/page.html") {

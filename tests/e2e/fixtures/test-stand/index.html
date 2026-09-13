@@ -573,6 +573,21 @@
 
         <article class="card">
           <div class="card-header">
+            <h2 class="card-title">Large file, throttled</h2>
+            <span class="tag tag-direct">256 MB @ 2 MB/s</span>
+          </div>
+          <p class="card-meta">
+            Generated on the fly with a real <code>Content-Length</code>, so Download Station shows a
+            percentage. Every other file here is a few dozen bytes and finishes before you can look.
+          </p>
+          <div class="rule-hint">Change it: <code>?kbps=512</code>, or <code>large-2048mb.bin</code></div>
+          <a id="stand-direct-large" class="btn-action" href="/files/large-256mb.bin">
+            Download 256 MB
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
             <h2 class="card-title">Plain MKV, no <code>download</code></h2>
             <span class="tag tag-direct">Extension only</span>
           </div>
