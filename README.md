@@ -98,7 +98,7 @@ npm run package:firefox  # Create unsigned AMO upload package
 npm run typecheck        # Run TypeScript without emitting files
 npm run test             # Run unit/integration tests with Vitest
 npm run test:e2e:mock    # Run safe mock-only Playwright E2E tests
-npm run test:e2e:real    # Run read-only E2E against a real NAS (see tests/README.md)
+npm run test:prod-spotcheck # Pre-release gate against the real NAS (see tests/e2e/README.md)
 npm run test:coverage    # Unit tests with coverage
 npm run lint             # Lint with Biome
 npm run lint:fix         # Auto-fix lint issues with Biome

@@ -1,5 +1,4 @@
-import { networkInterfaces } from "node:os";
-
+import { lanAddresses } from "../tests/e2e/support/lan.js";
 import { startMockNas } from "../tests/e2e/support/mockNas.js";
 import { startTestStandHost } from "../tests/e2e/support/testStandHost.js";
 
@@ -14,9 +13,7 @@ async function main() {
   console.log("==================================================");
   console.log("🚀 QuickGet Remote Test Stand & Mock NAS Started!");
   console.log("==================================================");
-  console.log(
-    `📡 Test Stand:    ${stand.url} (Torrents, Magnets, Direct URLs, Domains)`
-  );
+  console.log(`📡 Test Stand:    ${stand.url} (Torrents, Magnets, Direct URLs, Domains)`);
   if (lan) {
     for (const address of lanAddresses()) {
       console.log(`🌐 Reachable by NAS: http://${address}:3300/  ← use this when testing against a real NAS`);
@@ -27,9 +24,7 @@ async function main() {
   console.log(`💾 Mock QNAP NAS:  http://127.0.0.1:${mockNas.port}`);
   console.log("🔑 NAS Login:      admin");
   console.log("🔑 NAS Password:   demo-password");
-  console.log(
-    "📁 Folders:        Temp: Download / Target: Multimedia/Movies"
-  );
+  console.log("📁 Folders:        Temp: Download / Target: Multimedia/Movies");
   console.log("==================================================");
   console.log("Press Ctrl+C to stop.");
 
@@ -47,11 +42,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
-/** Every non-internal IPv4 address of this machine — the ones a NAS on the LAN can reach. */
-function lanAddresses(): string[] {
-  return Object.values(networkInterfaces())
-    .flat()
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry) && entry.family === "IPv4" && !entry.internal)
-    .map((entry) => entry.address);
-}

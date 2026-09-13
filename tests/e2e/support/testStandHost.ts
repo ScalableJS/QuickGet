@@ -52,8 +52,26 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
   const app = createTestStandApp({ standHtml, requestLog, barriers, defaultShape: options.shape });
 
   const server: ServerType = await new Promise((resolve) => {
-    const created = serve({ fetch: app.fetch, port: options.port ?? 0, hostname: options.host ?? "127.0.0.1" }, () =>
-      resolve(created),
+    const created = serve(
+      {
+        fetch: app.fetch,
+        port: options.port ?? 0,
+        hostname: options.host ?? "127.0.0.1",
+        /**
+         * Leave the process's own `Request`/`Response` alone.
+         *
+         * By default `serve()` swaps `globalThis.Response` for its own implementation, and a
+         * response from Node's `fetch` then stops being `instanceof Response`. That breaks any
+         * library doing an instance check: our API client's middleware runs inside `openapi-fetch`,
+         * which throws "onResponse: must return new Response()" the moment the stand has been
+         * started in the same process — which is exactly what the production spot check does.
+         *
+         * Measured, not guessed: after `serve()` the same fetch result tests true against the
+         * pre-`serve` class and false against the replacement.
+         */
+        overrideGlobalObjects: false,
+      },
+      () => resolve(created),
     );
   });
 

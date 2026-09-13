@@ -21,9 +21,9 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-64 | `--color-text-muted` is referenced but never defined | popup/ui | low | Backlog |
 | BUG-65 | A light-theme text input has no visible boundary (WCAG 1.4.11) | popup/a11y | medium | Backlog |
 | BUG-66 | `npm run stand` cannot run — `tsx` is not a dependency | tooling | medium | Backlog |
-| BUG-67 | The real-NAS E2E spec targets a settings form that no longer exists | testing | high | Backlog |
-| BUG-68 | The test stand is a hand-rolled `node:http` switch; it should be a small Hono server | testing/tooling | medium | Backlog |
-| BUG-69 | No release gate touches the real NAS — every green check before a publish is a claim about the mock | testing/release | high | Backlog |
+| BUG-67 | The real-NAS E2E spec targets a settings form that no longer exists | testing | high | Done |
+| BUG-68 | The test stand is a hand-rolled `node:http` switch; it should be a small Hono server | testing/tooling | medium | Done |
+| BUG-69 | No release gate touches the real NAS — every green check before a publish is a claim about the mock | testing/release | high | Done |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -2285,6 +2285,10 @@ the current list id — and decide whether a subset belongs in CI. It cannot be 
 gate (it needs hardware and credentials), but a spec that only runs when someone remembers is a
 spec that rots; a scheduled run or a pre-release checklist item would at least surface the rot.
 
+**Resolved 2026-09-13** — replaced rather than repaired. `popup.real-nas.spec.ts` is gone; the
+real-NAS run is now `tests/e2e/prod-spotcheck.spec.ts` (BUG-69), which drives the settings form
+that actually exists and fails with a message naming the contract it was waiting on.
+
 ---
 
 ### BUG-68 — The test stand is a hand-rolled `node:http` switch; it should be a small Hono server
@@ -2336,6 +2340,23 @@ profile.
 
 **Not urgent.** The stand works; `large-<n>mb.bin` covers the immediate need for a watchable
 transfer, and this card exists so that stopgap is replaced deliberately rather than grown.
+
+**Resolved 2026-09-13** — rewritten as a Hono app: `testStand/app.ts` for routes,
+`transfer.ts` for delivery, `barriers.ts` for determinism. Every requirement listed above is kept.
+Delivery became a dimension as planned (`?kbps=`, `?delayMs=`, `?barrierAt=`, `?abortAt=`,
+`?truncateAt=`, `?nolength=`, Range, redirect chains, error statuses), the fixture gained a
+contract spec of its own under a separate vitest project, and the stand page gained a `#delivery`
+tab. `mockNas.ts` was deliberately left alone.
+
+Two findings the rewrite surfaced, both invisible before:
+
+- **`serve()` from `@hono/node-server` replaces `globalThis.Response`.** Any library doing an
+  `instanceof Response` check then fails — `openapi-fetch` throws *"onResponse: must return new
+  Response()"* the moment the stand runs in the same process as the API client. Fixed with
+  `overrideGlobalObjects: false`; measured, not guessed.
+- **The fixture torrent was invalid.** One 20-byte `pieces` hash described a 1 MiB file at a 16 KiB
+  piece length — 64 pieces' worth. The mock never looked; a real Download Station answered `16384`.
+  `pieces` is now sized from the content.
 
 ---
 
@@ -2426,3 +2447,23 @@ the throttled `large-<n>mb.bin` endpoint exists so this one can be observed rath
   proves progress and no more.
 - **What happens when the NAS is unreachable at release time?** Skipping silently is how this class
   of gap forms. It should be a deliberate, recorded decision to release without it.
+
+**Resolved 2026-09-13** — implemented as `npm run test:prod-spotcheck`, and shaped down from the
+nine flows above to **four** after review: connection, `AddTorrent`, magnet `AddUrl`, and the
+direct-link lifecycle, which absorbed the list's task-rendering, pause/resume/remove and routing
+checks. Interception, badge arithmetic and rendering stayed hermetic — rebuilding the 45 mock tests
+against the owner's hardware would only produce a second suite to rot.
+
+Runs in **13 s** against the live NAS. Determinism comes from a server-side barrier rather than
+sleeps: the stand sends exactly 4 MB, announces it, and holds until released, so "partial progress"
+is a fact rather than a race.
+
+Ownership turned out to need three overlapping mechanisms, not one. The prefix and an in-memory
+list were not enough: three orphaned tasks were left on the real NAS during development, all of
+them dying between `AddTorrent` succeeding and the test learning the task's identifier. The ledger
+now records intent *before* creation, cleanup failure fails the gate, and preflight sweeps anything
+carrying the prefix that no ledger entry claims.
+
+Not done, and recorded here rather than silently dropped: the Download Station V4 API exposes no
+firmware version (`Misc/Version`, `Misc/Config`, `Misc/About` all answer `no such api`), so the run
+records the target it can verify instead of a fabricated version field.
