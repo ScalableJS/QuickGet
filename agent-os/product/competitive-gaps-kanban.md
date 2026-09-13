@@ -935,6 +935,20 @@ starting point.
 5. Copy for the checkbox and its hint, sitting next to the torrent one without the two reading as
    duplicates.
 
+**2026-09-13 — phase 1 scoped down: plain links only, no cleverness.** Redirects, signed/expiring
+URLs, authenticated downloads and HEAD preflights are all **out of scope for v1**. This removes
+the one thing that was a go/no-go: whether Download Station's fetcher follows redirects (GAP-15)
+no longer gates this card, it is simply a case v1 does not serve.
+
+One consequence has to be stated rather than assumed, because it is the gap between the intent and
+what the code can actually know: **"simple link" is a scope decision, not a detection capability.**
+Nothing in a synchronous click handler can tell a direct URL from one that will redirect — that is
+only visible after a request, which is exactly the preflight v1 rejects. So a redirecting link
+*will* be intercepted and handed to the NAS, and if Download Station cannot fetch it the task fails
+there, visibly, like any other bad URL. That is the accepted v1 behaviour: no silent loss, no local
+fallback for it, and no attempt to be clever. Resolving redirects before `AddUrl` stays GAP-15's
+job, and becomes worth doing once v1 has shown how often people hit it.
+
 **2026-09-13 — consulted, and the open questions above are now answered.** Second opinion taken
 through the ChatGPT gateway (`gpt-5.6-sol-high`) with the code facts above. Every claim it made
 that this card relies on was re-checked here rather than accepted.
