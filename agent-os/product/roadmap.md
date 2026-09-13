@@ -15,7 +15,9 @@ Open defects are tracked separately in `bugs-kanban.md`.
   across transient poll errors (F2).
 - Folder path validation against `Misc/Dir` with inline valid/invalid state (F1).
 - Folder routing rules — matcher, editor UI, wired into every send path (F3).
-- Settings backup / restore, master-password encryption of the NAS credential.
+- Settings backup / restore, and an optional password lock on the settings screen. It is a
+  lock, not encryption: only a salt and a PBKDF2 verifier are stored, and the service worker must
+  reach the NAS while nobody is at the keyboard (`src/lib/settingsLock.ts`, UX-8).
 - MIT license, Chrome Web Store listing and automated publish workflow (F5).
 - v1.0.2 published; Firefox packaging via `web-ext`.
 - Download interception stabilized and made transactional; strict no-local-file mode.
@@ -47,6 +49,17 @@ Open defects are tracked separately in `bugs-kanban.md`.
   ping with a budget, saving no longer waits on the network, and a rejected password is told apart
   from an absent NAS by the code Download Station answered with rather than by matching words in
   an error message. Shipped in v2.4.1 (BUG-40).
+- **Routing fields that match the way people expect:** a plain value is a forgiving
+  case-insensitive substring, while `*` / `?` still compile to whole-string glob patterns, so a
+  rule written as `mkv` matches without anyone learning shell syntax. Content scripts are also
+  re-injected on update, so interception keeps working in tabs that were open when the extension
+  updated. Shipped in v2.4.2 (UX-25).
+- **A spacing system instead of per-screen guesses:** the popup now has one spacing scale — the
+  UnoCSS preset's own — instead of two hand-written ones used interchangeably, and `FormSection`
+  owns the section boundary, so settings groups are visibly separated by a rhythm plus a hairline
+  rather than by nothing at all. Export and Import share a row; the import confirmation puts
+  Cancel before a destructive Replace. Light `--text-muted` measured 4.207:1 and was raised to
+  4.96:1. Shipped in v2.4.3 (UX-26).
 
 
 ## Phase 2 — High Value Task Controls
@@ -63,7 +76,6 @@ Enthusiast configurations housed strictly within `Settings → Advanced`:
 
 - **Client emulation for private trackers:** Switch `bt.peer_mode` between Transmission 2.94, Deluge, and uTorrent to bypass tracker client blacklists (GAP-12).
 - **Default seeding limits:** Configure default share ratio and time limits for Download Station via `Config/Set` (GAP-13).
-- **Task destination folder visibility:** Contextual display of target NAS path (BUG-38).
 - **Background polling optimization:** Migrate badge monitoring from `Task/Query` to lightweight `Task/Status` (BUG-39).
 
 ## Deliberately Out of Scope
@@ -71,5 +83,5 @@ Enthusiast configurations housed strictly within `Settings → Advanced`:
 - **In-popup torrent search (`Addon/Search`):** Discovery plugins break frequently, clutter the popup, and present store policy risks.
 - **RSS automation & rule management (`Rss/*`):** Best managed in the native QTS desktop console.
 - **Filehost premium accounts (`Account/*`):** Third-party credentials management is outside core extension goals.
-- **24x7 Schedule matrix (`schedule0..6`):** 168-hour calendar grid is unworkable in a 380px extension popup.
+- **24x7 Schedule matrix (`schedule0..6`):** 168-hour calendar grid is unworkable in a 450px extension popup.
 - **Drag-and-Drop queue sorting:** QNAP API only supports relative shifts; simulated drag-and-drop triggers API flooding and race conditions.

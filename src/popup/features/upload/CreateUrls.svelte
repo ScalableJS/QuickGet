@@ -36,8 +36,8 @@
   }
 </script>
 
-<div class="create-urls flex flex-col gap-[var(--space-3)] p-[var(--space-3)]">
-  <div class="flex flex-col gap-[var(--space-1)]">
+<div class="create-urls flex flex-col gap-3 p-3">
+  <div class="flex flex-col gap-1">
     <label for="batch-urls" class="text-13px font-600 text-[var(--color-text)]">
       URLs
       {#if urls.length > 0}
@@ -48,13 +48,13 @@
       id="batch-urls"
       rows="4"
       placeholder={"https://example.com/file.zip\nmagnet:?xt=...\nOne link per line"}
-      class="w-full min-h-[var(--control-height)] p-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]"
+      class="w-full min-h-[var(--control-height)] p-2 border border-solid border-transparent rounded-[var(--radius)] text-13px bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] resize-y transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]"
       bind:value={raw}
     ></textarea>
     <Alert tone="hint">One URL or magnet link per line.</Alert>
   </div>
 
-  <div class="flex flex-col gap-[var(--space-1)]">
+  <div class="flex flex-col gap-1">
     <label for="batch-folder" class="text-13px font-600 text-[var(--color-text)]">Target folder</label>
     <FolderSelect id="batch-folder" placeholder="/share/Multimedia/Movies" bind:value={targetFolder} />
   </div>

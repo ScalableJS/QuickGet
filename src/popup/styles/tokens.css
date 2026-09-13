@@ -6,18 +6,13 @@
  * built with UnoCSS and its data-theme value represents the light/dark preference.
  */
 
+/* No spacing scale here on purpose. UnoCSS presetWind4 already defines `--spacing: 0.25rem`
+ * and builds `p-4` / `gap-2` / `mb-6` from it, so a hand-written 4px scale can only be a second
+ * way to say the same thing — which is what it became: `--space-*` and a `--spacing-*` alias set
+ * that were used interchangeably in the same file. Spacing is written as `gap-2`, not
+ * `gap-[var(--…)]`. This file holds what the preset does not know: colour, radius, control
+ * height, duration. */
 :root {
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --spacing-xs: var(--space-1);
-  --spacing-sm: var(--space-2);
-  --spacing-md: var(--space-4);
-  --spacing-lg: var(--space-5);
-
   --control-height-sm: 28px;
   --control-height-md: 34px;
   --control-height: var(--control-height-md);
@@ -49,7 +44,10 @@
   --color-text-on-primary: #ffffff;
   --text-primary: var(--color-text);
   --text-secondary: var(--color-text-secondary);
-  --text-muted: #68788d;
+  /* 4.96:1 on --color-bg. The previous #68788d measured 4.207:1 — below the 4.5 that WCAG 1.4.3
+   * asks of body text, and used for real 12px labels (inactive segmented-control tabs,
+   * non-writable folder entries). Still distinctly lighter than --color-text-secondary. */
+  --text-muted: #5e6c83;
   --text-disabled: color-mix(in srgb, var(--color-text-secondary) 58%, transparent);
   --textbox-text: var(--color-text);
   --textbox-placeholder: #68788d;

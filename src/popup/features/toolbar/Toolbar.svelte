@@ -34,7 +34,7 @@
 {#snippet linkIcon()}<IconLink />{/snippet}
 {#snippet trashIcon()}<IconTrash />{/snippet}
 
-<div class="toolbar-left flex-none flex items-center gap-[var(--spacing-sm)] text-12px text-[var(--color-text-secondary)]">
+<div class="toolbar-left flex-none flex items-center gap-2 text-12px text-[var(--color-text-secondary)]">
   <IconButton
     size="sm"
     id="toolbar-settings"
@@ -62,7 +62,7 @@
     />
   {/if}
 </div>
-<div class="toolbar-actions flex-none flex items-center justify-end gap-[var(--spacing-xs)]">
+<div class="toolbar-actions flex-none flex items-center justify-end gap-1">
   <IconButton
     size="sm"
     id="toolbar-play"

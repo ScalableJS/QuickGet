@@ -78,7 +78,7 @@
   );
 </script>
 
-<div class="download-controls flex gap-[var(--spacing-xs)] mb-[var(--spacing-sm)]">
+<div class="download-controls flex gap-1 mb-2">
   <SegmentedControl
     size="sm"
     bind:value={filter}
@@ -105,7 +105,7 @@
 </div>
 
 {#if searchOpen}
-  <div class="download-search-wrap -mt-[var(--spacing-sm)] mb-[var(--spacing-sm)]">
+  <div class="download-search-wrap -mt-2 mb-2">
     <SearchField size="sm" placeholder="Search downloads" aria-label="Search downloads" bind:value={query} />
   </div>
 {/if}
@@ -118,7 +118,7 @@
   }}
 />
 
-<div id="downloads-list" class="flex flex-col gap-[var(--spacing-sm)] m-0 p-0" role="listbox" aria-label="Download tasks" aria-multiselectable="false">
+<div id="downloads-list" class="flex flex-col gap-2 m-0 p-0" role="listbox" aria-label="Download tasks" aria-multiselectable="false">
   {#if visibleTasks.length === 0}
     <EmptyState>{emptyMessage}</EmptyState>
   {:else}

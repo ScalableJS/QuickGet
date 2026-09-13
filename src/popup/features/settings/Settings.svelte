@@ -527,7 +527,7 @@
 
 </script>
 
-<div class="settings-stack flex flex-col pb-0">
+<div class="flex flex-col pb-0">
 {#if configProblem}
   <Alert tone="warning">
     {configProblem.summary} Downloads will stay in the browser until this is fixed.
@@ -537,8 +537,8 @@
 <!-- Above the tabs, not inside one: the theme applies the moment it is picked, so it is not
      part of anything the Save button commits, and a tab holding a single instant control is
      navigation for its own sake. -->
-<div class="settings-header flex items-center justify-between gap-[var(--space-2)] mb-[var(--space-2)]">
-  <span class="control-label text-13px">Theme</span>
+<div class="flex items-center justify-between gap-2 mb-2">
+  <span class="text-13px">Theme</span>
   <SegmentedControl
     compact
     size="sm"
@@ -556,13 +556,12 @@
 <Tabs tabs={TABS} active={activeTab} onActivate={(id) => (activeTab = id)}>
   {#snippet panels(tab)}
     {#if tab.id === "connection"}
-<section class="settings-section">
-  <FormSection legend="Connection">
+<FormSection legend="Connection">
   {#if !showConnectionForm}
     <!-- Configured: no inputs at all. Showing a password box permanently is what let an empty
          one overwrite a working password. -->
-    <div class="connection-card flex flex-col gap-[var(--space-1)]">
-      <p class="connection-identity m-0 font-600">{form.NASlogin}@{form.NASaddress}</p>
+    <div class="connection-card flex flex-col gap-1">
+      <p class="m-0 font-600">{form.NASlogin}@{form.NASaddress}</p>
       <p class={["connection-health m-0 text-12px", connection.health.kind !== "ready" ? "text-[var(--color-warning)]" : "text-[var(--text-secondary)]"]}>
         {HEALTH_LABEL[connection.health.kind]}
       </p>
@@ -575,18 +574,17 @@
         <p class="text-[0.85rem] text-[var(--text-secondary)]">Saved connection settings still active.</p>
       {/if}
 
-      <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">
+      <div class="flex gap-2 items-center mt-1">
         <Button variant="secondary" disabled={isTesting} onclick={testConnection}>
           {isTesting ? "Testing…" : "Test connection"}
         </Button>
         <Button variant="secondary" onclick={() => (editingConnection = true)}>Edit</Button>
       </div>
-      <div class="connection-actions flex gap-[var(--space-2)] items-center mt-[var(--space-1)]">
+      <div class="flex gap-2 items-center mt-1">
         <Link size="small" onclick={removeConnection}>Remove connection</Link>
       </div>
     </div>
   {:else}
-  <div class="form-group mb-[var(--spacing-md)]">
     <Field
       id="serverUrl"
       label="Server address"
@@ -597,36 +595,29 @@
       oninput={(event) => syncServerUrl(event.currentTarget.value)}
       onblur={() => validateField("serverUrl")}
     />
-  </div>
-
-  <div class="form-group mb-[var(--spacing-md)]">
     <Field id="NASlogin" label="Username" placeholder="QNAP username" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
-  </div>
-
-  <div class="form-group mb-[var(--spacing-md)]">
     <Field id="NASpassword" label="Password" type="password" placeholder="Password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
-  </div>
   {/if}
-  </FormSection>
+</FormSection>
 
-  <FormSection legend="Folders">
-  <div class="form-group mb-[var(--spacing-md)]">
-    <label for="NAStempdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Temp folder</label>
+<FormSection legend="Folders">
+  <div>
+    <label for="NAStempdir" class="block font-500 mb-2 text-[var(--color-text)]">Temp folder</label>
     <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
   </div>
 
-  <div class="form-group mb-[var(--spacing-md)]">
-    <label for="NASdir" class="block font-500 mb-[var(--spacing-sm)] text-[var(--color-text)]">Target folder</label>
+  <div>
+    <label for="NASdir" class="block font-500 mb-2 text-[var(--color-text)]">Target folder</label>
     <FolderSelect id="NASdir" placeholder="e.g. Multimedia/Movies" settings={$state.snapshot(form)} bind:value={form.NASdir} bind:status={dirStatus} />
   </div>
 
-  <div class="form-group mb-[var(--spacing-md)] flex flex-col gap-[var(--spacing-sm)]">
+  <div class="flex flex-col gap-2">
     <!-- One switch, because `.torrent` and `magnet:` were never two ideas — they are two Chrome
          APIs for the same intent, and they used to carry opposite defaults for no reason anyone
          could name. Whether a local copy is left behind is not a choice either: Chrome can cancel
          before the file exists and Firefox cannot, and asking the user about a capability
          difference they cannot act on is not a setting, it is a shrug. -->
-    <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500">
+    <div class="flex items-center gap-2 font-500">
       <Checkbox
         id="interceptTorrentLinks"
         aria-describedby="interceptTorrentLinksHint"
@@ -635,19 +626,17 @@
         Send torrent links to Download Station
       </Checkbox>
     </div>
-    <div class="ml-[var(--spacing-lg)] flex flex-col gap-[var(--spacing-xs)]">
+    <div class="ml-6 flex flex-col gap-1">
       <p id="interceptTorrentLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
         Includes <code>.torrent</code> and magnet links. Click also opens locally;
         <kbd class="font-600">Shift</kbd>-click sends only to Download Station.
       </p>
     </div>
   </div>
-  </FormSection>
-</section>
+</FormSection>
     {:else if tab.id === "advanced"}
-<section class="settings-section">
-  <FormSection legend="Security">
-  <div class="form-group form-inline mb-[var(--spacing-md)] flex items-center gap-[var(--spacing-sm)] font-500">
+<FormSection legend="Security">
+  <div class="flex items-center gap-2 font-500">
     <Checkbox id="settingsLockEnabled" bind:checked={settingsLockEnabled}>
       Lock settings with password
     </Checkbox>
@@ -657,28 +646,22 @@
   </Alert>
 
   {#if settingsLockEnabled && !lockWasEnabled}
-    <div class="form-group mb-[var(--spacing-md)]">
-      <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} error={fieldErrors.lockPasswordInput} oninput={() => {
+    <Field id="lockPasswordInput" label="Settings password" type="password" placeholder="At least 8 characters" bind:value={lockPasswordInput} error={fieldErrors.lockPasswordInput} oninput={() => {
         const { lockPasswordInput: _removed, ...rest } = fieldErrors;
         fieldErrors = rest;
       }} />
-    </div>
-    <div class="form-group mb-[var(--spacing-md)]">
-      <Field id="confirmLockPasswordInput" label="Confirm password" type="password" placeholder="Repeat password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
+    <Field id="confirmLockPasswordInput" label="Confirm password" type="password" placeholder="Repeat password" bind:value={confirmLockPasswordInput} error={fieldErrors.confirmLockPasswordInput} oninput={() => {
         const { confirmLockPasswordInput: _removed, ...rest } = fieldErrors;
         fieldErrors = rest;
       }} />
-    </div>
   {:else if settingsLockEnabled}
     <p class="text-[0.85rem] text-[var(--text-secondary)]">Password lock is active. Uncheck to remove.</p>
   {/if}
-  </FormSection>
-</section>
+</FormSection>
 
-<section class="settings-section">
-  <FormSection legend="Routing rules">
-  <div class="routing-header flex items-center justify-between mb-[var(--space-2)]">
-    <button type="button" class="add-rule inline-flex items-center gap-[var(--space-1)] p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
+<FormSection legend="Routing rules">
+  <div class="flex items-center justify-between">
+    <button type="button" class="inline-flex items-center gap-1 p-0 border-0 bg-transparent text-[var(--color-primary)] text-[0.8rem] cursor-pointer no-underline hover:text-[color-mix(in_srgb,var(--color-primary)_75%,black)]" onclick={addRule}><Plus aria-hidden="true" />Add rule</button>
   </div>
   <!-- Said once for the whole section. It was on every rule card, which turned three rules into
        three copies of the same paragraph. -->
@@ -689,25 +672,25 @@
   </Alert>
 
   {#if routingRuleDrafts.length === 0}
-    <p class="routing-empty text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target folder.</p>
+    <p class="text-12px text-[var(--text-secondary)]">No rules yet. All downloads use the Target folder.</p>
   {:else}
-    <div class="routing-rules-list flex flex-col gap-[var(--space-3)] mt-[var(--space-2)]">
+    <div class="flex flex-col gap-3">
       {#each routingRuleDrafts as draft, i (draft.id)}
         {@const draftError = routingErrors[draft.id]}
         <fieldset
           class={[
-            "routing-rule flex flex-col gap-[var(--space-2)] p-[var(--space-2)] rounded-[var(--radius)] border border-solid border-[var(--color-control-border)] bg-[var(--color-bg-alt)] transition-[border-color,box-shadow] duration-[var(--duration-fast)]",
+            "routing-rule flex flex-col gap-2 p-2 rounded-[var(--radius)] border border-solid border-[var(--color-control-border)] bg-[var(--color-bg-alt)] transition-[border-color,box-shadow] duration-[var(--duration-fast)]",
             (draftError?.destination || draftError?.conditions) && "!border-[var(--color-error)]"
           ]}
         >
           <legend class="sr-only">Rule {i + 1}</legend>
-          <div class="routing-rule-header flex items-center justify-between pb-1 border-b border-solid border-[var(--color-control-border)]">
+          <div class="flex items-center justify-between pb-1 border-b border-solid border-[var(--color-control-border)]">
             <!-- The legend above already names the group; repeating it would announce twice. -->
             <span class="font-600 text-12px text-[var(--color-text)]" aria-hidden="true">Rule {i + 1}</span>
             <!-- The destructive control is deliberately not in the same group as the two
                  navigational ones: `↑ ↓ ✕` as three identical 28px buttons 4px apart put "reorder"
                  and "delete for good" a mis-click away from each other, and there is no undo. -->
-            <div class="routing-rule-actions flex items-center gap-[var(--space-3)]">
+            <div class="flex items-center gap-3">
               <div class="flex items-center gap-1">
                 <IconButton
                   id={`routing-${i}-move-up`}
@@ -743,20 +726,20 @@
           </div>
 
           <!-- IF section: conditions -->
-          <div class="routing-conditions flex flex-col gap-[var(--space-1)]">
+          <div class="flex flex-col gap-1">
             <div class="flex items-center justify-between text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">
               <span>If</span>
               <span class="text-11px font-normal normal-case">all filled conditions must match</span>
             </div>
             <!-- Headers rather than placeholders: a placeholder stops being a label the moment
                  anything is typed, which is exactly when you need to know which field is which. -->
-            <div class="grid grid-cols-3 gap-[var(--space-1)] text-11px text-[var(--text-secondary)]" aria-hidden="true">
+            <div class="grid grid-cols-3 gap-1 text-11px text-[var(--text-secondary)]" aria-hidden="true">
               <span>Source</span>
               <span>Name contains any</span>
               <span>Site contains any</span>
             </div>
-            <div class="grid grid-cols-3 gap-[var(--space-1)]">
-              <div class="routing-match-type min-w-0">
+            <div class="grid grid-cols-3 gap-1">
+              <div class="min-w-0">
                 <Select
                   id={`routing-${i}-type`}
                   size="sm"
@@ -772,7 +755,7 @@
                   <option value="torrent">.torrent</option>
                 </Select>
               </div>
-              <div class="routing-text-field min-w-0">
+              <div class="min-w-0">
                 <!-- The condition error belongs to the group, but it has to live on a control
                      to be announced: `Field` renders it, and the other two point at it. -->
                 <Field
@@ -785,7 +768,7 @@
                   oninput={() => clearDraftError(draft.id, "conditions")}
                 />
               </div>
-              <div class="routing-text-field min-w-0">
+              <div class="min-w-0">
                 <Field
                   id={`routing-${i}-domain`}
                   size="sm"
@@ -806,7 +789,7 @@
           </div>
 
           <!-- THEN SAVE TO section: destination -->
-          <div class="routing-then flex flex-col gap-[var(--space-1)]">
+          <div class="flex flex-col gap-1">
             <span class="text-11px font-600 text-[var(--text-secondary)] uppercase tracking-wider">Then save to</span>
             <FolderSelect
               id={`routing-${i}-destination`}
@@ -821,11 +804,9 @@
       {/each}
     </div>
   {/if}
-  </FormSection>
-</section>
+</FormSection>
 
-<section class="settings-section">
-  <FormSection legend="Backup">
+<FormSection legend="Backup">
   <Alert tone="hint">Export or import settings. Credentials are never included.</Alert>
 
   {#if pendingImport}
@@ -833,12 +814,17 @@
       This will overwrite current settings: {pendingImport.changes.join(", ")}.
       Review and click Save to apply.
     </Alert>
-    <div class="backup-actions flex flex-col gap-[var(--space-2)] mt-[var(--space-3)]">
-      <Button onclick={applyImport} block>Replace settings</Button>
-      <Button variant="secondary" onclick={() => (pendingImport = null)} block>Cancel</Button>
+    <!-- Dismissive left, destructive right, right-aligned — the ordering every desktop platform
+         and Material's dialog guidance use. `Replace settings` overwrites a working configuration
+         and is deliberately the one that is *not* reachable by a stray Enter on the other button. -->
+    <div class="flex justify-end gap-2">
+      <Button variant="secondary" onclick={() => (pendingImport = null)}>Cancel</Button>
+      <Button variant="destructive" onclick={applyImport}>Replace settings</Button>
     </div>
   {:else}
-    <div class="backup-actions flex flex-col gap-[var(--space-2)] mt-[var(--space-3)]">
+    <!-- Two equal, non-destructive peers. 418px of content width fits both side by side, and a
+         popup this small cannot afford a row per button. -->
+    <div class="grid grid-cols-2 gap-2">
       <Button variant="secondary" onclick={exportBackup} block>Export settings</Button>
       <Button variant="secondary" onclick={() => importInput?.click()} block>Import settings</Button>
     </div>
@@ -847,19 +833,18 @@
   <!-- Named because the popup has another file input (torrent upload); an unqualified
        `input[type=file]` selector reaches the wrong one. -->
   <input id="import-input" bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={importBackup} />
-  </FormSection>
-</section>
+</FormSection>
     {/if}
   {/snippet}
 </Tabs>
 
-<footer class="settings-actions sticky bottom-0 z-10 flex items-center gap-[var(--space-2)] py-[var(--space-3)] bg-[var(--color-bg)]">
-  <div class="settings-action-buttons flex flex-1 gap-[var(--space-2)]">
+<footer class="sticky bottom-0 z-10 flex items-center gap-2 py-3 bg-[var(--color-bg)]">
+  <div class="flex flex-1 gap-2">
     <Button id="save-btn" disabled={!isDirty || isSaving} onclick={save}>
       {isSaving ? "Saving…" : showConnectionForm ? "Save & test" : "Save settings"}
     </Button>
   </div>
 </footer>
 
-<p class="version-line mt-[var(--space-1)] mb-0 text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
+<p class="mt-1 mb-0 text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
 </div>

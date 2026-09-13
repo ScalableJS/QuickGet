@@ -20,7 +20,7 @@
   <input
     type="search"
     class={[
-      "w-full box-border pl-[var(--spacing-sm)] pr-[calc(var(--spacing-sm)+18px)] py-0 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--color-text)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)] [&::-webkit-search-cancel-button]:appearance-none",
+      "w-full box-border pl-2 pr-6.5 py-0 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--color-text)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)] [&::-webkit-search-cancel-button]:appearance-none",
       sizeClasses[size],
       klass,
     ]}

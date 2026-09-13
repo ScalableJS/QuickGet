@@ -39,7 +39,7 @@
 
 <div class="block">
   {#if label}
-    <label for={id} class="block font-600 mb-[var(--spacing-sm)] text-[var(--color-text)]">
+    <label for={id} class="block font-600 mb-2 text-[var(--color-text)]">
       {label}
     </label>
   {/if}
@@ -47,7 +47,7 @@
     {id}
     {type}
     class={[
-      "w-full px-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
+      "w-full px-2 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
       sizeClasses[size],
       error && "border-[var(--color-error)]",
       klass,
@@ -60,11 +60,11 @@
 
   {#if error}
     <!-- The border colour repeats this; colour alone cannot carry meaning (WCAG 1.4.1). -->
-    <p id={errorId} class="mt-[var(--spacing-xs)] mb-0 text-11px text-[var(--color-error)]" role="alert">
+    <p id={errorId} class="mt-1 mb-0 text-11px text-[var(--color-error)]" role="alert">
       {error}
     </p>
   {:else if hint}
-    <p id={hintId} class="mt-[var(--spacing-xs)] mb-0 text-11px text-[var(--text-secondary)]">
+    <p id={hintId} class="mt-1 mb-0 text-11px text-[var(--text-secondary)]">
       {hint}
     </p>
   {/if}
