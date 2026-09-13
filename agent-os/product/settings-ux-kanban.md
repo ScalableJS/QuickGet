@@ -39,6 +39,7 @@ Move a card by editing its Status cell and adding a dated line under the card.
 | UX-23 | Shift-click sends one link, whatever the automatic settings say | settings | M | Done |
 | UX-24 | Three interception checkboxes become one | settings | M | Done |
 | UX-25 | Routing fields should use forgiving hybrid matching | ui/core | M | Done |
+| UX-26 | Sections have no standard rhythm or surface | ui | L | Done |
 
 ---
 
@@ -1109,3 +1110,119 @@ mentions the syntax only as an optional refinement and does not restate this cav
 “concise hint” requirement above. `routingRules.test.ts` has a dedicated case
 (`resolveDestination — hybrid substring/glob matching (UX-25)`) pinning this down so a future change
 cannot silently regress it back to contains-only.
+
+---
+
+### UX-26 — Sections have no standard rhythm or surface
+
+**Size:** L · **Area:** ui · **Status:** Done
+**Files:** `src/popup/styles/tokens.css`, `src/popup/ui/FormSection.svelte`,
+`src/popup/ui/Card.svelte`, `src/popup/features/settings/Settings.svelte`, `src/popup/index.html`,
+`scripts/check-contrast.mjs`
+**Research:** `docs/design-system-spacing-research.md`
+
+Three reports about Settings — "Folders" reads as attached to the block above it, "Backup" has no
+air, Export/Import should share a row — are one gap, not three bugs: **nothing in the codebase
+defines what a section is**, so every screen re-derives its spacing from raw tokens.
+
+Measured on `env/dev` @ `aec5094`:
+
+- `<section class="settings-section">` wraps all four groups and matches **no CSS rule anywhere**;
+  there are no `<style>` blocks in any popup `.svelte` file. 26 legacy class names in
+  `Settings.svelte` style nothing and are referenced by no test.
+- `FormSection` has no bottom margin — only its `<legend>` does — so two fieldsets in one section
+  touch.
+- Internal field spacing (16px) equals the gap between sections (16px). That ratio is exactly why
+  the boundary carries no signal.
+- Two live spacing scales for the same values (`--space-1..6` and `--spacing-xs/sm/md/lg`), used
+  interchangeably in the same file, expressed as **118 arbitrary spacing utilities across 34 files**
+  (plus 309 arbitrary colour utilities). Nothing is registered in `uno.config.ts`.
+- `Card.svelte` (`filled` = surface + radius + shadow + padding) is used by one Storybook showcase
+  and no product screen, while `#add-urls-panel`/`#unlock-panel` hand-roll an equivalent surface
+  inline and `#settings-panel` gets none.
+
+**Verified against this repo's own toolchain** (generated with `unocss@66.8.1` + `presetWind4`, not
+taken from docs): `p-4`/`gap-2`/`gap-6` already compile to `calc(var(--spacing) * N)` with the
+preset emitting `--spacing: 0.25rem` itself; `theme.colors = { surface: 'var(--color-bg-alt)' }`
+makes `bg-surface` work, `/50` included; `rounded-container` works via `theme.radius`. Tailwind
+v4's `bg-(--var)` shorthand — recommended by both Tailwind best-practice repos consulted —
+**produces no rule here** and must not become a project rule.
+
+**Proposal (recommendation formed, decision open).** Drop both homemade scales and use the preset's
+native 4px scale; register semantic colours in `uno.config.ts`; give a section
+`bg-surface rounded-container p-4` with **no border and no shadow** (Skeleton's tonal idea, not
+`Card`'s elevation — four bordered blocks in a 450px popup is a cage); rhythm 24 / 16 / 8 / 4 for
+section / field / label / hint, expressed as container `gap-*` rather than per-child `mb-*` so it
+cannot be forgotten; `FormSection` owns the section gap. Export/Import become
+`grid grid-cols-2 gap-2`, while the `pendingImport` branch does **not** — `Replace settings` is
+destructive, so it goes `flex justify-end gap-2` with Cancel left, and not as the default Enter
+action.
+
+**Open questions — these are the decision, not the implementation:**
+
+1. Tonal fill vs. spacing-only vs. border. Dark-theme `--color-bg-alt` (`#11233a`) against
+   `--color-bg` (`#0b1627`) must be **measured** before tonal is chosen.
+2. Removing both spacing scales repo-wide in one pass, or per feature area.
+3. Does `FormSection` own gap and surface, or the caller?
+4. `Card`: becomes the section container, or is deleted as unused.
+5. Class-ordering convention (layout → spacing → sizing → typography → colours → effects →
+   interactive) into `agent-os/standards/frontend/unocss-llm-first.md`, or not.
+6. `Button` has no destructive variant — add one for `Replace settings`, or accept it looking
+   neutral.
+7. Removal plan for the 26 dead class names.
+
+**Must not regress:** the `<fieldset>`/`<legend>` grouping from UX-3 (`tests/e2e/a11y.spec.ts`).
+A fill is not an announcement. And `scripts/check-contrast.mjs` must be **extended** as part of the
+change — moving content onto `--color-bg-alt` changes which pairs matter, and `--text-muted`,
+`--color-focus-ring`, `--color-control-border`, `--color-checkbox-border` against `--color-bg-alt`
+are not in `RULES` today. `Button`'s `ring-offset-[var(--color-bg)]` also paints the wrong
+background behind a focus ring once the section is tinted.
+
+**WCAG, precisely:** 1.4.3 (4.5:1 text) applies and is gated; 1.4.11 (3:1 non-text) does **not**
+force the section tint to reach 3:1 — the grouping is carried by `fieldset`/`legend`, so a
+deliberately subtle tint is allowed — but it does cover input borders, checkbox states and the
+focus ring on their new background. 2.4.13 covers focus appearance. No criterion requires a
+`forced-colors` block, but a tint disappears there, so add
+`@media (forced-colors: active) { border: 1px solid CanvasText }` if the fill is the only boundary;
+`prefers-contrast: more` is an enhancement, not a requirement.
+
+**2026-09-13 — research pass.** Sources consulted and recorded in the research doc: Skeleton Wintry
+(read from the published `@skeletonlabs/skeleton@5.0.1` theme file, not from memory), Evil Martians'
+Tailwind-chaos article, two Tailwind best-practice skill repos, Material 3 grids & spacing, and a
+second opinion via the ChatGPT gateway. The advisor and the sources agree on the shape above; every
+toolchain claim was re-tested locally rather than accepted, which is what caught `bg-(--var)`.
+
+**2026-09-13 — done.** Shipped as the rhythm plus a hairline divider, **not** the tonal fill the
+proposal above recommended: measurement rejected it. `--color-bg-alt` against `--color-bg` is
+**1.06:1** in the light theme — not a boundary anyone can see — and putting section content on it
+would have dropped `--text-muted` to 3.98:1 and links to 4.43:1, both under WCAG 1.4.3, while
+costing 32px of horizontal space in a 450px popup. A nested routing-rule card would also have
+dissolved into its own section at 1.13:1. The hairline (`--color-border`, 1.29:1 light / 4.58:1
+dark) is a decorative separator, which 1.4.11 does not hold to 3:1 while `<fieldset>`/`<legend>`
+carries the grouping — the exemption the card already named.
+
+Landed: one spacing scale (both homemade sets deleted, **119 utilities across 21 files** rewritten
+to the preset's native `p-4`/`gap-2`/`mb-6`; CSS **35588 → 35028 B raw, 6161 → 5997 B gzip**);
+`FormSection` owning the section boundary as a *bottom* border on all but the last child — a
+`<legend>` splits its fieldset's top border and leaves a notch; per-child `mb-*` replaced by
+container `gap-*` so the rhythm cannot be forgotten on a last child; the four styleless
+`<section class="settings-section">` wrappers and 22 dead class names gone. Export/Import are
+`grid grid-cols-2 gap-2`; the import confirmation is `flex justify-end gap-2` with Cancel then
+Replace settings on a new **outlined** `destructive` Button variant — outlined because
+`--color-error` is a text colour with no contrast-checked on-error foreground to fill with.
+
+One defect fixed on the way: light `--text-muted` was **4.207:1** on `--color-bg`, under 4.5, on
+real 12px label text; now `#5e6c83` at 4.96:1, with the gate rule that catches it. `check:contrast`
+24/24, `test:e2e:mock` 41/41, unit 452/452, typecheck/svelte-check/lint clean. Verified visually in
+Storybook at the real 450px width, both tabs, light and dark.
+
+Correction to the card above: it claimed the 26 legacy class names were referenced by no test. Four
+of them — `connection-card`, `connection-health`, `connection-detail`, `routing-rule` — are E2E
+selectors and were kept. The first grep had covered only a subset of the names.
+
+Three findings left alone as out of scope, each with evidence in
+`docs/design-system-spacing-research.md` §8.4: `--color-text-muted` is referenced but never defined;
+`--color-control-border` is 1.45:1 against the light page background while `Field`'s default border
+is transparent (a 1.4.11 question and a palette change); and dark-theme legends render washed out in
+captured screenshots while computing the correct colour — identical on pre-change code, so not from
+this work.

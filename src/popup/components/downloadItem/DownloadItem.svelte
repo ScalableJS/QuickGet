@@ -131,7 +131,7 @@
 <div
   bind:this={el}
   class={[
-    "download-item flex flex-col [@media(min-width:601px)]:flex-row p-[var(--space-3)] border border-solid rounded-[var(--radius-container)] text-[var(--torrent-text-primary)] transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]",
+    "download-item flex flex-col [@media(min-width:601px)]:flex-row p-3 border border-solid rounded-[var(--radius-container)] text-[var(--torrent-text-primary)] transition-[background-color,border-color,box-shadow,transform] duration-[var(--duration-base)] ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]",
     task.status === "error"
       ? selected
         ? "border-[var(--download-error-selected-border)] bg-[var(--download-error-selected-bg)]"
@@ -151,7 +151,7 @@
   onclick={toggle}
   onkeydown={handleKey}
 >
-  <div class="download-info flex-1 min-w-0 w-full flex flex-col gap-[var(--spacing-xs)]">
+  <div class="download-info flex-1 min-w-0 w-full flex flex-col gap-1">
     <div class="flex items-center justify-between gap-2 min-w-0">
       <p
         class={[
@@ -251,7 +251,7 @@
       </div>
     </div>
 
-    <div class="progress-container flex items-center gap-[var(--spacing-sm)] w-full">
+    <div class="progress-container flex items-center gap-2 w-full">
       <span class="progress-icon text-12px leading-none flex-none inline-flex items-center justify-center" aria-label={view.statusLabel}>
         <StatusIcon status={task.status} />
       </span>

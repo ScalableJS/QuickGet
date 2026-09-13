@@ -182,7 +182,7 @@
   }
 </script>
 
-<div class="folder-select relative flex gap-[var(--space-1)]">
+<div class="folder-select relative flex gap-1">
   <div class="folder-input flex-1 min-w-0 relative">
     <input
       {id}
@@ -196,8 +196,8 @@
       aria-invalid={showsError}
       aria-busy={status === "validating"}
       class={[
-        "w-full h-[var(--control-height-md)] px-[var(--spacing-sm)] border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] text-13px transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
-        status === "validating" && "pr-[var(--space-5)]",
+        "w-full h-[var(--control-height-md)] px-2 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] text-13px transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
+        status === "validating" && "pr-6",
         showsError && "!border-[var(--color-error)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-error)_25%,transparent)]",
         successFlash && "!border-[var(--color-success)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-success)_20%,transparent)]",
       ]}
@@ -211,7 +211,7 @@
     />
     {#if status === "validating"}
       <span
-        class="absolute top-1/2 right-[var(--space-2)] -translate-y-1/2 grid place-content-center pointer-events-none text-[var(--color-text-secondary)] animate-spin motion-reduce:animate-none [&>svg]:w-[14px] [&>svg]:h-[14px]"
+        class="absolute top-1/2 right-2 -translate-y-1/2 grid place-content-center pointer-events-none text-[var(--color-text-secondary)] animate-spin motion-reduce:animate-none [&>svg]:w-[14px] [&>svg]:h-[14px]"
         title="Checking folder…"
         aria-hidden="true"
       >
@@ -233,17 +233,17 @@
 
   {#if open}
     <div
-      class="absolute top-full left-0 right-0 z-30 mt-[var(--space-1)] max-h-[200px] overflow-y-auto bg-[var(--menu-bg)] border border-solid border-[var(--color-control-border)] rounded-[var(--radius-container)] shadow-[var(--shadow)] p-[var(--space-1)]"
+      class="absolute top-full left-0 right-0 z-30 mt-1 max-h-[200px] overflow-y-auto bg-[var(--menu-bg)] border border-solid border-[var(--color-control-border)] rounded-[var(--radius-container)] shadow-[var(--shadow)] p-1"
       role="listbox"
       id={listboxId}
       tabindex="-1"
     >
       {#if loading}
-        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-text-secondary)]">Loading…</p>
+        <p class="m-0 px-2 py-1 text-12px text-[var(--color-text-secondary)]">Loading…</p>
       {:else if error}
-        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-error)]">{error}</p>
+        <p class="m-0 px-2 py-1 text-12px text-[var(--color-error)]">{error}</p>
       {:else if filtered.length === 0}
-        <p class="m-0 px-[var(--space-2)] py-[var(--space-1)] text-12px text-[var(--color-text-secondary)]">No matching folders — type a path manually.</p>
+        <p class="m-0 px-2 py-1 text-12px text-[var(--color-text-secondary)]">No matching folders — type a path manually.</p>
       {:else}
         {#each filtered as entry, i (entry.path)}
           <button
@@ -252,7 +252,7 @@
             role="option"
             aria-selected={value === entry.path}
             class={[
-              "flex items-center gap-[var(--space-2)] w-full text-left bg-transparent border-0 min-h-[var(--control-height)] px-[var(--space-2)] text-13px cursor-pointer rounded-[var(--radius)] transition-[background-color,color] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]",
+              "flex items-center gap-2 w-full text-left bg-transparent border-0 min-h-[var(--control-height)] px-2 text-13px cursor-pointer rounded-[var(--radius)] transition-[background-color,color] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]",
               i === activeIndex && "bg-[var(--bg-hover)]",
               !entry.writtable && "text-[var(--text-muted)] cursor-not-allowed",
             ]}
@@ -272,11 +272,11 @@
 </div>
 
 {#if formError}
-  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-error)]" role="alert">{formError}</p>
+  <p id={messageId} class="mt-1 mb-0 text-12px text-[var(--color-error)]" role="alert">{formError}</p>
 {:else if status === "invalid"}
-  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-error)]" aria-live="polite">{statusReason}</p>
+  <p id={messageId} class="mt-1 mb-0 text-12px text-[var(--color-error)]" aria-live="polite">{statusReason}</p>
 {:else if status === "error"}
-  <p id={messageId} class="mt-[var(--space-1)] mb-0 text-12px text-[var(--color-warning)]" aria-live="polite">Couldn't verify folder ({statusReason})</p>
+  <p id={messageId} class="mt-1 mb-0 text-12px text-[var(--color-warning)]" aria-live="polite">Couldn't verify folder ({statusReason})</p>
 {/if}
 
 <svelte:window onclick={(e) => {

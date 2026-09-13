@@ -39,7 +39,7 @@
     <button
       type="button"
       class={[
-        "inline-flex items-center gap-[var(--spacing-xs)] justify-center px-[var(--spacing-sm)] py-[var(--spacing-xs)] border-0 rounded-[4px] text-12px font-600 cursor-pointer transition-[background-color,color,box-shadow,transform] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] hover:text-[var(--color-text)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]",
+        "inline-flex items-center gap-1 justify-center px-2 py-1 border-0 rounded-[4px] text-12px font-600 cursor-pointer transition-[background-color,color,box-shadow,transform] duration-[var(--duration-fast)] hover:bg-[var(--bg-hover)] hover:text-[var(--color-text)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]",
         compact ? "flex-none" : "flex-1",
         sizeClasses[size],
         value === item.value

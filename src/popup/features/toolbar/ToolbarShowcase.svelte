@@ -39,6 +39,6 @@
   };
 </script>
 
-<header class="toolbar flex flex-nowrap justify-between items-center bg-[var(--color-bg-alt)] text-[var(--color-text)] px-[var(--spacing-md)] py-[var(--spacing-sm)] border-0 border-b border-solid border-b-[var(--color-border)] shadow-[var(--shadow)]" style="position: static;">
+<header class="toolbar flex flex-nowrap justify-between items-center bg-[var(--color-bg-alt)] text-[var(--color-text)] px-4 py-2 border-0 border-b border-solid border-b-[var(--color-border)] shadow-[var(--shadow)]" style="position: static;">
   <Toolbar {actions} />
 </header>

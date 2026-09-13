@@ -119,7 +119,7 @@
       </p>
     {/if}
 
-    <div class="tf-actions flex items-center justify-between gap-[var(--space-3)] mt-2">
+    <div class="tf-actions flex items-center justify-between gap-3 mt-2">
       <span class="tf-count text-12px text-[var(--color-text)]">{selectedCount} selected</span>
       <Button disabled={saving} onclick={save}>
         {saving ? "Saving…" : "Save"}

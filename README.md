@@ -138,7 +138,8 @@ SendToQNAP/
 ├── store-assets/         // Chrome Web Store listing artwork
 ├── _locales/             // Internationalization files
 ├── docs/                 // Project documentation
-└── manifest.json         // Chrome/Firefox manifest v3
+├── manifest.json         // Chrome MV3 manifest
+└── manifest.firefox.json // Firefox MV3 manifest
 ```
 
 ## Documentation
@@ -154,7 +155,9 @@ Additional documentation is available in the `docs/` directory:
 - [firefox-release-guide.md](./docs/firefox-release-guide.md) — AMO packaging and submission
 - [feature-roadmap.md](./docs/feature-roadmap.md) — Planned work
 - [qnap-download-station-capabilities.md](./docs/qnap-download-station-capabilities.md) — What the NAS supports vs. what this extension exposes; read before adding a source format
-- [competitor-analysis.md](./docs/competitor-analysis.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
+- [design-system-spacing-research.md](./docs/design-system-spacing-research.md) — The popup's spacing scale, section rhythm and surfaces, and the contrast measurements behind them
+- [routing-coverage.md](./docs/routing-coverage.md) — Which send paths the routing rules reach
+- [competitor-analysis.md](./docs/competitor-analysis.md), [competitor-routing-teardown.md](./docs/competitor-routing-teardown.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
 
 Contributor-facing conventions, standards, and the open-defect board live in
 [AGENTS.md](./AGENTS.md) and `agent-os/`.
@@ -182,7 +185,8 @@ For the complete testing map, runbook, and capture refresh workflow, see [`tests
 - Use *Test Connection* after saving credentials.
 
 **Need more detail**
-- Enable debug mode in the extension settings to see detailed logs in the browser console.
+- Open the service worker console from `chrome://extensions` → *Inspect views: service worker*.
+  Interception and API failures are logged there; the popup deliberately logs nothing.
 
 ## Browser Compatibility
 

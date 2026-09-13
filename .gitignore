@@ -64,3 +64,4 @@ dist-dev/
 
 # Demo recording artefacts (video masters, not source)
 demo-output/
+!docs/design-system-spacing-research.md

@@ -24,13 +24,13 @@
 
 <div class="relative block">
   {#if label}
-    <label for={id} class="block font-600 mb-[var(--spacing-sm)] text-[var(--color-text)]">{label}</label>
+    <label for={id} class="block font-600 mb-2 text-[var(--color-text)]">{label}</label>
   {/if}
   <div class="relative">
     <select
       {id}
       class={[
-        "w-full appearance-none pl-[var(--spacing-sm)] pr-[var(--space-6)] py-0 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] cursor-pointer transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
+        "w-full appearance-none pl-2 pr-8 py-0 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] cursor-pointer transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
         sizeClasses[size],
         klass,
       ]}
@@ -39,7 +39,7 @@
     >
       {@render children()}
     </select>
-    <span class="absolute right-[var(--space-3)] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)] pointer-events-none flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4" aria-hidden="true">
+    <span class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)] pointer-events-none flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4" aria-hidden="true">
       <ChevronDown />
     </span>
   </div>

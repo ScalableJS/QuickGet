@@ -77,6 +77,9 @@ const RULES = [
   ["--color-text-secondary", "--color-bg", 4.5, "secondary text"],
   ["--color-text", "--color-bg-alt", 4.5, "text on alt surface"],
   ["--color-text-secondary", "--color-bg-alt", 4.5, "secondary on alt surface"],
+  // Real 12px label text (inactive segmented-control tabs, non-writable folder entries), and the
+  // lightest foreground the palette offers — so the first to fail when the ramp is nudged.
+  ["--text-muted", "--color-bg", 4.5, "muted text"],
   ["--color-primary", "--color-bg", 4.5, "accent on surface"],
   ["--color-text-on-primary", "--color-primary-solid", 4.5, "primary button label"],
   ["--color-error", "--color-bg", 4.5, "error text"],

@@ -4,7 +4,7 @@
 
   import type { ControlSize } from "./controlSize.js";
 
-  type Variant = "primary" | "secondary";
+  type Variant = "primary" | "secondary" | "destructive";
   type Props = {
     variant?: Variant;
     size?: ControlSize;
@@ -34,11 +34,20 @@
       "hover:border-[var(--color-control-border)] hover:bg-[var(--color-bg-raised)]",
       "active:bg-[var(--color-primary-subtle)]",
     ].join(" "),
+    // Outlined rather than filled: `--color-error` is tuned as a *text* colour against the page
+    // background (WCAG 1.4.3), and no contrast-checked on-error foreground exists to fill it with.
+    // The border carries the warning, and the label keeps a measured 4.5:1.
+    destructive: [
+      "border border-solid border-[var(--color-error)]",
+      "bg-transparent text-[var(--color-error)]",
+      "hover:bg-[color-mix(in_srgb,var(--color-error)_12%,var(--color-bg))]",
+      "active:bg-[color-mix(in_srgb,var(--color-error)_20%,var(--color-bg))]",
+    ].join(" "),
   } satisfies Record<Variant, string>;
 
   const sizeClasses = {
-    sm: "min-h-[var(--control-height-sm)] px-[var(--space-2)] text-12px",
-    md: "min-h-[var(--control-height-md)] px-[var(--space-3)] text-13px",
+    sm: "min-h-[var(--control-height-sm)] px-2 text-12px",
+    md: "min-h-[var(--control-height-md)] px-3 text-13px",
   } satisfies Record<ControlSize, string>;
 
   let {

@@ -14,7 +14,7 @@
 
 <label
   class={[
-    "flex items-center gap-[var(--spacing-sm)] font-500 cursor-pointer text-[var(--color-text)]",
+    "flex items-center gap-2 font-500 cursor-pointer text-[var(--color-text)]",
     disabled && "cursor-not-allowed text-[var(--text-disabled)]",
     klass,
   ]}
