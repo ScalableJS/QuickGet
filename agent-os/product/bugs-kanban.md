@@ -16,7 +16,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-59 | Shift-click reports "Could not contact QuickGet" and still opens the browser save flow | content/background | high | Done |
 | BUG-60 | Shift-click E2E passes without proving the real browser outcome or extension-lifecycle failure | testing | high | Done |
 | BUG-61 | Torrent interception setting uses oversized copy and promises behavior the product does not guarantee | popup/settings UX | low | Done |
-| BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Backlog |
+| BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Done |
 | BUG-63 | Shift-click E2E captures its baseline before the first download reaches disk | testing | medium | Done |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
@@ -212,7 +212,7 @@ click.
 
 ### BUG-62 — Toolbar badge number includes seeding instead of counting downloads only
 
-**Severity:** medium · **Area:** background/UX · **Status:** Backlog
+**Severity:** medium · **Area:** background/UX · **Status:** Done
 **Production files:** `src/lib/tasks.ts`, `src/background/actions.ts`, `src/background/alarms.ts`,
 `src/background/index.ts`, `src/background/monitorMessage.ts`, `src/popup/shared/monitor.ts`,
 `src/popup/features/downloads/index.ts`
@@ -333,6 +333,32 @@ When a non-torrent download finishes without entering seeding, the toolbar retur
 8. The updated unit suite, production build, and mock-extension E2E pass:
    `npm run typecheck`, `npm run check:svelte`, `npm run lint`, `npm test`, `npm run build`, and
    `npm run test:e2e:mock`.
+
+**2026-09-13 — done.** Built as specified. `ProgressSummary.active` became `downloading` +
+`seeding`; `isDownloadPhase()` is a new predicate written out in full rather than derived as
+`IN_PROGRESS_STATUSES` minus `seeding`, so a status joining the popup's filter later cannot move
+the badge by accident. `applyBadgeStats()` collapsed to one path — text is `downloading` or empty,
+the icon follows `downloading > 0 || seeding > 0`, and badge colour is only written behind visible
+text. It returns both counts, and `src/background/index.ts` re-arms the poll for either, so a seed
+finishing after the popup closes still returns the icon to idle. The tooltip is `Downloading: N` /
+`Seeding: N`; `Active:` is gone and a test asserts its absence.
+
+Tests: +31 unit (483 total) and the extended E2E transition. The exhaustive status table in
+`tasks.test.ts` also pins the one intended difference from the popup filter — `differ` must equal
+exactly `["seeding"]`. The E2E now runs `1 download + 2 seeds → 3 seeds → idle` and asserts the
+real `chrome.action` badge text alongside the persisted icon, with the icon written exactly twice
+across the whole sequence: lit at the start, dimmed at the end, and deliberately **not** repainted
+at the download→seeding step, which is what keeps that transition from flickering through idle.
+
+`check:contrast` 24/24, `test:e2e:mock` 41/41, typecheck/svelte-check/lint clean.
+
+**One step of this card was not completed:** the competitor survey ("inspect the current
+toolbar/menu-bar surfaces of qBittorrent-adjacent browser extensions … record what their badge
+number counts"). The extension sources from the earlier teardown are no longer on disk, a web
+search turned up nothing about badge semantics in those extensions, and `docs/competitor-*.md`
+records nothing about badge behaviour. The design shipped is the one this card had already chosen;
+it was not validated against a fresh competitor sample, and that is worth knowing before treating
+the two-channel scheme as externally confirmed rather than internally reasoned.
 
 ---
 
@@ -511,6 +537,13 @@ card displays the routed folder, and that a task which went to the Target shows 
 ---
 
 ### BUG-39 — Toolbar badge background poll fetches full task list instead of lightweight `Task/Status`
+
+> **Constraint added by BUG-62 (2026-09-13):** the toolbar now has two channels — a badge number
+> that counts only the download phase, and an icon lit by downloading *or* seeding. Any migration
+> to `Task/Status` must preserve that. Its `downloading` field is not the same set: the badge also
+> counts `moving`, `checking`, `finishing` and `allocating`, which the aggregate cannot see, so a
+> naive swap would make the number blink out mid-way through QNAP's `downloading → moving →
+> seeding` chain. Reverting to a single aggregate `active` is not an option.
 
 **Severity:** low · **Area:** background/perf · **Status:** Backlog
 **Files:** `src/background/alarms.ts`, `src/background/actions.ts`, `src/api/client.ts`

@@ -18,7 +18,8 @@ describe("monitor", () => {
 
   it("sends SNAPSHOT_MESSAGE with stats via chrome.runtime.sendMessage", () => {
     const stats: ProgressSummary = {
-      active: 2,
+      downloading: 2,
+      seeding: 1,
       all: 3,
       downRate: 1024,
       upRate: 512,

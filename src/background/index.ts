@@ -150,8 +150,10 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     // This is the successful Task/Query the popup just rendered. Its empty
     // result is authoritative for the open app, unlike a lone alarm poll.
     void applyBadgeStats(stats)
-      .then(({ active }) => {
-        if (active > 0) void armMonitoring();
+      .then(({ downloading, seeding }) => {
+        // Seeding keeps the poll armed too: otherwise a seed finishing after the popup closes
+        // could never return the icon to idle without reopening the popup.
+        if (downloading > 0 || seeding > 0) void armMonitoring();
       })
       .catch((error) => console.error("[QuickGet] could not apply the badge snapshot:", error));
   }

@@ -131,6 +131,48 @@ describe("background alarms", () => {
     expect(alarms["download-monitor"]).toBeUndefined(); // idle → alarm cleared
   });
 
+  it("counts the download and not the seed when both are running (BUG-62)", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    // 104 downloading + 100 seeding. The old aggregate showed "2" here and meant nothing by it.
+    server.use(loginHandler(), queryHandler([job(104), job(100, { up_rate: 2048 })]));
+
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "1" });
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
+    expect(alarms["download-monitor"]).toBeDefined();
+  });
+
+  it("keeps polling a seeding-only NAS with a lit icon and no number", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    server.use(loginHandler(), queryHandler([job(100, { up_rate: 2048 })]));
+
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({ path: ACTIVE_ICON });
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "1" });
+    // Dropping the alarm here would strand the lit icon: nothing else would ever see the
+    // seed finish, so the toolbar could only recover by the user reopening the popup.
+    expect(alarms["download-monitor"]).toBeDefined();
+  });
+
+  it("returns to idle and stops polling once the seed finishes", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    server.use(loginHandler(), queryHandler([job(100, { up_rate: 2048 })]));
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    expect(alarms["download-monitor"]).toBeDefined();
+    vi.clearAllMocks();
+
+    // Same task, now state 5 — seeding is over.
+    server.use(loginHandler(), queryHandler([job(5)]));
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_download.png", 128: "icons/128_download.png" },
+    });
+    expect(alarms["download-monitor"]).toBeUndefined();
+  });
+
   it("stops polling an unreachable NAS and flags the toolbar", async () => {
     alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
     server.use(

@@ -131,14 +131,14 @@ test("returns the toolbar to idle as soon as the popup snapshot is empty", async
     const messagePage = await session.context.newPage();
     await messagePage.goto(`chrome-extension://${session.extensionId}/manifest.json`);
 
-    const sendSnapshot = (active: number) =>
+    const sendSnapshot = (downloading: number) =>
       messagePage.evaluate(
         (count) =>
           chrome.runtime.sendMessage({
             type: "qg:badgeSnapshot",
-            stats: { active: count, all: count, downRate: 0, upRate: 0 },
+            stats: { downloading: count, seeding: 0, all: count, downRate: 0, upRate: 0 },
           }),
-        active,
+        downloading,
       );
 
     await sendSnapshot(1);
@@ -206,28 +206,38 @@ test("updates the toolbar once per meaningful NAS count change", async () => {
       };
     });
 
-    const sendAndWait = async (active: number, expectedBadge: string) => {
-      await messagePage.evaluate((count) => {
-        chrome.runtime.sendMessage({
-          type: "qg:badgeSnapshot",
-          stats: { active: count, all: count, downRate: 0, upRate: 0 },
-        });
-      }, active);
-      await expect
-        .poll(() => toolbarState(session.worker))
-        .toMatchObject({
-          badgeText: expectedBadge,
-        });
+    const sendAndWait = async (downloading: number, seeding: number, expected: { badgeText: string; icon: string }) => {
+      await messagePage.evaluate(
+        ({ down, seed }) => {
+          chrome.runtime.sendMessage({
+            type: "qg:badgeSnapshot",
+            stats: { downloading: down, seeding: seed, all: down + seed, downRate: 0, upRate: 0 },
+          });
+        },
+        { down: downloading, seed: seeding },
+      );
+      await expect.poll(() => toolbarState(session.worker)).toMatchObject(expected);
     };
 
     // Repeated snapshots model normal popup + alarm overlap. They must not repaint anything.
-    await sendAndWait(1, "1"); // start
-    await sendAndWait(1, "1"); // duplicate
-    await sendAndWait(2, "2"); // increment
-    await sendAndWait(2, "2"); // duplicate
-    await sendAndWait(1, "1"); // decrement
-    await sendAndWait(1, "1"); // duplicate
-    await sendAndWait(0, ""); // the first successful NAS zero is authoritative
+    await sendAndWait(1, 0, { badgeText: "1", icon: "active" }); // start
+    await sendAndWait(1, 0, { badgeText: "1", icon: "active" }); // duplicate
+    await sendAndWait(2, 0, { badgeText: "2", icon: "active" }); // increment
+    await sendAndWait(2, 0, { badgeText: "2", icon: "active" }); // duplicate
+    await sendAndWait(1, 0, { badgeText: "1", icon: "active" }); // decrement
+    await sendAndWait(1, 0, { badgeText: "1", icon: "active" }); // duplicate
+
+    // BUG-62: one download plus two seeds. The number is the download, never the sum.
+    await sendAndWait(1, 2, { badgeText: "1", icon: "active" });
+    expect(await actionBadge(session.worker)).toMatchObject({ text: "1" });
+
+    // The last download finishes and the NAS moves it to seeding: the number goes away while the
+    // icon stays lit. That transition *is* the completion signal — no notification is involved.
+    await sendAndWait(0, 3, { badgeText: "", icon: "active" });
+    expect(await actionBadge(session.worker)).toMatchObject({ text: "" });
+
+    // Seeding finishes too — only now is the toolbar idle.
+    await sendAndWait(0, 0, { badgeText: "", icon: "idle" });
 
     const measurements = await session.worker.evaluate(() => {
       const writes =
@@ -244,15 +254,19 @@ test("updates the toolbar once per meaningful NAS count change", async () => {
       };
     });
 
+    // Duplicates and the seeding-only step add no badge write; the diff guard still holds.
     expect(measurements.writes.filter(({ kind }) => kind === "badge").map(({ value }) => value)).toEqual([
       "1",
       "2",
       "1",
       "",
     ]);
+    // Lit once at the start, dimmed once at the very end — the seeding-only step in between must
+    // not repaint it, or the completion transition would flicker through idle.
     expect(measurements.writes.filter(({ kind }) => kind === "icon")).toHaveLength(2);
     expect(measurements.writes.filter(({ kind }) => kind === "color")).toHaveLength(1);
-    expect(measurements.writes.filter(({ kind }) => kind === "title")).toHaveLength(4);
+    // Six distinct tooltips: the seeding counts differ even where the badge text does not.
+    expect(measurements.writes.filter(({ kind }) => kind === "title")).toHaveLength(6);
     expect(measurements.elapsedMs).toBeLessThan(2_000);
 
     console.log("toolbar transition measurements", measurements);

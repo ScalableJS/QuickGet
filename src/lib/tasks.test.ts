@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeTasks, type TaskStatus } from "./tasks.js";
+import {
+  isDownloadPhase,
+  isInProgress,
+  normalizeTasks,
+  summarizeProgress,
+  type Task,
+  type TaskStatus,
+} from "./tasks.js";
 
 describe("QNAP task status contract", () => {
   // Official mapping read from DS.TASK_STATUS in Download Station 5.10.2's installed
@@ -232,5 +239,91 @@ describe("QNAP destination folder", () => {
       data: [{ hash: "b", source_name: "y", state: 104, move: "   " }],
     });
     expect(blank.destination).toBeUndefined();
+  });
+});
+
+describe("toolbar summary — downloading and seeding are separate channels (BUG-62)", () => {
+  // Exhaustive on purpose: the badge's number is the one thing a user reads without opening
+  // anything, so every status has to have a deliberate answer here, not an inherited one.
+  const EXPECTED: Record<TaskStatus, boolean> = {
+    queued: true,
+    queuedChecking: true,
+    downloading: true,
+    downloadingMetadata: true,
+    paused: true,
+    checking: true,
+    repairing: true,
+    extracting: true,
+    finishing: true,
+    moving: true,
+    allocating: true,
+    // The content is already on disk — the user is not waiting for these.
+    seeding: false,
+    finished: false,
+    stopped: false,
+    error: false,
+  };
+
+  it.each(Object.entries(EXPECTED))("%s counts toward the badge: %s", (status, expected) => {
+    expect(isDownloadPhase(status as TaskStatus)).toBe(expected);
+  });
+
+  it("differs from the popup filter by exactly one status, and that is the point", () => {
+    const statuses = Object.keys(EXPECTED) as TaskStatus[];
+    const differ = statuses.filter((status) => isInProgress(status) !== isDownloadPhase(status));
+    expect(differ).toEqual(["seeding"]);
+  });
+
+  const task = (status: TaskStatus, downSpeedBps = 0, upSpeedBps = 0): Task => ({
+    id: `${status}-${downSpeedBps}-${upSpeedBps}`,
+    name: status,
+    status,
+    progress: 0,
+    sizeBytes: 100,
+    downloadedBytes: 0,
+    uploadedBytes: 0,
+    downSpeedBps,
+    upSpeedBps,
+  });
+
+  it("counts a pure download run", () => {
+    const summary = summarizeProgress([task("downloading", 1000), task("moving"), task("finished")]);
+    expect(summary).toEqual({ downloading: 2, seeding: 0, all: 3, downRate: 1000, upRate: 0 });
+  });
+
+  it("counts a pure seeding run without inventing a download", () => {
+    const summary = summarizeProgress([task("seeding", 0, 500), task("seeding", 0, 250)]);
+    expect(summary).toEqual({ downloading: 0, seeding: 2, all: 2, downRate: 0, upRate: 750 });
+  });
+
+  it("keeps the two apart when they are mixed — the case that produced a misleading 5", () => {
+    const tasks = [
+      task("downloading", 1000),
+      task("moving"),
+      task("seeding", 0, 100),
+      task("seeding", 0, 100),
+      task("seeding", 0, 100),
+    ];
+    const summary = summarizeProgress(tasks);
+    expect(summary.downloading).toBe(2);
+    expect(summary.seeding).toBe(3);
+    // The old aggregate would have been 5 for this list.
+    expect(summary.downloading + summary.seeding).toBe(5);
+    expect(summary.all).toBe(5);
+  });
+
+  it("reports idle for an empty list and for terminal tasks", () => {
+    expect(summarizeProgress([])).toEqual({ downloading: 0, seeding: 0, all: 0, downRate: 0, upRate: 0 });
+    expect(summarizeProgress([task("finished"), task("error"), task("stopped")])).toMatchObject({
+      downloading: 0,
+      seeding: 0,
+      all: 3,
+    });
+  });
+
+  it("sums rates over every task, whatever its phase", () => {
+    const summary = summarizeProgress([task("downloading", 900, 10), task("seeding", 0, 90), task("finished", 100, 0)]);
+    expect(summary.downRate).toBe(1000);
+    expect(summary.upRate).toBe(100);
   });
 });
