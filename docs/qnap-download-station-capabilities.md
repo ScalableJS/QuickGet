@@ -48,8 +48,8 @@ settings" is not one thing.
 
 | Section | Field | Value seen | Meaning |
 |---|---|---|---|
-| `http` | `max_num` | `20` | concurrent HTTP downloads |
-| `http` | `max_down_rate` | `0` | download rate cap, `0` = unlimited (**units unverified**, most likely KB/s) |
+| `http` | `max_num` | `20` | concurrent HTTP **tasks** — see the label check below |
+| `http` | `max_down_rate` | `0` | download rate cap in **KB/s**, `0` = unlimited |
 | `ftp` | `max_num` | `10` | concurrent FTP downloads |
 | `ftp` | `max_down_rate` | `0` | as above |
 | `bt` | `max_num` | `10` | concurrent BT tasks |
@@ -72,6 +72,23 @@ Three consequences worth carrying forward:
    `http.max_num` and `http.max_down_rate`. Nothing about threads, segments or connections per
    file exists for HTTP at all — the question "in how many streams does it fetch a link" has no
    setting to answer it, on either side of the API.
+
+   **`max_num` is not a thread count**, which is the obvious thing to mistake it for. Checked
+   against the NAS's own UI bundle rather than guessed: in
+   `/downloadstation/libs/ds-all.js` the fields `http_max_num`, `ftp_max_num` and `bt_max_num`
+   all carry `fieldLabel: LANG.ACTION_SET_GMCD`, and `/downloadstation/lang/ENG.js` defines
+   `ACTION_SET_GMCD` as **"Global maximum concurrent downloads"**. Their `maxValue` is bound to
+   `DS.env.task_limit`, a *task* limit. The same bundle labels `max_down_rate` with
+   `ACTION_SET_GMDR` ("Global maximum download rate") next to a `SIZE_UNIT_KB` box, which is
+   where the KB/s unit above comes from, and `ACTION_SET_0_UNLIMIT` ("0 means unlimited")
+   confirms the zero.
+
+   There is a per-task section in that UI — `ACTION_SET_BA_LIMIT2`, "Single Task Bandwidth
+   Limit" — but it is a *rate*, not a connection count, and on the BT page only.
+
+   Fetching these two files needs no credentials, which makes it the cheapest way to settle
+   "what does this field actually mean" without SSH:
+   `curl -s http://<nas>:8080/downloadstation/libs/ds-all.js` and `.../lang/ENG.js`.
 2. **A speed throttle is per protocol, not global** (GAP-9). Setting one number would mean
    choosing which of `bt` / `http` / `ftp` it applies to, or writing three.
 3. **GAP-12 and GAP-13 have confirmed fields to write to** — `bt.peer_*` and
