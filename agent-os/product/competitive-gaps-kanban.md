@@ -935,6 +935,110 @@ starting point.
 5. Copy for the checkbox and its hint, sitting next to the torrent one without the two reading as
    duplicates.
 
+**2026-09-13 — consulted, and the open questions above are now answered.** Second opinion taken
+through the ChatGPT gateway (`gpt-5.6-sol-high`) with the code facts above. Every claim it made
+that this card relies on was re-checked here rather than accepted.
+
+**Q1 — mechanism: (a), and no hybrid.** `downloads.onCreated` is defined as firing once the
+download has *begun*, so `cancel()` can only stop something already started — incompatible with
+"any size, no bytes in the browser". The third option worth naming and closing:
+`webRequest.onBeforeRequest` in blocking mode could cancel before the request leaves, but MV3
+allows blocking `webRequest` only for policy-installed extensions, so a Web Store build cannot use
+it. `declarativeNetRequest` cannot do a dynamic hand-off.
+
+Explicitly **do not** run (a) and (b) from the same switch. One setting would then mean
+"zero-byte intercept" for some downloads and "cancel after start" for others — two contracts
+wearing one checkbox, which is the same mistake BUG-62 was about. `onCreated` stays the torrent
+path and nothing else.
+
+The `preventDefault()` decision must be synchronous; everything after it need not be.
+
+**Q3 — what counts as a file.** A conservative synchronous classifier:
+
+```
+http(s) AND event.isTrusted AND plain primary click on an <a href>
+AND ( anchor.hasAttribute("download") OR known extension in the URL *pathname* )
+```
+
+The pathname/query distinction is the sharp edge and is directly testable:
+`/page?file=movie.mkv` is **not** a file, `/movie.mkv?token=abc` is. Case-insensitive.
+Exclude `blob:`, `data:`, `javascript:`, `file:`, `mailto:` — the NAS cannot fetch any of them.
+
+A HEAD preflight for `Content-Type` is rejected for v1: it cannot run inside the click handler,
+HEAD often disagrees with GET, and plenty of servers answer 405 or redirect it to a login page.
+
+**Do not intercept `.pdf` by default** unless the anchor carries `download` — the browser
+expectation for a PDF link is the viewer, not a file. ISO/ZIP/7z/RAR/DMG/MSI/EXE/APK/IMG/MKV are
+the uncontroversial ones.
+
+**Q2 — failure.** After `preventDefault()` the click is gone; "not interfering" is no longer
+available, so a fallback has to be started deliberately. Use `chrome.downloads.download({ url })`,
+not `location.href` — it carries the host's cookies and returns a `downloadId`. **That id must go
+into an ignore set**, or the fallback download is re-intercepted by the torrent path's `onCreated`
+listener and the user gets a loop. Pass the anchor's `download` filename through, sanitised.
+
+Two failures that are not the same:
+
+- `AddUrl` itself fails (NAS offline, auth failed, HTTP error) → fall back automatically and say
+  so once: *"NAS unavailable — downloading in browser instead."*
+- `AddUrl` returns success and the task fails later on the NAS → **no** automatic fallback. The
+  task may still recover, and a silent second transfer is a duplicate. This is the existing
+  `markSendNotice` / notifier case.
+
+**Q4 — auth and cookies: declared unsupported in v1.** There is no cheap reliable detection. An
+unauthenticated HEAD returning 401/403 or a login redirect is a useful *negative* signal, but a
+200 proves nothing — GET can behave differently, signed URLs may refuse HEAD, and servers check
+`Referer`/UA/IP. Forwarding browser cookies into `AddUrl` is not on the table: QNAP DS V4 `AddUrl`
+takes `url`/`temp`/`move`/`sid` and exposes no documented header or cookie channel, and adding the
+`cookies` permission plus broad host permissions for an edge case is a real widening of the
+security surface for a Web Store extension. The `.torrent` path dodges this only because it can
+fetch a few KB in the page's own session and upload the bytes — a 4 GB file cannot be dodged that
+way. Write the limitation into the hint text rather than half-solving it.
+
+**Q5 — copy.** The checkbox sits under the existing torrent one; the hint has to carry both the
+"any size" promise and the auth limitation without restating the torrent switch.
+
+**GAP-15 becomes a prerequisite-adjacent card, not a neighbour.** Resolving redirects before
+`AddUrl` stops being an edge case the moment this ships — see the measured redirect table in the
+test plan below.
+
+**Test plan**
+
+Testability is genuinely good here, and specifically because the fixtures already exist:
+`tests/e2e/fixtures/test-stand/index.html` already has a **Direct downloads** tab with
+`stand-direct-iso` / `-mkv` / `-zip` / `-pdf`, all carrying a `download` attribute, and
+`testStandHost.ts` already serves `/files/*` with a real body, a correct `Content-Type`
+(`application/x-iso9660-image`, `video/x-matroska`, else `application/octet-stream`) and a
+`Content-Disposition`. The mock NAS already logs every request.
+
+What the stand still needs:
+
+1. A file link **without** a `download` attribute (the extension-only path).
+2. An extensionless link **with** `download`, and one **without** (must not intercept).
+3. `/page.html?next=file.zip` and `/movie.mkv?token=abc` — the pathname-vs-query pair.
+4. An ordinary page link, as the plain negative.
+5. A `302` file URL, to pin the GAP-15 phenotype.
+6. A guarded/`401` file endpoint — `guardedTrackerHost.ts` already refuses hotlinks and is the
+   closest existing thing to reuse.
+7. A slow or large body (`bodyDelayMs` already exists on the host), so "no bytes flowed" is
+   provable rather than merely fast.
+
+E2E scenarios, at minimum: default-off is inert; on + `.iso` sends and downloads nothing locally;
+uppercase `.ZIP`; query-string cases both ways; page link not sent; `download`-attribute
+extensionless yes / bare extensionless no; PDF not intercepted without `download`; nested
+`<a><span>` click; `target="_blank"` produces a task and no new tab; Ctrl/Cmd/middle click left to
+the browser; synthetic `el.click()` not intercepted (`isTrusted`); NAS failure produces exactly one
+fallback download and one message; the fallback is not re-intercepted; routing rule match and
+default destination; `blob:`/`data:` ignored; double-click behaviour decided and pinned; and the
+existing torrent click and Shift-click unchanged.
+
+**The strongest success assertion is a triple, not a single one:** NAS `AddUrl` seen once, the
+origin file server's GET count for that path **zero**, and `chrome.downloads.search()` from the
+service worker showing no new item. That proves no bytes flowed. Asserting only that Playwright
+saw no `download` event is weaker than it looks — an extension-initiated
+`chrome.downloads.download()` may not belong to that `Page` at all. For the browser-fallback path,
+arm `page.waitForEvent("download")` **before** the click.
+
 **Acceptance criteria (draft, to be confirmed once the questions above are answered)**
 
 1. With the switch off, nothing about ordinary downloads changes — this is the default, so it is
