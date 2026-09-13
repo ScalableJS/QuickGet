@@ -147,11 +147,13 @@ export class ApiClient {
     });
 
     if (error) {
-      throw new Error(`Add URL failed: ${getErrorMessage(error)}`);
+      throw createApiError("Add URL failed", error);
     }
 
     if (!data || !isSuccessResponse(data)) {
-      throw new Error(`Add URL failed: ${getErrorMessage(data)}`);
+      // `createApiError`, not a raw message off `reason`: for 12288 the NAS puts the URL itself
+      // in `reason`, so the old message repeated the link and explained nothing.
+      throw createApiError("Add URL failed", data);
     }
 
     return true;

@@ -17,6 +17,15 @@ export type TestStandHostHandle = {
 export type TestStandHostOptions = {
   port?: number;
   bodyDelayMs?: number;
+  /**
+   * Interface to bind. Defaults to loopback, which is right for the automated suite.
+   *
+   * Manual testing against a **real** NAS needs `0.0.0.0`: the NAS fetches the URL itself, so
+   * `http://127.0.0.1:3300/...` points at the NAS's own loopback and Download Station answers
+   * `{"error":12288}` — "does not support this URL". Verified against hardware; it is why a
+   * hand-test through the stand appeared to prove the extension broken when it was not.
+   */
+  host?: string;
 };
 
 /**
@@ -133,7 +142,7 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
     send(404, { "content-type": "text/plain; charset=utf-8" }, Buffer.from("Not found"));
   });
 
-  server.listen(options.port ?? 0, "127.0.0.1");
+  server.listen(options.port ?? 0, options.host ?? "127.0.0.1");
   await once(server, "listening");
 
   const address = server.address();
@@ -142,8 +151,9 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
   }
 
   const port = address.port;
+  const advertisedHost = options.host && options.host !== "0.0.0.0" ? options.host : "127.0.0.1";
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url: `http://${advertisedHost}:${port}/`,
     port,
     requestLog,
     close: async () => {

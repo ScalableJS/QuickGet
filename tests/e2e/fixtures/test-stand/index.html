@@ -498,6 +498,13 @@
     <!-- Tab 3: Direct URLs -->
     <section id="tab-direct" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-direct">
       <p class="card-meta" style="margin: 0 0 0.75rem;">
+        <strong>Testing against a real NAS? Use the LAN address, not <code>127.0.0.1</code>.</strong>
+        The NAS fetches these URLs itself, so loopback points at the NAS's own machine and Download
+        Station answers <code>error 12288</code>, "does not support this URL". Restart the stand with
+        <code>QNAP_STAND_LAN=1</code> and it prints an address the NAS can reach. Against the bundled
+        mock NAS, <code>127.0.0.1</code> is fine.
+      </p>
+      <p class="card-meta" style="margin: 0 0 0.75rem;">
         <strong>This tab depends on one setting.</strong> With <em>Send file links to Download
         Station</em> off &mdash; the default &mdash; nothing here reaches the NAS and every link is an
         ordinary browser download. With it on, the cards marked <em>Must not send</em> still have to

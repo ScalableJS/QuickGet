@@ -12,6 +12,22 @@ curl -sI -o /dev/null -w "%{http_code} redirects=%{num_redirects} %{content_type
 Pick sizes deliberately: the feature's whole claim is that size does not matter, so at least one
 pass should use something the browser would visibly struggle with.
 
+## Before anything else: the NAS fetches these, not your browser
+
+Download Station downloads the URL **itself**, from the NAS. Two consequences that cost a full
+round of false diagnosis on 2026-09-13:
+
+- **`127.0.0.1` never works.** A localhost URL points at the NAS's own loopback. Verified against
+  hardware: `AddUrl` with `http://127.0.0.1:3300/files/linux-minimal.iso` answers
+  `{"error": 12288, "reason": "<the url>"}` — "Download Station does not support this URL" — and
+  creates nothing. The extension is behaving correctly when this happens.
+- **The local test stand is loopback-only by default**, so it cannot be used for a real-NAS hand
+  test at all. Start it with `QNAP_STAND_LAN=1` and it prints a LAN address the NAS can reach.
+  Proven end to end: the same file at `http://192.168.88.119:3300/files/linux-minimal.iso`
+  returned `{"error": 0}` and the task completed on the NAS.
+
+Against the bundled mock NAS, `127.0.0.1` is fine — the mock runs on the same machine.
+
 ## Direct — no redirect
 
 The baseline. If these do not work, nothing else will.

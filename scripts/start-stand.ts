@@ -1,8 +1,14 @@
+import { networkInterfaces } from "node:os";
+
 import { startMockNas } from "../tests/e2e/support/mockNas.js";
 import { startTestStandHost } from "../tests/e2e/support/testStandHost.js";
 
 async function main() {
-  const stand = await startTestStandHost({ port: 3300 });
+  // `QNAP_STAND_LAN=1` binds every interface, so a real NAS on the LAN can fetch the stand's
+  // files. Without it the stand is loopback-only and a real NAS cannot reach it at all — it
+  // answers `error 12288` for a `127.0.0.1` URL, which reads as a broken extension.
+  const lan = process.env.QNAP_STAND_LAN === "1";
+  const stand = await startTestStandHost({ port: 3300, host: lan ? "0.0.0.0" : undefined });
   const mockNas = await startMockNas();
 
   console.log("==================================================");
@@ -11,6 +17,13 @@ async function main() {
   console.log(
     `📡 Test Stand:    ${stand.url} (Torrents, Magnets, Direct URLs, Domains)`
   );
+  if (lan) {
+    for (const address of lanAddresses()) {
+      console.log(`🌐 Reachable by NAS: http://${address}:3300/  ← use this when testing against a real NAS`);
+    }
+  } else {
+    console.log("🔒 Loopback only. A real NAS cannot fetch these files — restart with QNAP_STAND_LAN=1 for that.");
+  }
   console.log(`💾 Mock QNAP NAS:  http://127.0.0.1:${mockNas.port}`);
   console.log("🔑 NAS Login:      admin");
   console.log("🔑 NAS Password:   demo-password");
@@ -34,3 +47,11 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+/** Every non-internal IPv4 address of this machine — the ones a NAS on the LAN can reach. */
+function lanAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry) && entry.family === "IPv4" && !entry.internal)
+    .map((entry) => entry.address);
+}
