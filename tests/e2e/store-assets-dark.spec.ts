@@ -3,12 +3,12 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { prodBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const assetPath = path.resolve(__dirname, "../../store-assets/.cache-dark");
 
 test("capture Chrome Web Store screenshots (dark theme) with mock NAS data", async () => {
@@ -39,7 +39,7 @@ test("capture Chrome Web Store screenshots (dark theme) with mock NAS data", asy
       },
     ],
   });
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(prodBuildPath);
   const { page, worker } = session;
 
   try {

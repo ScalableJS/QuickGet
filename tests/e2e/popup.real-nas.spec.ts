@@ -1,8 +1,6 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { prodBuildPath } from "./support/builds.js";
 import { hasRequiredRealNasEnv, loadRealNasEnv } from "./support/e2eEnv.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import {
@@ -15,8 +13,6 @@ import { openSettingsPanel, waitForPopupReady } from "./support/popup.js";
 import { cleanupTasksByPrefix, rootDir } from "./support/realNasClient.js";
 import { createTorrentFixture } from "./support/torrentFixture.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const env = loadRealNasEnv(rootDir);
 const ownedTaskPrefix = "quickget-e2e-";
 
@@ -26,7 +22,7 @@ test.describe("real NAS popup e2e", () => {
   test.skip(!shouldRunRealNas, "Real NAS E2E is disabled. Set QNAP_E2E_REAL=1 locally to enable it.");
 
   test("read-only smoke: settings, connection, and list rendering", async ({ browserName: _browserName }, testInfo) => {
-    const session = await launchExtensionPopup(extensionDistPath, {
+    const session = await launchExtensionPopup(prodBuildPath, {
       beforePageLoad: (context) => installClientSideRequestCapture(context, env.host, env.port),
     });
     const { page, context } = session;
@@ -82,7 +78,7 @@ test.describe("real NAS popup e2e", () => {
     test.skip(!env.allowMutations, "Mutating real NAS E2E is disabled. Set QNAP_E2E_ALLOW_MUTATIONS=1 locally.");
 
     const fixture = await createTorrentFixture(ownedTaskPrefix.slice(0, -1));
-    const session = await launchExtensionPopup(extensionDistPath, {
+    const session = await launchExtensionPopup(prodBuildPath, {
       beforePageLoad: (context) => installClientSideRequestCapture(context, env.host, env.port),
     });
     const { page, context } = session;

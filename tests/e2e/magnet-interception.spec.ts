@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Worker } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startFixtureHost } from "./support/fixtureHost.js";
 import { startMockNas } from "./support/mockNas.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const fixturePath = path.resolve(__dirname, "fixtures/magnet-fixture.html");
 
 type Settings = Record<string, unknown>;
@@ -40,7 +40,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
@@ -78,7 +78,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
@@ -109,7 +109,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
@@ -141,7 +141,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       // Start disabled
@@ -184,7 +184,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
@@ -213,7 +213,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(extensionDistPath, { downloadsPath });
+    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
       await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));

@@ -1,13 +1,8 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * The theme control changed shape, and the change was not visible until Save — which does not
@@ -18,7 +13,7 @@ test.describe("theme", () => {
 
   test("switches the document immediately, and survives a reopen", async () => {
     const nas = await startMockNas();
-    const session = await launchExtensionPopup(extensionDistPath);
+    const session = await launchExtensionPopup(devBuildPath);
 
     try {
       await session.worker.evaluate((values) => chrome.storage.local.set(values as Record<string, unknown>), {

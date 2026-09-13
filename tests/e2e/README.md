@@ -17,19 +17,29 @@ extension loaded:
 ## Running
 
 ```bash
-npm run build
 npx playwright install chromium
 npm run test:e2e:mock
 ```
 
 This is the **safe, mock-only** run. It never touches a real NAS.
 
+## Which build each suite loads
+
+| Suite | Build | Why |
+|---|---|---|
+| Mock (`test:e2e:mock`) | `dist-dev` | The artifact developers run unpacked, checked against a mock written to answer these questions |
+| Real NAS (`test:e2e:real*`) | `dist` | The bytes validated against a live Download Station must be the bytes the Web Store receives |
+| Store assets, demo | `dist` | They photograph the shipping build; the dev manifest renames the extension |
+
+Each script builds its own artifact first (`pretest:e2e:*`), so a suite can never pass against a
+stale bundle — a failure mode that has cost real debugging time here, because a stale build looks
+exactly like a broken feature.
+
 ## Real NAS smoke (read-only)
 
 If a local `.env.e2e.local` exists, you can run just the safe smoke scenario:
 
 ```bash
-npm run build
 npm run test:e2e:real
 ```
 
@@ -46,7 +56,6 @@ There is a separate opt-in scenario that creates only its own test task, prefixe
 `quickget-e2e-`, then deletes it:
 
 ```bash
-npm run build
 npm run test:e2e:real:mutating
 ```
 

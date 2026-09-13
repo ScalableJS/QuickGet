@@ -1,15 +1,10 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { waitForPopupReady } from "./support/popup.js";
 import { startTestStandHost } from "./support/testStandHost.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * A plain click on a file link goes to the NAS instead of the browser (RES-5).
@@ -55,7 +50,7 @@ const browserDownloads = (session: Session): Promise<number> =>
 test("off by default: a file link is an ordinary browser download and the NAS hears nothing", async () => {
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     await waitForPopupReady(session.page);
@@ -96,7 +91,7 @@ test("off by default: a file link is an ordinary browser download and the NAS he
 test("on: the click reaches the NAS and no bytes flow through the browser", async () => {
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     await waitForPopupReady(session.page);
@@ -135,7 +130,7 @@ test("the classifier: query strings, labels and pages decide what is sent", asyn
 
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     await waitForPopupReady(session.page);
@@ -201,7 +196,7 @@ test("the classifier: query strings, labels and pages decide what is sent", asyn
 test("a torrent keeps its own behaviour when the file switch is on", async () => {
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     await waitForPopupReady(session.page);

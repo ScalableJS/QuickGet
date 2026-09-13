@@ -1,17 +1,14 @@
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { waitForPopupReady } from "./support/popup.js";
 import { startTestStandHost } from "./support/testStandHost.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 
 /**
  * One rule set, every source shape the test stand can produce, one assertion each: what folder
@@ -174,7 +171,7 @@ test("routing matrix: every source shape the stand can produce lands in the fold
 
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   const results: Array<{ what: string; expected: string; actual: string; via: string }> = [];
 
@@ -324,7 +321,7 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
   const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-shift-click-downloads-"));
-  const session = await launchExtensionPopup(extensionDistPath, { downloadsPath, nativeDownloads: true });
+  const session = await launchExtensionPopup(devBuildPath, { downloadsPath, nativeDownloads: true });
 
   try {
     await waitForPopupReady(session.page);

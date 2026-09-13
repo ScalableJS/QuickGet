@@ -1,20 +1,15 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { expect, test } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { openSettingsPanel, switchSettingsTab, waitForPopupReady } from "./support/popup.js";
 import { startTestStandHost } from "./support/testStandHost.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
-
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("routing rules persist in configured priority order", async ({}, testInfo) => {
   const mockNas = await startMockNas();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
@@ -74,7 +69,7 @@ test("routing rules persist in configured priority order", async ({}, testInfo) 
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("BUG-41 fix: saving rule with empty optional fields succeeds without page errors and preserves UI responsiveness", async ({}, testInfo) => {
   const mockNas = await startMockNas();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   const pageErrors: Error[] = [];
@@ -140,7 +135,7 @@ test("BUG-41 fix: saving rule with empty optional fields succeeds without page e
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("BUG-41/43 fix: saving rule with empty destination displays inline error and retains draft", async ({}, testInfo) => {
   const mockNas = await startMockNas();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   const pageErrors: Error[] = [];
@@ -202,7 +197,7 @@ test("BUG-41/43 fix: saving rule with empty destination displays inline error an
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("reordering rules via Move Up / Move Down buttons updates priority order in storage", async ({}, testInfo) => {
   const mockNas = await startMockNas();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
@@ -266,7 +261,7 @@ test("reordering rules via Move Up / Move Down buttons updates priority order in
 test("live interception on Test Stand routes magnets and downloads to destination matching rules", async ({}, testInfo) => {
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page, worker } = session;
 
   try {
@@ -367,7 +362,7 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
 test("reloading popup loads stored rules without errors and maintains full draft reactivity", async ({}, testInfo) => {
   const mockNas = await startMockNas();
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   const pageErrors: Error[] = [];

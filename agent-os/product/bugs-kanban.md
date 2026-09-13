@@ -2372,6 +2372,17 @@ in `.env.e2e.local`, outside git and outside Actions by design. Trying to move i
 tempting wrong turn — it would mean putting NAS credentials into repository secrets and exposing
 Download Station to the internet.
 
+#### Which build it runs against
+
+**The production build, always** — `dist`, the bundle the Web Store receives. The mock suite owns
+the dev build (`dist-dev`); the real NAS owns the release artifact. The invariant is the whole
+point of a spot check: *what was validated is what ships*. A green real-NAS run on a dev bundle
+proves something about an artifact nobody installs.
+
+**Established 2026-09-13**, ahead of the implementation: `tests/e2e/support/builds.ts` now holds
+the two paths, all 17 specs were split between them, and each script builds its own artifact via
+`pretest:e2e:*`, so no suite can pass against a stale bundle.
+
 #### What it must cover
 
 The base functionality a client loses if it breaks, each with what actually proves it. "The NAS

@@ -5,13 +5,13 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type Worker } from "@playwright/test";
 
+import { devBuildPath } from "./support/builds.js";
 import { launchExtensionPopup } from "./support/extension.js";
 import { startMockNas } from "./support/mockNas.js";
 import { startTestStandHost } from "./support/testStandHost.js";
 import { startTorrentHost } from "./support/torrentHost.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionDistPath = path.resolve(__dirname, "../../dist");
 const torrentFixture = path.resolve(__dirname, "fixtures/sample.torrent");
 
 /**
@@ -64,7 +64,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
 async function startSession(options: { bodyDelayMs?: number; userDataDir?: string; nativeDownloads?: boolean } = {}) {
   const torrentHost = await startTorrentHost(torrentFixture, options);
   const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-downloads-"));
-  const session = await launchExtensionPopup(extensionDistPath, {
+  const session = await launchExtensionPopup(devBuildPath, {
     downloadsPath,
     userDataDir: options.userDataDir,
     nativeDownloads: options.nativeDownloads,
@@ -94,7 +94,7 @@ test("retains an ordinary intercepted torrent through a browser restart", async 
     // Close and reopen the real Chromium profile. The NAS has received exactly one torrent;
     // a startup path in the extension must not upload it again without a new browser download.
     await session.close();
-    reopenedSession = await launchExtensionPopup(extensionDistPath, { userDataDir });
+    reopenedSession = await launchExtensionPopup(devBuildPath, { userDataDir });
     const addTorrentCount = mockNas.requestLog
       .toJSON()
       .filter((request) => request.path === "/downloadstation/V4/Task/AddTorrent").length;
@@ -120,7 +120,7 @@ test("retains an ordinary intercepted torrent through a browser restart", async 
 });
 
 test("returns the toolbar to idle as soon as the popup snapshot is empty", async () => {
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     // This is a toolbar-state test, not a configuration/monitoring test. Let the popup's initial
@@ -154,7 +154,7 @@ test("returns the toolbar to idle as soon as the popup snapshot is empty", async
 });
 
 test("updates the toolbar once per meaningful NAS count change", async () => {
-  const session = await launchExtensionPopup(extensionDistPath);
+  const session = await launchExtensionPopup(devBuildPath);
 
   try {
     // Isolate the synthetic toolbar trace from the popup's real unconfigured refresh. Otherwise
