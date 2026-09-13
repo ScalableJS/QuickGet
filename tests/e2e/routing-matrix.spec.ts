@@ -378,13 +378,20 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
     await standPage.click("#tab-btn-torrents");
     await standPage.click("#stand-torrent-movie");
     await expect
-      .poll(
-        () => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length,
-        { timeout: 2_000 },
-      )
+      .poll(() => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length, {
+        timeout: 2_000,
+      })
       .toBe(0);
     const browserDownloadCount = await session.worker.evaluate(async () => (await chrome.downloads.search({})).length);
     expect(browserDownloadCount).toBe(1);
+    // Chrome registers a download before its bytes reach the disk, so a baseline taken the moment
+    // `downloads.search` answers can record an empty directory. The assertion after the Shift-click
+    // then waits for a count that the first download has already made impossible — which is how
+    // this test failed once in CI with `Expected length: 0 / Received: ["…mkv.torrent"]` (BUG-63).
+    // Wait for the file to land, so the baseline describes a settled directory.
+    await expect
+      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({}))[0]?.state))
+      .toBe("complete");
     const localDownloadCount = (await readdir(downloadsPath)).length;
 
     // The same link with Shift held goes, and it is routed like any other send.
@@ -402,14 +409,12 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
         { timeout: 20_000 },
       )
       .toContain("R/ShiftSent");
-    await expect.poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length)).toBe(
-      browserDownloadCount,
-    );
+    await expect
+      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length))
+      .toBe(browserDownloadCount);
     await expect.poll(() => readdir(downloadsPath)).toHaveLength(localDownloadCount);
     await expect
-      .poll(() =>
-        standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
-      )
+      .poll(() => standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""))
       .toContain("Sent to Download Station");
     expect(
       await standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
