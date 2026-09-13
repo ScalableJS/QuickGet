@@ -90,7 +90,7 @@ describe("torrentUpload", () => {
     seedChromeStorage(
       createTestSettings({
         NASdir: "Multimedia/Default",
-        routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }],
+        routingRules: [{ namePattern: "mkv", destination: "Multimedia/Movies" }],
       }),
     );
     const torrent = new File([buildTorrentBytes("Some.Movie.2024.mkv")], "1234.torrent", {

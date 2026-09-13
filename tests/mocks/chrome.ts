@@ -124,6 +124,9 @@ const notificationsOnButtonClickedAddListener = vi.fn();
 const notificationsOnClosedAddListener = vi.fn();
 
 const runtimeGetURL = vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`);
+const runtimeGetManifest = vi.fn(
+  () => ({ manifest_version: 3, name: "QuickGet", version: "0", content_scripts: [] }) as unknown as chrome.runtime.Manifest,
+);
 const runtimeSendMessage = vi.fn((_message: unknown) => Promise.resolve());
 
 /**
@@ -134,10 +137,11 @@ const tabsQuery = vi.fn((_query: unknown) => Promise.resolve([] as chrome.tabs.T
 const scriptingExecuteScript = vi.fn((_details: unknown) => Promise.resolve([] as { result?: unknown }[]));
 
 export function getChromeRuntimeMock(): {
+  getManifest: typeof runtimeGetManifest;
   sendMessage: typeof runtimeSendMessage;
   getURL: typeof runtimeGetURL;
 } {
-  return { sendMessage: runtimeSendMessage, getURL: runtimeGetURL };
+  return { getManifest: runtimeGetManifest, sendMessage: runtimeSendMessage, getURL: runtimeGetURL };
 }
 
 export function getChromeTabsMock(): { query: typeof tabsQuery } {
@@ -231,6 +235,10 @@ export function resetChromeMockState(): void {
   notificationsOnButtonClickedAddListener.mockClear();
   notificationsOnClosedAddListener.mockClear();
   runtimeGetURL.mockClear();
+  runtimeGetManifest.mockReset();
+  runtimeGetManifest.mockReturnValue(
+    ({ manifest_version: 3, name: "QuickGet", version: "0", content_scripts: [] }) as unknown as chrome.runtime.Manifest,
+  );
   runtimeSendMessage.mockClear();
 }
 
@@ -284,6 +292,7 @@ export function installChromeMock(): typeof chrome {
       onInstalled: {
         addListener: runtimeOnInstalledAddListener,
       },
+      getManifest: runtimeGetManifest,
       getURL: runtimeGetURL,
       sendMessage: runtimeSendMessage,
     },

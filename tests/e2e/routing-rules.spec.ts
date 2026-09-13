@@ -40,10 +40,10 @@ test("routing rules persist in configured priority order", async ({}, testInfo) 
     await page.getByRole("button", { name: "Add rule" }).click();
     await expect(page.locator(".routing-rule")).toHaveCount(2);
 
-    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
-    await filenamePatterns.nth(0).fill("*.mkv");
+    const filenamePatterns = page.getByRole("textbox", { name: /name contains any/i });
+    await filenamePatterns.nth(0).fill("mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
-    await filenamePatterns.nth(1).fill("*.mkv");
+    await filenamePatterns.nth(1).fill("mkv");
     await page.fill("#routing-1-destination", "Multimedia/Series");
 
     await page.click("#save-btn");
@@ -56,8 +56,8 @@ test("routing rules persist in configured priority order", async ({}, testInfo) 
         }),
       )
       .toEqual([
-        { destination: "Multimedia/Movies", namePattern: "*.mkv" },
-        { destination: "Multimedia/Series", namePattern: "*.mkv" },
+        { destination: "Multimedia/Movies", namePattern: "mkv" },
+        { destination: "Multimedia/Series", namePattern: "mkv" },
       ]);
   } catch (error) {
     await testInfo.attach("mock-nas-http-log", {
@@ -100,8 +100,8 @@ test("BUG-41 fix: saving rule with empty optional fields succeeds without page e
     await expect(page.locator(".routing-rule")).toHaveCount(1);
 
     // Fill filename pattern and destination, leave domain EMPTY
-    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
-    await filenamePatterns.nth(0).fill("*.mkv");
+    const filenamePatterns = page.getByRole("textbox", { name: /name contains any/i });
+    await filenamePatterns.nth(0).fill("mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
 
     await page.click("#save-btn");
@@ -117,7 +117,7 @@ test("BUG-41 fix: saving rule with empty optional fields succeeds without page e
           return routingRules;
         }),
       )
-      .toEqual([{ destination: "Multimedia/Movies", namePattern: "*.mkv" }]);
+      .toEqual([{ destination: "Multimedia/Movies", namePattern: "mkv" }]);
 
     // 3. Confirm UI is fully responsive: clicking "Add rule" adds rule #2
     const addRuleBtn = page.getByRole("button", { name: "Add rule" });
@@ -166,8 +166,8 @@ test("BUG-41/43 fix: saving rule with empty destination displays inline error an
     await expect(page.locator(".routing-rule")).toHaveCount(1);
 
     // User types a filename pattern but leaves destination empty
-    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
-    await filenamePatterns.nth(0).fill("*.mkv");
+    const filenamePatterns = page.getByRole("textbox", { name: /name contains any/i });
+    await filenamePatterns.nth(0).fill("mkv");
     await expect(page.locator("#routing-0-destination")).toHaveValue("");
 
     // Click Save
@@ -222,20 +222,20 @@ test("reordering rules via Move Up / Move Down buttons updates priority order in
     await page.getByRole("button", { name: "Add rule" }).click();
     await page.getByRole("button", { name: "Add rule" }).click();
 
-    const filenamePatterns = page.getByRole("textbox", { name: /name or extension/i });
-    await filenamePatterns.nth(0).fill("*.mkv");
+    const filenamePatterns = page.getByRole("textbox", { name: /name contains any/i });
+    await filenamePatterns.nth(0).fill("mkv");
     await page.fill("#routing-0-destination", "Multimedia/Movies");
 
-    await filenamePatterns.nth(1).fill("*.iso");
+    await filenamePatterns.nth(1).fill("iso");
     await page.fill("#routing-1-destination", "Software/ISOs");
 
-    // Rule 1 is *.mkv, Rule 2 is *.iso
+    // Rule 1 is mkv, Rule 2 is iso
     // Move Rule 1 down
     await page.getByRole("button", { name: "Move rule 1 down" }).click();
 
-    // Now Rule 1 should be *.iso and Rule 2 should be *.mkv
-    await expect(filenamePatterns.nth(0)).toHaveValue("*.iso");
-    await expect(filenamePatterns.nth(1)).toHaveValue("*.mkv");
+    // Now Rule 1 should be iso and Rule 2 should be mkv
+    await expect(filenamePatterns.nth(0)).toHaveValue("iso");
+    await expect(filenamePatterns.nth(1)).toHaveValue("mkv");
 
     await page.click("#save-btn");
 
@@ -247,8 +247,8 @@ test("reordering rules via Move Up / Move Down buttons updates priority order in
         }),
       )
       .toEqual([
-        { destination: "Software/ISOs", namePattern: "*.iso" },
-        { destination: "Multimedia/Movies", namePattern: "*.mkv" },
+        { destination: "Software/ISOs", namePattern: "iso" },
+        { destination: "Multimedia/Movies", namePattern: "mkv" },
       ]);
   } catch (error) {
     await testInfo.attach("mock-nas-http-log", {
@@ -285,9 +285,9 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
           NASdir: "Multimedia/Default",
           interceptTorrentLinks: true,
           routingRules: [
-            { namePattern: "*Director_Cut*", destination: "Routed/Special" },
-            { namePattern: "*.mkv", destination: "Routed/Movies" },
-            { namePattern: "*Ubuntu*", destination: "Routed/Linux" },
+            { namePattern: "Director_Cut", destination: "Routed/Special" },
+            { namePattern: "mkv", destination: "Routed/Movies" },
+            { namePattern: "Ubuntu", destination: "Routed/Linux" },
           ],
         });
       },
@@ -301,8 +301,8 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
     // Switch to Magnets tab
     await standPage.click("#tab-btn-magnets");
 
-    // 1. Click Movie magnet (*.mkv rule)
-    await standPage.click("#stand-magnet-movie");
+    // 1. Click Movie magnet (mkv contains rule)
+    await standPage.click("#stand-magnet-movie", { modifiers: ["Shift"] });
 
     await expect
       .poll(() => {
@@ -318,8 +318,8 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
     // Verify destination folder routed to "Routed/Movies" instead of "Multimedia/Default"
     expect(movieAddReq?.requestBody).toContain("move=Routed%2FMovies");
 
-    // 2. Click Ubuntu magnet (*Ubuntu* rule)
-    await standPage.click("#stand-magnet-ubuntu");
+    // 2. Click Ubuntu magnet (Ubuntu contains rule)
+    await standPage.click("#stand-magnet-ubuntu", { modifiers: ["Shift"] });
 
     await expect
       .poll(() => {
@@ -335,8 +335,8 @@ test("live interception on Test Stand routes magnets and downloads to destinatio
       .find((req) => req.path === "/downloadstation/V4/Task/AddUrl" && req.requestBody?.includes("Ubuntu"));
     expect(ubuntuAddReq?.requestBody).toContain("move=Routed%2FLinux");
 
-    // 3. Click Equals magnet (*Director_Cut* rule verifying BUG-44 fix)
-    await standPage.click("#stand-magnet-equals");
+    // 3. Click Equals magnet (Director_Cut contains rule verifying BUG-44 fix)
+    await standPage.click("#stand-magnet-equals", { modifiers: ["Shift"] });
 
     await expect
       .poll(() => {
@@ -380,7 +380,7 @@ test("reloading popup loads stored rules without errors and maintains full draft
     await page.evaluate(async () => {
       await chrome.storage.local.set({
         routingRules: [
-          { destination: "Stored/Movies", namePattern: "*.mkv", type: "torrent" },
+          { destination: "Stored/Movies", namePattern: "mkv", type: "torrent" },
           { destination: "Stored/Docs", domain: "docs.example.com" },
         ],
       });
@@ -394,7 +394,7 @@ test("reloading popup loads stored rules without errors and maintains full draft
 
     // 3. Confirm 2 rules are rendered in draft state with correct values
     await expect(page.locator(".routing-rule")).toHaveCount(2);
-    await expect(page.locator("#routing-0-namePattern")).toHaveValue("*.mkv");
+    await expect(page.locator("#routing-0-namePattern")).toHaveValue("mkv");
     await expect(page.locator("#routing-0-destination")).toHaveValue("Stored/Movies");
     await expect(page.locator("#routing-1-domain")).toHaveValue("docs.example.com");
     await expect(page.locator("#routing-1-destination")).toHaveValue("Stored/Docs");

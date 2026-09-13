@@ -1,9 +1,10 @@
 /**
- * Content script: captures clicks on magnet: links and sends them to QNAP Download Station.
+ * Content script: sends magnet clicks to QNAP Download Station.
  * Injected at document_start into all frames.
  *
  * Adheres to strict DOM Event Loop semantics:
- * - Cancel link navigation synchronously before any async work (preventDefault).
+ * - Ordinary enabled magnet clicks retain their browser protocol-handler fallback.
+ * - Shift-click cancels link navigation synchronously before any async work.
  * - Forward magnet URI to the Service Worker via runtime.sendMessage.
  * - Provide immediate feedback in an isolated Shadow DOM toast.
  * - On failure, offer explicit [Retry] and [Open locally] buttons (compensating fallback).
@@ -40,6 +41,7 @@ export type SendLinkMessage = {
 export type MagnetResponse = { ok: true; deduped?: boolean } | { ok: false; error: string; code?: string };
 
 const inFlightUris = new Set<string>();
+const CONTENT_SCRIPT_CLEANUP_KEY = "quickget:magnet-content-cleanup";
 
 /**
  * Determine whether a mouse event represents an eligible, trusted primary click on a link.
@@ -135,7 +137,11 @@ export function resolveTheme(theme: "auto" | "light" | "dark"): "light" | "dark"
 /**
  * Render isolated in-page feedback for magnet link interception.
  */
-export function showFeedback(state: "loading" | "success" | "error", message: string): void {
+export function showFeedback(
+  state: "loading" | "success" | "error",
+  message: string,
+  actions: Array<{ label: string; onClick: () => void }> = [],
+): void {
   if (typeof document === "undefined" || !document.body) return;
 
   if (toastTimeoutId) {
@@ -235,10 +241,23 @@ export function showFeedback(state: "loading" | "success" | "error", message: st
         color: ${text};
         background: ${dismissHover};
       }
+      .btn-action {
+        background: transparent;
+        border: 1px solid ${border};
+        border-radius: 4px;
+        color: ${text};
+        cursor: pointer;
+        font: inherit;
+        padding: 3px 6px;
+      }
+      .btn-action:hover {
+        background: ${dismissHover};
+      }
     </style>
     <div class="toast" role="alert">
       ${iconSvg}
       <span class="msg">${message}</span>
+      ${actions.map((action, index) => `<button id="qg-action-${index}" class="btn-action" type="button">${action.label}</button>`).join("")}
       <button id="qg-dismiss" class="btn-dismiss" type="button" title="Close" aria-label="Close">✕</button>
     </div>
   `;
@@ -247,12 +266,15 @@ export function showFeedback(state: "loading" | "success" | "error", message: st
   dismissBtn?.addEventListener("click", () => {
     host?.remove();
   });
+  for (const [index, action] of actions.entries()) {
+    shadow.getElementById(`qg-action-${index}`)?.addEventListener("click", action.onClick);
+  }
 
   if (state === "success") {
     toastTimeoutId = setTimeout(() => {
       host?.remove();
     }, 2500);
-  } else if (state === "error") {
+  } else if (state === "error" && actions.length === 0) {
     toastTimeoutId = setTimeout(() => {
       host?.remove();
     }, 4000);
@@ -260,7 +282,10 @@ export function showFeedback(state: "loading" | "success" | "error", message: st
 }
 
 /**
- * Forward an eligible magnet URI to the Service Worker.
+ * Forward an eligible magnet URI to the Service Worker. An ordinary click deliberately keeps
+ * the browser's magnet protocol flow: there is no cross-browser API for discovering or invoking
+ * a local magnet handler ourselves. Shift is the explicit full-interception gesture and claims
+ * the click before dispatching it.
  */
 function sendMagnetToWorker(uri: string): void {
   if (inFlightUris.has(uri)) return;
@@ -338,19 +363,26 @@ function sendLinkToWorker(url: string): void {
       inFlightUris.delete(url);
       const lastErr = chrome.runtime.lastError;
       if (lastErr) {
-        showFeedback("error", `Could not contact QuickGet: ${lastErr.message}`);
+        showLinkFailure(url, `Could not contact QuickGet: ${lastErr.message}`);
         return;
       }
       if (response?.ok) {
         showFeedback("success", "Sent to Download Station");
         return;
       }
-      showFeedback("error", response?.error ?? "Could not send to Download Station");
+      showLinkFailure(url, response?.error ?? "Could not send to Download Station");
     });
   } catch (error) {
     inFlightUris.delete(url);
-    showFeedback("error", error instanceof Error ? error.message : "Could not contact QuickGet");
+    showLinkFailure(url, error instanceof Error ? error.message : "Could not contact QuickGet");
   }
+}
+
+function showLinkFailure(url: string, message: string): void {
+  showFeedback("error", message, [
+    { label: "Retry", onClick: () => sendLinkToWorker(url) },
+    { label: "Open locally", onClick: () => window.location.assign(url) },
+  ]);
 }
 
 /**
@@ -365,7 +397,7 @@ function onDocumentClick(event: MouseEvent): void {
     // Shift's native meaning is "open in a new window", which for a `.torrent` would flash a
     // window and start a download we then have to chase. Cancelling and handing the worker the
     // URL keeps it on the same path the context menu uses.
-    event.preventDefault();
+    claimLinkClick(event);
     sendLinkToWorker(shiftSendUrl);
     return;
   }
@@ -374,10 +406,19 @@ function onDocumentClick(event: MouseEvent): void {
   if (!uri) return;
   if (!event.shiftKey && !magnetCaptureEnabled) return;
 
-  // Crucial: Synchronous cancel of browser navigation before any async operation.
-  event.preventDefault();
+  if (event.shiftKey) claimLinkClick(event);
 
   sendMagnetToWorker(uri);
+}
+
+/**
+ * A tracker can attach its own click handler that starts a download even when the anchor's
+ * default navigation was cancelled. Once QuickGet claims a link, no page handler may create a
+ * second browser outcome behind its back.
+ */
+function claimLinkClick(event: MouseEvent): void {
+  event.preventDefault();
+  event.stopImmediatePropagation();
 }
 
 /**
@@ -425,5 +466,7 @@ export function initMagnetInterception(): () => void {
 
 // Auto-run in browser context
 if (typeof window !== "undefined" && typeof chrome !== "undefined" && chrome.runtime?.id) {
-  initMagnetInterception();
+  const existingCleanup = Reflect.get(globalThis, CONTENT_SCRIPT_CLEANUP_KEY);
+  if (typeof existingCleanup === "function") existingCleanup();
+  Reflect.set(globalThis, CONTENT_SCRIPT_CLEANUP_KEY, initMagnetInterception());
 }

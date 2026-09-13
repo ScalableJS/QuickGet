@@ -629,7 +629,7 @@
     <div class="form-inline flex items-center gap-[var(--spacing-sm)] font-500">
       <Checkbox
         id="interceptTorrentLinks"
-        aria-describedby="interceptTorrentLinksHint shiftClickHint"
+        aria-describedby="interceptTorrentLinksHint"
         bind:checked={form.interceptTorrentLinks}
       >
         Send torrent links to Download Station
@@ -637,13 +637,8 @@
     </div>
     <div class="ml-[var(--spacing-lg)] flex flex-col gap-[var(--spacing-xs)]">
       <p id="interceptTorrentLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-        Both <code>.torrent</code> downloads and magnet links, instead of your browser or a local app.
-      </p>
-      <!-- The gesture is worth a line here because nobody discovers a modifier on their own, and
-           it is what makes this switch low-stakes: leave it off and still send a link at will. -->
-      <p id="shiftClickHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-        Hold <kbd class="font-600">Shift</kbd> when clicking a link to send just that one — whether
-        this is on or off.
+        Includes <code>.torrent</code> and magnet links. Click also opens locally;
+        <kbd class="font-600">Shift</kbd>-click sends only to Download Station.
       </p>
     </div>
   </div>
@@ -689,8 +684,8 @@
        three copies of the same paragraph. -->
   <Alert tone="hint">
     Route downloads to folders automatically. First matching rule wins. Unmatched downloads use the Target folder.
-    List several values in a field — <code>mkv mp4 avi</code>, <code>rutracker.org nnmclub.to</code> — and any one of
-    them matches. Use <code>*</code> for anything that is not an extension: <code>*S0?E0?*</code>, <code>*1080p*</code>.
+    Each field contains any listed value — <code>mkv mp4 avi</code>, <code>rutracker</code>, <code>1080p</code>. Filled
+    fields must all match. Use <code>*</code> and <code>?</code> for a more specific pattern, e.g. <code>*S0?E0?*</code>.
   </Alert>
 
   {#if routingRuleDrafts.length === 0}
@@ -757,8 +752,8 @@
                  anything is typed, which is exactly when you need to know which field is which. -->
             <div class="grid grid-cols-3 gap-[var(--space-1)] text-11px text-[var(--text-secondary)]" aria-hidden="true">
               <span>Source</span>
-              <span>Name or extension</span>
-              <span>Site</span>
+              <span>Name contains any</span>
+              <span>Site contains any</span>
             </div>
             <div class="grid grid-cols-3 gap-[var(--space-1)]">
               <div class="routing-match-type min-w-0">
@@ -784,7 +779,7 @@
                   id={`routing-${i}-namePattern`}
                   size="sm"
                   placeholder="mkv mp4 avi"
-                  aria-label={`Rule ${i + 1} name or extension`}
+                  aria-label={`Rule ${i + 1} name contains any`}
                   error={draftError?.conditions}
                   bind:value={draft.namePattern}
                   oninput={() => clearDraftError(draft.id, "conditions")}
@@ -795,7 +790,7 @@
                   id={`routing-${i}-domain`}
                   size="sm"
                   placeholder="rutracker.org"
-                  aria-label={`Rule ${i + 1} site`}
+                  aria-label={`Rule ${i + 1} site contains any`}
                   aria-invalid={draftError?.conditions ? "true" : undefined}
                   aria-describedby={draftError?.conditions ? conditionErrorId(i) : undefined}
                   bind:value={draft.domain}

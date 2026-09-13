@@ -77,9 +77,9 @@ export const WithRoutingRules: Story = {
     storage: {
       ...CONNECTED,
       routingRules: [
-        { namePattern: "*.mkv", destination: "Multimedia/Movies" },
-        { domain: "*.example.com", destination: "Multimedia/Other" },
-        { namePattern: "*.iso", destination: "Software" },
+        { namePattern: "mkv", destination: "Multimedia/Movies" },
+        { domain: "example.com", destination: "Multimedia/Other" },
+        { namePattern: "iso", destination: "Software" },
       ],
     },
   },
@@ -136,7 +136,7 @@ export const ConnectionUnreachable: Story = {
 export const TabConnection: Story = { args: { storage: CONNECTED, initialTab: "connection" } };
 export const TabAdvanced: Story = {
   args: {
-    storage: { ...CONNECTED, routingRules: [{ namePattern: "*.mkv", destination: "Multimedia/Movies" }] },
+    storage: { ...CONNECTED, routingRules: [{ namePattern: "mkv", destination: "Multimedia/Movies" }] },
     initialTab: "advanced",
   },
 };

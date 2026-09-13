@@ -24,7 +24,7 @@ vi.mock("@lib/settings.js", () => ({
     routingRules: [
       {
         type: "magnet",
-        namePattern: "*Linux*",
+        namePattern: "Linux",
         destination: "Software/Linux",
       },
     ],

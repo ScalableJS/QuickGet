@@ -31,8 +31,8 @@ test.describe("accessibility", () => {
     NASdir: "Multimedia/Movies",
     interceptTorrentLinks: true,
     routingRules: [
-      { namePattern: "*.mkv", destination: "Multimedia/Movies" },
-      { domain: "*.example.com", destination: "Multimedia/Other" },
+      { namePattern: "mkv", destination: "Multimedia/Movies" },
+      { domain: "example.com", destination: "Multimedia/Other" },
     ],
   });
 
