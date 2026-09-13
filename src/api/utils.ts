@@ -100,6 +100,38 @@ function explainReason(errorCode: number, reason: string): string | undefined {
   return undefined;
 }
 
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
+
+/** Whether a hostname refers to the machine asking the question rather than to a network host. */
+function isLoopbackHost(host: string): boolean {
+  const clean = host.trim().toLowerCase();
+  return LOOPBACK_HOSTS.has(clean) || /^127\./.test(clean);
+}
+
+/**
+ * Why a `12288` on a loopback URL is not what it appears to be.
+ *
+ * Download Station fetches the link **itself**, from the NAS. So `http://127.0.0.1:3300/x.iso`
+ * asks the NAS to download from its own machine, where nothing is listening, and it refuses with
+ * "does not support this URL". The vendor's sentence is accurate and completely unhelpful: the
+ * URL is fine, it is just not reachable from where the fetch happens.
+ *
+ * Only said when the NAS is somewhere else. Against a NAS on this machine — the bundled mock —
+ * a loopback URL is exactly right, and claiming otherwise would be the new wrong message.
+ */
+export function explainLoopbackUrl(downloadUrl: string, nasHost: string): string | undefined {
+  let host: string;
+  try {
+    host = new URL(downloadUrl).hostname;
+  } catch {
+    return undefined;
+  }
+  if (!isLoopbackHost(host)) return undefined;
+  if (isLoopbackHost(nasHost)) return undefined;
+
+  return `Download Station fetches links itself, from the NAS — so "${host}" points at the NAS, not at this computer. Use this machine's network address instead.`;
+}
+
 export function createApiError(prefix: string, result: unknown): Error {
   const payload = toApiResult(result);
   const errorCode = coerceNumber(payload.error, -1);

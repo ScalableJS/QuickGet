@@ -5,7 +5,7 @@ import { normalizeTasks, type Task } from "@lib/tasks.js";
 import type { ApiFetchClient, ClientSetupOptions } from ".";
 import { buildNASBaseUrl, createOpenApiFetchClient, performLogin } from ".";
 import type { ApiResponse, components } from "./type.js";
-import { createApiError, getErrorMessage, isSuccessResponse } from "./utils.js";
+import { createApiError, explainLoopbackUrl, getErrorMessage, isSuccessResponse } from "./utils.js";
 
 export type ApiClientOptions = ClientSetupOptions & {
   logger?: Logger;
@@ -153,7 +153,12 @@ export class ApiClient {
     if (!data || !isSuccessResponse(data)) {
       // `createApiError`, not a raw message off `reason`: for 12288 the NAS puts the URL itself
       // in `reason`, so the old message repeated the link and explained nothing.
-      throw createApiError("Add URL failed", data);
+      const apiError = createApiError("Add URL failed", data);
+      const loopback = explainLoopbackUrl(url, this.settings.NASaddress);
+      if (loopback && (apiError as { code?: number }).code === 12288) {
+        apiError.message = `Add URL failed: ${loopback}`;
+      }
+      throw apiError;
     }
 
     return true;
