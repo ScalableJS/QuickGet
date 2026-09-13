@@ -17,6 +17,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-60 | Shift-click E2E passes without proving the real browser outcome or extension-lifecycle failure | testing | high | Done |
 | BUG-61 | Torrent interception setting uses oversized copy and promises behavior the product does not guarantee | popup/settings UX | low | Done |
 | BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Backlog |
+| BUG-63 | Shift-click E2E flakes on the local-download count in CI | testing | medium | Backlog |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -2075,3 +2076,37 @@ transaction therefore protects against *loss*, not against a stray file. The spe
 contract that actually holds — the download is never left in progress — rather than a
 `interrupted` state that only occurs when the transfer is slow enough. The torrent host in the
 test delays its body specifically so the transaction under test can happen at all.
+
+---
+
+### BUG-63 — Shift-click E2E flakes on the local-download count in CI
+
+**Severity:** medium · **Area:** testing · **Status:** Backlog
+**Files:** `tests/e2e/routing-matrix.spec.ts:408`
+
+`Shift-click sends a link even with every automatic mode switched off` failed once on
+GitHub Actions during the v2.4.3 release, on this assertion:
+
+```
+await expect.poll(() => readdir(downloadsPath)).toHaveLength(localDownloadCount);
+  - Timeout 10000ms exceeded while waiting on the predicate
+```
+
+It is a flake, not a regression, and that was established rather than assumed: **the same commit
+`f116a5c` ran three times — the pull_request run passed 41/41, the push run failed 1/41, and the
+re-run of that same push run passed.** The mock-NAS log attached to the failure shows `Misc/Login`
+and `Task/AddTorrent` both answering 200, so the hand-off worked; only the assertion about what
+the browser left on disk timed out. The v2.4.3 change touched no background, content-script or
+interception code.
+
+The assertion is new — BUG-60 added it days earlier precisely to stop this test passing without
+proving the real browser outcome, which was the right call. But a 10s poll on a filesystem
+directory is timing-sensitive on a shared CI runner in a way the NAS-side assertions are not.
+
+**Proposal:** raise the poll budget for the filesystem assertions specifically, or wait on a
+Chrome `downloads` event rather than on the directory listing settling. Do **not** weaken what is
+asserted — the point of BUG-60 was that the local outcome must be proven. If it recurs, capture how
+long the directory actually takes to settle before choosing a number.
+
+**Watch for:** a second occurrence on a commit that does touch interception. That would mean this
+card is wrong and the failure is real.
