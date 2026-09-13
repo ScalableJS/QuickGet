@@ -18,6 +18,8 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-61 | Torrent interception setting uses oversized copy and promises behavior the product does not guarantee | popup/settings UX | low | Done |
 | BUG-62 | Toolbar badge number includes seeding instead of counting downloads only | background/UX | medium | Done |
 | BUG-63 | Shift-click E2E captures its baseline before the first download reaches disk | testing | medium | Done |
+| BUG-64 | `--color-text-muted` is referenced but never defined | popup/ui | low | Backlog |
+| BUG-65 | A light-theme text input has no visible boundary (WCAG 1.4.11) | popup/a11y | medium | Backlog |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -2160,3 +2162,59 @@ browser outcome, and that is still what they do.
 
 **2026-09-13 — done.** Shipped on `env/dev` after v2.4.3. Verified 5/5 locally plus
 `test:e2e:mock` 41/41.
+
+---
+
+### BUG-64 — `--color-text-muted` is referenced but never defined
+
+**Severity:** low · **Area:** popup/ui · **Status:** Backlog
+**Files:** `src/popup/styles/tokens.css`, `src/popup/components/downloadItem/DownloadItem.svelte`,
+`src/popup/features/toolbar/SpeedShowcase.svelte`
+
+`tokens.css` defines `--text-muted`. It does not define `--color-text-muted` — but that name is
+what several components ask for:
+
+- `DownloadItem.svelte` — six separator bullets between the metric groups
+- `SpeedShowcase.svelte` — a 10px label
+
+An undefined `var()` with no fallback makes the whole `color` declaration invalid, so those
+elements silently render at the inherited colour instead of the muted one. Nothing is broken
+enough to look broken, which is why it survived.
+
+**Proposed fix:** point the usages at `--text-muted` rather than defining a second token. The
+repo already had an alias sprawl problem and UX-26 was about reducing it; a new token would add
+one back. If the two genuinely need to differ, say why on the card first.
+
+Found while measuring contrast for UX-26.
+
+---
+
+### BUG-65 — A light-theme text input has no visible boundary (WCAG 1.4.11)
+
+**Severity:** medium · **Area:** popup/a11y · **Status:** Backlog
+**Files:** `src/popup/styles/tokens.css`, `src/popup/ui/Field.svelte`,
+`src/popup/ui/SearchField.svelte`, `src/popup/ui/Select.svelte`, `scripts/check-contrast.mjs`
+
+Measured, not estimated:
+
+| Pair | light | dark |
+| --- | ---: | ---: |
+| `--color-control-border` `#c7d0dc` vs `--color-bg` `#f7f7f7` | **1.45:1** | 5.57:1 |
+| resting textbox fill vs page (`--textbox-bg` `#ffffff` vs `#f7f7f7`) | **1.06:1** | — |
+
+`Field`, `SearchField` and `Select` all set `border-transparent` at rest and only reveal
+`--color-control-border` on hover. So in the light theme the only thing marking where an input is
+sits at 1.06:1 — a boundary nobody can see. WCAG 2.2 SC 1.4.11 asks 3:1 of visual information
+needed to identify a control, and this is that information. The dark theme is fine.
+
+`scripts/check-contrast.mjs` has no rule for this pair, even though its own header says it exists
+because control borders regressed to 1.40:1 unnoticed in `f20daf0`. That is the same class of
+defect, still uncovered.
+
+**Proposed fix:** give inputs a visible resting border and/or darken `--color-control-border` in
+the light theme, then add `["--color-control-border", "--color-bg", 3.0, "control boundary"]` to
+`RULES` so it cannot regress again. Leave the dark theme alone unless the numbers say otherwise,
+and do not trade away the focus ring or the `aria-invalid` border to get there.
+
+Found while measuring contrast for UX-26; deliberately left out of that change because it is a
+palette decision, not a spacing one.

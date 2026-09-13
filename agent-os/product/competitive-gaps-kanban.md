@@ -9,6 +9,10 @@ detail: [`../../docs/feature-roadmap.md`](../../docs/feature-roadmap.md).
 Move a card by editing its Status cell; add a dated line under the card when the status
 changes.
 
+**Two prefixes live on this board.** `GAP-n` is a thing a competitor does that we do not;
+`RES-n` is a question that has to be answered before a gap can be sized. Both are real open work
+— count both when asking what is left, or the research cards silently vanish from the total.
+
 A card only belongs here if a competitor does something we do not, **and** there is
 evidence a user wants it. Parity for its own sake is not a goal — several deliberate
 non-features are recorded at the bottom so they are not re-litigated.
@@ -27,7 +31,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Deferred |
 | GAP-12 | Private tracker client emulation (`peer_mode`: Transmission, Deluge) | settings/api | S | Backlog |
 | GAP-13 | Default seeding time and share ratio limits in Settings | settings/api | S | Backlog |
-| RES-5 | Direct file download interception (Shift-click, size threshold, auth/cookie challenges) | background/content | L | Backlog |
+| RES-5 | Send an ordinary file download to the NAS on click, any size, behind an off-by-default switch | background/content | L | Backlog |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -849,28 +853,98 @@ QNAP Download Station stores the bencoded `.torrent` file for every task and ser
 
 ---
 
-### RES-5 — Direct file download interception (Shift-click, size threshold, auth/cookie challenges)
+### RES-5 — Send an ordinary file download to the NAS on click, any size, behind an off-by-default switch
 
-**Size:** L · **Area:** background/content · **Status:** Backlog
-**Files:** `src/background/downloads.ts`, `src/content/`, `src/lib/config.ts`, `src/api/client.ts` (`AddUrl`)
+**Size:** L · **Area:** background/content · **Status:** Backlog — shaped, not started
+**Files:** `src/background/downloads.ts`, `src/content/`, `src/lib/config.ts`,
+`src/lib/sourceKind.ts`, `src/popup/features/settings/Settings.svelte`
+**Related:** GAP-15 (unresolved redirects), RES-2 (`ftp://`), UX-23/UX-24 (the torrent switch and
+Shift-click, the shape this copies)
 
-Expanding interception from BitTorrent (`.torrent` and `magnet:`) to general file downloads (ISO, ZIP, MKV, DMG, etc.) sent directly to QNAP Download Station via `AddUrl`.
+Click a file link — ISO, ZIP, MKV, DMG, anything — and it goes to Download Station instead of
+through the browser. **No size threshold: any size.** A checkbox turns it on, and it is **off by
+default**.
 
-**Competitor precedent:** *Send To QNAP++* offers "Large download interception" based on file size and extension filters.
+**2026-09-13 — shaped.** Three decisions were taken and close earlier options on this card:
 
-**Core Research Dimensions & Architectural Questions:**
-1. **Trigger Modes:**
-   - **Shift + Click (Non-intrusive modifier):** User holds Shift while clicking a download link; a content script captures the event, calls `preventDefault()`, and immediately sends the URL to the NAS without downloading locally.
-   - **Size-based threshold:** Uses `chrome.downloads.onCreated` and inspects `item.fileSize` (e.g. `> 500 MB` or `> 1 GB`). Triggers prompt or auto-hand-off.
-   - **Extension-based filtering:** Evaluates URL/filename against configurable extensions (`.iso`, `.mkv`, `.zip`, `.tar.gz`).
-2. **Technical Barriers to Solve:**
-   - *Session Cookies & Private Auth:* Chrome's `downloads.onCreated` exposes the URL, but not session cookies. If a file is downloaded behind a login session (Google Drive, MEGA, private cloud, intranet), QNAP DS `AddUrl` will receive HTTP 401/403 or an HTML login page. Can we detect auth requirements or pass cookies safely?
-   - *Ephemeral & Signed URLs:* AWS S3 and Cloudflare pre-signed URLs often have a 30–60s expiration window. If Download Station queues the task and waits for a free slot, the URL may expire before the transfer starts.
-   - *Transactional Rollback:* Like `.torrent` interception, browser downloads must pause, attempt the NAS hand-off, and cancel locally only if the NAS returns HTTP 200 / `error: 0`; on failure, the browser download must seamlessly resume.
-3. **Investigation Steps:**
-   - Phase 1: Prototype Shift+Click content script capture on public direct links (e.g. Ubuntu ISOs).
-   - Phase 2: Test `AddUrl` against various authenticated services to document exact failure modes.
-   - Phase 3: Evaluate UX affordances (toast with undo/cancel vs explicit confirmation prompt).
+- **No size threshold.** The earlier draft listed "size-based threshold (e.g. > 500 MB)" as a
+  trigger mode, copying *Send To QNAP++*'s configurable 500 MB default. Dropped. A threshold is a
+  number the user has to guess at, and it makes the feature fire unpredictably — the same click
+  behaves differently depending on a file size nobody checked first.
+- **Off by default.** Unlike the torrent switch, this one changes what happens to *ordinary* web
+  downloads, so it must be asked for.
+- **Extension-based filtering as a user-facing setting is dropped too** — but see open question 3:
+  something still has to decide what counts as a file, and that is a different problem from size.
+
+**What already exists, and must not be rebuilt**
+
+- `classifySource()` already returns `"url"`, and the context-menu path already sends a plain URL
+  through `AddUrl`. Sending an ordinary file to the NAS is a solved transport — see
+  `docs/qnap-download-station-capabilities.md`, which records exactly this. **What is missing is
+  only the automatic trigger.**
+- Routing rules run on every send path, so a routed destination comes for free.
+- `interceptTorrentLinks` in `src/lib/config.ts` plus its checkbox and hint in `Settings.svelte`
+  are the shape to copy, including how the hint explains Shift-click.
+
+**The architectural decision that has to come first**
+
+`handleDownloadCreated` **mirrors**: it hands the torrent to the NAS and deliberately keeps the
+browser's local copy, because a `.torrent` is a few KB. For a 4 GB ISO that contract is exactly
+wrong — mirroring transfers the file twice. So this feature cannot simply widen the
+`isTorrentSource()` gate at `downloads.ts:66`; that one-line change would look right and download
+everything twice.
+
+Two candidate mechanisms:
+
+**(a) Content script `preventDefault()` on the click** — the mechanism Shift-click already uses.
+No bytes ever flow in the browser, so there is nothing to cancel and no partial file. It only sees
+clicks on links: a download started by navigation, by script, or one that only reveals itself as a
+download after a redirect, is invisible to it.
+
+**(b) `chrome.downloads.onCreated` + cancel** — catches everything Chrome calls a download, but
+bytes have already started before anything can act. `downloads.onDeterminingFilename`, which could
+hold the download before a file is written, is **not used anywhere in this codebase today** (it
+appears only in comments), and Firefox has never implemented it (Bugzilla 1245652).
+
+(a) is the honest default given what is already built; (b) is a possible second net later, not a
+starting point.
+
+**Hazards already documented — do not rediscover them**
+
+- *Auth and cookies:* a file behind a login hands the NAS a 401/403 or an HTML login page. The
+  `.torrent` path dodges this by fetching in the page's own session and uploading the bytes; a 4 GB
+  file cannot be dodged that way.
+- *Ephemeral signed URLs:* S3/Cloudflare pre-signed links expire in 30–60 s and can die while the
+  task sits in Download Station's queue.
+- *Redirects:* **GAP-15** is currently a small `AddUrl` edge case. This feature makes it a
+  mainstream one — the two are coupled and should be decided together.
+
+**Open questions — answer before writing code**
+
+1. Mechanism (a) or (b), or (a) now and (b) behind a later decision.
+2. **What happens when the NAS refuses.** Silently fall back to an ordinary browser download, or
+   say so? `markSendNotice` and `notifier.ts` are the existing precedent for "this needs you".
+   Silent fallback is invisible; a notification on every failure is the thing BUG-* cards spent
+   effort removing.
+3. **What counts as a file.** Not a size question. A click on `<a href="page.html">` must not be
+   sent to the NAS. Candidates: the `download` attribute, a known-extension list, `Content-Type`
+   from a preflight, or only acting on links Chrome itself would have downloaded. Each has a
+   different false-positive profile, and a false positive here sends a web page to the NAS.
+4. Does Shift-click keep its current meaning while this is on, or become the escape hatch that
+   forces a *local* download?
+5. Copy for the checkbox and its hint, sitting next to the torrent one without the two reading as
+   duplicates.
+
+**Acceptance criteria (draft, to be confirmed once the questions above are answered)**
+
+1. With the switch off, nothing about ordinary downloads changes — this is the default, so it is
+   the case that must be provably inert.
+2. With the switch on, a click on a direct file link creates a Download Station task and no local
+   file, at any size, with no threshold anywhere in the code or the settings.
+3. Routing rules apply to it exactly as they do to every other send path.
+4. A NAS that refuses or is unreachable leaves the user with the file, not with nothing.
+5. A click on an ordinary page is never sent to the NAS.
+6. The switch is off in `DEFAULTS`, and a settings import that does not mention it leaves it off.
 
 ---
 
