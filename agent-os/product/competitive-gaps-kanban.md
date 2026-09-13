@@ -1016,6 +1016,20 @@ security surface for a Web Store extension. The `.torrent` path dodges this only
 fetch a few KB in the page's own session and upload the bytes — a 4 GB file cannot be dodged that
 way. Write the limitation into the hint text rather than half-solving it.
 
+**Q4 addendum — measured on hardware 2026-09-13.** The failure was assumed to be silent corruption;
+it is not. A server was pointed at the NAS returning the classic tracker response to an
+unauthenticated client — HTTP 200 with an HTML login page — for a URL ending `.iso`:
+
+```
+AddUrl  -> {"error": 0}
+Task/Query -> name='ubuntu-24.04.iso.html'  state=5 (finished)  size=87
+```
+
+**Download Station renames by content type.** The user gets `ubuntu-24.04.iso.html`, 87 bytes,
+marked complete — not a broken 87-byte "ISO". So the limitation is visible rather than deceptive,
+which lowers the cost of leaving it unsolved in v1 and makes the hint text the right remedy.
+Worth knowing before anyone reopens the cookie-forwarding argument.
+
 **Q5 — copy.** The checkbox sits under the existing torrent one; the hint has to carry both the
 "any size" promise and the auth limitation without restating the torrent switch.
 
