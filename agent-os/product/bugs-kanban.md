@@ -23,6 +23,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-66 | `npm run stand` cannot run — `tsx` is not a dependency | tooling | medium | Backlog |
 | BUG-67 | The real-NAS E2E spec targets a settings form that no longer exists | testing | high | Backlog |
 | BUG-68 | The test stand is a hand-rolled `node:http` switch; it should be a small Hono server | testing/tooling | medium | Backlog |
+| BUG-69 | No release gate touches the real NAS — every green check before a publish is a claim about the mock | testing/release | high | Backlog |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -2335,3 +2336,82 @@ profile.
 
 **Not urgent.** The stand works; `large-<n>mb.bin` covers the immediate need for a watchable
 transfer, and this card exists so that stopgap is replaced deliberately rather than grown.
+
+---
+
+### BUG-69 — No release gate touches the real NAS
+
+**Severity:** high · **Area:** testing/release · **Status:** Backlog
+**Files:** `.claude/skills/release/SKILL.md`, `tests/e2e/popup.real-nas.spec.ts`, `package.json`,
+`tests/e2e/README.md`
+**Blocked by:** BUG-67 — the real-NAS spec does not currently run at all.
+
+Everything the release procedure checks before promoting `env/dev` to `env/prod` — typecheck,
+Biome, 512 unit tests, 45 E2E, three builds, CI — runs against `mockNas.ts`. The mock answers
+exactly the questions it was written to answer, which is the one thing a pre-production check must
+not do. Two failures this month were invisible to all of it:
+
+- **RES-5 file interception** passed its mock E2E and was reported working, while against the real
+  NAS the first click returned `12288`. The mock accepts any URL; Download Station fetches it
+  itself, from its own machine, and a loopback URL is unreachable from there.
+- **BUG-67** — the real-NAS spec has been broken since `4f80131` (2026-06-21) and nobody noticed
+  for two months, because an opt-in suite that is never run is indistinguishable from one that
+  passes.
+
+So the gap is not "we lack a test". It is that **nothing in the path to the Web Store ever speaks
+to a QNAP**, and users are the first integration test. That is the risk this card closes.
+
+#### What the spot check is
+
+One named, scripted run — `npm run test:prod-spotcheck` — executed locally against the real NAS,
+**after the quality gates and before the release PR is opened**. Its output is pasted into the PR
+body, so a promotion carries evidence rather than an assertion.
+
+It is deliberately **not in CI**: GitHub runners have no route to the NAS, and the credentials live
+in `.env.e2e.local`, outside git and outside Actions by design. Trying to move it into CI is the
+tempting wrong turn — it would mean putting NAS credentials into repository secrets and exposing
+Download Station to the internet.
+
+#### What it must cover
+
+The base functionality a client loses if it breaks, each with what actually proves it. "The NAS
+returned `error: 0`" is **not** proof for any of these — that is precisely what `12288` taught:
+acceptance and downloading are different events.
+
+| # | Flow | Proof required |
+|---|------|----------------|
+| 1 | Connection test from Settings | Real `Misc/Login`, "Connection successful", credentials round-trip after a reload |
+| 2 | Task list renders live NAS state | At least one task from `Task/Query` rendered with name, size and progress |
+| 3 | `.torrent` file upload from the popup | `AddTorrent` accepted **and** the task appears in the list under its real `info.name` |
+| 4 | `.torrent` link click on a page | Intercepted, no file on disk, task created |
+| 5 | Magnet click | `AddUrl` with the magnet, task created |
+| 6 | Direct file link (RES-5) | Task reaches a **download phase with progress > 0**, not merely accepted |
+| 7 | Pause / resume / remove | State actually changes on the NAS, verified by re-query, not by the popup's optimism |
+| 8 | Toolbar badge | Count matches the NAS's own downloading count while a real transfer runs |
+| 9 | Routing rule | A rule sends a task to a different destination folder, confirmed in the task's `path` |
+
+Flow 6 needs the test stand bound to the LAN (`QNAP_STAND_LAN=1`) and the NAS on the same network;
+the throttled `large-<n>mb.bin` endpoint exists so this one can be observed rather than raced.
+
+#### Rules the run must obey
+
+1. **It only ever touches tasks it created.** Owned prefix (`quickget-e2e-`) plus
+   `cleanupTasksByPrefix` on the way in and out, as the current mutating test already does. The NAS
+   is a live machine with the user's own downloads on it.
+2. **It leaves the NAS as it found it** — including when it fails halfway. Cleanup belongs in
+   `finally`, not at the end of the happy path.
+3. **It fails loudly and specifically.** A timeout that says only "60 s exceeded" is what let
+   BUG-67 hide; each flow should say which call it was waiting on.
+4. **It records evidence.** The redacted HTTP bundle already written to
+   `.e2e-artifacts/real-nas-*.log` is the right mechanism — extend it, do not invent a second one.
+
+#### Open questions, to settle when implementing
+
+- **One spec or several?** Today it is one file with a read-only test and a `@mutating` one. Nine
+  flows in one file will be unreadable; splitting them means deciding what shares a browser session,
+  since launching the extension and saving settings is the slow part.
+- **How long may it take?** A spot check nobody runs because it takes fifteen minutes is BUG-67
+  again in a new costume. The throttled file makes flow 6 as slow as we choose — pick a size that
+  proves progress and no more.
+- **What happens when the NAS is unreachable at release time?** Skipping silently is how this class
+  of gap forms. It should be a deliberate, recorded decision to release without it.
