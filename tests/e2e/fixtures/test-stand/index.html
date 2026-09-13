@@ -358,6 +358,9 @@
       <button id="tab-btn-tracker" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" onclick="switchTab('tracker')">
         Tracker endpoints
       </button>
+      <button id="tab-btn-delivery" type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-delivery" onclick="switchTab('delivery')">
+        🐌 Delivery &amp; speed
+      </button>
     </div>
 
     <!-- Tab 1: Torrents -->
@@ -782,6 +785,114 @@
       </div>
     </section>
 
+    <!-- Tab 6: Delivery -->
+    <section id="tab-delivery" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-delivery">
+      <div class="banner">
+        Every file on this tab is generated on the fly at whatever size and speed the query asks
+        for. Against a <strong>real</strong> NAS, reach the stand by its LAN address &mdash;
+        Download Station fetches the link itself, so a <code>127.0.0.1</code> URL points at the NAS.
+      </div>
+      <div class="grid-cards">
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Slow trickle</h2>
+            <span class="tag tag-direct">64 MB @ 512 kB/s</span>
+          </div>
+          <p class="card-meta">About two minutes of visible progress. Speed is a property of any file here, not a separate endpoint &mdash; append <code>?kbps=</code> to anything.</p>
+          <div class="rule-hint"><code>?mb=64&amp;kbps=512</code></div>
+          <a id="stand-delivery-slow" class="btn-action" href="/files/trickle.bin?mb=64&kbps=512">
+            Download slowly
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Fast</h2>
+            <span class="tag tag-direct">64 MB @ 8 MB/s</span>
+          </div>
+          <p class="card-meta">The same file, the same route, a different rate. Useful for checking that a transfer which finishes quickly still reports honestly.</p>
+          <div class="rule-hint"><code>?mb=64&amp;kbps=8192</code></div>
+          <a id="stand-delivery-fast" class="btn-action" href="/files/quick.bin?mb=64&kbps=8192">
+            Download quickly
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Slow to start</h2>
+            <span class="tag tag-direct">5 s to first byte</span>
+          </div>
+          <p class="card-meta">Headers arrive at once, the body five seconds later. This is what &ldquo;accepted, nothing yet&rdquo; looks like on the wire.</p>
+          <div class="rule-hint"><code>?delayMs=5000</code></div>
+          <a id="stand-delivery-firstbyte" class="btn-action" href="/files/late.bin?mb=8&kbps=4096&delayMs=5000">
+            Download after a pause
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">No <code>Content-Length</code></h2>
+            <span class="tag tag-direct">Unknown total</span>
+          </div>
+          <p class="card-meta">Chunked, with no declared size. A client cannot compute a percentage from this &mdash; a progress bar becomes a spinner.</p>
+          <div class="rule-hint"><code>?nolength=1</code></div>
+          <a id="stand-delivery-nolength" class="btn-action" href="/files/unknown.bin?mb=32&kbps=2048&nolength=1">
+            Download without a total
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Ends early, cleanly</h2>
+            <span class="tag tag-direct">Lies about its size</span>
+          </div>
+          <p class="card-meta">Promises 32 MB, sends 4, then closes without error. The nastiest of the failures here: nothing signals a problem, so a client trusting the close over the declared length calls a partial file complete.</p>
+          <div class="rule-hint"><code>?truncateAt=4194304</code></div>
+          <a id="stand-delivery-truncated" class="btn-action" href="/files/short.bin?mb=32&kbps=4096&truncateAt=4194304">
+            Download a truncated file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Connection reset</h2>
+            <span class="tag tag-direct">Dies mid-transfer</span>
+          </div>
+          <p class="card-meta">Destroys the connection after 4 MB. Unlike the truncated file this one is loud &mdash; the question is whether the task ends in a clear error state or retries.</p>
+          <div class="rule-hint"><code>?abortAt=4194304</code></div>
+          <a id="stand-delivery-abort" class="btn-action" href="/files/broken.bin?mb=32&kbps=4096&abortAt=4194304">
+            Download a doomed file
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Redirect chain</h2>
+            <span class="tag tag-direct">3 hops</span>
+          </div>
+          <p class="card-meta">Three 302s before the real file. A download link on a real site is very often a redirect to a CDN, while the extension decides from the URL that was clicked.</p>
+          <div class="rule-hint"><code>/redirect?hops=3&amp;to=…</code></div>
+          <a id="stand-delivery-redirect" class="btn-action" href="/redirect?hops=3&to=/files/redirected.bin%3Fmb%3D16%26kbps%3D2048">
+            Follow the chain
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Plain 404</h2>
+            <span class="tag tag-direct">Error status</span>
+          </div>
+          <p class="card-meta">A download client meets far more missing files than exotic bandwidth profiles. <code>/status/403</code> and <code>/status/503</code> exist too.</p>
+          <div class="rule-hint"><code>/status/404</code></div>
+          <a id="stand-delivery-404" class="btn-action" href="/status/404">
+            Request a missing file
+          </a>
+        </article>
+
+      </div>
+    </section>
+
+
     <!-- Interactive Event & Interception Log -->
     <aside class="log-panel" aria-label="Interception Activity Log">
       <div class="log-header">
@@ -797,7 +908,7 @@
   </main>
 
   <script>
-    const TABS = ['torrents', 'magnets', 'direct', 'domains', 'tracker'];
+    const TABS = ['torrents', 'magnets', 'direct', 'domains', 'tracker', 'delivery'];
 
     /**
      * Tabs are addressable: every one has a URL, so a tab can be linked, bookmarked and shared.
