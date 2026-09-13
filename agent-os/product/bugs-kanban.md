@@ -20,6 +20,7 @@ changes. One card per defect, ordered by severity within a column.
 | BUG-63 | Shift-click E2E captures its baseline before the first download reaches disk | testing | medium | Done |
 | BUG-64 | `--color-text-muted` is referenced but never defined | popup/ui | low | Backlog |
 | BUG-65 | A light-theme text input has no visible boundary (WCAG 1.4.11) | popup/a11y | medium | Backlog |
+| BUG-66 | `npm run stand` cannot run — `tsx` is not a dependency | tooling | medium | Backlog |
 | BUG-34 | Seeding tasks vanish from "In progress" and obscure seeding progress/ETA metrics | popup/UX | medium | Done |
 | BUG-35 | Peer and seed counts provided by NAS are never displayed in the popup | popup/UX | medium | Done |
 | BUG-36 | Download payload size and progress in bytes (`done` / `size`) are hidden during download | popup/UX | medium | Done |
@@ -2218,3 +2219,34 @@ and do not trade away the focus ring or the `aria-invalid` border to get there.
 
 Found while measuring contrast for UX-26; deliberately left out of that change because it is a
 palette decision, not a spacing one.
+
+---
+
+### BUG-66 — `npm run stand` cannot run — `tsx` is not a dependency
+
+**Severity:** medium · **Area:** tooling · **Status:** Backlog
+**Files:** `package.json`
+
+```
+> quickget-remote@2.4.3 stand
+> tsx scripts/start-stand.ts
+sh: tsx: command not found
+```
+
+`"stand": "tsx scripts/start-stand.ts"` is the documented way to bring up the manual test stand
+and the mock NAS, and `tsx` appears in **neither `dependencies` nor `devDependencies`**. So the
+script cannot work on a clean checkout — it only ever worked for someone with `tsx` installed
+globally. `node scripts/start-stand.ts` is not a substitute: Node's type stripping does not
+rewrite the repo's `.js` import specifiers back to `.ts`, so it fails with `ERR_MODULE_NOT_FOUND`
+on `tests/e2e/support/mockNas.js`.
+
+Workaround while it is open: `npx -y tsx scripts/start-stand.ts`.
+
+**Proposed fix:** add `tsx` to `devDependencies`. It is the only thing the script needs and the
+only script that needs it.
+
+**Worth deciding at the same time:** the mock NAS binds to a random port on every start, so the
+port has to be re-entered into extension settings for each manual session. A fixed default with an
+override would make the stand usable without that ritual.
+
+Found while bringing the stand up to hand over for manual testing.
