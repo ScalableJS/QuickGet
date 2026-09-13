@@ -48,6 +48,70 @@ export function isTorrentSource(url: string, signals: SourceSignals = {}): boole
   return !mime && !filename && /\/dl\.php\b/i.test(url);
 }
 
+/**
+ * Extensions a plain click may hand to the NAS when file interception is on (RES-5).
+ *
+ * Deliberately a short allow-list of things nobody opens in a browser tab. Two absences are
+ * decisions, not omissions:
+ *
+ * - **`.pdf` is not here.** The browser expectation for a PDF link is the viewer, so sending it
+ *   to the NAS on a plain click would take away something the user wanted. An anchor carrying
+ *   `download` says otherwise and is honoured separately.
+ * - **`.torrent` is not here either**, and `isDownloadableFileUrl` rejects it outright. A torrent
+ *   already has a path that mirrors it and keeps the local copy; letting the file rule claim it
+ *   would silently turn on NAS-only behaviour for torrents the moment this checkbox is ticked.
+ */
+export const DOWNLOADABLE_FILE_EXTENSIONS: readonly string[] = [
+  "7z",
+  "apk",
+  "appimage",
+  "avi",
+  "bz2",
+  "dmg",
+  "exe",
+  "flac",
+  "gz",
+  "img",
+  "iso",
+  "mkv",
+  "mov",
+  "mp4",
+  "msi",
+  "pkg",
+  "rar",
+  "tar",
+  "tgz",
+  "vdi",
+  "vmdk",
+  "webm",
+  "xz",
+  "zip",
+];
+
+const FILE_EXTENSION_PATTERN = new RegExp(`\\.(?:${DOWNLOADABLE_FILE_EXTENSIONS.join("|")})$`, "i");
+
+/**
+ * Whether a plain click on this URL should be handed to the NAS instead of the browser.
+ *
+ * The extension is read from the **pathname only**, which is the whole point: a query string is
+ * not a file name. `/movie.mkv?token=abc` is a file; `/page?file=movie.mkv` is a page that
+ * mentions one, and sending it would put an HTML document into Download Station.
+ *
+ * Only `http`/`https`. `blob:`, `data:`, `javascript:`, `file:` and `mailto:` are things the NAS
+ * cannot fetch at all, so intercepting them would replace a working click with a failed task.
+ */
+export function isDownloadableFileUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  if (isTorrentSource(url)) return false;
+  return FILE_EXTENSION_PATTERN.test(parsed.pathname);
+}
+
 /** Matches the standard BitTorrent MIME types, ignoring parameters such as charset. */
 function isTorrentMime(mime: string): boolean {
   const cleanMime = mime.split(";")[0]?.trim().toLowerCase();

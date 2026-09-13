@@ -31,6 +31,20 @@ export type Settings = {
    * Off is not a dead end: Shift-clicking a link sends that one regardless.
    */
   interceptTorrentLinks: boolean;
+  /**
+   * Whether an ordinary click on a link to a plain file — ISO, ZIP, MKV and the rest of
+   * `DOWNLOADABLE_FILE_EXTENSIONS` — is sent to Download Station instead of the browser, at any
+   * size (RES-5).
+   *
+   * **Off by default, unlike the torrent switch.** That one changes what happens to a file type
+   * whose only sensible destination is a download client; this one changes what happens to
+   * ordinary web downloads, so it has to be asked for.
+   *
+   * Phase 1 serves plain links only. A link behind a login, or one that redirects, is still
+   * intercepted — nothing in a click handler can tell it apart without a request — and if
+   * Download Station cannot fetch it the task fails there, visibly.
+   */
+  interceptFileLinks: boolean;
   routingRules: RoutingRule[]; // per-download destination overrides, first match wins
   theme: ThemeMode; // popup color theme; "auto" follows the OS
 };
@@ -61,6 +75,7 @@ export const DEFAULTS: Settings = {
    * the download alone entirely rather than cancelling it (BUG-33).
    */
   interceptTorrentLinks: true,
+  interceptFileLinks: false,
   routingRules: [],
   theme: "auto",
 };

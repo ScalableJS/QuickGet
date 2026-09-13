@@ -191,6 +191,12 @@
       color: var(--tag-direct-text);
     }
 
+    /* Cards that exist to prove a negative: the classifier must leave these alone. */
+    .tag-edge {
+      background: rgba(220, 80, 80, 0.18);
+      color: #ffb4b4;
+    }
+
     .card-meta {
       font-size: 0.85rem;
       color: var(--text-muted);
@@ -492,10 +498,10 @@
     <!-- Tab 3: Direct URLs -->
     <section id="tab-direct" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-direct">
       <p class="card-meta" style="margin: 0 0 0.75rem;">
-        <strong>Nothing on this tab reaches the NAS.</strong> QuickGet only intercepts
-        <code>.torrent</code> downloads and magnet clicks; an ordinary browser download is left to
-        the browser, so no routing rule can apply to it. These links are here to show where the
-        rules stop, not what they do.
+        <strong>This tab depends on one setting.</strong> With <em>Send file links to Download
+        Station</em> off &mdash; the default &mdash; nothing here reaches the NAS and every link is an
+        ordinary browser download. With it on, the cards marked <em>Must not send</em> still have to
+        behave exactly as they do now; that is what the classifier is for.
       </p>
       <div class="grid-cards">
         <article class="card">
@@ -539,10 +545,82 @@
             <h2 class="card-title">Direct PDF Document</h2>
             <span class="tag tag-direct">Direct HTTP</span>
           </div>
-          <p class="card-meta">Document file download.</p>
-          <div class="rule-hint">Not intercepted &mdash; a <code>pdf</code> rule cannot fire here</div>
+          <p class="card-meta">Document file download, labelled with <code>download</code>.</p>
+          <div class="rule-hint">Sent when the file switch is on &mdash; the page called it a download</div>
           <a id="stand-direct-pdf" class="btn-action" href="/files/documentation.pdf" download="documentation.pdf">
             Download PDF File
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Bare PDF link</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">The same document without <code>download</code>.</p>
+          <div class="rule-hint">Never sent &mdash; a PDF link is expected to open in the viewer</div>
+          <a id="stand-direct-pdf-bare" class="btn-action" href="/files/handbook.pdf">
+            Open PDF
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Plain MKV, no <code>download</code></h2>
+            <span class="tag tag-direct">Extension only</span>
+          </div>
+          <p class="card-meta">A bare link. Only the path's extension says it is a file.</p>
+          <div class="rule-hint">File switch ON &rarr; sent &middot; OFF &rarr; browser</div>
+          <a id="stand-direct-plain-mkv" class="btn-action" href="/files/plain-clip.mkv">
+            Download Plain MKV
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extension in path, token in query</h2>
+            <span class="tag tag-direct">Query</span>
+          </div>
+          <p class="card-meta">A signed-looking link whose path still ends in a real extension.</p>
+          <div class="rule-hint">Must be sent &mdash; the query is not the file name</div>
+          <a id="stand-direct-token" class="btn-action" href="/files/token-clip.mkv?token=abc123">
+            Download Token MKV
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Page naming a file in its query</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">The trap the classifier exists for: an HTML page mentioning a zip.</p>
+          <div class="rule-hint">Never sent &mdash; it would put a web page into Download Station</div>
+          <a id="stand-direct-query-page" class="btn-action" href="/page.html?next=bundle.zip">
+            Open Page (?next=bundle.zip)
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extensionless, labelled a download</h2>
+            <span class="tag tag-direct">download attr</span>
+          </div>
+          <p class="card-meta">No extension anywhere; the anchor carries <code>download</code>.</p>
+          <div class="rule-hint">Sent on the page's own word, not on a guess</div>
+          <a id="stand-direct-extensionless-download" class="btn-action" href="/files/opaque-get" download="build.bin">
+            Download Opaque (labelled)
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h2 class="card-title">Extensionless, unlabelled</h2>
+            <span class="tag tag-edge">Must not send</span>
+          </div>
+          <p class="card-meta">Nothing readable says this is a file, so nothing claims it.</p>
+          <div class="rule-hint">Never sent &mdash; guessing here sends an unknown resource</div>
+          <a id="stand-direct-extensionless" class="btn-action" href="/files/opaque-get">
+            Open Opaque (unlabelled)
           </a>
         </article>
       </div>

@@ -31,7 +31,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-11 | Export `.torrent` file back from NAS via `⋮` menu | popup/ui | S | Deferred |
 | GAP-12 | Private tracker client emulation (`peer_mode`: Transmission, Deluge) | settings/api | S | Backlog |
 | GAP-13 | Default seeding time and share ratio limits in Settings | settings/api | S | Backlog |
-| RES-5 | Send an ordinary file download to the NAS on click, any size, behind an off-by-default switch | background/content | L | Backlog |
+| RES-5 | Send an ordinary file download to the NAS on click, any size, behind an off-by-default switch | background/content | L | Done |
 | GAP-2 | No survival story for a QTS firmware upgrade | api | M | Backlog |
 | GAP-3 | Offline queue — links are lost when the NAS is asleep | background | M | Backlog |
 | GAP-4 | No undo on remove | popup/ui | M | Backlog |
@@ -862,7 +862,7 @@ QNAP Download Station stores the bencoded `.torrent` file for every task and ser
 
 ### RES-5 — Send an ordinary file download to the NAS on click, any size, behind an off-by-default switch
 
-**Size:** L · **Area:** background/content · **Status:** Backlog — shaped, not started
+**Size:** L · **Area:** background/content · **Status:** Done (phase 1)
 **Files:** `src/background/downloads.ts`, `src/content/`, `src/lib/config.ts`,
 `src/lib/sourceKind.ts`, `src/popup/features/settings/Settings.svelte`
 **Related:** GAP-15 (unresolved redirects), RES-2 (`ftp://`), UX-23/UX-24 (the torrent switch and
@@ -1059,6 +1059,51 @@ service worker showing no new item. That proves no bytes flowed. Asserting only 
 saw no `download` event is weaker than it looks — an extension-initiated
 `chrome.downloads.download()` may not belong to that `Page` at all. For the browser-fallback path,
 arm `page.waitForEvent("download")` **before** the click.
+
+**2026-09-13 — phase 1 shipped.** `interceptFileLinks`, off in `DEFAULTS`, and a second checkbox
+under the torrent one. A plain trusted click on `<a href>` is claimed when the anchor carries
+`download` or the URL's **pathname** ends in one of `DOWNLOADABLE_FILE_EXTENSIONS`, and the URL
+goes through the same `link:send` path the Shift gesture already used — so routing rules, the
+`temp`/`move` fields and the failure toast came for free.
+
+Decisions worth keeping, because each closes a way this could have gone wrong:
+
+- **`.torrent` is excluded twice** — absent from the extension list *and* rejected outright by
+  `isDownloadableFileUrl`, including when the anchor says `download`. Without that, ticking this
+  checkbox would silently convert torrents from "mirror, keep the local copy" to NAS-only.
+- **The extension is read from the pathname, never the query.** `/movie.mkv?token=abc` is a file;
+  `/page?file=movie.mkv` is a page, and sending it would put an HTML document into Download
+  Station.
+- **`.pdf` is not in the list**, because a PDF link is expected to open in the viewer — but
+  `download` overrides that, so the two PDF cards on the stand are a matched pair.
+- The file branch runs **last** in the click handler, after Shift and magnet, so neither can be
+  reached by it.
+
+**One deviation from the design above, made deliberately.** The brief chose automatic fallback to
+`chrome.downloads.download()` when `AddUrl` fails. Shipped instead: the existing failure toast,
+with *Retry* and *Open locally*. Reasons — silently starting a multi-gigabyte browser download
+because the NAS was briefly unreachable is a worse default than asking, the feature's whole
+premise is that these files are too big to want locally, and the toast already exists and is
+tested. The ignore-set trap the brief identified turns out not to arise either: the fallback path
+is a `.iso`, `handleDownloadCreated` only claims torrents, so no loop is possible. If the toast
+proves annoying in use, auto-fallback is still available — but it should be chosen from evidence,
+not assumed.
+
+**Also shipped:** `interceptFileLinks` added to the backup's `PORTABLE_KEYS` with an import that
+only honours the key when it is actually present, so a backup written before this setting existed
+leaves it off.
+
+**Tests:** +19 unit (502 total) — the classifier table in `sourceKind.test.ts` and
+`getFileSendUrl` in `magnet.test.ts`, covering synthetic clicks, modifiers, Shift, and the
+query/path pair — plus a new `tests/e2e/file-interception.spec.ts` (45 E2E total) added to the
+`test:e2e:mock` list. Its success assertion is the triple the brief asked for: `AddUrl` seen once,
+**zero GETs at the origin for that path**, and no new `chrome.downloads` item. The stand grew six
+cards for the cases that had no fixture, including the two that must *not* be sent.
+
+**Still out of scope, as scoped:** redirects, signed/expiring URLs, authenticated downloads. A
+redirecting link is still intercepted and still handed to the NAS — nothing in a click handler can
+tell it apart — and fails visibly there if Download Station cannot fetch it. GAP-15 is the card
+for that.
 
 **Acceptance criteria (draft, to be confirmed once the questions above are answered)**
 

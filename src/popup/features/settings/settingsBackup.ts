@@ -15,6 +15,7 @@ const PORTABLE_KEYS = [
   "NAStempdir",
   "NASdir",
   "interceptTorrentLinks",
+  "interceptFileLinks",
   "routingRules",
   "theme",
 ] as const;
@@ -76,6 +77,11 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   } else if (typeof source.torrentInterceptMode === "string") {
     result.interceptTorrentLinks = source.torrentInterceptMode !== "off";
   }
+  // Only when the key is actually present. A backup written before this setting existed must
+  // leave it at whatever it is now — which, by default, is off.
+  if (typeof source.interceptFileLinks === "boolean") {
+    result.interceptFileLinks = source.interceptFileLinks;
+  }
   if (typeof source.theme === "string" && (THEME_MODES as readonly string[]).includes(source.theme)) {
     result.theme = source.theme as Settings["theme"];
   }
@@ -103,6 +109,7 @@ const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
   NAStempdir: "Temp Folder",
   NASdir: "Target Folder",
   interceptTorrentLinks: "Torrent link interception",
+  interceptFileLinks: "File link interception",
   routingRules: "Routing rules",
   theme: "Theme",
 };

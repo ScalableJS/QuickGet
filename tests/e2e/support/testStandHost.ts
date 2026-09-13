@@ -81,6 +81,17 @@ export async function startTestStandHost(options: TestStandHostOptions = {}): Pr
       return;
     }
 
+    // An ordinary page. It exists so the stand can prove the *negative*: a link that merely
+    // mentions a file in its query string must never be handed to the NAS.
+    if (pathname === "/page.html") {
+      send(
+        200,
+        { "content-type": "text/html; charset=utf-8" },
+        Buffer.from("<!doctype html><title>Ordinary page</title><p>This is a web page, not a file.</p>"),
+      );
+      return;
+    }
+
     if (pathname.startsWith("/files/")) {
       const filename = decodeURIComponent(path.basename(pathname));
       const isTorrent = filename.toLowerCase().endsWith(".torrent");
