@@ -26,7 +26,3 @@ export function stopAutoRefresh(): void {
     refreshIntervalId = null;
   }
 }
-
-export function isAutoRefreshRunning(): boolean {
-  return refreshIntervalId !== null;
-}

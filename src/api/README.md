@@ -1,195 +1,27 @@
-# API Module - Quick Reference
+# API module
 
-> Modern type-safe API client for QNAP Download Station with automatic session management.
+`src/api/` is the typed boundary for QNAP Download Station. Application code should create a
+client through `createApiClient()` rather than making Download Station requests directly.
 
-## 📂 Structure
+From a source module such as `src/background/example.ts`:
 
-```
-src/api/
-├── client.ts          # Main API client with business logic
-├── index.ts           # Client initialization & middleware
-├── utils.ts           # Data processing utilities
-├── schema.d.ts        # TypeScript API schema
-├── type.ts            # Type exports
-└── README.md          # This file
-```
+```ts
+import { createApiClient } from "@api/client.js";
+import { loadSettings } from "@lib/settings.js";
 
----
-
-## 🚀 Quick Start
-
-### Basic Usage
-
-```typescript
-import { createApiClient } from './api/client.js';
-import { loadSettings } from './lib/config.js';
-
-const settings = await loadSettings();
-const client = createApiClient({ settings });
-
-// SID is managed automatically - just call methods!
+const client = createApiClient({ settings: await loadSettings() });
 const { tasks } = await client.queryTasks();
-console.log(`Found ${tasks.length} downloads`);
 ```
 
-### With Logging
+## Module map
 
-```typescript
-import { createLogger } from './lib/logger.js';
+- [client.ts](./client.ts) — public `ApiClient` and `createApiClient()` entrypoint.
+- [index.ts](./index.ts) — transport setup, base-URL construction, and login helpers.
+- [utils.ts](./utils.ts) — API response guards and QNAP error normalization.
+- [type.ts](./type.ts) — application-facing schema type exports.
+- [schema.d.ts](./schema.d.ts) — checked-in Download Station request and response schema.
+- [client.test.ts](./client.test.ts), [index.test.ts](./index.test.ts), and
+  [utils.test.ts](./utils.test.ts) — unit coverage for this boundary.
 
-const logger = createLogger('API', { enabled: true });
-const client = createApiClient({ settings, logger });
-```
-
----
-
-## 📚 API Methods
-
-### Query Tasks
-```typescript
-const { tasks, raw } = await client.queryTasks({
-  params: {
-    limit: 100,
-    status: 'downloading',
-    direction: 'DESC'
-  },
-  signal: abortController.signal
-});
-```
-
-### Add Download
-```typescript
-// URL — temp/move default to settings.NAStempdir / settings.NASdir
-// (QNAP DS V4 requires both; pass overrides if needed)
-await client.addUrl('http://example.com/file.zip', {
-  targetFolder: '/downloads'
-});
-
-// Torrent file
-const result = await client.addTorrent(file);
-if (result.duplicate) {
-  console.log('Already exists');
-}
-```
-
-### Task Control
-```typescript
-await client.startTask(hash);
-await client.stopTask(hash);
-await client.removeTask(hash, { clean: true });
-```
-
-### Connection Test
-```typescript
-try {
-  await client.queryTasks({ params: { limit: 1 } });
-  console.log("NAS reachable");
-} catch (error) {
-  console.error("Connection failed", error);
-}
-```
-
----
-
-## 🔧 Utilities
-
-### Response Validation
-```typescript
-import { isSuccessResponse, getErrorMessage } from './utils.js';
-
-if (!isSuccessResponse(data)) {
-  throw new Error(`Failed: ${getErrorMessage(data)}`);
-}
-```
-
-### Error Creation
-```typescript
-import { createApiError } from './utils.js';
-
-const error = createApiError("Operation failed", responseData);
-// error.code, error.reason, error.duplicate, error.apiUnsupported
-```
-
----
-
-## ⚙️ Advanced Configuration
-
-### Custom Fetch
-```typescript
-const client = createApiClient({
-  settings,
-  fetchFn: customFetch, // For testing or custom handling
-  logger: { error: console.error, debug: console.log }
-});
-```
-
-### Build Base URL
-```typescript
-import { buildNASBaseUrl } from './index.js';
-
-const baseUrl = buildNASBaseUrl(settings);
-// → "https://192.168.1.100:8080" or "http://nas.local"
-```
-
----
-
-## 🏗️ Architecture
-
-### Middleware Stack
-
-The client uses a middleware pattern for request/response processing:
-
-1. **SID Middleware** - Automatically injects session ID
-   - Obtains SID on first request
-   - Adds SID to all subsequent requests
-   - Handles 401/403 by clearing SID for re-auth
-   - Supports URLSearchParams and FormData
-
-2. **Request Flow**
-   ```
-   Client Method Call
-        ↓
-   openapi-fetch Client
-        ↓
-   SID Middleware (onRequest)
-        ↓
-   HTTP Request to QNAP NAS
-        ↓
-   SID Middleware (onResponse)
-        ↓
-   Response returned to caller
-   ```
-
-### Type Safety
-
-The module uses auto-generated TypeScript types from `schema.d.ts`:
-
-```typescript
-// All requests/responses are fully typed
-type TaskQueryResponse = ApiResponse<"queryTasks">;
-type LoginRequest = ApiRequest<"login">;
-```
-
-### Error Handling
-
-Errors are enriched with metadata:
-
-```typescript
-try {
-  await client.addTorrent(file);
-} catch (error) {
-  if (error.duplicate) {
-    console.log('Torrent already exists');
-  } else if (error.apiUnsupported) {
-    console.log('API not available on this NAS');
-  } else {
-    console.error('Failed:', error.message);
-  }
-}
-```
-
----
-
-## 📖 See Also
-
-- **schema.d.ts** - Full TypeScript API schema
+The required Download Station behavior belongs in the
+[canonical QNAP contract](../../agent-os/standards/api/qnap-download-station-contract.md).

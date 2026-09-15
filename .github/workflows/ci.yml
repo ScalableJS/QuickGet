@@ -38,6 +38,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check Svelte
+        run: npm run check:svelte
+
       - name: Lint
         run: npm run lint
 
@@ -65,7 +68,7 @@ jobs:
         run: npm run lint:firefox
 
       - name: Package Firefox extension
-        run: npm run package:firefox
+        run: npm run package:firefox:from-dist
 
       - name: Upload Firefox package
         uses: actions/upload-artifact@v4

@@ -3,6 +3,7 @@
 High-level phases. The detailed, competitor-informed breakdown with per-item acceptance
 criteria lives in `docs/feature-roadmap.md` — this file is the summary an agent reads first.
 Open defects are tracked separately in `bugs-kanban.md`.
+Verified maintenance work is tracked in `engineering-kanban.md`.
 
 ## Phase 0 — Shipped
 

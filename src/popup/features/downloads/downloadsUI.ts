@@ -2,6 +2,7 @@ import type { Task } from "@lib/tasks.js";
 import { mount } from "svelte";
 
 import { formatRate } from "../../shared/formatters";
+import { isSettingsPanelVisible } from "../settings/settingsUI.js";
 import { toolbarView } from "../toolbar/toolbarView.svelte.js";
 
 import DownloadsList from "./DownloadsList.svelte";
@@ -54,9 +55,7 @@ export function renderDownloads(tasks: Task[]): void {
 
   downloadsView.tasks = tasks;
 
-  const settingsPanel = document.getElementById("settings-panel");
-  const settingsOpen = settingsPanel ? !settingsPanel.classList.contains("hidden") : false;
-  if (!settingsOpen) {
+  if (!isSettingsPanelVisible()) {
     downloadsSection.classList.remove("hidden");
   }
 

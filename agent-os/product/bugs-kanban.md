@@ -13,6 +13,8 @@ changes. One card per defect, ordered by severity within a column.
 
 | ID | Bug | Area | Severity | Status |
 |----|-----|------|----------|--------|
+| BUG-70 | Deleted torrent can intermittently reappear on QNAP after a full Chrome restart | background/QNAP integration | high | Backlog |
+| BUG-71 | Send feedback appears for some torrent/link paths but not for others | content/background/popup UX | medium | In Progress |
 | BUG-59 | Shift-click reports "Could not contact QuickGet" and still opens the browser save flow | content/background | high | Done |
 | BUG-60 | Shift-click E2E passes without proving the real browser outcome or extension-lifecycle failure | testing | high | Done |
 | BUG-61 | Torrent interception setting uses oversized copy and promises behavior the product does not guarantee | popup/settings UX | low | Done |
@@ -86,6 +88,81 @@ changes. One card per defect, ordered by severity within a column.
 ---
 
 ## Cards
+
+### BUG-70 — Deleted torrent can intermittently reappear on QNAP after a full Chrome restart
+
+**Severity:** high · **Area:** background/QNAP integration · **Status:** Backlog
+**Files:** `src/background/downloads.ts`, `src/background/index.ts`,
+`tests/e2e/download-interception.spec.ts`, `tests/e2e/support/mockNas.ts`
+
+Reported against the real extension on 2026-09-15. Observed sequence: a torrent is sent to
+Download Station, its QNAP task is deleted, Chrome is closed with all tabs, and reopening Chrome
+can recreate the deleted task without another click. The defect is intermittent and stopped
+reproducing during the investigation; that is not evidence that it is resolved.
+
+The trigger and owner are not established. There is no evidence that Chrome replayed a download
+event, that the extension issued a second `AddTorrent`, or that Download Station restored the task
+itself. The extension has no startup sweep of `chrome.downloads` and production storage does not
+retain torrent URLs or task identifiers. None of those facts establishes a cause.
+
+The symptom stopped after reinstalling the application and applying the preceding fixes. That
+correlation is not enough to attribute the disappearance to either action, and the current test
+environment does not reproduce the issue.
+
+**Diagnostic acceptance:** wait for a real recurrence and first establish whether a second raw
+`AddTorrent` request left the browser. Prefer observation outside production code: NAS request
+logs, an explicit temporary diagnostic build, or a narrowly scoped reproduction harness. Do not
+add persistent production diagnostics, task/download-ID dedupe, history cleanup, or lifecycle
+logic merely to make a hypothesis observable.
+
+**Fix acceptance:** establish one evidenced causal sequence, add a regression at the lowest layer
+that reproduces it, and change only the boundary proven responsible. No production mitigation is
+authorized while the bug remains non-reproducible.
+
+**Returned to Backlog 2026-09-15** — the production diagnostic and speculative restart scenario
+were reverted. The issue remains recorded, but it does not block current work and no fix will be
+attempted without new evidence.
+
+### BUG-71 — Send feedback appears for some torrent/link paths but not for others
+
+**Severity:** medium · **Area:** content/background/popup UX · **Status:** In Progress
+**Files:** `src/content/magnet.ts`, `src/background/downloads.ts`,
+`src/background/magnetHandler.ts`, `src/background/menus.ts`, `src/background/notifier.ts`,
+`src/popup/features/upload/torrentUpload.ts`, `src/popup/features/upload/batchUpload.ts`
+
+Reported from real use on 2026-09-15: adding torrents and download links does not produce
+consistent feedback — a toast appears on some attempts and not on others. This makes a successful
+send hard to distinguish from a missed click and encourages duplicate retries.
+
+The current code already contains an intentional path-dependent split that can explain at least
+part of the observation. An ordinary magnet and a Shift-clicked link go through the content script
+and show an in-page loading/success/error toast. An ordinary `.torrent` is instead discovered by
+`chrome.downloads` and is silent on success. A context-menu send is also silent on success and uses
+a system notification only for failure. Popup torrent and batch-URL uploads show an in-progress
+status and errors, but a fully successful request returns through the refresh callback without a
+terminal success message. This is a confirmed inconsistency in the feedback contract; it does not
+yet prove that any individual path intermittently loses a toast.
+
+**Diagnostic acceptance:** build a matrix for ordinary click, Shift-click, context menu, popup
+`.torrent` upload, and popup URL upload across `.torrent`, magnet, and ordinary URL sources. For
+each applicable cell, record the initiating context, NAS request count/result, local-browser
+outcome, toolbar transition, and visible feedback. Repeat on a newly opened tab and a tab retained
+across an extension update so a stale content script is not confused with the designed split.
+
+**Decision acceptance:** define one feedback contract by user intent rather than implementation
+path. A direct gesture must have one observable terminal outcome for success, duplicate, and
+failure; background automation must remain quiet on success; and the solution must not restore the
+system-notification spam deliberately removed by UX-10. State explicitly whether the task list or
+toolbar is sufficient confirmation for each silent path.
+
+**Fix acceptance:** implement the chosen contract at the narrowest shared boundary and add tests
+that prove exactly one NAS request and the expected terminal feedback for every affected path. A
+success indication must occur only after Download Station accepts the request, never merely after
+dispatch to the service worker.
+
+**Moved to In Progress 2026-09-15** — popup torrent and batch URL uploads now replace their working
+status with a terminal success only after the API reports acceptance. Content-click, automatic
+download and context-menu paths remain to be measured against the full matrix before this closes.
 
 ### BUG-59 — Shift-click reports "Could not contact QuickGet" and still opens the browser save flow
 

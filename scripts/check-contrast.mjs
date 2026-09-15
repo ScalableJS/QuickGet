@@ -42,7 +42,7 @@ function allVars(text) {
 }
 
 const base = { ...allVars(css), ...block(":root") };
-const light = { ...base, ...block(":root"), ...block(':root[data-theme="light"]') };
+const light = { ...base, ...block(':root[data-theme="light"]') };
 const dark = { ...base, ...block(':root[data-theme="dark"]') };
 
 function resolve(value, vars, depth = 0) {

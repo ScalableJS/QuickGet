@@ -1,9 +1,6 @@
 import type { TaskPriorityAction } from "@api/client.js";
 import { isCompleted, isInProgress, isReorderableStatus, type Task } from "@lib/tasks.js";
 
-// Re-exported so existing popup imports keep their familiar source.
-export { isCompleted, isInProgress } from "@lib/tasks.js";
-
 export type DownloadFilter = "in-progress" | "completed" | "all";
 
 export function filterDownloads(tasks: Task[], filter: DownloadFilter, query: string): Task[] {

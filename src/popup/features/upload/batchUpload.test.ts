@@ -75,6 +75,7 @@ describe("batchUpload", () => {
 
       expect(mockAddUrls).toHaveBeenCalledWith(urls, { targetFolder: "Multimedia/Downloads" });
       expect(requestMonitoring).toHaveBeenCalled();
+      expect(showStatus).toHaveBeenCalledWith("Added 2 downloads", "success", { autoHideMs: 2500 });
       expect(onSuccess).toHaveBeenCalled();
     });
 

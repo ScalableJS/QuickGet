@@ -44,6 +44,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-14 | Re-route a download after it has started — which windows actually exist | api/background | L | Rejected |
 | RES-6 | Is there a safe re-route window while a magnet is fetching metadata? | api/research | M | Deferred |
 | GAP-15 | A redirecting download URL is handed to the NAS unresolved | background/api | S | Backlog |
+| GAP-16 | Always intercept `.torrent` files, but fall back to the browser on every hand-off failure | background/content | L | Backlog |
 
 ---
 
@@ -764,6 +765,77 @@ download, so it is only worth it if the failure is real.
 a rule or a destination: a redirecting URL handed to the NAS produces a dead task whatever folder
 it was going to. Keeping it in the routing list made that list look longer than it is. Unchanged
 otherwise — still small, still gated on one question to a real NAS.
+
+---
+
+### GAP-16 — Always intercept `.torrent` files, but fall back to the browser on every hand-off failure
+
+**Size:** L · **Area:** background/content · **Status:** Backlog
+**Files:** `src/background/downloads.ts`, `src/content/magnet.ts`, `src/lib/config.ts`,
+`src/lib/settings.ts`, `src/popup/features/settings/Settings.svelte`, interception tests
+
+The torrent-specific checkbox and Shift-only branch make the safest path depend on a user
+remembering extension state and a hidden gesture. For `.torrent` files the product direction is
+simpler: every normal click is a NAS hand-off attempt, and the browser download disappears only
+after Download Station has accepted the torrent. The ordinary-file rule does **not** change:
+automatic interception remains off by default, Shift-click sends one file while it is off, and a
+plain click sends files only while that separate checkbox is on.
+
+Competitors establish useful boundaries, not an implementation to copy blindly:
+
+- *Send To QNAP++* offers opt-in automatic interception, an explicit local-download bypass and an
+  offline queue. Its queue is not suitable here because this card requires immediate browser
+  fallback rather than silently changing what a failed click means.
+- *Synofox* asks the user to choose NAS or local download after intercepting selected extensions,
+  and documents failures on cookie/User-Agent-protected downloads. We want the same preservation
+  of the local path without adding a confirmation dialog to every successful torrent.
+- Chrome's downloads API exposes `onDeterminingFilename`, `pause`, `resume` and `cancel`.
+  `onDeterminingFilename` may provide a cleaner Chromium transaction because completion waits for
+  the listener's `suggest()` call, but it is only a candidate until Chromium and Firefox behavior
+  is measured in persistent-profile tests.
+
+**Required transaction**
+
+1. Recognize a real `.torrent` response without cancelling or erasing the browser item.
+2. Validate configuration, authenticate to the NAS, fetch and validate torrent bytes, then call
+   `AddTorrent` exactly once.
+3. Cancel/remove the local item only after an unambiguous successful NAS response.
+4. On missing/invalid configuration, NAS login or API failure, fetch/validation failure, extension
+   restart, timeout, or ambiguous cancellation state, leave or resume the standard browser
+   download automatically. A toast or an “Open locally” recovery button is not a substitute.
+
+**Guardrails**
+
+- Remove the torrent checkbox and torrent-specific Shift semantics only as part of this complete
+  behavior change. Keep the ordinary-file checkbox and Shift gesture unchanged.
+- Do not add persistent download-ID/task-ID deduplication, a startup history sweep, or another
+  retry queue. Those mechanisms have no captured bug behind them and can themselves create
+  phantom sends.
+- Do not claim this fixes the unconfirmed phantom re-download. GAP-16 simplifies interception;
+  listener ownership and duplicate-trigger risk are audited separately in ENG-11.
+- Treat magnets explicitly: retain automatic NAS hand-off and native-handler fallback, but remove
+  their dependence on the torrent checkbox/Shift-only branch. The local-file suppression contract
+  above applies to `.torrent` downloads because a magnet creates no browser file.
+
+**Acceptance criteria**
+
+- [ ] Plain-clicking a `.torrent` with valid settings creates one NAS task and no retained local
+      copy; no torrent interception setting or Shift gesture is required.
+- [ ] Missing settings, unreachable NAS, rejected login, rejected `AddTorrent`, invalid torrent
+      bytes and worker restart each complete as an ordinary browser download without a second
+      click.
+- [ ] Ordinary HTTP/file links preserve the existing matrix: checkbox off means native click and
+      Shift sends one; checkbox on means plain click sends to NAS.
+- [ ] The chosen Chromium and Firefox mechanisms are documented from measured behavior; if full
+      parity is impossible, scope is explicit rather than simulated with an unsafe cancel/retry.
+- [ ] Unit tests assert one `AddTorrent` call and browser ownership for every failure branch;
+      persistent-profile Chromium E2E covers restart/no-duplicate behavior; the success and NAS
+      failure paths are checked against the live NAS.
+
+**Sources checked 2026-09-15:** [Send To QNAP++ on AMO](https://addons.mozilla.org/en-US/firefox/addon/sendtoqnapplus/),
+[Synofox on AMO](https://addons.mozilla.org/en-CA/firefox/addon/synofox/),
+[Chrome downloads API](https://developer.chrome.com/docs/extensions/reference/api/downloads),
+and `docs/competitor-routing-teardown.md` for the inspected competitor code paths.
 
 ---
 

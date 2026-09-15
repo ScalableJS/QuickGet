@@ -48,6 +48,9 @@ describe("torrentUpload", () => {
 
     expect(mockAddTorrent).toHaveBeenCalledWith(file, { targetFolder: "Multimedia/Default" });
     expect(requestMonitoring).toHaveBeenCalled();
+    expect(showStatus).toHaveBeenCalledWith('Added "linux.torrent" to Download Station', "success", {
+      autoHideMs: 2500,
+    });
     expect(onSuccess).toHaveBeenCalled();
   });
 

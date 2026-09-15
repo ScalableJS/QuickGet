@@ -1,5 +1,3 @@
-export type Vendor = "synology" | "qnap";
-
 export type TaskStatus =
   | "queued"
   | "queuedChecking"
@@ -53,7 +51,7 @@ export type Task = {
   stagingFolder?: string;
   errorCode?: number;
   errorMessage?: string;
-  source?: Vendor;
+  source?: "qnap";
 };
 
 /**
@@ -165,20 +163,6 @@ export function summarizeProgress(tasks: Task[]): ProgressSummary {
   return { downloading, seeding, all: tasks.length, downRate, upRate };
 }
 
-const synologyToUnified: Record<string, TaskStatus> = {
-  waiting: "queued",
-  downloading: "downloading",
-  seeding: "seeding",
-  paused: "paused",
-  stopped: "stopped",
-  hash_checking: "checking",
-  repairing: "repairing",
-  extracting: "extracting",
-  finishing: "finishing",
-  finished: "finished",
-  error: "error",
-};
-
 const qnapToUnified: Record<string, TaskStatus> = {
   queued: "queued",
   waiting: "queued",
@@ -199,39 +183,17 @@ const qnapToUnified: Record<string, TaskStatus> = {
   error: "error",
 };
 
-const mapStatus = (vendor: Vendor, raw: string): TaskStatus => {
+const mapStatus = (raw: string): TaskStatus => {
   const keyString = String(raw ?? "")
     .trim()
     .toLowerCase();
 
-  if (vendor === "qnap") {
-    const numeric = Number(keyString);
-    if (!Number.isNaN(numeric)) {
-      const mapped = qnapNumericStates[numeric];
-      if (mapped) return mapped;
-    }
-    return qnapToUnified[keyString] ?? "queued";
+  const numeric = Number(keyString);
+  if (!Number.isNaN(numeric)) {
+    const mapped = qnapNumericStates[numeric];
+    if (mapped) return mapped;
   }
-
-  if (vendor === "synology") {
-    const numeric = Number(keyString);
-    if (!Number.isNaN(numeric)) {
-      const mapped = synologyNumericStates[numeric];
-      if (mapped) return mapped;
-    }
-    return synologyToUnified[keyString] ?? "queued";
-  }
-
-  return "error";
-};
-
-const synologyNumericStates: Record<number, TaskStatus> = {
-  0: "queued",
-  1: "downloading",
-  2: "downloading",
-  3: "seeding",
-  4: "paused",
-  5: "finished",
+  return qnapToUnified[keyString] ?? "queued";
 };
 
 const qnapNumericStates: Record<number, TaskStatus> = {
@@ -291,46 +253,6 @@ const toRecordArray = (value: unknown): RawTaskRecord[] => {
   return value.filter((item): item is RawTaskRecord => typeof item === "object" && item !== null);
 };
 
-const normalizeSynology = (input: unknown): Task => {
-  const task = asRecord(input);
-  const additional = asRecord(task.additional);
-  const transfer = asRecord(additional.transfer);
-  const detail = asRecord(additional.detail);
-
-  const size = readNumber(task.size ?? transfer.size, 0);
-  const downloaded = readNumber(transfer.size_downloaded, 0);
-
-  const seedsTotal = parseNumber(detail.seeders);
-  const peersTotal = parseNumber(detail.leechers);
-  const eta = parseNumber(transfer.eta) ?? parseNumber(detail.eta);
-  const createdAt = parseNumber(detail.create_time);
-
-  return {
-    id: readString(task.id ?? task.task_id ?? task.hash ?? crypto.randomUUID()),
-    name: readString(task.title ?? task.display_name ?? detail.destination ?? "task"),
-    status: mapStatus("synology", readString(task.status ?? "", "")),
-    progress: size > 0 ? clamp((downloaded / size) * 100, 0, 100) : readNumber(transfer.progress, 0),
-    sizeBytes: size,
-    downloadedBytes: downloaded,
-    uploadedBytes: readNumber(transfer.size_uploaded, 0),
-    downSpeedBps: readNumber(transfer.speed_download, 0),
-    upSpeedBps: readNumber(transfer.speed_upload, 0),
-    seeds: {
-      connected: readNumber(detail.connected_seeders, 0),
-      total: seedsTotal,
-    },
-    peers: {
-      connected: readNumber(detail.connected_leechers, 0),
-      total: peersTotal,
-    },
-    etaSec: eta,
-    hash: parseString(task.hash) ?? parseString(detail.uri) ?? parseString(detail.destination) ?? undefined,
-    addedAt: createdAt,
-    priority: parseNumber(task.priority),
-    source: "synology",
-  };
-};
-
 const normalizeQnap = (input: unknown): Task => {
   const task = asRecord(input);
 
@@ -360,7 +282,7 @@ const normalizeQnap = (input: unknown): Task => {
 
   const progress = hasValidProgress ? rawProgress : calculatedProgress;
 
-  const status = mapStatus("qnap", readString(task.status ?? task.state ?? "", ""));
+  const status = mapStatus(readString(task.status ?? task.state ?? "", ""));
 
   const downRate = readNumber(task.down_rate ?? task.download_speed, 0);
   const upRate = readNumber(task.up_rate ?? task.upload_speed, 0);
@@ -406,7 +328,7 @@ const normalizeQnap = (input: unknown): Task => {
   };
 };
 
-export const normalizeTasks = (vendor: Vendor, payload: unknown): Task[] => {
+export const normalizeTasks = (payload: unknown): Task[] => {
   const root = asRecord(payload);
   const variants = [
     toRecordArray(payload),
@@ -417,7 +339,7 @@ export const normalizeTasks = (vendor: Vendor, payload: unknown): Task[] => {
 
   const list = variants.find((items) => items.length > 0) ?? [];
 
-  return vendor === "synology" ? list.map((item) => normalizeSynology(item)) : list.map((item) => normalizeQnap(item));
+  return list.map((item) => normalizeQnap(item));
 };
 
 function parseDateToEpoch(value: string): number | undefined {

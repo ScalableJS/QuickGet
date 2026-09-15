@@ -4,11 +4,11 @@
   import { flip } from "svelte/animate";
   import { EmptyState, IconButton, SearchField, SegmentedControl } from "@ui";
   import { loadSettings } from "@lib/settings.js";
-  import { isReorderableStatus } from "@lib/tasks.js";
+  import { isInProgress, isReorderableStatus } from "@lib/tasks.js";
   import DownloadItem from "../../components/downloadItem/DownloadItem.svelte";
   import { showStatus } from "../../components/index.js";
   import { listDownloads, setTaskPriority } from "./downloadsManager.js";
-  import { filterDownloads, isInProgress, reorderTasks, type DownloadFilter } from "./downloadFilters.js";
+  import { filterDownloads, reorderTasks, type DownloadFilter } from "./downloadFilters.js";
   import type { downloadsView } from "./downloadsView.svelte.js";
 
   let {
