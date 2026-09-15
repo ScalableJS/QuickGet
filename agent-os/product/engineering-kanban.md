@@ -243,7 +243,7 @@ by themselves — each must be tied to a distinct browser/user intent and tested
 retry state may be introduced to “make duplicates impossible” without a captured duplicate and a
 trace showing its source. A clean audit with no deletion is a valid result.
 
-**Completed 2026-09-15.** The event inventory found no duplicate browser listener that could be
+**Completed 2026-09-15 — shipped in v2.6.0.** The event inventory found no duplicate browser listener that could be
 removed safely:
 
 | Owner | Trigger | NAS reachability | Distinct responsibility |

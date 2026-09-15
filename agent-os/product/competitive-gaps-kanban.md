@@ -831,7 +831,7 @@ Competitors establish useful boundaries, not an implementation to copy blindly:
       persistent-profile Chromium E2E covers restart/no-duplicate behavior; the success and NAS
       failure paths are checked against the live NAS.
 
-**Completed 2026-09-15.** Chromium holds the filename decision while
+**Completed 2026-09-15 — shipped in v2.6.0.** Chromium holds the filename decision while
 the NAS hand-off runs, then cancels and erases only after `AddTorrent` succeeds. Every handled
 failure releases the decision to Chrome, so its own download continues. This is deliberately
 in-memory and transactional, with no stored download ID to replay later. Firefox has no filename-decision event, so it uses

@@ -45,7 +45,7 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 - **Torrent links need no switch:** `.torrent` downloads and magnets are always handed to Download
   Station, with the browser path restored automatically when configuration, tracker access or the
   NAS fails. The only remaining interception setting is for ordinary files; it stays off by
-  default, and Shift-click sends one eligible file while it is off. Shipped in v2.5.1/vNext
+  default, and Shift-click sends one eligible file while it is off. Shipped in v2.6.0
   (GAP-16, ENG-11; supersedes UX-23/UX-24's torrent gesture).
 - **A connection test that answers in five seconds and says what it found:** the check is a login
   ping with a budget, saving no longer waits on the network, and a rejected password is told apart
