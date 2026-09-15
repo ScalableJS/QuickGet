@@ -18,27 +18,13 @@ export type Settings = {
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   /**
-   * Send torrent links to Download Station without being asked — `.torrent` downloads and
-   * `magnet:` clicks alike.
-   *
-   * One switch, because the two were never two ideas: they are two Chrome APIs for the same
-   * intent, and they used to carry opposite defaults for no reason anyone could name. Whether a
-   * local copy is left behind is not a choice either — it is what the browser allows. Chrome
-   * cancels at the filename stage so nothing reaches Downloads; Firefox has no
-   * `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016) and keeps the older
-   * pause-and-cancel path, where a small file can still land.
-   *
-   * Off is not a dead end: Shift-clicking a link sends that one regardless.
-   */
-  interceptTorrentLinks: boolean;
-  /**
    * Whether an ordinary click on a link to a plain file — ISO, ZIP, MKV and the rest of
    * `DOWNLOADABLE_FILE_EXTENSIONS` — is sent to Download Station instead of the browser, at any
    * size (RES-5).
    *
-   * **Off by default, unlike the torrent switch.** That one changes what happens to a file type
-   * whose only sensible destination is a download client; this one changes what happens to
-   * ordinary web downloads, so it has to be asked for.
+   * **Off by default.** Torrent files and magnets always belong to Download Station; this setting
+   * changes what happens to ordinary web downloads, so it has to be asked for. Shift-click sends
+   * one eligible ordinary file while the setting is off.
    *
    * Phase 1 serves plain links only. A link behind a login, or one that redirects, is still
    * intercepted — nothing in a click handler can tell it apart without a request — and if
@@ -68,13 +54,6 @@ export const DEFAULTS: Settings = {
    */
   NAStempdir: "Download",
   NASdir: "Download",
-  /**
-   * On, because a NAS client that waits to be asked before doing its one job is a worse
-   * default than one that acts. The risk that once justified caution is handled elsewhere: a
-   * live NAS login runs before the browser transfer is touched, so an unreachable NAS leaves
-   * the download alone entirely rather than cancelling it (BUG-33).
-   */
-  interceptTorrentLinks: true,
   interceptFileLinks: false,
   routingRules: [],
   theme: "auto",

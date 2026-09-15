@@ -193,7 +193,7 @@ describe("isDownloadableFileUrl — what a plain click may send (RES-5)", () => 
     expect(isDownloadableFileUrl("http://h/deep/path/file.zip#part2")).toBe(true);
   });
 
-  it("leaves torrents alone — they already have a path that keeps the local copy", () => {
+  it("leaves torrents to their unconditional downloads API transaction", () => {
     expect(isDownloadableFileUrl("http://h/release.torrent")).toBe(false);
     expect(isDownloadableFileUrl("http://tracker/dl.php?id=1")).toBe(false);
     expect(DOWNLOADABLE_FILE_EXTENSIONS).not.toContain("torrent");

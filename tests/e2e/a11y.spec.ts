@@ -24,7 +24,7 @@ test.describe("accessibility", () => {
     NASpassword: "demo-password",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    interceptTorrentLinks: true,
+    interceptFileLinks: false,
     routingRules: [
       { namePattern: "mkv", destination: "Multimedia/Movies" },
       { domain: "example.com", destination: "Multimedia/Other" },
@@ -286,11 +286,7 @@ test.describe("accessibility", () => {
     }
   });
 
-  /**
-   * The interception setting has two states, so it is a checkbox. It used to be a two-item
-   * select on a tab of its own — a menu to discover that the alternative was "off".
-   */
-  test("interception is one checkbox on the connection tab, and it persists", async () => {
+  test("only ordinary-file interception remains configurable, with Shift documented", async () => {
     const nas = await startMockNas();
     const session = await launchExtensionPopup(devBuildPath);
 
@@ -304,24 +300,20 @@ test.describe("accessibility", () => {
       await session.page.getByRole("button", { name: "Open settings" }).click();
       await session.page.getByRole("button", { name: "Edit" }).click();
 
-      // One switch now: `.torrent` downloads and magnet clicks were two Chrome APIs for the
-      // same intent, and whether a local copy survives is a browser capability rather than a
-      // preference. The two checkboxes that used to sit here are gone.
-      const intercept = session.page.locator("#interceptTorrentLinks");
-      await expect(intercept).toBeChecked();
+      const intercept = session.page.locator("#interceptFileLinks");
+      await expect(intercept).not.toBeChecked();
+      await expect(session.page.getByLabel("Send torrent links to Download Station")).toHaveCount(0);
       await expect(session.page.getByLabel("Don't save .torrent locally")).toHaveCount(0);
       await expect(session.page.getByLabel("Intercept magnet links")).toHaveCount(0);
-
-      // The gesture that makes the switch low-stakes has to be stated, or nobody finds it.
       await expect(intercept).toHaveAccessibleDescription(/Shift-click/);
 
-      await intercept.uncheck();
+      await intercept.check();
       await session.page.click("#save-btn");
 
       const stored = await session.worker.evaluate(
-        async () => (await chrome.storage.local.get("interceptTorrentLinks")).interceptTorrentLinks,
+        async () => (await chrome.storage.local.get("interceptFileLinks")).interceptFileLinks,
       );
-      expect(stored).toBe(false);
+      expect(stored).toBe(true);
     } finally {
       await session.close();
       await nas.close();

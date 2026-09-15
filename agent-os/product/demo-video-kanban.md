@@ -217,7 +217,7 @@ on real hardware. Therefore:
 - No fabricated toolbar, icon, badge or popup — every one of those is real in this design, which
   is the entire reason for native window capture.
 
-A separate real-NAS run already exists (`popup.real-nas.spec.ts`, `npm run test:e2e:real`). If the
+A separate real-NAS run already exists (`prod-spotcheck.spec.ts`, `npm run test:prod-spotcheck`). If the
 listing ever needs to claim verified end-to-end delivery, that is the run to cite — not this one.
 
 **Before handing the file over** (skill's checklist, and BUG-30's red line): pull 2–3 frames at

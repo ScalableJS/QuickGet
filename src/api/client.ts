@@ -86,7 +86,7 @@ export class ApiClient {
 
   async queryTasks(options: QueryTasksOptions = {}): Promise<QueryTasksResult> {
     const raw = await this.queryTasksRaw(options);
-    const tasks = normalizeTasks("qnap", raw);
+    const tasks = normalizeTasks(raw);
     return { raw, tasks };
   }
 

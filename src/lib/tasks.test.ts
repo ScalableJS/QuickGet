@@ -26,7 +26,7 @@ describe("QNAP task status contract", () => {
     [104, "downloading"],
     [105, "allocating"],
   ] satisfies [number, TaskStatus][])("maps Download Station state %i to %s", (state, expected) => {
-    const [task] = normalizeTasks("qnap", {
+    const [task] = normalizeTasks({
       data: [{ hash: `state-${state}`, source_name: `state-${state}`, state, progress: 42, size: 100 }],
     });
 
@@ -36,7 +36,7 @@ describe("QNAP task status contract", () => {
   it("preserves the real download completion chain", () => {
     const statuses = [104, 3, 100].map(
       (state) =>
-        normalizeTasks("qnap", { data: [{ hash: String(state), source_name: String(state), state }] })[0]?.status,
+        normalizeTasks({ data: [{ hash: String(state), source_name: String(state), state }] })[0]?.status,
     );
 
     expect(statuses).toEqual(["downloading", "moving", "seeding"]);
@@ -44,24 +44,24 @@ describe("QNAP task status contract", () => {
 
   describe("QNAP task metrics and edge cases", () => {
     it("calculates progress from downloaded and total size, clamped to 0..100", () => {
-      const [normal] = normalizeTasks("qnap", {
+      const [normal] = normalizeTasks({
         data: [{ hash: "1", source_name: "T1", size: 1000, down_size: 250 }],
       });
       expect(normal?.progress).toBe(25);
 
-      const [overflow] = normalizeTasks("qnap", {
+      const [overflow] = normalizeTasks({
         data: [{ hash: "2", source_name: "T2", size: 500, down_size: 1500 }],
       });
       expect(overflow?.progress).toBe(100);
 
-      const [zeroSize] = normalizeTasks("qnap", {
+      const [zeroSize] = normalizeTasks({
         data: [{ hash: "3", source_name: "T3", size: 0, progress: 42 }],
       });
       expect(zeroSize?.progress).toBe(42);
     });
 
     it("parses dates, seeds, peers, and speeds correctly", () => {
-      const [task] = normalizeTasks("qnap", {
+      const [task] = normalizeTasks({
         data: [
           {
             hash: "HASH123",
@@ -97,19 +97,19 @@ describe("QNAP task status contract", () => {
     });
 
     it("handles fallback date formats in parseDateToEpoch", () => {
-      const [task1] = normalizeTasks("qnap", {
+      const [task1] = normalizeTasks({
         data: [{ hash: "1", source_name: "T1", create_time: "2026-05-10T12:00:00" }],
       });
       expect(typeof task1?.addedAt).toBe("number");
 
-      const [task2] = normalizeTasks("qnap", {
+      const [task2] = normalizeTasks({
         data: [{ hash: "2", source_name: "T2", create_time: "invalid-date" }],
       });
       expect(task2?.addedAt).toBeUndefined();
     });
 
     it("handles missing names and identifiers gracefully", () => {
-      const [task] = normalizeTasks("qnap", {
+      const [task] = normalizeTasks({
         data: [{ state: 0 }],
       });
 
@@ -118,13 +118,13 @@ describe("QNAP task status contract", () => {
     });
 
     it("extracts errorCode and errorMessage from QNAP task payload and ignores 0", () => {
-      const [diskFull] = normalizeTasks("qnap", {
+      const [diskFull] = normalizeTasks({
         data: [{ hash: "1", source_name: "Disk Full", state: 4, error: 20488, error_msg: "Not enough disk space" }],
       });
       expect(diskFull?.errorCode).toBe(20488);
       expect(diskFull?.errorMessage).toBe("Not enough disk space");
 
-      const [normalTask] = normalizeTasks("qnap", {
+      const [normalTask] = normalizeTasks({
         data: [{ hash: "2", source_name: "Normal", state: 104, error: 0 }],
       });
       expect(normalTask?.errorCode).toBeUndefined();
@@ -132,86 +132,28 @@ describe("QNAP task status contract", () => {
     });
 
     it("normalizes downloadedBytes from done, down_size, or total_down", () => {
-      const [doneTask] = normalizeTasks("qnap", {
+      const [doneTask] = normalizeTasks({
         data: [{ hash: "1", source_name: "T1", done: 500_000 }],
       });
       expect(doneTask?.downloadedBytes).toBe(500_000);
 
-      const [downSizeTask] = normalizeTasks("qnap", {
+      const [downSizeTask] = normalizeTasks({
         data: [{ hash: "2", source_name: "T2", down_size: 750_000 }],
       });
       expect(downSizeTask?.downloadedBytes).toBe(750_000);
 
-      const [totalDownTask] = normalizeTasks("qnap", {
+      const [totalDownTask] = normalizeTasks({
         data: [{ hash: "3", source_name: "T3", total_down: 1_250_000 }],
       });
       expect(totalDownTask?.downloadedBytes).toBe(1_250_000);
     });
 
     it("returns empty array for invalid or empty input structures", () => {
-      expect(normalizeTasks("qnap", null)).toEqual([]);
-      expect(normalizeTasks("qnap", undefined)).toEqual([]);
-      expect(normalizeTasks("qnap", {})).toEqual([]);
-      expect(normalizeTasks("qnap", { data: "not an array" })).toEqual([]);
-      expect(normalizeTasks("qnap", { data: [] })).toEqual([]);
-    });
-  });
-
-  describe("Synology task normalization contract", () => {
-    it("normalizes a rich Synology task payload", () => {
-      const synologyPayload = {
-        tasks: [
-          {
-            id: "dbid_42",
-            title: "ArchLinux.iso",
-            status: "downloading",
-            size: 1000,
-            additional: {
-              transfer: {
-                size_downloaded: 400,
-                size_uploaded: 150,
-                speed_download: 50000,
-                speed_upload: 10000,
-                eta: 120,
-              },
-              detail: {
-                destination: "Downloads/Linux",
-                connected_seeders: 10,
-                seeders: 25,
-                connected_leechers: 3,
-                leechers: 8,
-                create_time: 1700000000,
-              },
-            },
-          },
-        ],
-      };
-
-      const [task] = normalizeTasks("synology", synologyPayload);
-
-      expect(task).toMatchObject({
-        id: "dbid_42",
-        name: "ArchLinux.iso",
-        status: "downloading",
-        progress: 40,
-        sizeBytes: 1000,
-        downloadedBytes: 400,
-        uploadedBytes: 150,
-        downSpeedBps: 50000,
-        upSpeedBps: 10000,
-        etaSec: 120,
-        addedAt: 1700000000,
-        seeds: { connected: 10, total: 25 },
-        peers: { connected: 3, total: 8 },
-      });
-    });
-
-    it("maps Synology statuses correctly", () => {
-      const statuses = ["downloading", "waiting", "paused", "finished", "error", "seeding"].map(
-        (status) => normalizeTasks("synology", { tasks: [{ id: "1", title: "T", status }] })[0]?.status,
-      );
-
-      expect(statuses).toEqual(["downloading", "queued", "paused", "finished", "error", "seeding"]);
+      expect(normalizeTasks(null)).toEqual([]);
+      expect(normalizeTasks(undefined)).toEqual([]);
+      expect(normalizeTasks({})).toEqual([]);
+      expect(normalizeTasks({ data: "not an array" })).toEqual([]);
+      expect(normalizeTasks({ data: [] })).toEqual([]);
     });
   });
 });
@@ -223,19 +165,19 @@ describe("QNAP task status contract", () => {
  */
 describe("QNAP destination folder", () => {
   it("carries the move folder through", () => {
-    const [task] = normalizeTasks("qnap", {
+    const [task] = normalizeTasks({
       data: [{ hash: "a", source_name: "x", state: 104, move: "Multimedia/Movies", path: "/Download/x" }],
     });
     expect(task.destination).toBe("Multimedia/Movies");
   });
 
   it("reports absence rather than falling back to the physical path", () => {
-    const [noMove] = normalizeTasks("qnap", {
+    const [noMove] = normalizeTasks({
       data: [{ hash: "a", source_name: "x", state: 104, path: "/Download/x" }],
     });
     expect(noMove.destination).toBeUndefined();
 
-    const [blank] = normalizeTasks("qnap", {
+    const [blank] = normalizeTasks({
       data: [{ hash: "b", source_name: "y", state: 104, move: "   " }],
     });
     expect(blank.destination).toBeUndefined();

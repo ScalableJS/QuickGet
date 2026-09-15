@@ -1,6 +1,6 @@
-import type { Task } from "@lib/tasks.js";
+import { isCompleted, isInProgress, type Task } from "@lib/tasks.js";
 import { describe, expect, it } from "vitest";
-import { filterDownloads, isCompleted, isInProgress, reorderTasks } from "./downloadFilters.js";
+import { filterDownloads, reorderTasks } from "./downloadFilters.js";
 
 const task = (name: string, status: Task["status"]): Task => ({
   id: name,

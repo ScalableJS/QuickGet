@@ -6,6 +6,8 @@ QuickGet Remote is a browser extension that provides a focused interface for QNA
 
 - Send links, magnet URIs, or torrent files to Download Station with a single action.
 - Intercept browser `.torrent` downloads and clicks on `magnet:` links — route them directly to your NAS.
+- Send an ordinary file download — an ISO, an archive, a video — to the NAS with a plain click, at
+  any size, because no bytes pass through the browser. Off by default.
 - Hold <kbd>Shift</kbd> when clicking a torrent or magnet link to send just that one, whether automatic interception is on or off.
 - Monitor active tasks in real time: combined NAS transfer rates (`↓ / ↑`) in the header, transferred payload size (`done / size`), and swarm health (seeds and peers).
 - Manage download priority in the queue (`Top`, `Up`, `Down`) directly from each task card.
@@ -54,11 +56,10 @@ To load a local build instead:
 
 1. Open the QuickGet Remote popup.
 2. Click the ⚙ button to open Settings and specify NAS connection parameters:
-   - NAS address (IP or hostname)
-   - Port number
+   - Server URL — scheme, host and port in one field (`http://192.168.1.50:8080`)
    - Username and password
-   - Server URL (`http://` or `https://`), temporary directory, and destination directory
-   - Torrent link interception
+   - Temporary and destination directories
+   - Optional ordinary-file link interception (torrent files and magnets are automatic)
    - Optional routing rules that send matching tasks to a folder of their own
    - Color theme (*Auto* / *Light* / *Dark*, default: *Auto*, which follows the OS)
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
@@ -68,7 +69,8 @@ To load a local build instead:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| **Send torrent links to Download Station** | On | Covers both `.torrent` downloads and clicked `magnet:` links. Turning it off is not a dead end — <kbd>Shift</kbd>-clicking a link still sends that one. |
+| **Torrent files and magnet links** | Automatic | QuickGet first tries Download Station. A `.torrent` stays with the browser, or a magnet with its native handler, whenever configuration or hand-off fails. |
+| **Send file links to Download Station** | Off | A click on an ordinary file link goes to the NAS instead of the browser, at any size. With this off, <kbd>Shift</kbd>-click sends one file. Only unambiguous links are claimed — a known extension in the path, or a `download` attribute. Links behind a login are not supported: the NAS fetches them itself and has no access to your browser session. |
 | **Lock settings with password** | Off | Protects access to the settings screen. Background downloads continue while locked. |
 
 
@@ -145,20 +147,23 @@ SendToQNAP/
 ## Documentation
 
 Additional documentation is available in the `docs/` directory:
-- [svelte-migration-plan.md](./docs/svelte-migration-plan.md) — Svelte 5 migration plan, phases, and icon strategy
-- [popup-refactoring-plan.md](./docs/popup-refactoring-plan.md) — Popup architecture and refactoring notes
-- [toolbar-actions.md](./docs/toolbar-actions.md) — Toolbar implementation details
-- [cache-options.md](./docs/cache-options.md) — API client caching options
-- [settings-ux-plan.md](./docs/settings-ux-plan.md) — Settings screen UX plan
-- [download-interception-bugs.md](./docs/download-interception-bugs.md) — Known interception edge cases
 - [local-development.md](./docs/local-development.md) — Local development setup
 - [firefox-release-guide.md](./docs/firefox-release-guide.md) — AMO packaging and submission
 - [feature-roadmap.md](./docs/feature-roadmap.md) — Planned work
+- [toolbar-actions.md](./docs/toolbar-actions.md) — Toolbar implementation details
+- [cache-options.md](./docs/cache-options.md) — API client caching options
+- [download-interception-bugs.md](./docs/download-interception-bugs.md) — Known interception edge cases
 - [qnap-download-station-capabilities.md](./docs/qnap-download-station-capabilities.md) — What the NAS supports vs. what this extension exposes; read before adding a source format
 - [design-system-spacing-research.md](./docs/design-system-spacing-research.md) — The popup's spacing scale, section rhythm and surfaces, and the contrast measurements behind them
 - [routing-coverage.md](./docs/routing-coverage.md) — Which send paths the routing rules reach
 - [manual-test-download-targets.md](./docs/manual-test-download-targets.md) — Measured public ISO/ZIP URLs for hand-testing file interception: direct, redirecting, expiring-signed, and the ones that must *not* be intercepted
 - [competitor-analysis.md](./docs/competitor-analysis.md), [competitor-routing-teardown.md](./docs/competitor-routing-teardown.md) and [synology-download-station-analysis.md](./docs/synology-download-station-analysis.md) — Prior-art research
+
+Historical, kept because they explain why the code looks the way it does, not what to do next —
+all three describe work that has shipped:
+[svelte-migration-plan.md](./docs/svelte-migration-plan.md),
+[popup-refactoring-plan.md](./docs/popup-refactoring-plan.md),
+[settings-ux-plan.md](./docs/settings-ux-plan.md).
 
 Contributor-facing conventions, standards, and the open-defect board live in
 [AGENTS.md](./AGENTS.md) and `agent-os/`.
@@ -226,7 +231,9 @@ The extension uses `openapi-fetch` against a hand-maintained schema in `src/api/
    ```
 5. Open a pull request against `env/dev` with a concise description of the change.
 
-`env/prod` is release-only — it is the sole branch that publishes to the Chrome Web Store.
+`env/prod` is release-only — it is the sole branch that publishes to the Chrome Web Store. A
+release additionally runs `npm run test:prod-spotcheck` against a real NAS, because every gate
+above questions a mock this repository wrote itself; see [`tests/e2e/README.md`](./tests/e2e/README.md).
 
 Pull requests are preferred to long-lived forks so improvements remain consolidated.
 
@@ -238,7 +245,10 @@ QuickGet Remote is distributed under the MIT License. See [LICENSE.md](./LICENSE
 
 Upcoming improvements focused on convenience and network control, keeping the extension fast and lightweight:
 
-- **Quick speed limit throttle:** A speedometer button in the header with one-click presets (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, or custom) to temporarily throttle NAS bandwidth when someone is streaming or gaming on your local network.
+- **Quick speed limit throttle:** A speedometer button in the header to temporarily throttle NAS
+  bandwidth when someone is streaming or gaming on your local network. Shape still open: the NAS
+  keeps *separate* rate limits for HTTP, FTP and BitTorrent, so a single "2 MB/s" button has to
+  decide what it actually limits — see `docs/qnap-download-station-capabilities.md`.
 - **Private tracker compatibility:** An option in advanced settings to identify as popular BitTorrent clients (Transmission, Deluge, or uTorrent) so private trackers that whitelist specific clients accept downloads smoothly.
 - **Default seeding limits:** Configure default target share ratios and seeding durations for finished torrents directly from settings.
 

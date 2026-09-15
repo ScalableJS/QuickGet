@@ -225,9 +225,11 @@ Do not duplicate these:
   Better than Synology's. Keep.
 - **Alarm-based status polling** — `src/background/alarms.ts` (30s, self-disarms when idle).
 - **Quick-add (multi-line URL/magnet)** — `src/popup/features/upload/CreateUrls.svelte`.
-- **`.torrent` download interception** — `src/background/downloads.ts`
-  (`torrentInterceptMode` off/always — the `ask` chooser was removed in `2ed381c`)
-  + intercept/resume notifications.
+- **`.torrent` download interception** — `src/background/downloads.ts` always attempts the NAS
+  hand-off, suppresses the local Chromium copy only after `AddTorrent` succeeds, and otherwise
+  releases the browser download automatically. There is no torrent-specific setting or gesture.
+- **Magnet content-script capture** — `src/content/magnet.ts` captures ordinary magnet clicks,
+  sends one `AddUrl` request, and falls back to the native handler automatically on failure.
 
 ---
 
@@ -237,12 +239,9 @@ Small, independent, high-delight. Quick-add already exists (see above) — dropp
 
 ### TODO
 
-- [ ] **Magnet content-script capture** (opt-in) — *real gap*. We intercept `.torrent`
-      *files* via the downloads API, but `magnet:` clicks never hit that API (the browser
-      hands them to an external app). A content script at `document_start`, capture-phase on
-      `a[href^="magnet:"]` → `preventDefault` → send to NAS closes this. Gate behind an
-      `autoCaptureMagnets` setting with live `storage.onChanged` update. Complements — does
-      not duplicate — the existing torrent interception. Review the `<all_urls>` content-script
+- [x] **Magnet content-script capture** — shipped and later simplified by GAP-16. A content script
+      at `document_start` captures `a[href^="magnet:"]`, sends it to the NAS, and returns to the
+      native handler automatically on failure. It is no longer gated by a torrent setting.
       permission + AMO data-disclosure impact vs. the current manifest.
 - [ ] **Undo on remove** — *deferred (needs new UI infra).* Removal is an immediate NAS API
       call (`removeDownload` → `client.removeTask`); a true undo means delaying the call + a

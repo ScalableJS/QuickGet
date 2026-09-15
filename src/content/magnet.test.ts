@@ -3,7 +3,6 @@ import {
   findAnchor,
   getFileSendUrl,
   getMagnetUri,
-  getShiftSendUrl,
   initMagnetInterception,
   isEligibleClick,
   resolveTheme,
@@ -258,13 +257,13 @@ describe("magnet content script", () => {
   });
 
   describe("initMagnetInterception", () => {
-    it("attaches the click listener when interception is on in storage", () => {
+    it("attaches the click listener without a torrent setting", () => {
       const addEventListenerSpy = vi.spyOn(document, "addEventListener");
 
       const storageListeners: Array<(changes: Record<string, chrome.storage.StorageChange>, area: string) => void> = [];
       const mockStorage = {
         local: {
-          get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: true })),
+          get: vi.fn((_keys, cb) => cb({ interceptFileLinks: false })),
         },
         onChanged: {
           addListener: vi.fn((listener) => storageListeners.push(listener)),
@@ -296,7 +295,7 @@ describe("magnet content script", () => {
       const sendMessageMock = vi.fn((_msg, cb) => cb?.({ ok: true }));
       (globalThis as unknown as { chrome: unknown }).chrome = {
         storage: {
-          local: { get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: true })) },
+          local: { get: vi.fn((_keys, cb) => cb({ interceptFileLinks: false })) },
           onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
         },
         runtime: {
@@ -322,7 +321,7 @@ describe("magnet content script", () => {
 
       clickHandler?.(event);
 
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
+      expect(preventDefaultSpy).toHaveBeenCalledOnce();
       expect(sendMessageMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "task:add",
@@ -334,7 +333,7 @@ describe("magnet content script", () => {
       cleanup();
     });
 
-    it("consumes a failed Shift-click and offers an explicit recovery instead of a page download", () => {
+    it("Shift-click sends one ordinary file while automatic file interception is off", () => {
       let clickHandler: ((event: MouseEvent) => void) | undefined;
       vi.spyOn(document, "addEventListener").mockImplementation((type, listener, options) => {
         if (type === "click" && (options as { capture?: boolean })?.capture) {
@@ -342,22 +341,21 @@ describe("magnet content script", () => {
         }
       });
 
-      const sendMessageMock = vi.fn((_msg, cb) => cb?.(undefined));
+      const sendMessageMock = vi.fn((_msg, cb) => cb?.({ ok: true }));
       (globalThis as unknown as { chrome: unknown }).chrome = {
         storage: {
-          local: { get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: false })) },
+          local: { get: vi.fn((_keys, cb) => cb({ interceptFileLinks: false })) },
           onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
         },
         runtime: {
           sendMessage: sendMessageMock,
-          lastError: { message: "Could not establish connection. Receiving end does not exist." },
           id: "test-extension-id",
         },
       };
 
       const cleanup = initMagnetInterception();
       const anchor = document.createElement("a");
-      anchor.href = "https://tracker.example.com/release.torrent";
+      anchor.href = "https://example.com/release.zip";
       document.body.appendChild(anchor);
       const event = createClickEvent({
         button: 0,
@@ -377,18 +375,13 @@ describe("magnet content script", () => {
         expect.objectContaining({ type: "link:send", url: anchor.href }),
         expect.any(Function),
       );
-      const feedback = document.getElementById("quickget-feedback-host")?.shadowRoot;
-      expect(feedback?.textContent).toContain("Could not contact QuickGet");
-      expect(feedback?.getElementById("qg-action-0")?.textContent).toBe("Retry");
-      expect(feedback?.getElementById("qg-action-1")?.textContent).toBe("Open locally");
 
       cleanup();
     });
 
     /**
-     * The listener is attached unconditionally now. Gating it on the setting left the
-     * Shift gesture dead in exactly the configuration it exists for — automatic capture off.
-     * The setting decides what an *ordinary* click does, and that is checked in the handler.
+     * The listener is unconditional. The ordinary-file setting changes handler behavior; it
+     * never owns registration.
      */
     it("keeps the listener attached whatever the setting says", () => {
       const addEventListenerSpy = vi.spyOn(document, "addEventListener");
@@ -397,7 +390,7 @@ describe("magnet content script", () => {
       let storageListener: ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void) | undefined;
       const mockStorage = {
         local: {
-          get: vi.fn((_keys, cb) => cb({ interceptTorrentLinks: false })),
+          get: vi.fn((_keys, cb) => cb({ interceptFileLinks: false })),
         },
         onChanged: {
           addListener: vi.fn((listener) => {
@@ -410,69 +403,19 @@ describe("magnet content script", () => {
 
       const cleanup = initMagnetInterception();
 
-      // Attached even though automatic capture is off.
+      // Attached even though automatic ordinary-file capture is off.
       expect(addEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), {
         capture: true,
         passive: false,
       });
 
-      // Toggling the setting must not detach it — only teardown does that.
-      storageListener?.({ interceptTorrentLinks: { newValue: true, oldValue: false } }, "local");
-      storageListener?.({ interceptTorrentLinks: { newValue: false, oldValue: true } }, "local");
+      storageListener?.({ interceptFileLinks: { newValue: true, oldValue: false } }, "local");
+      storageListener?.({ interceptFileLinks: { newValue: false, oldValue: true } }, "local");
       expect(removeEventListenerSpy).not.toHaveBeenCalled();
 
       cleanup();
       expect(removeEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), true);
     });
-  });
-});
-
-/**
- * Shift-clicking a `.torrent` link is the per-click opt-in: it sends that one link whatever the
- * automatic settings say. Recognition happens from the href alone, which is what bounds it.
- */
-describe("getShiftSendUrl", () => {
-  function shiftClickOn(href: string, init: MouseEventInit & { isTrusted?: boolean } = {}): MouseEvent {
-    const anchor = document.createElement("a");
-    anchor.href = href;
-    document.body.appendChild(anchor);
-    return createClickEvent({
-      button: 0,
-      cancelable: true,
-      isTrusted: true,
-      shiftKey: true,
-      composedPath: [anchor, document.body, document, window],
-      ...init,
-    });
-  }
-
-  it("claims a Shift-clicked link that looks like a torrent", () => {
-    expect(getShiftSendUrl(shiftClickOn("https://tracker.example.com/ubuntu.torrent"))).toBe(
-      "https://tracker.example.com/ubuntu.torrent",
-    );
-    // TorrentPier's source-backed route: no extension, still a torrent.
-    expect(getShiftSendUrl(shiftClickOn("https://tracker.example.com/dl.php?id=12345"))).toBe(
-      "https://tracker.example.com/dl.php?id=12345",
-    );
-  });
-
-  it("leaves ordinary links alone — the gesture must not hijack Shift-click across the web", () => {
-    expect(getShiftSendUrl(shiftClickOn("https://example.com/article"))).toBeNull();
-    expect(getShiftSendUrl(shiftClickOn("https://example.com/photo.jpg"))).toBeNull();
-  });
-
-  it("ignores every modifier except Shift alone", () => {
-    const url = "https://tracker.example.com/ubuntu.torrent";
-    expect(getShiftSendUrl(shiftClickOn(url, { shiftKey: false }))).toBeNull();
-    for (const mod of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
-      expect(getShiftSendUrl(shiftClickOn(url, mod))).toBeNull();
-    }
-  });
-
-  it("ignores synthetic clicks, so a page cannot make the extension send links", () => {
-    expect(
-      getShiftSendUrl(shiftClickOn("https://tracker.example.com/ubuntu.torrent", { isTrusted: false })),
-    ).toBeNull();
   });
 });
 
@@ -523,7 +466,7 @@ describe("getFileSendUrl", () => {
     expect(getFileSendUrl(clickOn("https://example.com/page?file=movie.mkv"))).toBeNull();
   });
 
-  it("never claims a torrent — that path mirrors and keeps the local copy", () => {
+  it("never claims a torrent — that path has its own downloads API transaction", () => {
     expect(getFileSendUrl(clickOn("https://tracker.example.com/ubuntu.torrent"))).toBeNull();
     expect(getFileSendUrl(clickOn("https://tracker.example.com/dl.php?id=12345"))).toBeNull();
     // Even when the page labels it a download.
@@ -535,8 +478,10 @@ describe("getFileSendUrl", () => {
     expect(getFileSendUrl(clickOn("https://example.com/manual.pdf"))).toBeNull();
   });
 
-  it("stands aside for Shift, which is the other gesture's job", () => {
-    expect(getFileSendUrl(clickOn("https://example.com/ubuntu.iso", { init: { shiftKey: true } }))).toBeNull();
+  it("uses the same classifier for Shift opt-in", () => {
+    expect(getFileSendUrl(clickOn("https://example.com/ubuntu.iso", { init: { shiftKey: true } }))).toBe(
+      "https://example.com/ubuntu.iso",
+    );
   });
 
   it("ignores modified and non-primary clicks, leaving the browser's own behaviour intact", () => {

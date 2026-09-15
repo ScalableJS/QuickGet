@@ -14,7 +14,6 @@ const PORTABLE_KEYS = [
   "NASlogin",
   "NAStempdir",
   "NASdir",
-  "interceptTorrentLinks",
   "interceptFileLinks",
   "routingRules",
   "theme",
@@ -71,12 +70,6 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   if (typeof source.NASlogin === "string") result.NASlogin = source.NASlogin;
   if (typeof source.NAStempdir === "string") result.NAStempdir = source.NAStempdir;
   if (typeof source.NASdir === "string") result.NASdir = source.NASdir;
-  // A backup written before the three interception flags became one still carries the old keys.
-  if (typeof source.interceptTorrentLinks === "boolean") {
-    result.interceptTorrentLinks = source.interceptTorrentLinks;
-  } else if (typeof source.torrentInterceptMode === "string") {
-    result.interceptTorrentLinks = source.torrentInterceptMode !== "off";
-  }
   // Only when the key is actually present. A backup written before this setting existed must
   // leave it at whatever it is now — which, by default, is off.
   if (typeof source.interceptFileLinks === "boolean") {
@@ -108,7 +101,6 @@ const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
   NASlogin: "Username",
   NAStempdir: "Temp Folder",
   NASdir: "Target Folder",
-  interceptTorrentLinks: "Torrent link interception",
   interceptFileLinks: "File link interception",
   routingRules: "Routing rules",
   theme: "Theme",

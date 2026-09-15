@@ -1,13 +1,13 @@
 /**
- * Content script: sends magnet clicks to QNAP Download Station.
+ * Content script: sends magnet and eligible ordinary-file clicks to QNAP Download Station.
  * Injected at document_start into all frames.
  *
  * Adheres to strict DOM Event Loop semantics:
- * - Ordinary enabled magnet clicks retain their browser protocol-handler fallback.
- * - Shift-click cancels link navigation synchronously before any async work.
+ * - Magnet clicks are always claimed; a failed NAS hand-off invokes the browser handler.
+ * - Shift-click opts one ordinary file into sending while automatic file interception is off.
  * - Forward magnet URI to the Service Worker via runtime.sendMessage.
  * - Provide immediate feedback in an isolated Shadow DOM toast.
- * - On failure, offer explicit [Retry] and [Open locally] buttons (compensating fallback).
+ * - On failure, restore the browser's normal navigation automatically.
  */
 
 import { DEFAULTS } from "@lib/config.js";
@@ -20,25 +20,13 @@ export type MagnetMessage = {
   pageUrl: string;
 };
 
-/**
- * "Send this one, whatever the settings say."
- *
- * Shift is the per-click opt-in: the checkboxes decide whether links are taken automatically,
- * Shift takes the one under the cursor regardless. It means the default matters less — someone
- * who does not want automatic interception can turn it off and still use the extension with a
- * modifier, without a trip to Settings or the context menu for every link.
- *
- * A `.torrent` needs its own message because a magnet click can be cancelled in the page while a
- * `.torrent` would otherwise become a browser download the worker meets with no memory of the
- * modifier — `DownloadItem` carries no modifier state.
- */
 export type SendLinkMessage = {
   type: "link:send";
   url: string;
   pageUrl: string;
 };
 
-export type MagnetResponse = { ok: true; deduped?: boolean } | { ok: false; error: string; code?: string };
+export type MagnetResponse = { ok: true } | { ok: false; error: string; code?: string };
 
 const inFlightUris = new Set<string>();
 const CONTENT_SCRIPT_CLEANUP_KEY = "quickget:magnet-content-cleanup";
@@ -46,10 +34,8 @@ const CONTENT_SCRIPT_CLEANUP_KEY = "quickget:magnet-content-cleanup";
 /**
  * Determine whether a mouse event represents an eligible, trusted primary click on a link.
  *
- * Shift is allowed through on purpose — it is the "send this one" gesture, and the same rule has
- * to hold for magnets and for `.torrent` links or one modifier would mean opposite things on two
- * kinds of link. Ctrl, Cmd and Alt keep their native meanings (new tab, new window, download the
- * link); we take Shift and nothing else.
+ * Shift is allowed through because it opts one ordinary file into sending. Ctrl, Cmd and Alt keep
+ * their native browser meanings.
  */
 export function isEligibleClick(event: MouseEvent): boolean {
   if (!event.isTrusted) return false;
@@ -61,47 +47,24 @@ export function isEligibleClick(event: MouseEvent): boolean {
 }
 
 /**
- * The absolute URL of a Shift-clicked `.torrent` link, or `null` for every other click.
- *
- * Recognition happens from the href alone, so `.torrent` endings and TorrentPier's `/dl.php` are
- * caught but an opaque endpoint that reveals itself only through a response MIME type is not —
- * from inside the page it is indistinguishable from any other link, and preventing every
- * Shift-click on the web to find out is not a trade worth making.
- */
-export function getShiftSendUrl(event: MouseEvent): string | null {
-  if (!event.isTrusted || event.button !== 0 || !event.cancelable) return null;
-  if (event.defaultPrevented) return null;
-  if (!event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return null;
-
-  const anchor = findAnchor(event);
-  const href = anchor instanceof HTMLAnchorElement ? anchor.href : null;
-  if (!href || !/^https?:/i.test(href)) return null;
-
-  return isTorrentSource(href) ? href : null;
-}
-
-/**
- * The absolute URL of a plainly-clicked link to an ordinary file, or `null` (RES-5).
+ * The absolute URL of an eligible ordinary-file link, or `null` (RES-5).
  *
  * Two signals, both readable synchronously, because `preventDefault()` cannot wait for a network
  * round trip: the anchor's own `download` attribute — the page saying outright that this is a
  * file — or a known extension in the URL's path. Nothing here inspects a response; a link that
  * only reveals itself as a file through its `Content-Type` is left to the browser.
  *
- * Shift is not consulted. That gesture already means "send this one whatever the settings say"
- * and is handled above; this is the automatic path and answers only to its own checkbox.
+ * The handler decides whether the file setting or Shift authorizes the send. Classification stays
+ * independent of that choice so both paths use the same allow-list.
  */
 export function getFileSendUrl(event: MouseEvent): string | null {
   if (!isEligibleClick(event)) return null;
-  if (event.shiftKey) return null;
-
   const anchor = findAnchor(event);
   if (!(anchor instanceof HTMLAnchorElement)) return null;
 
   const href = anchor.href;
   if (!href || !/^https?:/i.test(href)) return null;
-  // A torrent has its own path, which mirrors and keeps the local copy. Claiming it here would
-  // quietly change that to NAS-only the moment this checkbox is ticked.
+  // A torrent belongs to the downloads API transaction, never the ordinary-file setting.
   if (isTorrentSource(href)) return null;
 
   if (anchor.hasAttribute("download")) return href;
@@ -310,10 +273,8 @@ export function showFeedback(
 }
 
 /**
- * Forward an eligible magnet URI to the Service Worker. An ordinary click deliberately keeps
- * the browser's magnet protocol flow: there is no cross-browser API for discovering or invoking
- * a local magnet handler ourselves. Shift is the explicit full-interception gesture and claims
- * the click before dispatching it.
+ * Forward an eligible magnet URI to the Service Worker. The click is claimed before dispatch;
+ * failure restores the browser's native magnet handler through normal navigation.
  */
 function sendMagnetToWorker(uri: string): void {
   if (inFlightUris.has(uri)) return;
@@ -334,7 +295,7 @@ function sendMagnetToWorker(uri: string): void {
         inFlightUris.delete(uri);
         const lastErr = chrome.runtime.lastError;
         if (lastErr) {
-          showFeedback("error", `Could not contact QuickGet: ${lastErr.message}`);
+          fallBackToBrowser(uri, `Could not contact QuickGet: ${lastErr.message}`);
           return;
         }
 
@@ -342,26 +303,16 @@ function sendMagnetToWorker(uri: string): void {
           showFeedback("success", "Sent to Download Station");
         } else {
           const err = response?.error || "NAS rejected the link";
-          showFeedback("error", `Failed to send: ${err}`);
+          fallBackToBrowser(uri, `Failed to send: ${err}`);
         }
       });
     } catch (error) {
       inFlightUris.delete(uri);
-      showFeedback("error", `Extension error: ${String(error)}`);
+      fallBackToBrowser(uri, `Extension error: ${String(error)}`);
     }
   };
 
   dispatch();
-}
-
-/**
- * Whether plain clicks on magnets are taken automatically. Shift-clicks do not consult it — that
- * gesture is the per-click opt-in and works whatever the checkbox says.
- */
-let magnetCaptureEnabled = DEFAULTS.interceptTorrentLinks;
-
-export function setMagnetCaptureEnabled(enabled: boolean): void {
-  magnetCaptureEnabled = enabled;
 }
 
 /** Whether a plain click on an ordinary file link is sent to the NAS (RES-5). Off by default. */
@@ -371,21 +322,7 @@ export function setFileCaptureEnabled(enabled: boolean): void {
   fileCaptureEnabled = enabled;
 }
 
-/**
- * The interception switch as stored, falling back to the three keys that preceded it. The worker
- * migrates storage on its own schedule, and a content script can load into a page before that has
- * happened; reading the old key here keeps the first page after an update behaving correctly.
- */
-function readInterception(items: Record<string, unknown> | undefined): boolean {
-  if (typeof items?.interceptTorrentLinks === "boolean") return items.interceptTorrentLinks;
-  if (items?.torrentInterceptMode === "off") return false;
-  return DEFAULTS.interceptTorrentLinks;
-}
-
-/**
- * Hand a Shift-clicked link to the worker, which sends it the same way the context menu does —
- * fetching a `.torrent` in the page's own session when the tracker needs one.
- */
+/** Hand an ordinary file link to the worker through the same path as the context menu. */
 function sendLinkToWorker(url: string): void {
   if (inFlightUris.has(url)) return;
   inFlightUris.add(url);
@@ -398,57 +335,43 @@ function sendLinkToWorker(url: string): void {
       inFlightUris.delete(url);
       const lastErr = chrome.runtime.lastError;
       if (lastErr) {
-        showLinkFailure(url, `Could not contact QuickGet: ${lastErr.message}`);
+        fallBackToBrowser(url, `Could not contact QuickGet: ${lastErr.message}`);
         return;
       }
       if (response?.ok) {
         showFeedback("success", "Sent to Download Station");
         return;
       }
-      showLinkFailure(url, response?.error ?? "Could not send to Download Station");
+      fallBackToBrowser(url, response?.error ?? "Could not send to Download Station");
     });
   } catch (error) {
     inFlightUris.delete(url);
-    showLinkFailure(url, error instanceof Error ? error.message : "Could not contact QuickGet");
+    fallBackToBrowser(url, error instanceof Error ? error.message : "Could not contact QuickGet");
   }
 }
 
-function showLinkFailure(url: string, message: string): void {
-  showFeedback("error", message, [
-    { label: "Retry", onClick: () => sendLinkToWorker(url) },
-    { label: "Open locally", onClick: () => window.location.assign(url) },
-  ]);
+function fallBackToBrowser(url: string, message: string): void {
+  showFeedback("error", `${message}. Continuing in the browser.`);
+  window.location.assign(url);
 }
 
 /**
  * Click handler registered on document during the capture phase.
  *
- * Always attached, because Shift has to work even when both automatic modes are off — that is
- * the whole point of it. Nothing happens on an ordinary click in that configuration.
+ * Always attached because magnets are unconditional and Shift must work while automatic ordinary
+ * file interception is off.
  */
 function onDocumentClick(event: MouseEvent): void {
-  const shiftSendUrl = getShiftSendUrl(event);
-  if (shiftSendUrl) {
-    // Shift's native meaning is "open in a new window", which for a `.torrent` would flash a
-    // window and start a download we then have to chase. Cancelling and handing the worker the
-    // URL keeps it on the same path the context menu uses.
-    claimLinkClick(event);
-    sendLinkToWorker(shiftSendUrl);
-    return;
-  }
-
   const uri = getMagnetUri(event);
   if (uri) {
-    if (!event.shiftKey && !magnetCaptureEnabled) return;
-    if (event.shiftKey) claimLinkClick(event);
+    claimLinkClick(event);
     sendMagnetToWorker(uri);
     return;
   }
 
-  // Last, so a magnet or a torrent is never reached by the file rule.
-  if (!fileCaptureEnabled) return;
   const fileUrl = getFileSendUrl(event);
   if (!fileUrl) return;
+  if (!fileCaptureEnabled && !event.shiftKey) return;
 
   claimLinkClick(event);
   sendLinkToWorker(fileUrl);
@@ -465,17 +388,13 @@ function claimLinkClick(event: MouseEvent): void {
 }
 
 /**
- * Initialize listener based on storage configuration.
+ * Initialize the unconditional magnet listener and the ordinary-file preference.
  */
 export function initMagnetInterception(): () => void {
-  // Attached unconditionally. The setting decides what an *ordinary* click does; the listener has
-  // to exist either way, or Shift — the gesture whose entire purpose is working when automatic
-  // capture is off — would be dead in exactly the configuration it exists for.
   document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
 
   try {
-    chrome.storage.local.get(["interceptTorrentLinks", "interceptFileLinks", "torrentInterceptMode", "theme"], (items) => {
-      setMagnetCaptureEnabled(readInterception(items));
+    chrome.storage.local.get(["interceptFileLinks", "theme"], (items) => {
       setFileCaptureEnabled(
         typeof items?.interceptFileLinks === "boolean" ? items.interceptFileLinks : DEFAULTS.interceptFileLinks,
       );
@@ -486,9 +405,6 @@ export function initMagnetInterception(): () => void {
 
     const storageListener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string): void => {
       if (areaName === "local") {
-        if ("interceptTorrentLinks" in changes) {
-          setMagnetCaptureEnabled(Boolean(changes.interceptTorrentLinks.newValue));
-        }
         if ("interceptFileLinks" in changes) {
           setFileCaptureEnabled(Boolean(changes.interceptFileLinks.newValue));
         }
@@ -505,8 +421,8 @@ export function initMagnetInterception(): () => void {
       document.removeEventListener("click", onDocumentClick, true);
     };
   } catch {
-    // Storage unreachable (torn-down extension context): the Shift gesture still works, it just
-    // cannot learn whether automatic capture is on.
+    // Storage unreachable (torn-down extension context): magnets and Shift still work; only the
+    // automatic ordinary-file preference cannot be learned.
     return () => {
       document.removeEventListener("click", onDocumentClick, true);
     };

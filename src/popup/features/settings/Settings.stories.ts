@@ -30,7 +30,7 @@ const CONNECTED = {
   NASpassword: "hunter2",
   NAStempdir: "Download",
   NASdir: "Multimedia/Movies",
-  interceptTorrentLinks: true,
+  interceptFileLinks: false,
   theme: "auto",
   routingRules: [],
 };
@@ -85,8 +85,8 @@ export const WithRoutingRules: Story = {
   },
 };
 
-/** Interception off — the setting that quietly disabled the feature for whole profiles. */
-export const InterceptionOff: Story = { args: { storage: { ...CONNECTED, interceptTorrentLinks: false } } };
+/** Ordinary-file interception is an explicit opt-in; torrents remain unconditional. */
+export const FileInterceptionOn: Story = { args: { storage: { ...CONNECTED, interceptFileLinks: true } } };
 
 /** The settings screen behind its optional password. */
 export const SettingsLocked: Story = {

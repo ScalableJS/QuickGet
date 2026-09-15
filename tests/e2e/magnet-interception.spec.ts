@@ -28,7 +28,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
     NASpassword: "demo-password",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    interceptTorrentLinks: true,
+    interceptFileLinks: false,
     routingRules: [],
     theme: "auto",
     ...overrides,
@@ -36,14 +36,14 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
 }
 
 test.describe("magnet link interception (GAP-1)", () => {
-  test("sends a direct magnet click to the NAS while retaining the browser handler", async () => {
+  test("always sends a direct magnet click and claims the browser handler", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
     const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
     const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -61,12 +61,13 @@ test.describe("magnet link interception (GAP-1)", () => {
       expect(addUrlRequests.length).toBe(1);
       expect(decodeURIComponent(addUrlRequests[0].requestBody ?? "")).toContain("Ubuntu+ISO");
 
-      // Browser protocol handlers are the only portable local fallback for a magnet. The
-      // extension sends in parallel but must not suppress the page's default action here.
+      // The retired false value is ignored. QuickGet owns the click and invokes the native
+      // handler itself only when the NAS hand-off fails. The fixture's bubble listener never
+      // runs because the capture listener stops the claimed click immediately.
       const lastClick = await page.evaluate(
-        () => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick,
+        () => (window as unknown as { lastClick?: { defaultPrevented: boolean } }).lastClick,
       );
-      expect(lastClick?.defaultPrevented).toBe(false);
+      expect(lastClick).toBeNull();
     } finally {
       await session.close();
       await fixtureHost.close();
@@ -81,7 +82,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -105,81 +106,6 @@ test.describe("magnet link interception (GAP-1)", () => {
     }
   });
 
-  test("does not intercept clicks when interception is off", async () => {
-    const mockNas = await startMockNas();
-    const fixtureHost = await startFixtureHost(fixturePath);
-    const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
-
-    try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
-      const page = await session.context.newPage();
-      await page.goto(fixtureHost.url);
-
-      await page.click("#magnet-simple");
-
-      // Give event loop time to dispatch
-      await page.waitForTimeout(500);
-
-      const addUrlRequests = mockNas.requestLog
-        .toJSON()
-        .filter((req) => req.path === "/downloadstation/V4/Task/AddUrl");
-      expect(addUrlRequests.length).toBe(0);
-
-      const lastClick = await page.evaluate(
-        () => (window as unknown as { lastClick: { defaultPrevented: boolean } }).lastClick,
-      );
-      expect(lastClick?.defaultPrevented).toBe(false);
-    } finally {
-      await session.close();
-      await fixtureHost.close();
-      await mockNas.close();
-    }
-  });
-
-  test("reacts live to toggling interception without a page reload", async () => {
-    const mockNas = await startMockNas();
-    const fixtureHost = await startFixtureHost(fixturePath);
-    const downloadsPath = await mkdtemp(path.join(tmpdir(), "qg-e2e-magnet-"));
-    const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
-
-    try {
-      // Start disabled
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
-      const page = await session.context.newPage();
-      await page.goto(fixtureHost.url);
-
-      // Prevent external protocol dialog from locking the Chromium window on unintercepted click
-      await page.evaluate(() => {
-        window.addEventListener("click", (e) => e.preventDefault(), false);
-      });
-
-      // First click: disabled -> not intercepted by extension
-      await page.click("#magnet-simple");
-      await page.waitForTimeout(300);
-      expect(mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length).toBe(
-        0,
-      );
-
-      // Toggle setting to true live via storage
-      await seedSettings(session.worker, { interceptTorrentLinks: true });
-      await page.waitForTimeout(300);
-
-      // Second click in the same tab: now intercepted
-      await page.click("#magnet-simple");
-      await expect
-        .poll(
-          () => mockNas.requestLog.toJSON().filter((req) => req.path === "/downloadstation/V4/Task/AddUrl").length,
-          { timeout: 10_000 },
-        )
-        .toBe(1);
-    } finally {
-      await session.close();
-      await fixtureHost.close();
-      await mockNas.close();
-    }
-  });
-
   test("ignores untrusted (synthetic) script clicks for security", async () => {
     const mockNas = await startMockNas();
     const fixtureHost = await startFixtureHost(fixturePath);
@@ -187,7 +113,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 
@@ -216,7 +142,7 @@ test.describe("magnet link interception (GAP-1)", () => {
     const session = await launchExtensionPopup(devBuildPath, { downloadsPath });
 
     try {
-      await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
+      await seedSettings(session.worker, nasSettings(mockNas.port));
       const page = await session.context.newPage();
       await page.goto(fixtureHost.url);
 

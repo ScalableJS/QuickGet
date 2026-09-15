@@ -30,7 +30,6 @@ async function configure(session: Session, port: number, interceptFileLinks: boo
         NASpassword: "demo-password",
         NAStempdir: "Download",
         NASdir: "Movies",
-        interceptTorrentLinks: true,
         interceptFileLinks: fileLinks,
         routingRules: [],
       }),
@@ -88,6 +87,32 @@ test("off by default: a file link is an ordinary browser download and the NAS he
   }
 });
 
+test("Shift-click sends one ordinary file while automatic interception is off", async () => {
+  const mockNas = await startMockNas();
+  const testStand = await startTestStandHost();
+  const session = await launchExtensionPopup(devBuildPath);
+
+  try {
+    await configure(session, mockNas.port, false);
+    const standPage = await session.context.newPage();
+    await standPage.goto(testStand.url);
+    await standPage.click("#tab-btn-direct");
+
+    const before = await browserDownloads(session);
+    await standPage.click("#stand-direct-plain-mkv", { modifiers: ["Shift"] });
+
+    await expect
+      .poll(() => addUrlBodies(mockNas.requestLog.toJSON()).filter((body) => body.includes("plain-clip.mkv")).length)
+      .toBe(1);
+    expect(getsFor(testStand.requestLog, "/files/plain-clip.mkv")).toBe(0);
+    expect(await browserDownloads(session)).toBe(before);
+  } finally {
+    await session.close();
+    await testStand.close();
+    await mockNas.close();
+  }
+});
+
 test("on: the click reaches the NAS and no bytes flow through the browser", async () => {
   const mockNas = await startMockNas();
   const testStand = await startTestStandHost();
@@ -118,6 +143,30 @@ test("on: the click reaches the NAS and no bytes flow through the browser", asyn
     const body = addUrlBodies(mockNas.requestLog.toJSON()).find((entry) => entry.includes("plain-clip.mkv")) ?? "";
     expect(body).toContain("temp=");
     expect(body).toContain("move=");
+  } finally {
+    await session.close();
+    await testStand.close();
+    await mockNas.close();
+  }
+});
+
+test("a failed ordinary-file hand-off resumes the standard browser download automatically", async () => {
+  const mockNas = await startMockNas({ credentials: { user: "admin", password: "different-password" } });
+  const testStand = await startTestStandHost();
+  const session = await launchExtensionPopup(devBuildPath);
+
+  try {
+    await configure(session, mockNas.port, true);
+    const standPage = await session.context.newPage();
+    await standPage.goto(testStand.url);
+    await standPage.click("#tab-btn-direct");
+
+    const browserDownload = standPage.waitForEvent("download", { timeout: 20_000 });
+    await standPage.click("#stand-direct-plain-mkv");
+    await (await browserDownload).cancel();
+
+    await expect.poll(() => getsFor(testStand.requestLog, "/files/plain-clip.mkv")).toBeGreaterThan(0);
+    expect(addUrlBodies(mockNas.requestLog.toJSON())).toHaveLength(0);
   } finally {
     await session.close();
     await testStand.close();
@@ -207,8 +256,7 @@ test("a torrent keeps its own behaviour when the file switch is on", async () =>
     await standPage.click("#tab-btn-torrents");
     await standPage.click("#stand-torrent-movie");
 
-    // Still AddTorrent, not AddUrl: the file rule must not claim a torrent and quietly convert
-    // it from "mirror, keep the local copy" into a NAS-only send.
+    // Still AddTorrent, not AddUrl: the ordinary-file rule must not claim or reclassify torrents.
     await expect
       .poll(
         () =>

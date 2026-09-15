@@ -4,7 +4,7 @@
  */
 
 import { getErrorMessage } from "@lib/errors.js";
-import { markInterceptNoticeShown, migrateSettings } from "@lib/settings.js";
+import { migrateSettings } from "@lib/settings.js";
 import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
@@ -44,36 +44,11 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
-  void runSettingsMigration(details.previousVersion);
+  void migrateSettings().catch((error) => console.error("[QuickGet] Settings migration failed:", error));
   if (details.reason === "update") void refreshContentScripts();
   // Reflect any already-running downloads right away after an install/update.
   void ensureMonitoring();
 });
-
-/**
- * 1.0.2 wrote the resolved `torrentInterceptMode` default into storage, leaving "off" in
- * profiles that never chose it. That is indistinguishable from a deliberate choice, so the
- * value is left alone and the wording does not assert which of the two happened.
- *
- * The "shown" marker is written only after the notification was actually created, so a
- * failure here does not consume the single delivery.
- */
-async function runSettingsMigration(previousVersion?: string): Promise<void> {
-  try {
-    const { interceptionLeftOff } = await migrateSettings(previousVersion);
-    if (!interceptionLeftOff) return;
-
-    await chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icons/128_download.png"),
-      title: "Torrent interception is off",
-      message: "Earlier versions could turn it off unintentionally. Check Settings if you expected it on.",
-    });
-    await markInterceptNoticeShown();
-  } catch (error) {
-    console.error("[QuickGet] Settings migration failed:", error);
-  }
-}
 
 // Cold browser start: nothing has opened the popup or mutated a task yet, so
 // without this the toolbar would sit at its stale value until the user clicks.
@@ -89,7 +64,7 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
 // Alarm handler for download monitoring
 chrome.alarms.onAlarm.addListener(handleAlarm);
 
-// Redirect browser downloads to the NAS when enabled in settings
+// Redirect torrent downloads to the NAS; ordinary-file click interception has its own setting.
 initDownloadInterception();
 
 // The background is the single writer of the toolbar action. Other contexts
@@ -130,9 +105,8 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     return true;
   }
 
-  // Shift-click: send this one link whatever the automatic settings say. Unlike "task:add" the
-  // URL can be any supported kind, so it goes through the same branch the context menu uses —
-  // a `.torrent` is fetched in the page's session, a magnet goes straight to AddUrl.
+  // Content-script ordinary-file sends use the same transport and routing branch as the context
+  // menu. Torrent browser downloads and magnets have their own dedicated event paths.
   if (type === "link:send") {
     const { url } = message as { url?: unknown };
     if (typeof url !== "string" || !/^https?:\/\//i.test(url)) {

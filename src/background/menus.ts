@@ -74,7 +74,7 @@ export async function handleContextMenuClick(
  * Magnets and ordinary URLs stay on AddUrl: there is no file to fetch, and the NAS needs no
  * session for them.
  *
- * Exported because the Shift-click gesture sends links through exactly this path. It lives here
+ * Exported because content-script ordinary-file clicks use exactly this path too. It lives here
  * for historical reasons rather than good ones — if a third caller appears, move it out of the
  * context-menu module.
  */

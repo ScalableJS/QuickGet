@@ -57,9 +57,9 @@ export function isTorrentSource(url: string, signals: SourceSignals = {}): boole
  * - **`.pdf` is not here.** The browser expectation for a PDF link is the viewer, so sending it
  *   to the NAS on a plain click would take away something the user wanted. An anchor carrying
  *   `download` says otherwise and is honoured separately.
- * - **`.torrent` is not here either**, and `isDownloadableFileUrl` rejects it outright. A torrent
- *   already has a path that mirrors it and keeps the local copy; letting the file rule claim it
- *   would silently turn on NAS-only behaviour for torrents the moment this checkbox is ticked.
+ * - **`.torrent` is not here either**, and `isDownloadableFileUrl` rejects it outright. Torrents
+ *   have an unconditional NAS-first transaction in the downloads API; the ordinary-file setting
+ *   must never claim or reclassify them.
  */
 export const DOWNLOADABLE_FILE_EXTENSIONS: readonly string[] = [
   "7z",

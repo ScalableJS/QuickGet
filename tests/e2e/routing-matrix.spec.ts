@@ -187,7 +187,7 @@ test("routing matrix: every source shape the stand can produce lands in the fold
           NASpassword: "demo-password",
           NAStempdir: "Download",
           NASdir: fallback,
-          interceptTorrentLinks: true,
+          interceptFileLinks: false,
           routingRules: rules,
         }),
       { port: mockNas.port, rules: RULES, fallback: FALLBACK },
@@ -198,10 +198,10 @@ test("routing matrix: every source shape the stand can produce lands in the fold
 
     for (const testCase of CASES) {
       await standPage.click(`#tab-btn-${testCase.tab}`);
-      // The matrix asserts routing rather than the browser fallback. Its links include magnets,
-      // whose native protocol handler may leave the page, so use the explicit one-link send.
-      // Ordinary `.torrent` and magnet fallback outcomes have dedicated E2E coverage below.
-      await standPage.click(testCase.selector, { modifiers: ["Shift"] });
+      // Torrents and magnets are unconditional. A plain click is the product path; Shift belongs
+      // only to ordinary-file opt-in and would misclassify a MIME-only torrent whose URL ends in
+      // a normal file extension before the response reveals its real type.
+      await standPage.click(testCase.selector);
 
       const endpoint = `/downloadstation/V4/Task/${testCase.via}`;
       await expect
@@ -308,14 +308,9 @@ function renderTable(rows: Array<{ what: string; expected: string; actual: strin
   return `${header}\n${body}\n`;
 }
 
-/**
- * Shift is the per-click opt-in: it sends the link under the cursor whatever the automatic
- * settings say. Asserted with **both settings off**, because that is the configuration the
- * gesture exists for — and the one where it used to be dead, since the click listener was
- * attached only when magnet capture was on.
- */
+/** Re-injection must replace the old content listener, never multiply NAS requests. */
 // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured fixtures arg before testInfo
-test("Shift-click sends a link even with every automatic mode switched off", async ({}, testInfo) => {
+test("content-script reinjection keeps one request owner for torrents and magnets", async ({}, testInfo) => {
   test.setTimeout(90_000);
 
   const mockNas = await startMockNas();
@@ -335,8 +330,7 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
           NASpassword: "demo-password",
           NAStempdir: "Download",
           NASdir: "Movies",
-          // Both off on purpose.
-          interceptTorrentLinks: false,
+          interceptFileLinks: false,
           routingRules: [{ namePattern: "mkv", destination: "R/ShiftSent" }],
         }),
       { port: mockNas.port },
@@ -375,28 +369,9 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
       )
       .toBe(true);
 
-    // A plain click first: nothing may reach the NAS while both modes are off.
+    // Torrent interception is unconditional. Re-injection must not create a second observer.
     await standPage.click("#tab-btn-torrents");
     await standPage.click("#stand-torrent-movie");
-    await expect
-      .poll(() => mockNas.requestLog.toJSON().filter((entry) => entry.path.includes("/Task/Add")).length, {
-        timeout: 2_000,
-      })
-      .toBe(0);
-    const browserDownloadCount = await session.worker.evaluate(async () => (await chrome.downloads.search({})).length);
-    expect(browserDownloadCount).toBe(1);
-    // Chrome registers a download before its bytes reach the disk, so a baseline taken the moment
-    // `downloads.search` answers can record an empty directory. The assertion after the Shift-click
-    // then waits for a count that the first download has already made impossible — which is how
-    // this test failed once in CI with `Expected length: 0 / Received: ["…mkv.torrent"]` (BUG-63).
-    // Wait for the file to land, so the baseline describes a settled directory.
-    await expect
-      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({}))[0]?.state))
-      .toBe("complete");
-    const localDownloadCount = (await readdir(downloadsPath)).length;
-
-    // The same link with Shift held goes, and it is routed like any other send.
-    await standPage.click("#stand-torrent-movie", { modifiers: ["Shift"] });
     await expect
       .poll(
         () =>
@@ -412,31 +387,28 @@ test("Shift-click sends a link even with every automatic mode switched off", asy
       .toContain("R/ShiftSent");
     await expect
       .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length))
-      .toBe(browserDownloadCount);
-    await expect.poll(() => readdir(downloadsPath)).toHaveLength(localDownloadCount);
-    await expect
-      .poll(() => standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""))
-      .toContain("Sent to Download Station");
+      .toBe(0);
+    expect(await readdir(downloadsPath)).toEqual([]);
     expect(
-      await standPage.locator("#quickget-feedback-host").evaluate((host) => host.shadowRoot?.textContent ?? ""),
-    ).not.toContain("Could not contact QuickGet");
+      mockNas.requestLog.toJSON().filter((entry) => entry.path === "/downloadstation/V4/Task/AddTorrent"),
+    ).toHaveLength(1);
 
-    // And a magnet, which takes the other transport but the same gesture.
+    // Magnet capture is also unconditional and owned only by the surviving content listener.
     await standPage.click("#tab-btn-magnets");
-    await standPage.click("#stand-magnet-movie", { modifiers: ["Shift"] });
+    await standPage.click("#stand-magnet-movie");
     await expect
       .poll(
         () =>
           mockNas.requestLog
             .toJSON()
-            .some(
+            .filter(
               (entry) =>
                 entry.path === "/downloadstation/V4/Task/AddUrl" &&
                 entry.requestBody?.includes("Documentary.Film.2024.1080p.mkv"),
-            ),
+            ).length,
         { timeout: 20_000 },
       )
-      .toBe(true);
+      .toBe(1);
   } catch (error) {
     await testInfo.attach("mock-nas-http-log", { body: mockNas.requestLog.toText(), contentType: "text/plain" });
     throw error;

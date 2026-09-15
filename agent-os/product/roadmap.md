@@ -3,6 +3,7 @@
 High-level phases. The detailed, competitor-informed breakdown with per-item acceptance
 criteria lives in `docs/feature-roadmap.md` — this file is the summary an agent reads first.
 Open defects are tracked separately in `bugs-kanban.md`.
+Verified maintenance work is tracked in `engineering-kanban.md`.
 
 ## Phase 0 — Shipped
 
@@ -21,7 +22,8 @@ Open defects are tracked separately in `bugs-kanban.md`.
 - MIT license, Chrome Web Store listing and automated publish workflow (F5).
 - v1.0.2 published; Firefox packaging via `web-ext`.
 - Download interception stabilized and made transactional; strict no-local-file mode.
-- Magnet link auto-capture (`autoCaptureMagnets`) shipped in v2.2.0 with synchronous capture cancellation and in-page toast feedback.
+- Magnet link auto-capture shipped in v2.2.0 and became unconditional under GAP-16: a failed NAS
+  hand-off returns to the native handler automatically.
 - Seeding quota progress and dedicated emerald theme shipped in v2.2.0.
 - **Downloaded payload size (`done / size`):** Shipped in v2.2.1 (BUG-36).
 - **Human-readable error taxonomy:** Shipped in v2.2.1 (BUG-37).
@@ -40,11 +42,11 @@ Open defects are tracked separately in `bugs-kanban.md`.
   reordering announces itself and keeps focus, the axe gate finally opens the panel the rules live
   on, and the destructive control no longer sits 32px from the reorder arrows. Shipped in v2.3.0
   (BUG-48..BUG-53, UX-18).
-- **One switch for torrent links, and Shift to send just one:** three interception checkboxes
-  became one, and holding Shift sends the link under the cursor whether automatic interception is
-  on or off — so the default matters far less. Strict interception is now a browser capability
-  rather than an opt-in, verified on every CI run instead of by hand. Shipped in v2.4.0
-  (UX-23, UX-24, BUG-30).
+- **Torrent links need no switch:** `.torrent` downloads and magnets are always handed to Download
+  Station, with the browser path restored automatically when configuration, tracker access or the
+  NAS fails. The only remaining interception setting is for ordinary files; it stays off by
+  default, and Shift-click sends one eligible file while it is off. Shipped in v2.6.0
+  (GAP-16, ENG-11; supersedes UX-23/UX-24's torrent gesture).
 - **A connection test that answers in five seconds and says what it found:** the check is a login
   ping with a budget, saving no longer waits on the network, and a rejected password is told apart
   from an absent NAS by the code Download Station answered with rather than by matching words in
@@ -60,13 +62,32 @@ Open defects are tracked separately in `bugs-kanban.md`.
   rather than by nothing at all. Export and Import share a row; the import confirmation puts
   Cancel before a destructive Replace. Light `--text-muted` measured 4.207:1 and was raised to
   4.96:1. Shipped in v2.4.3 (UX-26).
+- **An ordinary file download goes to the NAS on a click:** an ISO, an archive or a video is handed
+  to Download Station instead of the browser, at any size, because no bytes pass through this
+  machine. Off by default, behind its own switch. Phase one claims only unambiguous links — a known
+  extension in the path or a `download` attribute — so a page that merely names a file in its query
+  string is left alone. Links behind a login are unsupported and say so. Shipped in v2.5.0 (RES-5).
+- **The toolbar badge counts downloads, not seeding:** the number no longer stays up while the NAS
+  is only seeding, so the last download finishing clears it, and that transition is itself the
+  "your file is ready" signal. Shipped in v2.5.0 (BUG-62).
+- **Download Station's refusals are readable:** its own error codes are translated into its own
+  wording, read out of the appliance's web bundle, and a loopback URL is explained rather than
+  merely refused. Shipped in v2.5.0.
+- **A release gate that talks to real hardware:** four scenarios run against a live NAS before a
+  publish, replacing a real-NAS spec that had been broken for two months unnoticed. The test stand
+  became a Hono app where delivery — rate, stall, reset, truncation, ranges, redirects — is a
+  dimension rather than an endpoint. Shipped in v2.5.0 (BUG-67, BUG-68, BUG-69).
 
 
 ## Phase 2 — High Value Task Controls
 
 Contextual task actions exposed through clean interactions without bloating the primary card:
 
-- **Quick speed limit throttle:** Speedometer icon in header opening a discrete preset popover (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `Custom`) using `Config/Set` (GAP-9).
+- **Quick speed limit throttle:** Speedometer icon in header opening a preset popover, using
+  `Config/Set` (GAP-9). **Unsized until two things are settled:** the NAS keeps separate rate limits
+  for `http`, `ftp` and `bt` — read live, see `docs/qnap-download-station-capabilities.md` — so a
+  single preset must decide what it limits; and `Config/Set` has never been written to. Both are
+  cheap to resolve and neither has been.
 - **Export `.torrent` file:** Download original `.torrent` bencoded metadata back from the NAS to the local browser via `⋮` menu (GAP-11, deferred).
 
 
