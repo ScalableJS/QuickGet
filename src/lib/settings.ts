@@ -59,25 +59,6 @@ export async function loadSettings(): Promise<Settings> {
          * default change can no longer override, which is how interception silently
          * stayed off for every existing profile.
          */
-        /**
-         * The single interception switch, and the migration off the three that preceded it.
-         *
-         * Old profiles carry `torrentInterceptMode`, `autoCaptureMagnets` and
-         * `suppressLocalTorrentFile`. Only the first survives as a signal: `"off"` was a
-         * deliberate opt-out and is honoured. Everything else becomes on.
-         *
-         * `interceptTorrentLinks: false` is deliberately **not** honoured, and it is the one place
-         * this migration overrides a stored choice. It defaulted to off while `.torrent`
-         * interception defaulted to on, so the stored `false` is overwhelmingly the untouched
-         * default rather than a decision — and a single switch has nowhere to put "torrents yes,
-         * magnets no". Anyone who did mean it can turn the switch off and Shift-click instead.
-         */
-        const resolveInterception = (): boolean => {
-          const current = localItems.interceptTorrentLinks;
-          if (typeof current === "boolean") return current;
-          return localItems.torrentInterceptMode !== "off";
-        };
-
         const themeWithDefault = (key: keyof Settings, fallback: ThemeMode): ThemeMode => {
           const raw = localItems[key];
           if (typeof raw === "string" && (THEME_MODES as readonly string[]).includes(raw)) {
@@ -111,7 +92,6 @@ export async function loadSettings(): Promise<Settings> {
           NASpassword,
           NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
           NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
-          interceptTorrentLinks: resolveInterception(),
           interceptFileLinks: booleanWithDefault("interceptFileLinks", DEFAULTS.interceptFileLinks),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
@@ -130,61 +110,29 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 /** Bumped whenever stored settings need a one-off fix-up on update. */
-export const SETTINGS_SCHEMA_VERSION = 1;
-
-/**
- * Releases whose `loadSettings()` persisted the resolved default of `torrentInterceptMode`,
- * writing "off" into profiles that had never chosen it.
- *
- * Only 1.0.2: `307c78a` flipped the default to "off" and bumped the manifest to 1.0.2 in the
- * same commit, so 1.0.0 and 1.0.1 shipped with "always". An "off" stored by those releases is
- * a deliberate user choice and must not be second-guessed.
- */
-const INTERCEPT_DEFAULT_LEAKED_IN = ["1.0.2"];
-
-export type SettingsMigrationResult = {
-  /** Interception is off in a profile that most likely never asked for it — tell the user. */
-  interceptionLeftOff: boolean;
-};
+export const SETTINGS_SCHEMA_VERSION = 2;
 
 /**
  * Run once per update, from `chrome.runtime.onInstalled`.
- *
- * A stored "off" cannot be told apart from a deliberate user choice, so it is never
- * rewritten — the user is notified instead and decides for themselves.
  */
-export async function migrateSettings(previousVersion?: string): Promise<SettingsMigrationResult> {
-  // Removed in 1.0.4: the task list is the only activity source of truth.
-  await chrome.storage.local.remove("qg:activity");
-
+export async function migrateSettings(): Promise<void> {
   const stored = await new Promise<Record<string, unknown>>((resolve) => {
-    chrome.storage.local.get(["settingsSchemaVersion", "interceptNoticeShown", "torrentInterceptMode"], (items) =>
-      resolve(items),
-    );
+    chrome.storage.local.get("settingsSchemaVersion", (items) => resolve(items));
   });
 
-  // `previousVersion` is only set when reason === "update", so a fresh install never matches.
-  const interceptionLeftOff =
-    stored.interceptNoticeShown !== true &&
-    previousVersion !== undefined &&
-    INTERCEPT_DEFAULT_LEAKED_IN.includes(previousVersion) &&
-    stored.torrentInterceptMode === "off";
-
   if (stored.settingsSchemaVersion !== SETTINGS_SCHEMA_VERSION) {
+    await chrome.storage.local.remove([
+      "qg:activity",
+      "interceptTorrentLinks",
+      "torrentInterceptMode",
+      "autoCaptureMagnets",
+      "suppressLocalTorrentFile",
+      "interceptNoticeShown",
+    ]);
     await new Promise<void>((resolve) =>
       chrome.storage.local.set({ settingsSchemaVersion: SETTINGS_SCHEMA_VERSION }, resolve),
     );
   }
-
-  return { interceptionLeftOff };
-}
-
-/**
- * Record that the interception notice was delivered. Kept separate from the schema version so
- * a failed `notifications.create` does not silently consume the one chance to show it.
- */
-export async function markInterceptNoticeShown(): Promise<void> {
-  await new Promise<void>((resolve) => chrome.storage.local.set({ interceptNoticeShown: true }, resolve));
 }
 
 /**

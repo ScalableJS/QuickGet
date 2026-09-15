@@ -26,7 +26,7 @@ dated line under the card.
 | ENG-8 | Make the private-tracker login helper parse env files and navigation failures honestly | testing/tooling | P3 | S | Done |
 | ENG-9 | Remove redundant direct development dependencies | tooling | P3 | S | Backlog |
 | ENG-10 | Remove Knip-confirmed dead UI and test-support code | popup/testing | P3 | S | Backlog |
-| ENG-11 | Audit browser-event ownership and remove only proven duplicate listeners | background/content | P1 | M | Backlog |
+| ENG-11 | Audit browser-event ownership and remove only proven duplicate listeners | background/content | P1 | M | Done |
 
 ---
 
@@ -211,7 +211,7 @@ keep the live neighbouring helpers intact. Run typecheck, unit tests, and mock E
 
 ### ENG-11 — Audit browser-event ownership and remove only proven duplicate listeners
 
-**Priority:** P1 · **Size:** M · **Area:** background/content · **Status:** Backlog
+**Priority:** P1 · **Size:** M · **Area:** background/content · **Status:** Done
 **Files:** `src/background/index.ts`, `src/background/downloads.ts`, `src/content/magnet.ts`,
 background/content registration helpers and interception tests
 
@@ -242,6 +242,31 @@ by themselves — each must be tied to a distinct browser/user intent and tested
 **Forbidden shortcut:** no persistent browser-download/task-ID history, startup sweep, or broader
 retry state may be introduced to “make duplicates impossible” without a captured duplicate and a
 trace showing its source. A clean audit with no deletion is a valid result.
+
+**Completed 2026-09-15.** The event inventory found no duplicate browser listener that could be
+removed safely:
+
+| Owner | Trigger | NAS reachability | Distinct responsibility |
+|---|---|---|---|
+| `downloads.ts` | `downloads.onCreated`, `downloads.onChanged`, Chromium `onDeterminingFilename` | `AddTorrent` | one download lifecycle; the synchronous in-memory claim elects one request owner |
+| `magnet.ts` → runtime message | captured magnet click | `AddUrl` | navigation intent; the content-script in-flight guard owns the click until a response |
+| `magnet.ts` → runtime message | opted-in or Shift ordinary-file click | `AddUrl` | page-session hand-off for a link the downloads listener must not pre-empt |
+| `menus.ts` | context-menu click | `AddUrl`/`AddTorrent` | explicit user command |
+| `alarms.ts`, startup | alarm/startup | none (`Task/Query` only) | monitoring, not task creation |
+
+The only shared observation is `downloads.onCreated` plus `downloads.onChanged` (and, on Chromium,
+the filename decision for the same item). An exact-count unit contract proves that concurrent
+callbacks issue one `AddTorrent`; persistent-profile E2E proves reinjection still produces one
+request for both torrent and magnet clicks. Content reinjection calls the previous document and
+storage-listener cleanup before registering replacements, and context-menu initialization removes
+old items before recreating them.
+
+No production listener was deleted because no duplicate request was reproduced. The separate
+five-second `recentMagnets` request cache was removed: it had no browser-event source behind it and
+duplicated the live click ownership already enforced in the content script. No persistent
+download/task IDs, startup sweep, or retry state were added. Cancellation and browser fallback are
+owned only by `downloads.ts`; click feedback and native-navigation fallback are owned only by the
+content script.
 
 ---
 

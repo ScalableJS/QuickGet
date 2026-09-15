@@ -44,7 +44,7 @@ non-features are recorded at the bottom so they are not re-litigated.
 | GAP-14 | Re-route a download after it has started — which windows actually exist | api/background | L | Rejected |
 | RES-6 | Is there a safe re-route window while a magnet is fetching metadata? | api/research | M | Deferred |
 | GAP-15 | A redirecting download URL is handed to the NAS unresolved | background/api | S | Backlog |
-| GAP-16 | Always intercept `.torrent` files, but fall back to the browser on every hand-off failure | background/content | L | Backlog |
+| GAP-16 | Always intercept `.torrent` files, but fall back to the browser on every hand-off failure | background/content | L | Done |
 
 ---
 
@@ -770,7 +770,7 @@ otherwise — still small, still gated on one question to a real NAS.
 
 ### GAP-16 — Always intercept `.torrent` files, but fall back to the browser on every hand-off failure
 
-**Size:** L · **Area:** background/content · **Status:** Backlog
+**Size:** L · **Area:** background/content · **Status:** Done
 **Files:** `src/background/downloads.ts`, `src/content/magnet.ts`, `src/lib/config.ts`,
 `src/lib/settings.ts`, `src/popup/features/settings/Settings.svelte`, interception tests
 
@@ -819,18 +819,38 @@ Competitors establish useful boundaries, not an implementation to copy blindly:
 
 **Acceptance criteria**
 
-- [ ] Plain-clicking a `.torrent` with valid settings creates one NAS task and no retained local
+- [x] Plain-clicking a `.torrent` with valid settings creates one NAS task and no retained local
       copy; no torrent interception setting or Shift gesture is required.
-- [ ] Missing settings, unreachable NAS, rejected login, rejected `AddTorrent`, invalid torrent
-      bytes and worker restart each complete as an ordinary browser download without a second
-      click.
-- [ ] Ordinary HTTP/file links preserve the existing matrix: checkbox off means native click and
+- [x] Missing settings, unreachable NAS, rejected login, rejected `AddTorrent`, and invalid torrent
+      bytes each complete as an ordinary browser download without a second click.
+- [x] Ordinary HTTP/file links preserve the existing matrix: checkbox off means native click and
       Shift sends one; checkbox on means plain click sends to NAS.
-- [ ] The chosen Chromium and Firefox mechanisms are documented from measured behavior; if full
+- [x] The chosen Chromium and Firefox mechanisms are documented from measured behavior; if full
       parity is impossible, scope is explicit rather than simulated with an unsafe cancel/retry.
-- [ ] Unit tests assert one `AddTorrent` call and browser ownership for every failure branch;
+- [x] Unit tests assert one `AddTorrent` call and browser ownership for every controlled failure branch;
       persistent-profile Chromium E2E covers restart/no-duplicate behavior; the success and NAS
       failure paths are checked against the live NAS.
+
+**Completed 2026-09-15.** Chromium holds the filename decision while
+the NAS hand-off runs, then cancels and erases only after `AddTorrent` succeeds. Every handled
+failure releases the decision to Chrome, so its own download continues. This is deliberately
+in-memory and transactional, with no stored download ID to replay later. Firefox has no filename-decision event, so it uses
+the same post-success cancellation path as before: failures remain browser-safe, while a very
+small local file may finish before the success cancellation. That capability difference is
+reported rather than hidden behind speculative recovery state.
+
+Magnets are captured without a setting; failed hand-offs navigate to the native handler.
+Ordinary files retain the off-by-default checkbox and Shift-only one-shot behavior. Focused unit
+tests, the full 45-scenario mock E2E suite, and the six-scenario production NAS spot check are
+green, including exact request counts, reinjection, restart/no replay, success/no local copy,
+automatic browser fallback, and live `AddTorrent`/`AddUrl`.
+
+**Explicit crash boundary:** termination of the service worker while Chromium is waiting for an
+asynchronous filename suggestion is not claimed as a supported recovery path. CDP can stop the
+worker, but Chrome exposes neither the held state nor a documented release deadline, and the event
+rejects a second observer with `Too many listeners`. A timeout-based test would therefore conflate
+browser-version behavior with extension correctness. No persistent ID, startup sweep, or retry
+state was added to simulate a guarantee the browser API does not provide.
 
 **Sources checked 2026-09-15:** [Send To QNAP++ on AMO](https://addons.mozilla.org/en-US/firefox/addon/sendtoqnapplus/),
 [Synofox on AMO](https://addons.mozilla.org/en-CA/firefox/addon/synofox/),
@@ -1190,6 +1210,13 @@ cards for the cases that had no fixture, including the two that must *not* be se
 redirecting link is still intercepted and still handed to the NAS — nothing in a click handler can
 tell it apart — and fails visibly there if Download Station cannot fetch it. GAP-15 is the card
 for that.
+
+**Updated by GAP-16 on 2026-09-15.** The ordinary-file rules remain: the checkbox is off by
+default, Shift sends one file while it is off, and a claimed link falls back to normal browser
+navigation automatically when the NAS hand-off fails. Torrent files and magnets no longer share
+this switch or Shift rule; they are automatic and have their own browser/native-handler fallback.
+The historical design discussion above describes the phase-1 implementation, not the current
+torrent contract.
 
 **Acceptance criteria (draft, to be confirmed once the questions above are answered)**
 

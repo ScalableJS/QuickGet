@@ -1,15 +1,13 @@
 /**
  * Download interception (Chrome only)
  *
- * Watches for .torrent downloads and routes them to QNAP Download Station.
- * Behaviour is driven by settings.interceptTorrentLinks:
- *   - off → leave the browser alone
- *   - on  → send each ordinary browser torrent to the NAS while deliberately retaining the
- *           browser download as a local fallback
+ * Watches for .torrent downloads and routes them to QNAP Download Station. Torrent interception
+ * is unconditional; ordinary-file interception remains the only user-controlled mode.
  *
- * Shift-click is the separate full-interception gesture. It is handled by the content script
- * before Chrome creates a DownloadItem, so nothing in this listener may infer it from a normal
- * download or cancel a normal browser flow.
+ * Chromium can defer the filename decision while the NAS hand-off runs. The browser transfer is
+ * cancelled only after Download Station accepts the torrent. Every earlier exit releases the
+ * filename decision, so missing configuration, tracker failures and NAS failures all fall back
+ * to the browser without a retry queue or persisted download-id state.
  */
 
 import { performLogin } from "@api/index.js";
@@ -35,6 +33,10 @@ export function initDownloadInterception(): void {
     void handleDownloadCreated(item);
   });
 
+  // Firefox has no onDeterminingFilename. The optional registration keeps its safe fallback
+  // behavior, while Chromium can prevent a successful hand-off from leaving a local file.
+  chrome.downloads.onDeterminingFilename?.addListener(handleDeterminingFilename);
+
   // Chrome often does not know the MIME type or the post-redirect URL when the download is
   // created — both are in `DownloadDelta`, so a tracker endpoint that only identifies itself
   // as a torrent later would never be intercepted from `onCreated` alone.
@@ -47,21 +49,30 @@ export function initDownloadInterception(): void {
 }
 
 /**
- * Mirror an ordinary `.torrent` download to the NAS without touching the browser transfer.
- * The local browser copy is intentional; only Shift-click opts into NAS-only behaviour.
+ * Hold Chromium at the last reversible point before it commits a file. Returning true tells the
+ * browser that `suggest` will be called asynchronously. The callback is released on every handled
+ * outcome. Chrome exposes no documented release deadline if the worker itself dies, so that crash
+ * boundary is not simulated with persisted recovery state.
  */
+export function handleDeterminingFilename(
+  item: chrome.downloads.DownloadItem,
+  suggest: (suggestion?: chrome.downloads.FilenameSuggestion) => void,
+): boolean {
+  const url = item.finalUrl || item.url;
+  if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, { mime: item.mime, filename: item.filename })) return false;
+
+  heldFilenames.set(item.id, suggest);
+  void handleDownloadCreated(item);
+  return true;
+}
+
+/** Hand a `.torrent` to the NAS and stop the browser only after the NAS accepts it. */
 export async function handleDownloadCreated(item: chrome.downloads.DownloadItem): Promise<void> {
   // Every exit is logged with its reason: without it a download that is simply not recognised
   // is indistinguishable from a worker that never received the event at all.
   let ownsInFlight = false;
 
   try {
-    const settings = await loadSettings();
-    if (!settings.interceptTorrentLinks) {
-      console.log("[QuickGet] skipped: interception is off in Settings", { id: item.id });
-      return;
-    }
-
     const url = item.finalUrl || item.url;
     if (!/^https?:\/\//i.test(url) || !isTorrentSource(url, { mime: item.mime, filename: item.filename })) {
       console.log("[QuickGet] skipped: not recognised as a torrent", {
@@ -80,6 +91,8 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
       return;
     }
     ownsInFlight = true;
+
+    const settings = await loadSettings();
     // No usable NAS: the master password was never entered, storage.session was emptied by a
     // browser restart, or the connection was never configured. `isLocked()` only distinguishes
     // the first case for the message — it reports false in the second, so it cannot be the
@@ -128,17 +141,25 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
     // It also derived a filename from `Content-Disposition`, which for an opaque endpoint like
     // `dl.php?id=1` is the only name the routing rules would otherwise never see.
-    await handOffToNas(
+    const handedOff = await handOffToNas(
       settings,
       url,
       baseName(item.filename),
       item.referrer,
     );
+    if (!handedOff) return;
+
+    // The NAS owns the torrent now. A failed cancel is deliberately non-destructive: the browser
+    // keeps its copy rather than pretending interception succeeded completely.
+    if (await cancelBrowserDownload(item.id)) await eraseBrowserDownload(item.id);
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     await notifyFailure("handoff", "Failed to redirect download", getErrorMessage(error));
   } finally {
-    if (ownsInFlight) inFlight.delete(item.id);
+    if (ownsInFlight) {
+      releaseHeldFilename(item.id);
+      inFlight.delete(item.id);
+    }
   }
 }
 
@@ -149,6 +170,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
  * handling finishes; nothing survives the operation or service-worker lifetime.
  */
 const inFlight = new Set<number>();
+const heldFilenames = new Map<number, (suggestion?: chrome.downloads.FilenameSuggestion) => void>();
 
 /** Take ownership of a download id, returning false if something else already has it. */
 function claimDownload(id: number): boolean {
@@ -179,7 +201,7 @@ async function handOffToNas(
   /** The name Chrome derived for the file, used for routing until the torrent itself is read. */
   suggestedName: string | undefined,
   referrer?: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     // The kind is not in question here — this path only ever runs for a torrent — and the name
     // is resolved as late as possible: once the .torrent has been fetched its `info.name` is the
@@ -193,6 +215,7 @@ async function handOffToNas(
     await sendTorrentUrlToNas(settings, url, route, referrer);
     void ensureMonitoring();
     await clearFailureEpisode();
+    return true;
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);
     // A failed hand-off is exactly the moment the toolbar should stop looking normal: the
@@ -211,6 +234,36 @@ async function handOffToNas(
       `${getErrorMessage(error)} — the browser download continues locally.`,
       settings.NASaddress,
     );
+    return false;
+  }
+}
+
+function releaseHeldFilename(id: number): void {
+  const suggest = heldFilenames.get(id);
+  if (!suggest) return;
+  heldFilenames.delete(id);
+  try {
+    suggest();
+  } catch (error) {
+    console.warn("[QuickGet] could not release a deferred filename:", error);
+  }
+}
+
+async function cancelBrowserDownload(id: number): Promise<boolean> {
+  try {
+    await chrome.downloads.cancel(id);
+    return true;
+  } catch (error) {
+    console.warn("[QuickGet] NAS accepted the torrent, but the browser download could not be cancelled:", error);
+    return false;
+  }
+}
+
+async function eraseBrowserDownload(id: number): Promise<void> {
+  try {
+    await chrome.downloads.erase({ id });
+  } catch (error) {
+    console.warn("[QuickGet] could not remove the cancelled torrent from browser history:", error);
   }
 }
 

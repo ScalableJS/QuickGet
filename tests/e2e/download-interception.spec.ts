@@ -15,9 +15,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const torrentFixture = path.resolve(__dirname, "fixtures/sample.torrent");
 
 /**
- * Unit tests prove that ordinary interception never calls a destructive downloads API. Only
- * here does real Chromium prove the paired user outcome: NAS receives the torrent and the
- * browser still retains its own local download.
+ * Unit tests prove the NAS response precedes browser cancellation. Only here does real Chromium
+ * prove the paired outcome: success leaves one NAS task and no browser item; every failure leaves
+ * the standard browser download intact.
  *
  * The torrent host can delay its body when a test needs a stable in-progress browser download.
  */
@@ -56,7 +56,7 @@ function nasSettings(port: number, overrides: Settings = {}): Settings {
     NASpassword: "demo-password",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    interceptTorrentLinks: true,
+    interceptFileLinks: false,
     ...overrides,
   };
 }
@@ -72,7 +72,7 @@ async function startSession(options: { bodyDelayMs?: number; userDataDir?: strin
   return { torrentHost, session, downloadsPath };
 }
 
-test("retains an ordinary intercepted torrent through a browser restart", async () => {
+test("does not replay or retain a successfully intercepted torrent after browser restart", async () => {
   const mockNas = await startMockNas();
   const userDataDir = await mkdtemp(path.join(tmpdir(), "qg-e2e-restart-profile-"));
   const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS, userDataDir });
@@ -100,8 +100,6 @@ test("retains an ordinary intercepted torrent through a browser restart", async 
       .filter((request) => request.path === "/downloadstation/V4/Task/AddTorrent").length;
     expect(addTorrentCount).toBe(1);
 
-    // Ordinary interception is intentionally a dual outcome: NAS receives the task, while the
-    // browser keeps its own file and DownloadItem as the user's local fallback.
     const retained = await reopenedSession.worker.evaluate(async () =>
       (await chrome.downloads.search({})).map((item) => ({
         filename: item.filename,
@@ -110,8 +108,7 @@ test("retains an ordinary intercepted torrent through a browser restart", async 
         url: item.finalUrl || item.url,
       })),
     );
-    expect(retained).toHaveLength(1);
-    expect(retained[0]).toMatchObject({ state: "complete", url: torrentHost.url });
+    expect(retained).toEqual([]);
   } finally {
     await reopenedSession?.close();
     await torrentHost.close();
@@ -335,12 +332,13 @@ test("native download test writes its control file to the browser directory", as
   }
 });
 
-test("ordinary torrent click sends to NAS and keeps the local file", async () => {
+test("ordinary torrent click sends to NAS and leaves no local file", async () => {
   const mockNas = await startMockNas();
   const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
 
   try {
-    await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: true }));
+    // A retired opt-out in an old profile must not disable torrent interception.
+    await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
 
     const page = await session.context.newPage();
     await page.goto(torrentHost.url).catch(() => {
@@ -350,9 +348,14 @@ test("ordinary torrent click sends to NAS and keeps the local file", async () =>
     await expect
       .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), { timeout: 30_000 })
       .toBe(true);
+    expect(
+      mockNas.requestLog.toJSON().filter((request) => request.path === "/downloadstation/V4/Task/AddTorrent"),
+    ).toHaveLength(1);
 
-    await expect.poll(() => readdir(downloadsPath), { timeout: 30_000 }).toContain("sample.torrent");
-    await expect.poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length)).toBe(1);
+    await expect
+      .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length), { timeout: 30_000 })
+      .toBe(0);
+    expect(await readdir(downloadsPath)).toEqual([]);
   } finally {
     await session.close();
     await torrentHost.close();

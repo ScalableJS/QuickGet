@@ -22,7 +22,8 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 - MIT license, Chrome Web Store listing and automated publish workflow (F5).
 - v1.0.2 published; Firefox packaging via `web-ext`.
 - Download interception stabilized and made transactional; strict no-local-file mode.
-- Magnet link auto-capture (`autoCaptureMagnets`) shipped in v2.2.0 with synchronous capture cancellation and in-page toast feedback.
+- Magnet link auto-capture shipped in v2.2.0 and became unconditional under GAP-16: a failed NAS
+  hand-off returns to the native handler automatically.
 - Seeding quota progress and dedicated emerald theme shipped in v2.2.0.
 - **Downloaded payload size (`done / size`):** Shipped in v2.2.1 (BUG-36).
 - **Human-readable error taxonomy:** Shipped in v2.2.1 (BUG-37).
@@ -41,11 +42,11 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
   reordering announces itself and keeps focus, the axe gate finally opens the panel the rules live
   on, and the destructive control no longer sits 32px from the reorder arrows. Shipped in v2.3.0
   (BUG-48..BUG-53, UX-18).
-- **One switch for torrent links, and Shift to send just one:** three interception checkboxes
-  became one, and holding Shift sends the link under the cursor whether automatic interception is
-  on or off — so the default matters far less. Strict interception is now a browser capability
-  rather than an opt-in, verified on every CI run instead of by hand. Shipped in v2.4.0
-  (UX-23, UX-24, BUG-30).
+- **Torrent links need no switch:** `.torrent` downloads and magnets are always handed to Download
+  Station, with the browser path restored automatically when configuration, tracker access or the
+  NAS fails. The only remaining interception setting is for ordinary files; it stays off by
+  default, and Shift-click sends one eligible file while it is off. Shipped in v2.5.1/vNext
+  (GAP-16, ENG-11; supersedes UX-23/UX-24's torrent gesture).
 - **A connection test that answers in five seconds and says what it found:** the check is a login
   ping with a budget, saving no longer waits on the network, and a rejected password is told apart
   from an absent NAS by the code Download Station answered with rather than by matching words in

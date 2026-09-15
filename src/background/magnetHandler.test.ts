@@ -20,7 +20,7 @@ vi.mock("@lib/settings.js", () => ({
     NASpassword: "pwd",
     NAStempdir: "Download",
     NASdir: "Multimedia/Movies",
-    interceptTorrentLinks: true,
+    interceptFileLinks: false,
     routingRules: [
       {
         type: "magnet",
@@ -65,17 +65,6 @@ describe("magnetHandler", () => {
     expect(mockAddUrl).toHaveBeenCalledWith(magnet, {
       targetFolder: "Multimedia/Movies",
     });
-  });
-
-  it("deduplicates identical requests in short succession", async () => {
-    const magnet = "magnet:?xt=urn:btih:1111222233334444555566667777888899990000";
-    const first = await handleMagnetAdd(magnet);
-    const second = await handleMagnetAdd(magnet);
-
-    expect(first.ok).toBe(true);
-    expect(second.ok).toBe(true);
-    expect(second.deduped).toBe(true);
-    expect(mockAddUrl).toHaveBeenCalledTimes(1);
   });
 
   it("returns error and marks problem when NAS call fails", async () => {

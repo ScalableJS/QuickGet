@@ -59,7 +59,7 @@ To load a local build instead:
    - Server URL — scheme, host and port in one field (`http://192.168.1.50:8080`)
    - Username and password
    - Temporary and destination directories
-   - Torrent link interception, and optionally file link interception
+   - Optional ordinary-file link interception (torrent files and magnets are automatic)
    - Optional routing rules that send matching tasks to a folder of their own
    - Color theme (*Auto* / *Light* / *Dark*, default: *Auto*, which follows the OS)
 3. Run *Test Connection* to confirm credentials, then *Save Settings*.
@@ -69,8 +69,8 @@ To load a local build instead:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| **Send torrent links to Download Station** | On | Covers both `.torrent` downloads and clicked `magnet:` links. Turning it off is not a dead end — <kbd>Shift</kbd>-clicking a link still sends that one. |
-| **Send file links to Download Station** | Off | A click on a link to a file goes to the NAS instead of the browser, at any size. Only unambiguous links are claimed — a known extension in the path, or a `download` attribute. Links behind a login are not supported: the NAS fetches them itself and has no access to your browser session. |
+| **Torrent files and magnet links** | Automatic | QuickGet first tries Download Station. A `.torrent` stays with the browser, or a magnet with its native handler, whenever configuration or hand-off fails. |
+| **Send file links to Download Station** | Off | A click on an ordinary file link goes to the NAS instead of the browser, at any size. With this off, <kbd>Shift</kbd>-click sends one file. Only unambiguous links are claimed — a known extension in the path, or a `download` attribute. Links behind a login are not supported: the NAS fetches them itself and has no access to your browser session. |
 | **Lock settings with password** | Off | Protects access to the settings screen. Background downloads continue while locked. |
 
 

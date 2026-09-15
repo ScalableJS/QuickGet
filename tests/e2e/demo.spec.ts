@@ -117,14 +117,13 @@ test.describe("promo demo", () => {
       await popup.locator("#NASpassword").pressSequentially("demo-password", { delay: 45 });
       await recorder.hold(READ.normal);
 
-      // ---- 2. Folders are already right, and interception is already on -------------------
+      // ---- 2. Folders are already right; torrents require no setting -----------------------
       //
       // Temp and Target come pre-filled from `DEFAULTS` (`Download`), so nothing is typed here —
-      // the shot is about what the user does *not* have to do. Interception is one switch and it
-      // is on out of the box, so there is nothing to toggle either: the shot shows both.
-      recorder.mark("Folders come ready to use — and torrent links already go to the NAS");
+      // the shot is about what the user does *not* have to do. Torrent interception has no switch.
+      recorder.mark("Folders come ready to use — torrent links need no extra setting");
       await expect(popup.locator("#NAStempdir")).toHaveValue("Download");
-      await expect(popup.locator("#interceptTorrentLinks")).toBeChecked();
+      await expect(popup.locator("#interceptTorrentLinks")).toHaveCount(0);
       await recorder.hold(READ.normal);
 
       // ---- 3. Save & test — one action, and a real round-trip to the NAS -------------------

@@ -36,12 +36,6 @@
   type Props = { initialTab?: "connection" | "advanced" };
   let { initialTab = "connection" }: Props = $props();
 
-  /**
-   * Whether the browser can hold a download at the filename stage. Chrome can; Firefox has
-   * never implemented `downloads.onDeterminingFilename` (Bugzilla 1245652, open since 2016),
-   * and offering a switch that silently does nothing there is worse than not offering it.
-   */
-
   let form = $state<Settings>({ ...DEFAULTS });
 
   let tempStatus = $state<FolderFieldStatus>("idle");
@@ -612,32 +606,6 @@
   </div>
 
   <div class="flex flex-col gap-2">
-    <!-- One switch, because `.torrent` and `magnet:` were never two ideas — they are two Chrome
-         APIs for the same intent, and they used to carry opposite defaults for no reason anyone
-         could name. Whether a local copy is left behind is not a choice either: Chrome can cancel
-         before the file exists and Firefox cannot, and asking the user about a capability
-         difference they cannot act on is not a setting, it is a shrug. -->
-    <div class="flex items-center gap-2 font-500">
-      <Checkbox
-        id="interceptTorrentLinks"
-        aria-describedby="interceptTorrentLinksHint"
-        bind:checked={form.interceptTorrentLinks}
-      >
-        Send torrent links to Download Station
-      </Checkbox>
-    </div>
-    <div class="ml-6 flex flex-col gap-1">
-      <p id="interceptTorrentLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
-        Includes <code>.torrent</code> and magnet links. Click also opens locally;
-        <kbd class="font-600">Shift</kbd>-click sends only to Download Station.
-      </p>
-    </div>
-  </div>
-
-  <!-- Off by default, and deliberately a second switch rather than a mode of the one above: that
-       one covers a file type whose only sensible destination is a download client, this one
-       changes what happens to ordinary web downloads. -->
-  <div class="flex flex-col gap-2">
     <div class="flex items-center gap-2 font-500">
       <Checkbox id="interceptFileLinks" aria-describedby="interceptFileLinksHint" bind:checked={form.interceptFileLinks}>
         Send file links to Download Station
@@ -647,7 +615,8 @@
       <p id="interceptFileLinksHint" class="m-0 text-12px text-[var(--color-text-secondary)]">
         A click on a link to a file — <code>.iso</code>, <code>.zip</code>, <code>.mkv</code> and
         the like — goes to the NAS instead of the browser, at any size. Links behind a login are
-        not supported: the NAS fetches them on its own and has no access to your session.
+        not supported: the NAS fetches them on its own and has no access to your session. Leave
+        this off and <kbd class="font-600">Shift</kbd>-click to send just one file.
       </p>
     </div>
   </div>

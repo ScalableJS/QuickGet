@@ -973,6 +973,10 @@ into one. That is the follow-up, not this card.
 
 **Resolved 2026-09-12** — shipped in v2.4.0.
 
+**Superseded for torrents by GAP-16 on 2026-09-15.** Shift remains the one-shot gesture only for
+ordinary files while their checkbox is off. Torrent files and magnets are now automatic; their
+failure path returns control to the browser or native handler without a second click.
+
 ---
 
 ### UX-24 — Three interception checkboxes become one
@@ -1026,6 +1030,11 @@ re-clicks, with the error reported.
 Shift hint is its accessible description.
 
 **Resolved 2026-09-12** — shipped in v2.4.0.
+
+**Superseded by GAP-16 on 2026-09-15.** The consolidated torrent/magnet checkbox was removed.
+Torrent files and magnets are unconditional, while the separate ordinary-file checkbox remains
+off by default. Legacy interception keys are removed by settings-schema migration rather than
+interpreted as current product choices.
 
 ---
 
