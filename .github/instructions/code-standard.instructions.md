@@ -57,4 +57,4 @@ React/Next/monorepo-specific rules from the source were dropped.
 
 - Biome owns formatting (2-space indent, **line width 120**, LF). Don't hand-format against it; there is **no** Prettier/ESLint in this repo (legacy configs were removed).
 - Don't commit code that fails `npm run lint` / `npm run typecheck` / `npm run check:svelte`.
-- CI gate (`.github/workflows/ci.yml`) and the pre-push hook must stay green: **typecheck → unit tests → build → mock E2E**.
+- CI gate (`.github/workflows/ci.yml`) must stay green: **typecheck → Svelte check → lint → unit tests → build → mock E2E**. The local pre-push hook runs typecheck; it does not replace the full completion checks.

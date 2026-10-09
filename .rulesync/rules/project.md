@@ -46,7 +46,8 @@ Follow the repo code standard and review guide in `.github/instructions/`:
 
 ## Must stay green
 
-`.github/workflows/ci.yml` and the pre-push hook gate on: **typecheck → unit tests → build → mock E2E**.
+`.github/workflows/ci.yml` gates on **typecheck → Svelte check → lint → unit tests → build → mock E2E**.
+The local pre-push hook runs typecheck; run the full checks below before finishing changes.
 Before finishing any change run, at minimum:
 
 ```bash
