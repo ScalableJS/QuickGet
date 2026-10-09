@@ -567,8 +567,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared removed redundant direct dependencies and unchanged retained lock versions with clean installation, production/Storybook builds, 28 deployment tests and explicit headed/default feedback-spec lists; no deployment.",
-        "snapshot": "04f4b04b74b54f61048b328457266156fedbabf6f3056e599ce78f793db30a73"
+        "reason": "Added local read-only audit/report/self-test scripts to package.json; existing build, release ownership and publication commands are unchanged. Development-release documentation remains accurate.",
+        "snapshot": "e1a05025f77b30df43d900240fc63be5e85ebbd0f5d7773849863f2db7cc8af6"
       }
     },
     {
@@ -644,20 +644,24 @@
         "tests/fixtures/settings.ts",
         "tests/mocks/chrome.ts",
         "tests/msw/server.ts",
-        "tests/setup.ts"
+        "tests/setup.ts",
+        "scripts/quality/audit.mjs",
+        "docs/quality/reviews.json",
+        ".github/instructions/code-standard.instructions.md"
       ],
       "evidence": [
         "tests/e2e/mockNas.contract.spec.ts",
         "tests/e2e/prod-spotcheck.spec.ts",
-        "tests/e2e/support/testStand/app.test.ts"
+        "tests/e2e/support/testStand/app.test.ts",
+        "scripts/quality/audit.test.mjs"
       ],
       "assessment": "verified",
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared added deterministic unit/browser regressions, configured TypeScript-only coverage boundaries and unchanged fixture/hardware ownership; recorded integrated gates without claiming NAS/Firefox coverage.",
-        "snapshot": "43a5e09f008f28cd02e1bf6e7f6150842eed63a99a4afd15005060cd87fbc0a6"
+        "reason": "Reviewed AST/Svelte/HTML callable inventory, five scanner regression cases, hash-bound manual manifest and permitted test-fixture any. Updated verification page to distinguish static candidates from executed behavior and hardware evidence.",
+        "snapshot": "e1f51967f11d5cf069e99091cac130e85b7193a258a3ec5b9044a46e633c5110"
       }
     },
     {
@@ -682,8 +686,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Reviewed the documentation tools and 11 self-tests, including an explicitly green shared-source baseline before drift. Source/document/evidence/classification edits, hidden features, broken active navigation, staged-index mismatch and non-English fixture comments all fail their respective guards.",
-        "snapshot": "0af9d914ac7988d30ba69f069cea3515cbfcfb7065630c12ec9d0f0fe97edf2c"
+        "reason": "Compared the unchanged documentation checker with the added callable-evidence maintenance instructions: source-hash manual review complements feature documentation, with explicit report generation and no feature denominator change.",
+        "snapshot": "62b95fc2c848bfa387ee77179ca80d5cb0f4d6d953b55b9202c14f7313d8640a"
       }
     }
   ],
@@ -1781,6 +1785,27 @@
         "feedback"
       ],
       "reason": "Shared post-acceptance callback feedback uses the existing direct-status receipt."
+    },
+    {
+      "path": "scripts/quality/audit.mjs",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Read-only callable inventory, duplication candidates and explicit report generation; no runtime product behavior."
+    },
+    {
+      "path": "docs/quality/reviews.json",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Explicit manual audit decisions or production-versus-test type policy dependency."
+    },
+    {
+      "path": ".github/instructions/code-standard.instructions.md",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Explicit manual audit decisions or production-versus-test type policy dependency."
     }
   ],
   "retired": [],

@@ -28,6 +28,10 @@ Current corrections are documented in [[docs/system/feedback|feedback]],
 preserves coverage limits and red/green evidence. Proven snapshot/UI/helper/dependency cleanup
 is complete. The canonical MV3 standard and credential review guidance match current code.
 
+## Code-quality follow-up
+
+[The audit](../quality/code-quality-audit.md) inventories all 566 runtime implementations and records 51 manual family assessments. Tests may retain concise fixture any. The Code quality view prioritizes BUG-74, BUG-75 and BUG-76 before ENG-19 through ENG-23. These are planned corrections, not runtime changes accepted in this documentation/tooling pass.
+
 ## Next work
 
 - [BUG-71](../../tasks/BUG-71.md) remains partial: measure page/native feedback across new and

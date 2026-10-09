@@ -1,0 +1,304 @@
+[
+  {
+    "family": "notification-surfaces",
+    "assessment": "distinct-contexts",
+    "path": "src/background/notifier.ts",
+    "names": [
+      "notifyFailure",
+      "notifyDirect",
+      "createNotification",
+      "clearFailureEpisode"
+    ],
+    "sourceHash": "11d667688315dc2450abb22d031dffee53abfad784ea0293943d6e57b86c760b",
+    "reason": "Native delivery and durable episode suppression differ from popup/page rendering; existing native helper already shared.",
+    "task": "BUG-71"
+  },
+  {
+    "family": "notification-surfaces",
+    "assessment": "distinct-contexts",
+    "path": "src/popup/components/statusPill/statusPill.ts",
+    "names": [
+      "showStatus",
+      "clearStatus",
+      "dismissStatus",
+      "isCurrentDirectStatus"
+    ],
+    "sourceHash": "715aa3fefe01a4f1118f1f6837d27ecb8912063afe3ced98885c37f26ff39a51",
+    "reason": "Popup direct/poll ownership, receipt and DOM timer state belong to the popup lifetime.",
+    "task": "BUG-71"
+  },
+  {
+    "family": "notification-surfaces",
+    "assessment": "distinct-contexts",
+    "path": "src/content/magnet.ts",
+    "names": [
+      "showFeedback",
+      "resolveTheme",
+      "setCurrentTheme"
+    ],
+    "sourceHash": "5cdea963f09eba034f0f84ef55865be227c5eb398ab5adab646bbb7d3029dc4d",
+    "reason": "Shadow DOM rendering/theme and native fallback belong to a page context; no universal notification service.",
+    "task": "BUG-71"
+  },
+  {
+    "family": "content-dispatch",
+    "assessment": "confirmed-logic-duplication",
+    "path": "src/content/magnet.ts",
+    "names": [
+      "sendMagnetToWorker",
+      "sendLinkToWorker"
+    ],
+    "sourceHash": "5cdea963f09eba034f0f84ef55865be227c5eb398ab5adab646bbb7d3029dc4d",
+    "reason": "Both implement claim/loading/runtime callback/release/error fallback, with drift in error wording and fallback handling.",
+    "task": "ENG-20"
+  },
+  {
+    "family": "byte-formatting",
+    "assessment": "confirmed-logic-duplication",
+    "path": "src/popup/components/downloadItem/format.ts",
+    "names": [
+      "formatBytes",
+      "scaleUnit"
+    ],
+    "sourceHash": "94677de04de80e08353bb3bfa2b24c92b811b2bb5555b48f5e64118092d420d2",
+    "reason": "Binary-unit scaling and fixed precision repeated in TorrentFiles; guard behavior differs and needs preserved contract.",
+    "task": "ENG-21"
+  },
+  {
+    "family": "byte-formatting",
+    "assessment": "confirmed-logic-duplication",
+    "path": "src/popup/features/torrentFiles/TorrentFiles.svelte",
+    "names": [
+      "formatSize"
+    ],
+    "sourceHash": "b01c2dbff2ebc7d056bca4364dec782892f526172bc7cc588e82d0c5c129dc71",
+    "reason": "Second binary-size formatter repeats units/scaling/precision from download item; rate formatter intentionally differs.",
+    "task": "ENG-21"
+  },
+  {
+    "family": "error-contract",
+    "assessment": "type-contract-follow-up",
+    "path": "src/api/utils.ts",
+    "names": [
+      "createApiError"
+    ],
+    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
+    "reason": "Returns Error despite assigning code/reason/duplicate/apiUnsupported via assertion; consumers need casts or structural probes.",
+    "task": "ENG-19"
+  },
+  {
+    "family": "task-command-transport",
+    "assessment": "confirmed-transport-boilerplate",
+    "path": "src/api/client.ts",
+    "names": [
+      "startTask",
+      "stopTask",
+      "pauseTask",
+      "removeTask"
+    ],
+    "sourceHash": "46e415f666f492d1c76c62473ff4dc05f3860ced0fd7b9ba19802a369dc13522",
+    "reason": "Repeated POST/SID/form serializer/success/error handling; Pause enrichment and Remove options must remain distinct.",
+    "task": "ENG-22"
+  },
+  {
+    "family": "error-catalog",
+    "assessment": "review-before-consolidation",
+    "path": "src/api/utils.ts",
+    "names": [
+      "createApiError",
+      "getErrorMessage"
+    ],
+    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
+    "reason": "NAS API dictionary and reason formatting have different presentation contracts from task-card errors.",
+    "task": "ENG-23"
+  },
+  {
+    "family": "error-catalog",
+    "assessment": "review-before-consolidation",
+    "path": "src/popup/components/downloadItem/format.ts",
+    "names": [
+      "formatError"
+    ],
+    "sourceHash": "94677de04de80e08353bb3bfa2b24c92b811b2bb5555b48f5e64118092d420d2",
+    "reason": "Ten task-card code labels overlap nine API codes but differ in wording; task-only20488 needs evidence before common catalog.",
+    "task": "ENG-23"
+  },
+  {
+    "family": "error-text",
+    "assessment": "distinct-contracts",
+    "path": "src/lib/errors.ts",
+    "names": [
+      "getErrorMessage"
+    ],
+    "sourceHash": "78f5e8ca7a31ab2eb7b47d6fd463e4bd3f3e01c2f5c9dfc31a7561c202225955",
+    "reason": "Unknown thrown values vs API payload reason/error extraction are distinct contracts despite identical function names.",
+    "task": null
+  },
+  {
+    "family": "numeric-coercion",
+    "assessment": "distinct-contracts",
+    "path": "src/api/utils.ts",
+    "names": [
+      "coerceNumber",
+      "coerceString"
+    ],
+    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
+    "reason": "API fallback defaults differ from task nullable parsers; only consider extraction after equivalence matrix.",
+    "task": null
+  },
+  {
+    "family": "numeric-coercion",
+    "assessment": "distinct-contracts",
+    "path": "src/lib/tasks.ts",
+    "names": [
+      "parseNumber",
+      "readNumber",
+      "parseString",
+      "readString"
+    ],
+    "sourceHash": "0a27b9ffcec046d0cd781f909e4d05449e81c8aeaec2b7d8fa96ed239c9487a4",
+    "reason": "Optional task fields preserve absence before caller defaults; no blind merge into API helpers.",
+    "task": null
+  },
+  {
+    "family": "connection-url",
+    "assessment": "distinct-contracts",
+    "path": "src/api/index.ts",
+    "names": [
+      "buildNASBaseUrl"
+    ],
+    "sourceHash": "4a30fae9289395b912dba86b332a1d6eed3ec6122c0e5c324a49314268dab977",
+    "reason": "Request URL validation throws on missing address/non-numeric port; editable form composition can return empty.",
+    "task": null
+  },
+  {
+    "family": "connection-url",
+    "assessment": "distinct-contracts",
+    "path": "src/lib/serverUrl.ts",
+    "names": [
+      "composeServerUrl",
+      "parseServerUrl"
+    ],
+    "sourceHash": "0718b8d2e8b7ecc2120aff4f1f5defe90dd21c5c504c57822560ec369c11d68f",
+    "reason": "Form display and pasted-input parsing are different boundaries from request URL validation.",
+    "task": null
+  },
+  {
+    "family": "client-caches",
+    "assessment": "distinct-contexts",
+    "path": "src/background/alarms.ts",
+    "names": [
+      "getClient"
+    ],
+    "sourceHash": "d0d187202c7596bd29f91cc4bb758a53480c544614dcc3122b61ddbaa4ce8064",
+    "reason": "Worker lifetime differs from popup; connection identity is already shared.",
+    "task": null
+  },
+  {
+    "family": "client-caches",
+    "assessment": "distinct-contexts",
+    "path": "src/popup/shared/api/clientCache.ts",
+    "names": [
+      "getApiClient",
+      "invalidateClientCache"
+    ],
+    "sourceHash": "b6e88d581b9cbf81941e5ecb42424d33664e94c082a3bd79e9f1846789b1da1b",
+    "reason": "Popup cache preserves unsaved explicit settings as throwaway clients, unlike worker poll state.",
+    "task": null
+  },
+  {
+    "family": "base64-decode",
+    "assessment": "small-shared-kernel-candidate",
+    "path": "src/lib/settingsLock.ts",
+    "names": [
+      "fromBase64",
+      "toBase64"
+    ],
+    "sourceHash": "1a2c8926469e98e987cc2395e1d34bd264eca674e186ddebbe297fd92e054b19",
+    "reason": "Base64-byte loop repeats tabFetch decoding, but tiny context and ArrayBuffer/Uint8Array output differ; no priority refactor.",
+    "task": null
+  },
+  {
+    "family": "base64-decode",
+    "assessment": "small-shared-kernel-candidate",
+    "path": "src/lib/tabFetch.ts",
+    "names": [
+      "base64ToBytes"
+    ],
+    "sourceHash": "6c5b0e94848070dc1596efc9cc261f155c7b79c1014fb7680a249e47528665b0",
+    "reason": "Byte-loop overlap confirmed; injected page closure must remain self-contained if a future helper is extracted.",
+    "task": null
+  },
+  {
+    "family": "rate-formatting",
+    "assessment": "distinct-contracts",
+    "path": "src/popup/shared/formatters/speed.ts",
+    "names": [
+      "formatRate"
+    ],
+    "sourceHash": "b23207fa6c9e38fe63559b24b49acb2ba80f0ba5f6f4694d5a4aa9fd10d5d017",
+    "reason": "Rate rounding, minimum nonzero indication and promotion differ from binary file size labels.",
+    "task": null
+  },
+  {
+    "family": "connection-errors",
+    "assessment": "review-before-consolidation",
+    "path": "src/background/downloads.ts",
+    "names": [
+      "classifyFailure",
+      "classifyConnectionFailure"
+    ],
+    "sourceHash": "758c8fdce8e436c77222611aba4e2d029fb6b535333211fc60ae1e14f2c1a6b7",
+    "reason": "Text classifiers distinguish tracker send failure and NAS preflight; typed LoginError already exists in UI health classification.",
+    "task": "ENG-23"
+  },
+  {
+    "family": "connection-errors",
+    "assessment": "distinct-contracts",
+    "path": "src/lib/connectionHealth.ts",
+    "names": [
+      "connectionFailure",
+      "classify",
+      "describe"
+    ],
+    "sourceHash": "400b40e80fb0d9fcca218f661c848561706025ef9d936772cc7db3fa26dd7f4a",
+    "reason": "Typed NAS login/timeout health presentation is narrower than tracker handoff and notification episode kind.",
+    "task": "ENG-23"
+  },
+  {
+    "family": "settings-import",
+    "assessment": "distinct-contracts",
+    "path": "src/lib/settings.ts",
+    "names": [
+      "loadSettings",
+      "saveSettings"
+    ],
+    "sourceHash": "0b1fe03ab0a2dea37e6c8ad8d9f8f4ca3061ee53c9bda0aae9c8d1585f89fe66",
+    "reason": "Storage defaults/migration/credential precedence differ from portable user-selected backup patches.",
+    "task": null
+  },
+  {
+    "family": "settings-import",
+    "assessment": "distinct-contracts",
+    "path": "src/popup/features/settings/settingsBackup.ts",
+    "names": [
+      "parseImportedSettings",
+      "exportSettings"
+    ],
+    "sourceHash": "9c63266a8b23e2994609866eb377d164744a1ad1218d431256d418c83261076c",
+    "reason": "Import trust boundary allows only portable keys and omission preserves existing settings; not a full storage loader.",
+    "task": null
+  },
+  {
+    "family": "command-feedback-wrappers",
+    "assessment": "intentional-local-repetition",
+    "path": "src/popup/features/downloads/index.ts",
+    "names": [
+      "start",
+      "stop"
+    ],
+    "sourceHash": "ba7163483e3cfd6231d123466bb0414e623ae83289fbb071a7d9670d19621de8",
+    "reason": "Small inline wrappers differ in command and user-facing outcome; extracting a generic runner is not justified solely by a shape match.",
+    "task": null
+  }
+]

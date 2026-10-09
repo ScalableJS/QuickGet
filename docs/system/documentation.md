@@ -51,3 +51,7 @@ A working-tree snapshot does not certify staged sources. `--staged` checks an is
 ## Language and dead-code findings
 
 Maintained prose/comments/descriptions are English. Unicode test literals intentionally exercise non-Latin input and are documented exceptions; the language guard is a Cyrillic regression check, not a general linguistic classifier. [[feature-review]] records dead-code candidates and behavioral differences with source evidence. Product code is removed only in its own task after proving ownership and running relevant checks.
+
+## Algorithm review evidence
+
+[The callable audit](../quality/code-quality-audit.md) and its generated registry retain function locations, duplication candidates and hash-bound manual assessments. They complement feature documentation; they do not replace canonical behavior pages or count automatic matches as semantic review. Regenerate with npm run quality:report only after inspecting drift, then run npm run quality:check and npm run test:quality.

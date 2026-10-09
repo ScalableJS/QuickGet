@@ -47,7 +47,11 @@
     "docs:check": "node scripts/docs/check.mjs --strict",
     "docs:report": "node scripts/docs/check.mjs --write",
     "docs:language": "node scripts/docs/language.mjs",
-    "test:docs": "node --test scripts/docs/check.test.mjs"
+    "test:docs": "node --test scripts/docs/check.test.mjs",
+    "quality:audit": "node scripts/quality/audit.mjs",
+    "quality:check": "node scripts/quality/audit.mjs --check",
+    "quality:report": "node scripts/quality/audit.mjs --write",
+    "test:quality": "node --test scripts/quality/audit.test.mjs"
   },
   "keywords": [
     "qnap",

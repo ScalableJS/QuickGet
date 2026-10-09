@@ -18,6 +18,8 @@ properties:
     displayName: Updated
   execution_order:
     displayName: Execution order
+  audit_order:
+    displayName: Audit order
   depends_on:
     displayName: Depends on
   id:
@@ -82,4 +84,27 @@ views:
       - review
       - blocked
       - partial
+      - done
+  - type: kanban
+    name: Code quality
+    filters:
+      and:
+        - audit_order != null
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - audit_order
+      - priority
+      - area
+    sort:
+      - property: audit_order
+        direction: ASC
+    boardColumns:
+      - discussion
+      - todo
+      - doing
+      - review
+      - blocked
       - done

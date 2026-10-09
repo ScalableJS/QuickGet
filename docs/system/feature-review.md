@@ -63,3 +63,7 @@ The Agent OS MV3 standard was also compared with the current worker: it now perm
 in-flight claims/cache state, requires NAS acceptance before browser cancellation, and describes
 current credential preconditions. Retired pause/recovery and settings-lock interception guidance
 was removed from the canonical standard; no worker policy was changed by that correction.
+
+## Callable review: 2026-10-09
+
+[The code-quality audit](../quality/code-quality-audit.md) owns the function inventory, type-contract findings, manually compared algorithm families and prioritized follow-ups. It distinguishes repeated page dispatch/size/command mechanics from necessary browser-context state and permits pragmatic any in test fixtures. BUG-74 through BUG-76 record acceptance, text-rendering and monitoring findings with explicit reproduction limits; runtime behavior is unchanged by this audit.

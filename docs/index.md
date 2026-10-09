@@ -17,6 +17,7 @@ as an Obsidian vault: pages, task files, wikilinks, backlinks and Bases form a l
 - [[docs/system/coverage|Documentation coverage and review state]]
 - [[docs/system/feature-review|Unused candidates, distinct paths, and behavior gaps]]
 - [[docs/system/notification-normalization-audit|Popup feedback audit, test gaps, and normalization plan]]
+- [[docs/quality/code-quality-audit|Code quality, callable inventory and algorithm duplication]]
 - [[docs/handoff/current|Current handoff and open work]]
 - [Documentation catalog](../views/documentation.base) and [task board](../views/tasks.base)
 

@@ -20,7 +20,7 @@ React/Next/monorepo-specific rules from the source were dropped.
 - **`type` over `interface`** for new code. Use `interface` only when declaration merging is genuinely required (e.g. `ImportMetaEnv` in `env.d.ts`). Existing interfaces are left as-is unless the file is being reworked anyway.
 - **Inline types for single-use shapes** (options objects, callback args). Extract a named `type` only when referenced in 2+ places.
 - **Let inference work.** Don't annotate what TS already infers. Add types at boundaries (exported functions, props) or when inference widens to `any`.
-- **No `any` / `as any`.** Prefer `unknown` and narrow. (The repo currently has zero `any` — keep it that way.)
+- **Production code: no `any` / `as any`.** Prefer `unknown` and narrow. Tests may use `any` for concise fixture/mock setup when a complete type would add noise; this exception does not justify weakening production contracts.
 - **Minimise `as` casts.** Allowed only at DTO/API boundaries (e.g. parsing untyped QNAP responses) and DOM lookups (`getElementById(...) as HTMLElement | null`). Prefer narrowing via type predicates / `.find()` over casting a value.
 - Keep `strict: true` — never weaken `tsconfig.json` to silence errors.
 

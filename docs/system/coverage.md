@@ -13,7 +13,7 @@ Inventory: 2026-10-09. Generated from docs/features.json and current file conten
 
 The denominator is registered implemented features, including implemented portions of partial features. Planned features do not count. A reviewed snapshot confirms documentation was compared with the implementation; it does not prove runtime behavior, field reliability, or that no feature was overlooked.
 
-Discovered source files: 148. Unclassified files: 0.
+Discovered source files: 149. Unclassified files: 0.
 
 Initial inventory covers extension runtime, configuration, operational scripts and test infrastructure. Descriptions were reviewed against current owning paths and existing evidence; no fresh real-NAS run, Firefox runtime parity or universal feature discovery is implied. Source-file coverage is independent of the feature denominator. Confirmed cleanup candidates and scope differences are recorded in docs/system/feature-review.md.
 
