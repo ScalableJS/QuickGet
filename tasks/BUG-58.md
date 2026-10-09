@@ -12,7 +12,7 @@ severity: "medium"
 
 # The background task poller writes its errors into the settings screen's status pill
 
-**Severity:** low · **Area:** popup/UX
+**Severity:** medium · **Area:** popup/UX
 **Files:** `src/popup/features/downloads/downloadsManager.ts`, `src/popup/components/statusPill`
 
 There is one status pill in the popup and two writers. While the user is in Settings, the

@@ -34,7 +34,9 @@ investigation and proposed changes. [[verification]] owns the verification-layer
 | Knip | Report contains findings; exit 1 | Static candidates, not an algorithm clone detector |
 
 `vitest.config.ts` includes TypeScript paths but excludes all `src/**/index.ts` files. Twelve
-index modules and 27 non-gallery/non-showcase Svelte components are outside that metric.
+index modules and 27 non-gallery/non-showcase Svelte source files are outside that metric.
+The Svelte count includes the preserved unused `Card.svelte`; it is not a count of 27 live,
+untested features.
 Exclusion from the metric does **not** mean no test exercises them: for example API authentication
 has its own unit suite. Conversely, `settingsUI.test.ts` tests panel visibility, not the
 Settings component's save/test lifecycle. There are no configured numerical coverage thresholds.
@@ -83,7 +85,8 @@ error handling, so equivalent user actions have different terminal contracts.
 
 Chromium diagnostic: select a real rendered task, answer `Task/Pause` with `{error: 6}`, then click
 Pause. Playwright receives `pageerror` containing `Pause task failed`; the status message remains
-unchanged. Start/Stop share the same uncaught structure but were not individually browser-probed.
+unchanged. The initial diagnostic tested Pause only; individual Start/Stop/Pause probes are recorded
+in the revalidation section below.
 The current happy-path E2E and manager fallback unit test do not protect this boundary.
 
 ### P3: transient and persistent messages have inconsistent policy
@@ -94,6 +97,19 @@ use 1500–3000 ms. Error status generally remains until overwritten, including 
 Persistence is directly established in code and with a 60-second fake-timer probe. An intentional
 sticky actionable error should retain its action/context; an obsolete error should resolve when
 its own operation recovers. A default timer alone cannot make that distinction.
+
+### Fault-injection finding: post-acceptance upload callbacks share the request catch
+
+Owner: [ENG-17](../../tasks/ENG-17.md). Mimic identified this in the recheck; three temporary
+unit probes verified full torrent acceptance, torrent duplicate, and partial URL-batch outcomes.
+In each, the API result was mocked and the supplied success/duplicate callback deliberately threw.
+The real popup status renderer then replaced the accepted/duplicate/partial result with
+`Error: post-acceptance callback failed` and cancelled its success/info expiry timer.
+
+The current built-in callbacks were not observed throwing. This is a demonstrated boundary under
+fault injection, not evidence of a frequent live defect or a proven cause of the user's symptom.
+The plan must distinguish accepted work from a later UI/refresh failure, preserving any genuinely
+useful callback error separately. Do not report that the NAS rejected already accepted work.
 
 ## Duplication and state review
 
@@ -163,7 +179,7 @@ pre-acceptance transport failure.
 | Poll failure while Save/Test/Upload runs | Direct operation outcome remains observable; repeated identical poll error does not reannounce every two seconds | User sees the relevant terminal outcome in each visible panel |
 | Start/Stop/Pause/Remove denied, offline or unsupported | One terminal failure; supported Pause→Stop fallback retained; no false success | No unhandled page error; meaningful visible error; subsequent retry works |
 | Status timeout/replacement/dismiss | An old timer cannot erase a newer message; persistent message can be dismissed or resolved | Success expires; actionable error remains only while relevant; keyboard access if dismiss exists |
-| Upload/full/partial/duplicate outcome | Monitoring and refresh callbacks cannot overwrite accepted outcome | Actual status visible and correct after subsequent refresh |
+| Upload/full/partial/duplicate outcome | Inject throwing success/duplicate callbacks; accepted/partial/duplicate work stays identified, later UI failure is classified separately | Actual status visible and correct after subsequent refresh |
 | Popup close/reopen and settings change mid-request | Abort/superseded result cannot report as a new failure or overwrite current state | No stale error on reopened popup; no lost current action |
 
 Use fake timers/deferred promises for unit ordering; E2E waits on requests/state, not arbitrary
@@ -171,8 +187,9 @@ sleeps. Add new spec files to the explicit `test:e2e:mock` command, and keep hea
 consistent. Capture `pageerror` around these scenarios. Do not introduce a global console-error
 ban that hides deliberately exercised worker network failures.
 
-Go/no-go: critical cases must have a demonstrated failing regression on the baseline and pass
-with the corresponding fix. The current diagnostic probes assert the defect, so they must not
+Go/no-go: each confirmed defect needs a regression that fails on the baseline and passes
+with the corresponding fix. Tests of already-correct contracts should pass on both revisions;
+they protect behavior rather than manufacture baseline failures. The current diagnostic probes assert the defect, so they must not
 be installed unchanged as passing acceptance tests. No blanket percentage threshold replaces
 this gate. A numerical ratchet can follow once entrypoint/component coverage is measured honestly.
 
@@ -187,9 +204,19 @@ Fix BUG-58 and BUG-72 in bounded changes, paired with the regressions above.
   no global event bus, universal notification service, or component migration.
 - Resolve only the recovered owner. Make transient duration consistent by intent, not caller.
   Persistent actionable errors need a clear recovery/dismiss contract.
+- Reject obsolete query results after abort or a NAS-settings revision; skipped queries do not
+  establish recovery. Use deferred success and failure to prove a newer list/operation cannot
+  be overwritten by an older result.
+- Define precedence for concurrent explicit actions: an older action completion cannot overwrite
+  the latest action outcome. Distinguish an accepted Remove from a subsequent failed refresh.
 - Catch control failures at one existing user-operation boundary; preserve Pause fallback and
   successful-command semantics. Avoid catching the same failure in multiple layers and producing
   two announcements.
+
+Protect accepted/partial/duplicate popup outcomes from post-acceptance callback failures in
+ENG-17, while retaining separately scoped information about a failed UI refresh. Pause fallback
+acceptance must cover both successful and failed Stop, and feedback must describe the actual
+fallback outcome rather than assume Pause and Stop are equivalent.
 
 Handle BUG-73 as a separate narrow transaction-safety fix with a rejection-injection regression;
 accepted NAS results must survive feedback bookkeeping failures.
@@ -215,6 +242,82 @@ Investigate native failure serialization/delivery and content-operation correlat
 Keep automatic success silent per existing policy; a normalization must not restore notification
 spam. Run focused native/retained-tab checks if those surfaces change. A production release still
 requires the real-NAS spot check; Firefox requires distinct runtime evidence.
+
+## Revalidation after gateway repair: 2026-10-09
+
+Rechecked on `5dbb6fe`; runtime source, Vitest configuration and package scripts are unchanged
+from the initial baseline. Mimic status now reports an authenticated, available gateway without
+loading the external token into this session.
+
+| Recheck | Actual result |
+| --- | --- |
+| Full unit/fixture coverage run | 38 files / 513 passed; all four coverage measures unchanged |
+| Full mock E2E | 45 passed |
+| Strengthened Chromium diagnostics | 4 passed, describing current defects |
+| Repeated and strengthened unit diagnostics | 5 passed, describing current defects |
+| Timer-preservation probes | 2 passed, describing already-correct behavior |
+| Callback fault-injection probes | 3 passed, describing accepted-result replacement |
+| Types, Svelte, lint, production build | Passed; Svelte 0 errors / 0 warnings |
+| Documentation self-tests, links/reviews, language, Rulesync | Passed; 11 self-tests |
+
+The recovery diagnostic now waits for a successful response through **the popup page's own**
+`waitForResponse`, checks `{error: 0}`, and observes a newly rendered `Recovery marker` task
+that was absent during failure. The old status still remains visible. This removes the weaker
+original inference from a NAS-wide request counter that could include worker polls.
+
+Start, Stop and Pause were individually denied through popup request interception. Each matched
+endpoint received exactly one command, each produced the corresponding `pageerror`, and none
+replaced the prior status with meaningful failure feedback. BUG-72 is therefore independently
+browser-reproduced for all three actions.
+
+BUG-73 was rechecked without replacing the torrent sender/API client: the checked-in torrent
+was fetched through MSW, the mock `AddTorrent` returned `{error: 0}` exactly once, then session
+cleanup rejected. The code still reported `Download failed` and did not cancel the browser
+transfer. This remains mocked acceptance, not a physical-NAS result.
+
+Two preservation probes establish that `showStatus()` already cancels superseded timers: an old
+success timer neither hides a later timed confirmation nor dismisses a newer persistent error.
+Do not describe timer replacement as a reproduced defect or add a redundant second timer system.
+The missing contract is async operation ownership and recovery, not basic timeout cancellation.
+
+The three callback-fault probes confirmed Mimic's additional boundary concern after repairing
+a temporary test mock that omitted the setup hook's `invalidateClientCache` export. That initial
+fixture failure is excluded from product evidence; all three corrected probes passed. They use
+mocked API outcomes and deliberate throwing callbacks, not an observed production callback fault.
+
+The repository-wide snapshot search again found its writer/construction and declarations, but
+no production reader/subscriber. No inference from repeated variable names or isolated Knip
+exports is used to remove functionality.
+
+The new Mimic review independently agreed with the source-level popup findings and challenged
+the old recovery evidence, Pause-only coverage, universal red-baseline gate and timer-defect
+framing. Those limitations were addressed in this recheck. Its new callback-boundary observation
+was verified with fault-injection tests and added as ENG-17, scoped below confirmed user-path bugs.
+Its selected packet is not a repository-wide audit; snapshot consumer absence comes from our
+local reference search, not the model's inference.
+
+The same-session follow-up incorporated the strengthened evidence and concluded: targeted
+fixes can begin with permanent acceptance regressions; broad normalization and release sign-off
+remain unsupported. Its final order is regression gates → poll ownership/stale requests →
+user-action rejection handling → acceptance-boundary isolation → evidenced cleanup. Existing
+timer cancellation and sticky toolbar acknowledgement remain intact.
+
+Gateway qualification: one intermediate follow-up returned a Python attachment-inspection
+snippet rather than a final assessment, despite a completed CLI status. That snippet was not
+accepted as a review. A subsequent explicit final-answer request returned substantive prose.
+Authorization is repaired, but this output-extraction edge case was still observed.
+
+Remaining prerequisites are explicit: deterministic Save/Test/Upload versus poll interleaving;
+stale success/rejection after request/settings invalidation; overlapping user actions; failed
+Stop after unsupported Pause; accepted Remove followed by failed list refresh; normal callback
+and close/reopen behavior. No test in this recheck certifies those unexecuted scenarios.
+Repeated screen-reader announcements and OS notification persistence were not measured.
+The acceptance gate is for focused fixes with these tests, not permission for broad refactoring.
+
+Fresh local logs: `/tmp/quickget-recheck-coverage.log`, `/tmp/quickget-recheck-e2e.log`,
+`/tmp/quickget-recheck-browser.log`, `/tmp/quickget-recheck-unit-probes.log`, and
+`/tmp/quickget-recheck-timer-preservation.log`, and `/tmp/quickget-recheck-upload-callbacks.log`. Temporary probes are removed from active discovery;
+the results above are investigation evidence, not new committed acceptance tests.
 
 ## Consultation and evidence retention
 

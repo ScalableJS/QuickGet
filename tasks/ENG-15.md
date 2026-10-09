@@ -23,7 +23,7 @@ entrypoint wiring and Svelte components. Existing green tests are insufficient f
 
 ## Acceptance criteria
 
-- [ ] Implement the critical scenario matrix in [the audit](../docs/system/notification-normalization-audit.md), with baseline failures and matching fixes.
+- [ ] Implement the critical scenario matrix in [the audit](../docs/system/notification-normalization-audit.md), with baseline failures for reproduced defects, matching fixes, and baseline-passing preservation tests.
 - [ ] Preserve existing Pause-to-Stop fallback, NAS acceptance ordering and duplicate semantics.
 - [ ] Assert no unhandled popup rejection and one meaningful terminal outcome for direct actions.
 - [ ] Verify repeated polling cannot overwrite Save/Test/Upload and recovery clears only its owner.
@@ -35,3 +35,18 @@ entrypoint wiring and Svelte components. Existing green tests are insufficient f
 [Audit, measured coverage and phased plan](../docs/system/notification-normalization-audit.md).
 The temporary diagnostic probes demonstrated defects; passing assertions of defective behavior
 are not the regression acceptance tests required by this task.
+
+
+**2026-10-09 revalidation:** full baseline remains 513 tests / 45 mock E2E. Four strengthened
+Chromium diagnostics independently reproduce popup recovery and rejected Start/Stop/Pause.
+Two timer-preservation probes pass on the baseline: existing timer replacement is correct.
+Retain that behavior and test async ownership; do not add redundant timer guards merely to
+increase the number of fixes. See the audit's revalidation section for exact scope and limits.
+
+
+**Recheck acceptance additions:** deferred query results must not overwrite a replacement query
+or a changed NAS configuration; overlapping user commands need explicit precedence. Cover both
+Stop success and failure after unsupported Pause and report the actual fallback outcome. Separate
+an accepted Remove from a failing refresh. [ENG-17](ENG-17.md) adds callback-fault cases for
+accepted/duplicate torrent uploads and partial batches; existing built-in callbacks were not
+observed throwing in production.

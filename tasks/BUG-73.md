@@ -33,3 +33,10 @@ local outcome is established; data loss was not demonstrated.
 - [ ] A rejection-injection unit regression fails on the baseline and passes with the fix; interception E2E remains green.
 
 [Audit and plan](../docs/system/notification-normalization-audit.md#secondary-findings-outside-the-reported-popup-problem).
+
+
+**2026-10-09 revalidation on `5dbb6fe`:** a stronger diagnostic kept the real torrent sender
+and API client, served the checked-in sample torrent through MSW, and returned `{error: 0}`
+from the mock `AddTorrent` endpoint exactly once. Rejecting only session cleanup still produced
+`Download failed` and no browser cancellation. Only monitoring was stubbed; no physical NAS
+was contacted. The finding is no longer dependent on stubbing the sender's return value.

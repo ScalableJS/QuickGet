@@ -30,8 +30,15 @@ Sources: [feature wrappers](../src/popup/features/downloads/index.ts) (line 88) 
 ## Acceptance criteria
 
 - [ ] Each Start/Stop/Pause failure produces one meaningful visible terminal error, no false success and no unhandled popup rejection.
-- [ ] Preserve unsupported-Pause fallback to Stop; distinguish other failures.
+- [ ] Preserve unsupported-Pause fallback to Stop; distinguish other failures, test rejected Stop, and describe the actual fallback outcome without assuming Pause and Stop are equivalent.
 - [ ] Successful commands and retry after failure still work.
 - [ ] Unit and browser regressions cover rejection at the actual user-operation boundary.
 
 Implement alongside [ENG-15](ENG-15.md), following [the normalization plan](../docs/system/notification-normalization-audit.md).
+
+
+**2026-10-09 revalidation on `5dbb6fe`:** all three controls were individually browser-probed.
+Each denied Start/Stop/Pause request was observed exactly once; Playwright captured the matching
+`pageerror` and no new status feedback. The previous Pause-only limitation is superseded.
+The four-test diagnostic suite also confirmed recovery using the popup's own successful response
+and a newly rendered `Recovery marker` task, rather than worker-wide request counts.
