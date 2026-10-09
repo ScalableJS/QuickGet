@@ -23,7 +23,7 @@ The manifests select browser-specific background configuration. Chromium declare
 
 CI runs typecheck, Svelte check, lint, unit/deployment tests, builds, and mock E2E. The local pre-push hook runs typecheck. Documentation and language checks are additional maintained gates. Real-NAS production spot checks remain local because Actions has no route to the home NAS.
 
-`env/dev` is the direct working branch. Production promotion uses a reviewed PR into `env/prod`; only that branch triggers Web Store publication. The deployment script implements the Store API directly. The installed `chrome-webstore-upload` package is not its implementation. Firefox packages are built with web-ext and documented separately.
+`env/dev` is the direct working branch. Production promotion uses a reviewed PR into `env/prod`; only that branch triggers Web Store publication. The deployment script implements the Store API directly. The unused direct `chrome-webstore-upload` dependency was removed; the hand-written uploader remains the implementation. Firefox packages are built with web-ext and documented separately.
 
 ## Tooling ownership
 

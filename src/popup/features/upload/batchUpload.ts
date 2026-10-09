@@ -1,12 +1,15 @@
-import { showStatus } from "@/popup/components";
+import { getErrorMessage } from "@lib/errors.js";
+import { isCurrentDirectStatus, showStatus } from "@/popup/components";
 
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
 
-interface BatchOptions {
+import { reportFollowUpFailure } from "./uploadFeedback.js";
+
+type BatchOptions = {
   targetFolder?: string;
-  onSuccess?: () => void;
-}
+  onSuccess?: () => void | Promise<void>;
+};
 
 const MAX_URLS = 50;
 
@@ -28,7 +31,7 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     return;
   }
 
-  showStatus(`Adding ${urls.length} download${urls.length === 1 ? "" : "s"}…`, "info");
+  const receipt = showStatus(`Adding ${urls.length} download${urls.length === 1 ? "" : "s"}…`, "info");
 
   try {
     const client = await getApiClient();
@@ -42,19 +45,24 @@ export async function uploadUrls(urls: string[], options: BatchOptions = {}): Pr
     }
 
     if (failed === 0) {
-      showStatus(`Added ${ok} download${ok === 1 ? "" : "s"}`, "success", { autoHideMs: 2500 });
-      options.onSuccess?.();
+      const message = `Added ${ok} download${ok === 1 ? "" : "s"}`;
+      if (isCurrentDirectStatus(receipt)) {
+        const terminalReceipt = showStatus(message, "success", { autoHideMs: 2500 });
+        await reportFollowUpFailure(terminalReceipt, message, options.onSuccess);
+      }
       return;
     }
 
     if (ok > 0) {
-      showStatus(`Added ${ok}, failed ${failed}`, "info", { autoHideMs: 3000 });
-      options.onSuccess?.();
+      const message = `Added ${ok}, failed ${failed}`;
+      if (isCurrentDirectStatus(receipt)) {
+        const terminalReceipt = showStatus(message, "info", { autoHideMs: 3000 });
+        await reportFollowUpFailure(terminalReceipt, message, options.onSuccess);
+      }
     } else {
-      showStatus(`Failed to add ${failed} download${failed === 1 ? "" : "s"}`, "error");
+      if (isCurrentDirectStatus(receipt)) showStatus(`Failed to add ${failed} download${failed === 1 ? "" : "s"}`, "error");
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    showStatus(`Error: ${message}`, "error");
+    if (isCurrentDirectStatus(receipt)) showStatus(`Error: ${getErrorMessage(error)}`, "error");
   }
 }

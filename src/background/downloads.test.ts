@@ -218,6 +218,20 @@ describe("download interception", () => {
     expect(downloads.cancel).toHaveBeenCalledWith(1);
   });
 
+  it("cancels after NAS acceptance even when clearing notification bookkeeping fails", async () => {
+    seedChromeStorage(createTestSettings());
+    const nas = mockSuccessfulHandoff();
+    vi.spyOn(chrome.storage.session, "remove").mockRejectedValueOnce(new Error("session remove failed"));
+
+    await handleDownloadCreated(createDownloadItem({ id: 98 }));
+
+    expect(nas.addTorrentCalls).toBe(1);
+    expect(downloads.cancel).toHaveBeenCalledWith(98);
+    expect(notifications.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Download failed", message: expect.stringContaining("session remove failed") }),
+    );
+  });
+
   it("leaves the browser download untouched while AddTorrent is in flight", async () => {
     seedChromeStorage(createTestSettings());
 

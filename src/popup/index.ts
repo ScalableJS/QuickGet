@@ -50,6 +50,7 @@ async function runMainInit(): Promise<void> {
           void downloadsFeature?.refreshNow();
         }
       },
+      onConnectionSaved: () => downloadsFeature?.connectionChanged(),
     });
 
     const upload = initializeUpload({

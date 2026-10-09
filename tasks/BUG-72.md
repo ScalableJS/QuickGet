@@ -1,7 +1,7 @@
 ---
 type: task
 id: BUG-72
-status: todo
+status: done
 priority: p2
 area: popup/task controls
 board: bugs
@@ -32,10 +32,10 @@ Sources: [feature wrappers](../src/popup/features/downloads/index.ts) (line 88) 
 
 ## Acceptance criteria
 
-- [ ] Each Start/Stop/Pause failure produces one meaningful visible terminal error, no false success and no unhandled popup rejection.
-- [ ] Preserve unsupported-Pause fallback to Stop; distinguish other failures, test rejected Stop, and describe the actual fallback outcome without assuming Pause and Stop are equivalent.
-- [ ] Successful commands and retry after failure still work.
-- [ ] Unit and browser regressions cover rejection at the actual user-operation boundary.
+- [x] Each Start/Stop/Pause failure produces one meaningful visible terminal error, no false success and no unhandled popup rejection.
+- [x] Preserve unsupported-Pause fallback to Stop; distinguish other failures, test rejected Stop, and describe the actual fallback outcome without assuming Pause and Stop are equivalent.
+- [x] Successful commands and retry after failure still work.
+- [x] Unit and browser regressions cover rejection at the actual user-operation boundary.
 
 Implement alongside [ENG-15](ENG-15.md), following [the normalization plan](../docs/system/notification-normalization-audit.md).
 
@@ -48,3 +48,8 @@ and a newly rendered `Recovery marker` task, rather than worker-wide request cou
 
 
 **2026-10-09 execution priority:** order 3 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.
+
+**2026-10-09 assignment:** Terra is implementing this boundary in an isolated feedback-normalization worktree. Acceptance and final status belong to the root reviewer.
+
+
+**2026-10-09 root acceptance:** Start/Stop/Pause failures are caught once and remain retryable. Unsupported Pause reports the real Stop success/failure, including rejected transport, with typed fallback context. Terra implemented the patch; Codex inspected the actual diff, challenged it with reproduced ordering failures and consulted Mimic. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. See [accepted evidence](../docs/system/notification-normalization-audit.md#accepted-implementation-and-review). These are mocked/browser results; no fresh physical-NAS or Firefox certification.

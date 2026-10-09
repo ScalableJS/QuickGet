@@ -14,11 +14,13 @@ The popup entrypoint applies the saved theme, acknowledges browser attention, mo
 
 Svelte 5 components use runes. UnoCSS with presetWind4 supplies static utilities; `tokens.css` owns semantic theme colors and `base.css` owns shared base styles. Icons are supplied through unplugin-icons/Lucide. Auto theme follows the OS and replaces the existing media-query listener on changes; page feedback independently follows the saved preference. FormSection, fields, segmented controls and button primitives provide common markup and accessible states.
 
+Persistent popup status messages include a themed native `Dismiss message` button with keyboard focus. Transient confirmations use the existing status timer; the component is not an activity history.
+
 ## Harnesses and assets
 
 Storybook mounts components and showcase/gallery wrappers with a Chrome mock. Galleries are development consumers, not independent product features. Store screenshots and promotional demo recording use Playwright and supporting capture tooling. Generated images/video are artifacts; the scripts and scenarios are maintained inputs. These harnesses do not prove the live NAS is reachable.
 
-`Card.svelte` is a confirmed unused UI candidate and remains present pending [ENG-10](../../tasks/ENG-10.md). An unused export alone does not prove its implementation is dead: several task constants are used internally even if their exported names have no external caller.
+The unused `Card.svelte` component and its barrel export were removed through [ENG-10](../../tasks/ENG-10.md) after a fresh consumer search. An unused export alone does not prove its implementation is dead: several task constants are used internally even if their exported names have no external caller.
 
 ## Sources and evidence
 

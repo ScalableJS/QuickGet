@@ -7,12 +7,12 @@ updated: 2026-10-09
 
 # Popup feedback audit and normalization plan
 
-## Decision
+## Initial investigation decision
 
-The current test baseline is useful but insufficient to approve broad notification optimization.
+At the investigation baseline, the tests were useful but insufficient to approve broad notification optimization.
 The next change should add focused regressions and fix popup ownership/recovery before deduplication.
 The user clarified that the observed inappropriate or persistent messages are **inside the extension popup**.
-This audit changes documentation and task state only; runtime behavior remains unchanged.
+The initial investigation changed documentation and task state only. The later acceptance section records the implemented bounded corrections.
 
 Baseline: `e1750e4`, 2026-10-09. [[feedback]] describes current surfaces; this page records the
 investigation and proposed changes. [[verification]] owns the verification-layer definitions.
@@ -53,7 +53,7 @@ mock-suite command and concerns initial console output, not action rejection.
 No fresh physical-NAS, private-tracker, Firefox runtime, or operating-system notification run
 was performed. E2E counts are not an E2E coverage percentage.
 
-## Findings verified against current code
+## Findings verified against the investigation baseline
 
 ### P2: poll errors remain after recovery and compete with user actions
 
@@ -349,3 +349,54 @@ production sources. Fresh outputs live in `/tmp/quickget-audit-coverage.log`,
 `/tmp/quickget-audit-e2e.log`, `/tmp/quickget-audit-probes.log`, and
 `/tmp/quickget-audit-browser-probe.log`, and `/tmp/quickget-audit-bookkeeping.log`. These are local investigation artifacts, not durable
 runtime certification; this page retains the measured result and reproducible scenario.
+
+## Accepted implementation and review
+
+Terra implemented the isolated patch and the root reviewer accepted the integrated candidate on
+2026-10-09 after source review and independent project checks. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy.
+
+| Coverage measure | Integrated result | Scope |
+| --- | --- | --- |
+| Statements | 88.96% | Existing configured TypeScript subset |
+| Branches | 83.22% | Executed branches, not every user scenario |
+| Functions | 88.59% | Entrypoints and Svelte remain outside the metric |
+| Lines | 89.57% | No exclusions added to inflate the result |
+
+The initial regression batch recorded 14 failures before implementation. Root review then
+reproduced late upload/callback overwrite, changed-error dismissal, orphaned Remove state and
+misclassified transport failure after Pause fallback. Six review regressions were red before
+those corrections; later stale-rejection/skipped-reconciliation and cross-writer guard probes
+were also red. The final connection-reset regression failed before its one-line owner-scoped
+reset and passed afterward. Baseline-passing timer cancellation was preserved.
+
+Permanent evidence now includes downloads feature orchestration tests, accepted-feedback tests
+using the real status DOM, status-pill fake timers and the default/headed feedback-normalization
+browser spec. Browser cases cover popup-owned recovery, denied/retried commands, Stop fallback
+success/API denial/transport rejection with exact counts, poll competition, pending upload,
+plain-save expiry, keyboard dismissal, delayed A work after B replacement/removal and popup
+close/reopen. Old command responses and query terminal events are awaited before final stale-work
+assertions; the replacement NAS's two rows and badge remain authoritative.
+
+Mimic's final source review identified an episode-dismissal state that survived connection change;
+local review confirmed it and Terra added the scoped reset. Its stale-query catch and skipped-remove
+remarks applied to the packet snapshot; both had already been corrected in the newer candidate.
+Earlier suggestions to catch monitoring/badge helper throws were rejected after inspecting the
+production bridge, which already catches synchronous and asynchronous messaging failures.
+Mimic opinions did not substitute for executed tests or root acceptance.
+
+The deleted snapshot, unused Card/test helpers and redundant direct dependencies were rechecked
+for consumers. Selection, current list rendering, NAS duplicate handling, retained package
+versions and live neighboring helpers remain. The canonical MV3 standard and review guide now
+match NAS-first acceptance, ephemeral claims and actual local credential storage.
+
+Accepted cards: BUG-58, BUG-72, BUG-73, ENG-15, ENG-16, ENG-17, ENG-18, ENG-9 and ENG-10.
+BUG-71 remains partial for broader page/native/new-tab/retained-tab feedback policy. The focused
+work does not certify physical NAS, private trackers, Firefox, operating-system notification
+persistence or measured screen-reader announcements. No release or Store publication occurred.
+
+Local acceptance logs use `/tmp/quickget-integrated-*.log`; regression review logs use
+`/tmp/quickget-feedback-root-corrections-baseline-red.log`,
+`/tmp/quickget-feedback-remove-stale-baseline-red.log`,
+`/tmp/quickget-feedback-upload-race-baseline-red.log` and
+`/tmp/quickget-feedback-connection-episode-baseline-red.log`. The scenario/results above are durable
+evidence; temporary files are not required to understand the accepted contracts.

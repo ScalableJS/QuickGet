@@ -113,8 +113,3 @@ export async function openPopupWindow(
 export async function closePopupWindow(worker: Worker, windowId: number): Promise<void> {
   await worker.evaluate((id) => chrome.windows.remove(id), windowId);
 }
-
-/** True when the toolbar icon is pinned, which the demo profile must guarantee (DEMO-4). */
-export async function isPinnedToToolbar(worker: Worker): Promise<boolean> {
-  return worker.evaluate(async () => (await chrome.action.getUserSettings()).isOnToolbar);
-}

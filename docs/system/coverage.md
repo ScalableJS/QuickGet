@@ -73,7 +73,6 @@ None.
 
 ## Exclusions from independent features
 
-- `src/popup/ui/Card.svelte`: Confirmed unused candidate preserved pending ENG-10; no independent shipped behavior.
 
 ## Boundaries
 

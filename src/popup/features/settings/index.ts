@@ -8,6 +8,7 @@ import { getSettingsPanel, isSettingsPanelVisible } from "./settingsUI.js";
 
 type InitializeSettingsOptions = {
   onVisibilityChange?: (visible: boolean) => void;
+  onConnectionSaved?: () => void;
 };
 
 export type SettingsFeature = {
@@ -32,10 +33,10 @@ export async function initializeSettings(options: InitializeSettingsOptions = {}
     panel.replaceChildren();
     mount(UnlockPanel, {
       target: panel,
-      props: { onUnlock: () => void mountSettings(panel) },
+      props: { onUnlock: () => void mountSettings(panel, options.onConnectionSaved) },
     });
   } else {
-    await mountSettings(panel);
+    await mountSettings(panel, options.onConnectionSaved);
   }
 
   return {
@@ -44,9 +45,9 @@ export async function initializeSettings(options: InitializeSettingsOptions = {}
   };
 }
 
-async function mountSettings(panel: HTMLElement): Promise<void> {
+async function mountSettings(panel: HTMLElement, onConnectionSaved?: () => void): Promise<void> {
   panel.replaceChildren();
-  const settingsPanel = mount(SettingsPanel, { target: panel });
+  const settingsPanel = mount(SettingsPanel, { target: panel, props: { onConnectionSaved } });
   await settingsPanel.load();
 }
 

@@ -12,7 +12,7 @@ features: ["connection-settings", "settings-lock", "settings-backup"]
 
 The settings screen has Connection and Advanced tabs. A configured connection is summarized as a card; editing exposes fields. Server URL parsing resolves scheme, address, and port into stored settings. Required fields and folder checks belong to the form, while configuration health and the last connection-check result remain separate concepts.
 
-`pingNas()` performs only a login with a five-second budget. Ready, authentication failure, and unreachable are outcomes, not a claim that all Download Station operations work. Saving persists valid settings before following up with connection verification; a quiet NAS must not hold the Save button indefinitely. The default Temp and Target folder is `Download`; missing configuration does not authorize interception.
+`pingNas()` performs only a login with a five-second budget. Ready, authentication failure, and unreachable are outcomes, not a claim that all Download Station operations work. Saving persists valid settings before following up with connection verification; a quiet NAS must not hold the Save button indefinitely. A plain `Settings saved` confirmation expires after 2.5 seconds; pending verification remains visible until its outcome. Saving or removing the connection invalidates pending downloads queries and commands, clears former rows/selection, and refreshes from the current configuration. Delayed former-NAS work cannot restore its rows or command feedback. The default Temp and Target folder is `Download`; missing configuration does not authorize interception.
 
 ## Storage and security
 

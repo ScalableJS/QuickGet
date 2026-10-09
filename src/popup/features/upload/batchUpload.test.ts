@@ -5,7 +5,8 @@ import { requestMonitoring } from "../../shared/monitor.js";
 import { parseUrlLines, uploadUrls } from "./batchUpload.js";
 
 vi.mock("@/popup/components", () => ({
-  showStatus: vi.fn(),
+  isCurrentDirectStatus: vi.fn(() => true),
+  showStatus: vi.fn(() => 1),
 }));
 
 vi.mock("../../shared/api", () => ({
@@ -92,6 +93,28 @@ describe("batchUpload", () => {
       expect(requestMonitoring).toHaveBeenCalled();
       expect(showStatus).toHaveBeenCalledWith("Added 1, failed 1", "info", { autoHideMs: 3000 });
       expect(onSuccess).toHaveBeenCalled();
+    });
+
+    it("keeps a partial NAS acceptance visible when its refresh callback fails", async () => {
+      const urls = ["http://example.com/1.zip", "http://example.com/2.zip"];
+      mockAddUrls.mockResolvedValueOnce([
+        { url: urls[0], ok: true },
+        { url: urls[1], ok: false, error: "Disk full" },
+      ]);
+
+      await uploadUrls(urls, {
+        onSuccess: () => {
+          throw new Error("refresh failed");
+        },
+      });
+
+      expect(showStatus).toHaveBeenLastCalledWith(
+        "Added 1, failed 1; follow-up refresh failed: refresh failed",
+        "info",
+        {
+          autoHideMs: 3000,
+        },
+      );
     });
 
     it("reports total failure when all URLs fail", async () => {

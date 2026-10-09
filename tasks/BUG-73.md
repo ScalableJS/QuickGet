@@ -1,7 +1,7 @@
 ---
 type: task
 id: BUG-73
-status: todo
+status: done
 priority: p2
 area: background/torrent handoff
 board: bugs
@@ -30,10 +30,10 @@ local outcome is established; data loss was not demonstrated.
 
 ## Acceptance criteria
 
-- [ ] An accepted NAS handoff remains accepted when notification-state cleanup fails.
-- [ ] Real transport/preflight failures preserve normal browser fallback and meaningful errors.
-- [ ] Feedback/monitoring failures are isolated from transaction acceptance without hiding transport failures.
-- [ ] A rejection-injection unit regression fails on the baseline and passes with the fix; interception E2E remains green.
+- [x] An accepted NAS handoff remains accepted when notification-state cleanup fails.
+- [x] Real transport/preflight failures preserve normal browser fallback and meaningful errors.
+- [x] Feedback/monitoring failures are isolated from transaction acceptance without hiding transport failures.
+- [x] A rejection-injection unit regression fails on the baseline and passes with the fix; interception E2E remains green.
 
 [Audit and plan](../docs/system/notification-normalization-audit.md#secondary-findings-outside-the-reported-popup-problem).
 
@@ -46,3 +46,8 @@ was contacted. The finding is no longer dependent on stubbing the sender's retur
 
 
 **2026-10-09 execution priority:** order 4 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.
+
+**2026-10-09 assignment:** Terra is implementing this boundary in an isolated feedback-normalization worktree. Acceptance and final status belong to the root reviewer.
+
+
+**2026-10-09 root acceptance:** Rejected failure-episode cleanup after mocked AddTorrent acceptance no longer changes acceptance or prevents browser cancellation; actual transport failure preserves fallback. Terra implemented the patch; Codex inspected the actual diff, challenged it with reproduced ordering failures and consulted Mimic. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. See [accepted evidence](../docs/system/notification-normalization-audit.md#accepted-implementation-and-review). These are mocked/browser results; no fresh physical-NAS or Firefox certification.

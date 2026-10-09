@@ -1,7 +1,7 @@
 ---
 type: "task"
 id: "BUG-58"
-status: "todo"
+status: done
 priority: "p2"
 area: "popup/UX"
 board: "bugs"
@@ -48,3 +48,8 @@ See [the audit and normalization plan](../docs/system/notification-normalization
 
 
 **2026-10-09 execution priority:** order 2 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.
+
+**2026-10-09 assignment:** Terra is implementing this boundary in an isolated feedback-normalization worktree. Acceptance and final status belong to the root reviewer.
+
+
+**2026-10-09 root acceptance:** Scoped polling recovery and precedence protect direct Save/Test/Upload feedback. Current successful queries resolve only their poll warning; stale/aborted results are skipped. Terra implemented the patch; Codex inspected the actual diff, challenged it with reproduced ordering failures and consulted Mimic. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. See [accepted evidence](../docs/system/notification-normalization-audit.md#accepted-implementation-and-review). These are mocked/browser results; no fresh physical-NAS or Firefox certification.

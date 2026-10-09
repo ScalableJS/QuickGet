@@ -56,3 +56,12 @@ Executed locally for the English knowledge-base and checker change:
 No new `test:prod-spotcheck`, Firefox runtime run, Storybook build, store capture or
 video recording was executed. Existing evidence links identify their maintained scenarios,
 not fresh results from these unexecuted suites.
+
+## Feedback normalization acceptance: 2026-10-09
+
+546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. Configured V8 coverage: statements 88.96%, branches 83.22%,
+functions 88.59%, lines 89.57%. The configured exclusions are unchanged;
+this is not whole-product or Svelte coverage. [The acceptance audit](notification-normalization-audit.md#accepted-implementation-and-review)
+records the deterministic regression matrix and review corrections. Documentation checks and
+single-feature reviews accompany the patch. No new physical-NAS, Firefox or publication result
+is implied by these local gates.

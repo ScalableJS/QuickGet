@@ -5,7 +5,7 @@ api:
     description: Required temp/move parameters for QNAP DS V4 AddUrl/AddTorrent and DTO boundary
 background:
   mv3-service-worker:
-    description: MV3 listener registration, no in-memory state, transactional downloads, credential guards
+    description: Synchronous listeners, ephemeral vs durable state, NAS-first handoff and credential preconditions
 frontend:
   svelte-runes-only:
     description: Svelte 5 runes-only API, derive-don't-effect, and the sanctioned logger

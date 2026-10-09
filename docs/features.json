@@ -63,15 +63,16 @@
         "src/lib/serverUrl.test.ts",
         "src/lib/connectionHealth.test.ts",
         "src/popup/features/settings/settingsUI.test.ts",
-        "tests/e2e/settings-connection.spec.ts"
+        "tests/e2e/settings-connection.spec.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
       "notes": "Storage precedence, local credential persistence, schema migration, configured-vs-health state and five-second login check were inspected.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared settings loading/saving, local credential persistence, migration, form validation and five-second login ping; corrected mission/privacy statements to the current storage boundary.",
-        "snapshot": "d8124199d01c24197bd5503e85ef08de8f35ada2361821ef5854ca45d5e3d568"
+        "reason": "Compared Save/Test/Remove lifecycle, 2.5-second plain-save confirmation, current connection invalidation, retained credential storage and five-second check boundary with Settings code and Chromium connection regressions.",
+        "snapshot": "742dfd457f0099834d74a91c884deb271a02a9ddf45f88930440f47d3517b79a"
       }
     },
     {
@@ -98,8 +99,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared PBKDF2 salt/verifier persistence, session unlock and conditional Settings mounting; the page explicitly separates a UI lock from credential encryption.",
-        "snapshot": "48aa9e3d1b232d4e0d2f377a0d07003f22698f437cf5a55190aed12ce15cd785"
+        "reason": "Compared unchanged PBKDF2/session unlock and Settings-only protection with the shared Settings callback change; canonical storage section still excludes credential encryption.",
+        "snapshot": "3b3a496315c1f3f85c6b41c178f1426b654e81b042af6210565cca74f5a448c0"
       }
     },
     {
@@ -125,8 +126,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared PORTABLE_KEYS, wrapper/bare-object parsing, typed fields, routing sanitization and import confirmation with the non-secret backup description.",
-        "snapshot": "61ba8012b7592f70ec712337f794303ae7a9d1acfd4bde1be71371f3873ccb3f"
+        "reason": "Compared unchanged portable import/export key filtering and confirmation with the changed shared Settings component; backup behavior and tests remain accurate.",
+        "snapshot": "31c4ace1a75779dc3bfa5de9bc217f88dec4992a43ce2d83950b24cc5663df0b"
       }
     },
     {
@@ -157,8 +158,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared first-match conditions, substring/glob lists, source/page domains, torrent metadata names and editor call paths; documented that batch URL submission does not run this matcher.",
-        "snapshot": "f414294e805665ab9844e74435f28ce9fce193dbc26126e438f72ab74baf6fbd"
+        "reason": "Compared unchanged first-match destination resolution and rule editor with uploads callback isolation and shared Settings change; local descriptor routing and documented per-batch destination limitation remain unchanged.",
+        "snapshot": "6566fb2cad14d6de4a38a30460da271843721c992fc1f99243cf8936b51239b1"
       }
     },
     {
@@ -216,8 +217,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared event ownership, live-login gate, page-context tracker fetch and cancel/erase after NAS acceptance; documented non-persistent claims and unresolved BUG-70 without adding mitigation.",
-        "snapshot": "094be403ab85558c16d750a16bb31e96558473d9b46c03f6af51afd72cdcd01d"
+        "reason": "Compared accepted AddTorrent ordering, rejected failure-episode cleanup isolation, cancel/erase and actual preacceptance fallback against downloads regression and interception E2E; no live NAS claim.",
+        "snapshot": "f80826b45551b5b6f3dfc47e676a2f6a9d6cf88387997dca505f5387c8636217"
       }
     },
     {
@@ -287,20 +288,23 @@
         "src/popup/features/upload/CreateUrls.svelte",
         "src/popup/features/upload/batchUpload.ts",
         "src/popup/features/upload/index.ts",
-        "src/popup/features/upload/torrentUpload.ts"
+        "src/popup/features/upload/torrentUpload.ts",
+        "src/popup/features/upload/uploadFeedback.ts"
       ],
       "evidence": [
         "src/popup/features/upload/torrentUpload.test.ts",
         "src/popup/features/upload/batchUpload.test.ts",
-        "tests/e2e/popup.full-cycle.spec.ts"
+        "tests/e2e/popup.full-cycle.spec.ts",
+        "src/popup/features/upload/acceptedFeedback.test.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
       "notes": "Current success/duplicate/error messages, release-name routing for local files and the 50-line independent URL outcomes were inspected.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared local torrent metadata routing, existing success/duplicate statuses, file-picker reset, 50-line batch limit and Promise.allSettled outcomes; recorded the per-batch destination policy.",
-        "snapshot": "3314a204ad2ecb25e32f13ed6f1a46b42e89d08a8f0466655f1890633a8d66e0"
+        "reason": "Compared full/partial/duplicate acceptance, sync/async follow-up failure, status receipts and suppression after newer direct feedback or invalid submission against real-renderer tests and browser upload interleaving; no durable queue.",
+        "snapshot": "921920164b310b5b88d1aa33a41685ec26d66930a395e1d180a4909d23b02a0e"
       }
     },
     {
@@ -331,15 +335,17 @@
         "src/popup/features/downloads/downloadsManager.test.ts",
         "src/popup/features/downloads/downloadFilters.test.ts",
         "src/popup/components/downloadItem/format.test.ts",
-        "tests/e2e/popup.full-cycle.spec.ts"
+        "tests/e2e/popup.full-cycle.spec.ts",
+        "src/popup/features/downloads/index.test.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
-      "notes": "Query refresh, selection/snapshot state, abort/concurrency control, task status grouping and visible torrent/download fields were inspected.",
+      "notes": "Current-query rendering, live shared selection, abort/controller identity, connection generation and removal reconciliation were inspected; the unread parallel snapshot is removed.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared two-second refresh and query cancellation, task normalization/status groups, selection/snapshot flow and rendered details against list/card code and existing state/filter tests.",
-        "snapshot": "bc91b6ec661919ea82e6d9f30aa41f3cc9c823ff9712373e4189f1d28d4e691f"
+        "reason": "Compared query abort/controller identity, connection generation, recovery and removal reconciliation; rechecked removal of unread snapshot producer/listeners while preserving selection and current query rendering.",
+        "snapshot": "62e5473d1b8ed792325633305187d84183ea45023766f9ded87d2caad6358479"
       }
     },
     {
@@ -363,15 +369,18 @@
       "evidence": [
         "src/api/client.test.ts",
         "tests/e2e/torrent-files.spec.ts",
-        "tests/e2e/popup.full-cycle.spec.ts"
+        "tests/e2e/popup.full-cycle.spec.ts",
+        "src/popup/features/downloads/index.test.ts",
+        "src/popup/features/downloads/downloadsManager.test.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
       "notes": "Start/pause/stop/remove, clean-delete confirmation, SetTaskPriority and GetFile/SetFile call paths were inspected.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared selected task start/stop/pause/remove, explicit unsupported Pause fallback, clean-delete confirmation, queue controls and per-file GetFile/SetFile requests with current controls.",
-        "snapshot": "ca18c9bb71c9f96ace9ffb44bb2178de35991262d5e0ba0d2dadd2e91661be30"
+        "reason": "Compared caught Start/Stop/Pause/Remove rejection, typed unsupported-Pause Stop outcome including transport failure, independent removal-marker owner and newer command precedence against orchestration tests and Chromium regressions.",
+        "snapshot": "280b9bc54f61846881be07df120257ac5ef47579a5376e401c45eb2c8b618eb0"
       }
     },
     {
@@ -401,8 +410,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared alarm creation/coalescing, full Task/Query polling, session action serialization, first-zero authoritative behavior, download-only count and clearing alarms on failure; removed stale hysteresis/retry claims.",
-        "snapshot": "c4fb866d7850e6b99d04659ab61a6e5114c5dbe82a1b25bb3912a344a2065b5f"
+        "reason": "Compared unchanged single toolbar writer, progress summary bridge and actionable-attention acknowledgement with current popup query invalidation; poll feedback recovery does not clear worker attention.",
+        "snapshot": "9d85b0d0b1477e706e267e127ceacbf879ce09b19c42158c241a0e9370184826"
       }
     },
     {
@@ -423,21 +432,25 @@
         "src/popup/components/statusPill/index.ts",
         "src/popup/components/statusPill/statusPill.ts",
         "src/popup/features/upload/batchUpload.ts",
-        "src/popup/features/upload/torrentUpload.ts"
+        "src/popup/features/upload/torrentUpload.ts",
+        "src/popup/features/upload/uploadFeedback.ts"
       ],
       "evidence": [
         "src/popup/components/statusPill/statusPill.test.ts",
         "src/lib/logger.test.ts",
         "src/popup/features/upload/torrentUpload.test.ts",
-        "src/popup/features/upload/batchUpload.test.ts"
+        "src/popup/features/upload/batchUpload.test.ts",
+        "src/popup/features/upload/acceptedFeedback.test.ts",
+        "src/popup/features/downloads/index.test.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
-      "notes": "Feedback ownership, current success matrix, episode suppression, status pill and logger boundaries were inspected; policy consistency remains open.",
+      "notes": "Direct/poll ownership, scoped recovery, episode dismissal, timer receipt guards and accepted-outcome isolation are verified for targeted popup regressions; wider native/page policy remains open.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared popup polling, toolbar rejection boundaries, notification bookkeeping and current feedback descriptions against source, 513-test V8 baseline, 45 mock E2E, two Chromium defect probes and five unit diagnostics; documented confirmed gaps without claiming fixes.",
-        "snapshot": "23782debff84f53ee7070b363303fce4591feaf78d4119fbad59de6f3165e9d5"
+        "reason": "Compared direct/poll ownership, scoped recovery, episode dismissal/reset, timer replacement, accepted-outcome callbacks and typed control failures with real-renderer and browser regressions; native/page secondary-surface policy remains open.",
+        "snapshot": "ca0c96ac04d33f5bea307962a51f28d41aa32facb24c511e417443dc305498c6"
       }
     },
     {
@@ -476,15 +489,16 @@
       "evidence": [
         "tests/e2e/a11y.spec.ts",
         "tests/e2e/popup.full-cycle.spec.ts",
-        "src/popup/shared/formatters/speed.test.ts"
+        "src/popup/shared/formatters/speed.test.ts",
+        "tests/e2e/feedback-normalization.spec.ts"
       ],
       "assessment": "verified",
-      "notes": "Entrypoint mounting, panel switching, runes/components and primitive usage were inspected; unused Card remains a cleanup candidate.",
+      "notes": "Entrypoint mounting, native themed dismissal, panel invalidation and active primitives were inspected; unused Card is removed.",
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared popup mounting/panel switching and toolbar component bindings, theme/style primitives and formatting; retained the independently confirmed unused Card candidate instead of deleting runtime code.",
-        "snapshot": "70fde1bcefab4e218a0d51b6978886b24c265510316daa5d528a03e31d67eed7"
+        "reason": "Compared themed native keyboard dismissal and existing popup mounting/panel callbacks; removed unused Card/barrel after consumer search; active primitives and accessibility checks remain intact.",
+        "snapshot": "eaf00e0e38873408e60df84cea71659d3fea94d13e6e178b6cdf03fbf699d1f8"
       }
     },
     {
@@ -514,8 +528,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared Auto/Light/Dark persistence, immediate selection saving, media-listener replacement and page-toast theme handling with the theme helper, Settings and content implementation.",
-        "snapshot": "d733b07da82741494889b5c690c4368eb0d5e73cee991d3f22069e6b2720992e"
+        "reason": "Compared unchanged Auto/Light/Dark storage and listener behavior plus dismiss-control token usage with interface docs and browser theme checks; no theme API or source change.",
+        "snapshot": "93874376a4b452686c353415e57e2d24959f775ef6390270dac04f77ad56b15b"
       }
     },
     {
@@ -553,8 +567,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared actual manifest minima Chrome 120 and Firefox 142, distinct bundles, CI/local hooks, direct Store uploader and project generation; packaging is explicitly separated from Firefox runtime evidence.",
-        "snapshot": "bc04093bfce00cba4f7acef744c8dfee1b88eddf3be75a0e6f6b3e68ca6e1c2a"
+        "reason": "Compared removed redundant direct dependencies and unchanged retained lock versions with clean installation, production/Storybook builds, 28 deployment tests and explicit headed/default feedback-spec lists; no deployment.",
+        "snapshot": "04f4b04b74b54f61048b328457266156fedbabf6f3056e599ce78f793db30a73"
       }
     },
     {
@@ -591,8 +605,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Inventoried Storybook/showcase consumers and asset/demo/stand entrypoints; documented their dev-only purpose and undeclared tsx issue without claiming a new recording or harness runtime result.",
-        "snapshot": "3a738673f9689137346e67badf28a48e02d956d772a23c5ea5fc3271e09032fc"
+        "reason": "Compared Card/helper removals with positive popup-size and HTTP-bundle callers, preserved assets/demo/stand ownership and Storybook build; undeclared stand tsx remains open.",
+        "snapshot": "5c2b859e64949b64ed3aa400a2ff77f060470702033168f6f045d843987b5f6f"
       }
     },
     {
@@ -642,8 +656,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Recorded actual local audit outcomes after inspecting the verification layers: 513 unit, 45 mock E2E, 28 deployment and 11 documentation tests passed. Hardware, Firefox runtime, Storybook and media capture remain explicitly unexecuted.",
-        "snapshot": "b1270148462eaf910f3342b1d9861128aa28ef96c44a5442c35036977dd67464"
+        "reason": "Compared added deterministic unit/browser regressions, configured TypeScript-only coverage boundaries and unchanged fixture/hardware ownership; recorded integrated gates without claiming NAS/Firefox coverage.",
+        "snapshot": "43a5e09f008f28cd02e1bf6e7f6150842eed63a99a4afd15005060cd87fbc0a6"
       }
     },
     {
@@ -1432,11 +1446,6 @@
       "reason": "Owns Svelte popup composition and UI primitives."
     },
     {
-      "path": "src/popup/ui/Card.svelte",
-      "features": [],
-      "reason": "Confirmed unused candidate preserved pending ENG-10; no independent shipped behavior."
-    },
-    {
       "path": "src/popup/ui/Checkbox.svelte",
       "features": [
         "popup-interface"
@@ -1764,6 +1773,14 @@
         "build-release"
       ],
       "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "src/popup/features/upload/uploadFeedback.ts",
+      "features": [
+        "popup-upload",
+        "feedback"
+      ],
+      "reason": "Shared post-acceptance callback feedback uses the existing direct-status receipt."
     }
   ],
   "retired": [],

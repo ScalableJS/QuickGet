@@ -1,7 +1,7 @@
 ---
 type: task
 id: ENG-15
-status: doing
+status: done
 priority: p2
 area: popup/testing
 board: engineering
@@ -24,12 +24,12 @@ entrypoint wiring and Svelte components. Existing green tests are insufficient f
 
 ## Acceptance criteria
 
-- [ ] Implement the critical scenario matrix in [the audit](../docs/system/notification-normalization-audit.md), with baseline failures for reproduced defects, matching fixes, and baseline-passing preservation tests.
-- [ ] Preserve existing Pause-to-Stop fallback, NAS acceptance ordering and duplicate semantics.
-- [ ] Assert no unhandled popup rejection and one meaningful terminal outcome for direct actions.
-- [ ] Verify repeated polling cannot overwrite Save/Test/Upload and recovery clears only its owner.
-- [ ] Add new browser specs to default and headed mock commands; existing suites remain green.
-- [ ] Record coverage scope honestly; no score-inflating exclusions or arbitrary thresholds.
+- [x] Implement the critical scenario matrix in [the audit](../docs/system/notification-normalization-audit.md), with baseline failures for reproduced defects, matching fixes, and baseline-passing preservation tests.
+- [x] Preserve existing Pause-to-Stop fallback, NAS acceptance ordering and duplicate semantics.
+- [x] Assert no unhandled popup rejection and one meaningful terminal outcome for direct actions.
+- [x] Verify repeated polling cannot overwrite Save/Test/Upload and recovery clears only its owner.
+- [x] Add new browser specs to default and headed mock commands; existing suites remain green.
+- [x] Record coverage scope honestly; no score-inflating exclusions or arbitrary thresholds.
 
 ## Evidence
 
@@ -54,3 +54,8 @@ observed throwing in production.
 
 
 **2026-10-09 execution priority:** order 1 in the feedback normalization view. Terra implements regression gates alongside each bounded fix; Codex owns review and acceptance. Reproduced defects require a recorded failing baseline before their tests can be accepted.
+
+**2026-10-09 acceptance review:** the initial draft added 14 baseline-failing regression cases, five passing popup browser scenarios and real-renderer callback probes. Root and Mimic review require truthful fallback outcomes, connection generation and removal reconciliation before acceptance. Root additionally reproduced cross-writer late callback overwrite, stale polling dismissal after an error-kind change, and an orphaned removal marker; these are review blockers, not completed outcomes.
+
+
+**2026-10-09 root acceptance:** Permanent regressions cover the targeted popup acceptance matrix; the initial 14 baseline failures and later review failures became green. Default/headed mock spec lists match and entrypoint/component coverage limitations remain explicit. Terra implemented the patch; Codex inspected the actual diff, challenged it with reproduced ordering failures and consulted Mimic. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. See [accepted evidence](../docs/system/notification-normalization-audit.md#accepted-implementation-and-review). These are mocked/browser results; no fresh physical-NAS or Firefox certification.

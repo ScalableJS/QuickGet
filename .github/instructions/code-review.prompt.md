@@ -8,7 +8,7 @@ Always review against [code-standard.instructions.md](./code-standard.instructio
 ## Review priorities (in order)
 
 1. **Correctness & regressions** — wrong behaviour, broken async, MV3 service-worker lifecycle, race conditions in badge polling / interception.
-2. **Security & data exposure** — credential handling (the NAS password is session-stored / encrypted-at-rest), URL/torrent validation, permissions.
+2. **Security & data exposure** — credential handling (NAS credentials persist in local storage; the Settings screen lock does not encrypt them), URL/torrent validation, permissions.
 3. **Reliability & error handling** — API response parsing, swallowed errors, missing guards.
 4. **Standards & dead code** — violations of the code standard, unused exports/options, stale comments that no longer match the code.
 5. **Maintainability & readability.**

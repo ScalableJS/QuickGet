@@ -17,7 +17,7 @@ Feedback has three owners: the page content script shows in-page send toasts; th
 | Context-menu send | No system success notification | Direct system notification |
 | Popup local torrent | Success or duplicate status message | Error status message |
 | Popup URL batch | Full/partial-success status | Per-batch failure summary |
-| Task start/pause/stop | Popup status | Rejections currently escape without a visible operation error (BUG-72) |
+| Task start/pause/stop | Popup status | One visible operation error; unsupported Pause uses the actual Stop outcome |
 
 Worker failure episodes are session-stored and suppressed for 30 minutes while kind/fingerprint remain unchanged. A new problem, elapsed repeat period, or successful clearing of the episode allows a notification again. A settings problem is different from a tracker rejecting access; classification is part of meaningful feedback.
 
@@ -27,18 +27,30 @@ The status pill and accessible form messages are UI mechanisms, not an activity 
 
 [BUG-71](../../tasks/BUG-71.md) tracks inconsistent send feedback. Current popup sends already have success messages, so the original absence assertion does not describe the current code. The remaining comparison must focus on the intentionally silent torrent/menu paths and any observed lost response; the audit does not close that defect by assumption.
 
-## Popup recovery investigation: 2026-10-09
+## Popup ownership and recovery
 
-A fresh Chromium probe reproduced [BUG-58](../../tasks/BUG-58.md): a task-list poll error
-remains in the shared pill after successful polling recovers. The same pill accepts settings,
-upload and control messages, so periodic failures can overwrite a direct operation result.
-A separate Chromium probe reproduced [BUG-72](../../tasks/BUG-72.md): rejected Pause causes
-an unhandled popup error without a terminal failure message. Existing happy-path tests pass.
+The existing status renderer separates direct user-operation feedback from polling-owned health.
+Polling cannot replace a visible direct message. A successful, current query clears only poll-owned
+feedback; an aborted or superseded query does not establish recovery. Repeated identical poll errors
+are not rendered again. Dismissing the current poll error silences that episode until recovery or a
+changed failure fingerprint; a later different failure can be announced.
 
-[[notification-normalization-audit|The audit and phased normalization plan]] records measured
-coverage, reproduction evidence, duplicate candidates and test prerequisites. No runtime fix
-was made by this investigation. [BUG-73](../../tasks/BUG-73.md) separately protects NAS acceptance
-from failure-episode cleanup errors; a mocked-acceptance unit probe reproduced that boundary.
+Plain `Settings saved` and normal upload confirmations expire after 2.5 seconds. Control
+confirmations expire after two seconds. Pending work and errors have no blanket timeout. Persistent
+messages have a themed native `Dismiss message` button with keyboard focus. Replacing a message
+cancels its predecessor's timer. A direct status revision guards late upload results and callback
+failures against newer confirmations or validation errors. Downloads additionally scope command
+completion to the newest command and invalidate old work on connection replacement/removal.
+
+Accepted uploads, duplicates and partial batches remain identified if a subsequent callback fails;
+that failure is reported as a follow-up refresh issue. Accepted browser torrent handoffs likewise
+survive failure-episode cleanup rejection. Actual pre-acceptance API failures remain errors.
+
+[[notification-normalization-audit|The audit]] preserves the original reproductions and acceptance
+review. [BUG-58](../../tasks/BUG-58.md), [BUG-72](../../tasks/BUG-72.md),
+[BUG-73](../../tasks/BUG-73.md), [ENG-17](../../tasks/ENG-17.md) and
+[ENG-18](../../tasks/ENG-18.md) own these bounded corrections. This does not establish native
+notification delivery or page-toast correlation across every user path.
 
 ## Sources and evidence
 

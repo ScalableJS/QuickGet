@@ -21,4 +21,4 @@ Missing configuration stops the alarm and surfaces actionable attention. A monit
 - [alarms.ts](../../src/background/alarms.ts), [actions.ts](../../src/background/actions.ts), [worker](../../src/background/index.ts), [popup bridge](../../src/popup/shared/monitor.ts).
 - Alarm/action/monitor unit tests cover serialization, failed writes, authoritative zero handling, and request ownership.
 - [Toolbar behavior](../toolbar-actions.md) provides the deeper state rationale.
-- [BUG-39](../../tasks/BUG-39.md) records the lighter polling opportunity. [BUG-58](../../tasks/BUG-58.md) remains a feedback follow-up, not permission to change ownership during this audit.
+- [BUG-39](../../tasks/BUG-39.md) records the lighter polling opportunity. [BUG-58](../../tasks/BUG-58.md) scopes popup polling feedback and recovery; the worker remains the only toolbar writer and actionable attention still requires popup acknowledgement.

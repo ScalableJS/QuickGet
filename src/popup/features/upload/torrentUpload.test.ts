@@ -7,7 +7,8 @@ import { requestMonitoring } from "../../shared/monitor.js";
 import { uploadTorrent } from "./torrentUpload.js";
 
 vi.mock("@/popup/components", () => ({
-  showStatus: vi.fn(),
+  isCurrentDirectStatus: vi.fn(() => true),
+  showStatus: vi.fn(() => 1),
 }));
 
 vi.mock("../../shared/api", () => ({
@@ -65,6 +66,29 @@ describe("torrentUpload", () => {
       autoHideMs: 2000,
     });
     expect(onDuplicate).toHaveBeenCalledWith("existing.torrent");
+  });
+
+  it.each([
+    ["accepted", { added: true }, "onSuccess", 'Added "accepted.torrent" to Download Station'],
+    [
+      "duplicate",
+      { added: false, duplicate: true },
+      "onDuplicate",
+      '"accepted.torrent" already exists on Download Station',
+    ],
+  ] as const)("keeps a %s NAS outcome visible when its post-acceptance callback fails", async (_outcome, result, callback, outcomeMessage) => {
+    const file = new File(["dummy"], "accepted.torrent", { type: "application/x-bittorrent" });
+    mockAddTorrent.mockResolvedValueOnce(result);
+
+    await uploadTorrent(file, {
+      [callback]: () => {
+        throw new Error("refresh failed");
+      },
+    });
+
+    expect(showStatus).toHaveBeenLastCalledWith(`${outcomeMessage}; follow-up refresh failed: refresh failed`, "info", {
+      autoHideMs: 3000,
+    });
   });
 
   it("handles API failure response", async () => {

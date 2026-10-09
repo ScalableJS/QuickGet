@@ -9,14 +9,14 @@ updated: 2026-10-09
 
 This review compares the shipped paths, current call sites, existing task acceptance conditions, and a fresh report-only Knip run. It records findings; it does not authorize removal of active behavior or close old defects without reproduction.
 
-## Confirmed unused candidates
+## Verified cleanup boundaries
 
 | Candidate | Evidence | Action |
 |---|---|---|
-| `chrome-webstore-upload` direct dev dependency | No source import; `scripts/upload-webstore.js` implements Store calls directly | Existing [ENG-9](../../tasks/ENG-9.md) |
-| Direct `@storybook/svelte` and `@unocss/preset-wind4` dependencies | Source uses the Vite adapter and `unocss`; packages arrive transitively | Existing ENG-9; verify Storybook/extension build before removal |
-| `Card.svelte` and its barrel export | Knip flags the export; no runtime/gallery consumer found | Existing [ENG-10](../../tasks/ENG-10.md) |
-| `isPinnedToToolbar()` and `persistHttpCapture()` | No caller found; adjacent helpers remain live | ENG-10; retain popup sizing and HTTP bundle capture |
+| `chrome-webstore-upload` direct dev dependency | No source import; `scripts/upload-webstore.js` implements Store calls directly | Removed through [ENG-9](../../tasks/ENG-9.md) |
+| Direct `@storybook/svelte` and `@unocss/preset-wind4` dependencies | Source uses the Vite adapter and `unocss`; packages arrive transitively | Direct declarations removed; extension and Storybook builds passed; transitive packages remain |
+| `Card.svelte` and its barrel export | Knip flags the export; no runtime/gallery consumer found | Removed through [ENG-10](../../tasks/ENG-10.md) |
+| `isPinnedToToolbar()` and `persistHttpCapture()` | No caller found; adjacent helpers remain live | Removed; popup sizing and HTTP bundle capture callers remain live |
 
 Unused exports of task-status sets and error formatters do not imply unused implementations: internal use must be preserved. `@types/chrome` provides the global Chrome namespace and is not removable just because Knip has no import edge. ffmpeg is an external demo tool, not an extension runtime dependency.
 
@@ -54,7 +54,12 @@ Knip results are candidates, not a proof of product redundancy. No usage telemet
 
 [[notification-normalization-audit|The feedback audit]] records actual test coverage and
 confirmed lifecycle failures. A production call-site search additionally found that
-`downloadsManager.ts` builds a duplicate-detection snapshot with no reader or subscriber;
-[ENG-16](../../tasks/ENG-16.md) owns removing that pipeline while preserving live selection state.
+`downloadsManager.ts` built a duplicate-detection snapshot with no reader or subscriber.
+[ENG-16](../../tasks/ENG-16.md) removes its construction, producer and listeners while preserving live selection state.
 [ENG-15](../../tasks/ENG-15.md) gates normalization on behavior-level unit and browser regressions.
 These findings do not authorize merging unrelated caches, transport paths or presentation state.
+
+The Agent OS MV3 standard was also compared with the current worker: it now permits ephemeral
+in-flight claims/cache state, requires NAS acceptance before browser cancellation, and describes
+current credential preconditions. Retired pause/recovery and settings-lock interception guidance
+was removed from the canonical standard; no worker policy was changed by that correction.

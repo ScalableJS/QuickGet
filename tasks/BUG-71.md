@@ -1,14 +1,14 @@
 ---
 type: "task"
 id: "BUG-71"
-status: "doing"
+status: "partial"
 priority: "p2"
 area: "content/background/popup UX"
 board: "bugs"
 updated: "2026-10-09"
 legacy_status: "In Progress"
 severity: "medium"
-execution_order: 9
+execution_order: 10
 depends_on:
   - BUG-58
   - BUG-72
@@ -65,3 +65,8 @@ See [the current feedback matrix](../docs/system/feedback.md).
 
 
 **2026-10-09 execution priority:** order 9 in the feedback normalization view. The broader cross-surface investigation remains open; finish the confirmed popup and transaction boundaries before changing feedback policy.
+
+**2026-10-09 scheduling:** status is partial: popup terminal success already exists, while cross-surface/new-tab/retained-tab acceptance remains unproven. The current implementation assignment covers the narrower confirmed cards linked above; this broader policy card is not claimed complete.
+
+
+**2026-10-09 bounded acceptance:** the linked popup and accepted-handoff cards are complete after root review. This card remains partial: new/retained-tab content feedback, native delivery/serialization and the full intent/path policy matrix are unproven. Existing quiet automatic/menu success policy is preserved; no speculative notification framework or persistent dedupe was added.

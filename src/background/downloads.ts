@@ -205,7 +205,11 @@ async function handOffToNas(
       );
     await sendTorrentUrlToNas(settings, url, route, referrer);
     void ensureMonitoring();
-    await clearFailureEpisode();
+    try {
+      await clearFailureEpisode();
+    } catch (error) {
+      console.error("[QuickGet] NAS accepted the torrent, but notification bookkeeping could not be cleared:", error);
+    }
     return true;
   } catch (error) {
     console.error("[QuickGet] Failed to send torrent:", error);

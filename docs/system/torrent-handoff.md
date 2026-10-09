@@ -31,3 +31,10 @@ Configuration, authentication, tracker, and NAS send failures leave normal brows
 - [downloads.ts](../../src/background/downloads.ts), [torrentSender.ts](../../src/lib/torrentSender.ts), [tabFetch.ts](../../src/lib/tabFetch.ts), [torrentMeta.ts](../../src/lib/torrentMeta.ts).
 - [Download interception E2E](../../tests/e2e/download-interception.spec.ts), [tracker guard E2E](../../tests/e2e/hotlink-guard.spec.ts), and corresponding unit tests verify request ownership, fallback, and browser file outcomes.
 - [Real-NAS spot check](../../tests/e2e/prod-spotcheck.spec.ts) exercises the production bundle before releases; no new hardware run is claimed by this documentation audit.
+
+## Accepted handoff and feedback bookkeeping
+
+After NAS acceptance, clearing the previous failure episode is best-effort bookkeeping. A rejected
+session-storage cleanup is logged without changing acceptance or preventing browser cancellation.
+Pre-acceptance send failures still preserve the browser transfer. The regression injects cleanup
+rejection after one mocked `AddTorrent` acceptance; it is not a physical-NAS observation.

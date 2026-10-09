@@ -8,8 +8,13 @@ const sharedApiMock = vi.hoisted(() => ({
 vi.mock("../../shared/api", () => sharedApiMock);
 
 import type { Task } from "@lib/tasks.js";
-import { abortListDownloads, listDownloads, pauseTorrent, setTaskPriority } from "./downloadsManager.js";
-import { getSnapshot, updateSnapshot } from "./downloadsState.js";
+import {
+  PauseFallbackStopError,
+  abortListDownloads,
+  listDownloads,
+  pauseTorrent,
+  setTaskPriority,
+} from "./downloadsManager.js";
 
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
@@ -36,7 +41,6 @@ function createTask(overrides: Partial<Task> = {}): Task {
 describe("downloadsManager", () => {
   beforeEach(() => {
     abortListDownloads();
-    updateSnapshot({ hashes: new Set(), names: new Set() });
     sharedApiMock.getApiClient.mockReset();
   });
 
@@ -67,27 +71,6 @@ describe("downloadsManager", () => {
     expect(queryTasks).toHaveBeenCalledTimes(1);
   });
 
-  it("updates the duplicate-check snapshot from raw API data", async () => {
-    const task = createTask({ hash: "ABC123", name: "Movie.Release.2026" });
-
-    sharedApiMock.getApiClient.mockResolvedValue({
-      queryTasks: vi.fn().mockResolvedValue({
-        raw: {
-          error: 0,
-          data: [{ hash: "ABC123", name: "Movie.Release.2026.torrent" }],
-        },
-        tasks: [task],
-      }),
-    } as never);
-
-    const result = await listDownloads();
-    const snapshot = getSnapshot();
-
-    expect(result).toMatchObject({ skipped: false, tasks: [task] });
-    expect(snapshot.hashes.has("abc123")).toBe(true);
-    expect(snapshot.names.has("movie release 2026")).toBe(true);
-  });
-
   it("aborts an in-flight query and clears the lock for the next refresh", async () => {
     const queryTasks = vi.fn(
       ({ signal }: { signal: AbortSignal }) =>
@@ -102,7 +85,7 @@ describe("downloadsManager", () => {
     await flushMicrotasks();
     abortListDownloads();
 
-    await expect(pending).rejects.toThrow(/aborted/i);
+    await expect(pending).resolves.toEqual({ skipped: true });
 
     const nextQuery = vi.fn().mockResolvedValue({
       raw: { error: 0, data: [] },
@@ -114,13 +97,66 @@ describe("downloadsManager", () => {
     expect(nextQuery).toHaveBeenCalledTimes(1);
   });
 
+  it("discards a stale completion after an abort and replacement query", async () => {
+    let resolveFirst!: (value: { raw: { error: number; data: unknown[] }; tasks: Task[] }) => void;
+    const firstQuery = vi.fn(
+      () =>
+        new Promise<{ raw: { error: number; data: unknown[] }; tasks: Task[] }>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+    const replacement = createTask({ hash: "replacement", name: "Replacement" });
+    const secondQuery = vi.fn().mockResolvedValue({
+      raw: { error: 0, data: [{ hash: "replacement", name: "Replacement" }] },
+      tasks: [replacement],
+    });
+    sharedApiMock.getApiClient.mockResolvedValueOnce({ queryTasks: firstQuery } as never).mockResolvedValueOnce({
+      queryTasks: secondQuery,
+    } as never);
+
+    const first = listDownloads();
+    await flushMicrotasks();
+    abortListDownloads();
+    const second = listDownloads();
+    await expect(second).resolves.toMatchObject({ skipped: false, tasks: [replacement] });
+    resolveFirst({
+      raw: { error: 0, data: [{ hash: "stale", name: "Stale" }] },
+      tasks: [createTask({ hash: "stale", name: "Stale" })],
+    });
+
+    await expect(first).resolves.toEqual({ skipped: true });
+  });
+
+  it("discards a stale rejection after an abort", async () => {
+    let rejectFirst!: (reason: Error) => void;
+    const queryTasks = vi.fn(
+      () =>
+        new Promise<never>((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    const replacementQuery = vi.fn().mockResolvedValue({ raw: { error: 0, data: [] }, tasks: [] });
+    sharedApiMock.getApiClient.mockResolvedValueOnce({ queryTasks } as never).mockResolvedValueOnce({
+      queryTasks: replacementQuery,
+    } as never);
+
+    const first = listDownloads();
+    await flushMicrotasks();
+    abortListDownloads();
+    const replacement = listDownloads();
+    await expect(replacement).resolves.toMatchObject({ skipped: false, tasks: [] });
+    rejectFirst(new Error("late network failure"));
+
+    await expect(first).resolves.toEqual({ skipped: true });
+  });
+
   it("falls back to stopTask when the NAS lacks Task/Pause (apiUnsupported)", async () => {
     const stopTask = vi.fn().mockResolvedValue(true);
     const pauseTask = vi.fn().mockRejectedValue(Object.assign(new Error("no such api"), { apiUnsupported: true }));
 
     sharedApiMock.getApiClient.mockResolvedValue({ pauseTask, stopTask } as never);
 
-    await pauseTorrent("hash-123");
+    await expect(pauseTorrent("hash-123")).resolves.toBe("stopped");
 
     expect(pauseTask).toHaveBeenCalledWith("hash-123");
     expect(stopTask).toHaveBeenCalledWith("hash-123");
@@ -134,6 +170,35 @@ describe("downloadsManager", () => {
 
     await expect(pauseTorrent("hash-123")).rejects.toThrow(/network down/);
     expect(stopTask).not.toHaveBeenCalled();
+  });
+
+  it("reports a native Pause acceptance as paused", async () => {
+    const pauseTask = vi.fn().mockResolvedValue(true);
+    sharedApiMock.getApiClient.mockResolvedValue({ pauseTask } as never);
+
+    await expect(pauseTorrent("hash-123")).resolves.toBe("paused");
+  });
+
+  it("surfaces a rejected Stop fallback when Pause is unsupported", async () => {
+    const pauseTask = vi.fn().mockRejectedValue(Object.assign(new Error("no such api"), { apiUnsupported: true }));
+    const stopTask = vi.fn().mockRejectedValue(new Error("Stop task failed"));
+    sharedApiMock.getApiClient.mockResolvedValue({ pauseTask, stopTask } as never);
+
+    await expect(pauseTorrent("hash-123")).rejects.toBeInstanceOf(PauseFallbackStopError);
+    expect(stopTask).toHaveBeenCalledWith("hash-123");
+  });
+
+  it("retains stop fallback context when the fallback transport rejects", async () => {
+    const pauseTask = vi.fn().mockRejectedValue(Object.assign(new Error("no such api"), { apiUnsupported: true }));
+    const stopTask = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    sharedApiMock.getApiClient.mockResolvedValue({ pauseTask, stopTask } as never);
+
+    await expect(pauseTorrent("hash-123")).rejects.toMatchObject({
+      name: "PauseFallbackStopError",
+      stopError: expect.objectContaining({ message: "Failed to fetch" }),
+    });
+    expect(pauseTask).toHaveBeenCalledTimes(1);
+    expect(stopTask).toHaveBeenCalledTimes(1);
   });
 
   it("delegates setTaskPriority to api client", async () => {

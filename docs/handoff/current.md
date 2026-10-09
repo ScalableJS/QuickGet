@@ -15,14 +15,24 @@ The new English knowledge base has a feature registry, explicit review snapshots
 source classification, language guard, and CI documentation checks. Read
 [[docs/system/documentation|the maintenance workflow]] before changing an owning source.
 
+## Execution and acceptance
+
+[The feedback normalization view](../../views/tasks.base) retains ten canonical cards ordered by
+`execution_order`; priority remains separate. Terra implemented the isolated patches and Codex
+accepted nine cards after source review, reproduced race probes, Mimic consultation and integrated
+checks. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy.
+
+Current corrections are documented in [[docs/system/feedback|feedback]],
+[[docs/system/task-management|task management]], [[docs/system/popup-upload|popup uploads]] and
+[[docs/system/settings|settings]]. [The acceptance audit](../system/notification-normalization-audit.md#accepted-implementation-and-review)
+preserves coverage limits and red/green evidence. Proven snapshot/UI/helper/dependency cleanup
+is complete. The canonical MV3 standard and credential review guidance match current code.
+
 ## Next work
 
-- [Popup feedback investigation](../system/notification-normalization-audit.md): confirmed stale poll errors and rejected toolbar commands. [ENG-15](../../tasks/ENG-15.md) establishes regression gates; [BUG-58](../../tasks/BUG-58.md) and [BUG-72](../../tasks/BUG-72.md) own the popup fixes; [BUG-73](../../tasks/BUG-73.md) protects accepted handoffs from notification bookkeeping failures; [ENG-16](../../tasks/ENG-16.md) records an unread snapshot cleanup.
-
-- [BUG-71](../../tasks/BUG-71.md): compare send feedback across real user paths. Popup success
-  feedback exists in current code; the original missing-success assertion is historical.
-- [ENG-9](../../tasks/ENG-9.md) and [ENG-10](../../tasks/ENG-10.md): existing proven cleanup
-  candidates. Documentation coverage does not require speculative functionality removal.
+- [BUG-71](../../tasks/BUG-71.md) remains partial: measure page/native feedback across new and
+  retained tabs and decide the full intent/path policy. Targeted popup completion does not close
+  that broader matrix or restore system-success spam.
 - [ENG-13](../../tasks/ENG-13.md): decide whether batch URL destinations should evaluate rules per line.
 - [ENG-14](../../tasks/ENG-14.md): define Firefox runtime evidence separately from packaging.
 - [BUG-70](../../tasks/BUG-70.md): wait for a real recurrence and captured causal sequence.
