@@ -73,9 +73,8 @@ export async function loadSettings(): Promise<Settings> {
          * There is no locked state: a download starts when the user clicks a link, not when
          * they open the popup, so anything requiring them to type first would silently drop it.
          *
-         * The session copy is still honoured first — it is what a not-yet-saved edit and the
-         * "do not remember" mode use — and a value left by the old encrypted scheme is picked
-         * up here too, so an upgrade does not lose the password.
+         * The session copy is honoured first; persisted local credentials provide the
+         * value after browser restart when session storage is empty.
          */
         let NASpassword = "";
         if (typeof sessionItems.sessionNASpassword === "string" && sessionItems.sessionNASpassword) {

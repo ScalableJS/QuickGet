@@ -50,3 +50,9 @@ dispatch to the service worker.
 **Moved to In Progress 2026-09-15** — popup torrent and batch URL uploads now replace their working
 status with a terminal success only after the API reports acceptance. Content-click, automatic
 download and context-menu paths remain to be measured against the full matrix before this closes.
+
+**Documentation audit 2026-10-09** — current popup torrent and batch URL senders now emit
+terminal success status messages. The original assertion that they refresh without success
+feedback is historical. The browser-torrent/context-menu success policy remains silent, while
+page clicks have terminal toasts. This correction does not close the reported real-use inconsistency.
+See [the current feedback matrix](../docs/system/feedback.md).

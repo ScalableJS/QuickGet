@@ -1,3 +1,12 @@
+---
+type: research
+status: obsolete
+area: history
+updated: 2026-10-09
+---
+
+> Historical analysis or superseded plan. For current behavior, start at [the system guide](system/README.md).
+
 # Download interception — bug report
 
 Recorded 2026-08-27 against `env/dev` @ `4933b52`.

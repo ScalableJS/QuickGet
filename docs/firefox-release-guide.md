@@ -42,7 +42,9 @@ GitHub Actions runs these checks on every push and pull request. It uploads the 
 
 ## Privacy and permissions
 
-The extension sends data only to the NAS address configured by the user. It does not use analytics, advertising, or third-party services.
+NAS credentials go to the configured NAS. User-selected torrent descriptors may be fetched from
+their source tracker in browser/page context before NAS upload. The extension has no analytics,
+advertising, or hosted backend.
 
 Firefox data-collection disclosure declares these required data types:
 
@@ -55,7 +57,7 @@ The privacy policy is in [privacy-policy.md](./privacy-policy.md). Do not declar
 
 ## Reviewer notes template
 
-> QuickGet Remote is a browser client for a user-owned QNAP NAS running Download Station. It sends credentials, magnet links, URLs, and selected `.torrent` files only to the NAS address configured by the user. It does not use analytics, advertising, telemetry, or third-party services. Broad HTTP/HTTPS host permissions are required because each user provides their own NAS hostname or IP address. Torrent interception is experimental and Chromium-only. The Svelte production runtime contains a static `innerHTML` template helper; application source does not insert untrusted HTML. Source code and reproducible build instructions are provided with this submission.
+> QuickGet Remote is a browser client for a user-owned QNAP NAS running Download Station. It sends credentials, magnet links, URLs, and selected `.torrent` files only to the NAS address configured by the user. It has no analytics, advertising, telemetry, or hosted backend. User-selected torrent descriptors may be fetched from their source tracker before upload. Broad HTTP/HTTPS host permissions cover the configured NAS and those source pages. Chromium download behavior has mock E2E coverage; Firefox packaging and lint do not establish equivalent runtime interception guarantees. The Svelte production runtime contains a static `innerHTML` template helper; application source does not insert untrusted HTML. Source code and reproducible build instructions are provided with this submission.
 
 ## References
 

@@ -141,8 +141,7 @@ export async function applyBadgeStats(
     const hasActivity = stats.downloading > 0 || stats.seeding > 0;
     const text = stats.downloading > 0 ? String(stats.downloading) : "";
 
-    // Refresh the tooltip only when we actually apply a state — during an idle
-    // hold the tooltip keeps matching the count still on the badge.
+    // Preserve actionable configuration attention until the popup acknowledges it.
     if (!needsAttention) {
       const title = buildTitle(stats);
       if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {

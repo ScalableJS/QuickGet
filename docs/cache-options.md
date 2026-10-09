@@ -1,3 +1,12 @@
+---
+type: research
+status: obsolete
+area: history
+updated: 2026-10-09
+---
+
+> Historical analysis or superseded plan. For current behavior, start at [the system guide](system/README.md).
+
 # TTL caching layer for the QNAP Download Station API
 
 The extension talks to QNAP Download Station over just two "hot" paths: it holds an active SID (session) and periodically makes a POST request to `/downloadstation/V4/Task/Query` for the task list. Both calls need to be cached to avoid overloading the NAS and to keep multiple contexts (popup, action icon, service worker) in sync. So the caching layer needs to be asynchronous, work with JSON, support TTL, and be easy to reuse outside Chrome. Below are the main candidates and approaches.

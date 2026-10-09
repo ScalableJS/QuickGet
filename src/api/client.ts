@@ -337,8 +337,7 @@ export class ApiClient {
     }
 
     if (!data.data) {
-      // Some DS builds answer {error:0} without a status block — treat as "no activity"
-      // rather than letting the badge poll throw on undefined.
+      // A success envelope without status data is unusable; report the missing block.
       throw new Error("Get status failed: no status data in response");
     }
 

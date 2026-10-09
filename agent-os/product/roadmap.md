@@ -11,7 +11,7 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 - Core task management: add URL / magnet / `.torrent`, list, start, pause, stop, remove,
   seeding view with share ratio.
 - Context-menu send, toolbar badge and status-driven icon, alarm-based polling with idle
-  hysteresis.
+  snapshots treated as authoritative.
 - Session hardening: single-flight login, re-login-and-replay on expiry, badge preserved
   across transient poll errors (F2).
 - Folder path validation against `Misc/Dir` with inline valid/invalid state (F1).

@@ -1,3 +1,12 @@
+---
+type: research
+status: obsolete
+area: history
+updated: 2026-10-09
+---
+
+> Historical analysis or superseded plan. For current behavior, start at [the system guide](system/README.md).
+
 # Popup Architecture
 
 Status: **the structure described here is the structure that exists.** This is a reference for

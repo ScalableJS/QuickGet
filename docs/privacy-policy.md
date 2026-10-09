@@ -4,7 +4,8 @@ QuickGet Remote connects directly to the QNAP NAS address configured by the user
 
 ## Data handled by the extension
 
-- NAS address, username, password, and connection settings are stored in the local browser profile. The password is kept in browser session storage unless the user explicitly enables the local password-storage option.
+- NAS address, username, password, and connection settings are stored in the local browser profile. The NAS password is persisted in local extension storage and mirrored in session storage; it is not encrypted by the extension. The optional settings password locks the Settings screen only.
+- For a user-selected torrent link, the extension may fetch the descriptor from the source site using browser/page context before uploading it to the NAS. Ordinary file bytes are downloaded by the NAS itself.
 - The extension sends the NAS username and password to the configured NAS only to authenticate with QNAP Download Station.
 - When the user adds a URL, magnet link, or `.torrent` file, that value is sent only to the configured NAS to create a Download Station task.
 - The extension automatically processes `.torrent` downloads and magnet clicks only to send them to the configured NAS. If configuration, tracker access, or the NAS hand-off fails, normal browser handling resumes.

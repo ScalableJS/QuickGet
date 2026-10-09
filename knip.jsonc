@@ -27,6 +27,7 @@
     "playwright.config.ts",
     "aliases.config.ts!",
     "!src/**/*Gallery.svelte!",
+    "!scripts/docs/check.test.mjs",
     "!src/**/*Showcase.svelte!"
   ]
 }

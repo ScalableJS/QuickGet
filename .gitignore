@@ -74,3 +74,4 @@ dist-dev/
 demo-output/
 !docs/design-system-spacing-research.md
 !docs/manual-test-download-targets.md
+!docs/**/*.md

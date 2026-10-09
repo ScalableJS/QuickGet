@@ -1,3 +1,12 @@
+---
+type: research
+status: obsolete
+area: history
+updated: 2026-10-09
+---
+
+> Historical analysis or superseded plan. For current behavior, start at [the system guide](system/README.md).
+
 # Plan: settings form — validation, grouping, a11y
 
 Status: **shipped**, and kept as the reasoning behind the form rather than as a backlog. Every

@@ -43,7 +43,11 @@
     "prepare": "husky",
     "test:e2e:tracker": "TRACKER_E2E=1 playwright test tests/e2e/private-tracker.real.spec.ts",
     "tracker:login": "node scripts/tracker-login.mjs",
-    "demo:record": "npm run build && E2E_RECORD_DEMO=true playwright test tests/e2e/demo.spec.ts --workers=1"
+    "demo:record": "npm run build && E2E_RECORD_DEMO=true playwright test tests/e2e/demo.spec.ts --workers=1",
+    "docs:check": "node scripts/docs/check.mjs --strict",
+    "docs:report": "node scripts/docs/check.mjs --write",
+    "docs:language": "node scripts/docs/language.mjs",
+    "test:docs": "node --test scripts/docs/check.test.mjs"
   },
   "keywords": [
     "qnap",

@@ -31,6 +31,26 @@ Project instructions are generated from `.rulesync/rules/project.md`; project sk
 Do not edit generated `AGENTS.md`, `CLAUDE.md`, or Copilot instructions directly.
 Global rules and MCP configuration belong to `~/.ai-rulesync/.rulesync/`.
 
+## Knowledge base and documentation coverage
+
+Read `docs/index.md` and `docs/handoff/current.md` before substantial work. Current behavior
+belongs to `docs/system/` or the authoritative module README linked in `docs/features.json`.
+Agent OS owns standards and product context; task frontmatter remains canonical for work state.
+
+Before changing a feature, find its owning sources and documentation in the registry. Compare
+behavior, failure paths, access/data boundaries and existing evidence. Update its canonical page
+or record a concrete no-documentation-change reason through a single-feature review. A changed
+snapshot needs review; it does not prove the prose is wrong. Do not bulk-reset reviews or hide
+features/debt to inflate coverage. Classify new sources explicitly, and keep runtime/NAS evidence
+distinct from documentation review. Follow `docs/system/documentation.md` for the workflow.
+
+All maintained comments, descriptions and prose are English. Non-Latin string literals in the
+three documented Unicode fixture tests are deliberate input data, not a prose exception.
+After relevant changes run `npm run test:docs`, `npm run docs:check` and `npm run docs:language`.
+Before committing, stage only the intended files and check the actual index with
+`node scripts/docs/check.mjs --strict --base HEAD --staged`. Regenerate the visible report
+explicitly with `npm run docs:report`; ordinary checks are read-only.
+
 ## Code standards — read before writing code
 
 Follow the repo code standard and review guide in `.github/instructions/`:

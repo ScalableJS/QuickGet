@@ -1,0 +1,1775 @@
+{
+  "version": 1,
+  "inventory": {
+    "date": "2026-10-09",
+    "notes": "Initial inventory covers extension runtime, configuration, operational scripts and test infrastructure. Descriptions were reviewed against current owning paths and existing evidence; no fresh real-NAS run, Firefox runtime parity or universal feature discovery is implied. Source-file coverage is independent of the feature denominator. Confirmed cleanup candidates and scope differences are recorded in docs/system/feature-review.md."
+  },
+  "features": [
+    {
+      "id": "qnap-api",
+      "title": "QNAP transport, login, sessions and API errors",
+      "area": "api",
+      "implementation": "implemented",
+      "docs": [
+        "src/api/README.md"
+      ],
+      "sources": [
+        "src/api/client.ts",
+        "src/api/index.ts",
+        "src/api/schema.d.ts",
+        "src/api/type.ts",
+        "src/api/utils.ts",
+        "src/lib/clientSignature.ts",
+        "src/lib/errors.ts",
+        "src/popup/shared/api/clientCache.ts",
+        "src/popup/shared/api/index.ts"
+      ],
+      "evidence": [
+        "src/api/client.test.ts",
+        "src/api/index.test.ts",
+        "src/api/utils.test.ts",
+        "src/popup/shared/api/clientCache.test.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Typed client, SID middleware, login encoding/replay, task methods and schema were compared with current sources; hardware interoperability is not inferred.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared the typed client, explicit multipart login, single-flight SID middleware and one URL-encoded replay with the API README and login/client tests; no hardware guarantee is inferred.",
+        "snapshot": "93f2acbb7593e029bca5cf8d1e3a4f592f58aa878917b8ad46ba56e104999c61"
+      }
+    },
+    {
+      "id": "connection-settings",
+      "title": "Connection form and persistent settings",
+      "area": "settings",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/settings.md#connection-and-saving",
+        "docs/privacy-policy.md"
+      ],
+      "sources": [
+        "src/lib/config.ts",
+        "src/lib/configHealth.ts",
+        "src/lib/connectionHealth.ts",
+        "src/lib/serverUrl.ts",
+        "src/lib/settings.ts",
+        "src/popup/features/settings/Settings.svelte",
+        "src/popup/features/settings/index.ts",
+        "src/popup/features/settings/settingsUI.ts"
+      ],
+      "evidence": [
+        "src/lib/settings.test.ts",
+        "src/lib/serverUrl.test.ts",
+        "src/lib/connectionHealth.test.ts",
+        "src/popup/features/settings/settingsUI.test.ts",
+        "tests/e2e/settings-connection.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Storage precedence, local credential persistence, schema migration, configured-vs-health state and five-second login check were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared settings loading/saving, local credential persistence, migration, form validation and five-second login ping; corrected mission/privacy statements to the current storage boundary.",
+        "snapshot": "d8124199d01c24197bd5503e85ef08de8f35ada2361821ef5854ca45d5e3d568"
+      }
+    },
+    {
+      "id": "settings-lock",
+      "title": "Optional Settings-screen password",
+      "area": "settings",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/settings.md#storage-and-security"
+      ],
+      "sources": [
+        "src/lib/settingsLock.ts",
+        "src/popup/features/settings/Settings.svelte",
+        "src/popup/features/settings/index.ts",
+        "src/popup/features/settings/settingsUI.ts",
+        "src/popup/features/unlock/Unlock.svelte"
+      ],
+      "evidence": [
+        "src/lib/settingsLock.test.ts",
+        "tests/e2e/popup.full-cycle.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "PBKDF2 verifier, session unlock and Settings-only mounting were inspected; no encrypted-credential guarantee is claimed.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared PBKDF2 salt/verifier persistence, session unlock and conditional Settings mounting; the page explicitly separates a UI lock from credential encryption.",
+        "snapshot": "48aa9e3d1b232d4e0d2f377a0d07003f22698f437cf5a55190aed12ce15cd785"
+      }
+    },
+    {
+      "id": "settings-backup",
+      "title": "Non-secret settings export and import",
+      "area": "settings",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/settings.md#backup-and-import"
+      ],
+      "sources": [
+        "src/popup/features/settings/Settings.svelte",
+        "src/popup/features/settings/index.ts",
+        "src/popup/features/settings/settingsBackup.ts",
+        "src/popup/features/settings/settingsUI.ts"
+      ],
+      "evidence": [
+        "src/popup/features/settings/settingsBackup.test.ts",
+        "tests/e2e/popup.full-cycle.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Portable keys, parser boundaries, password exclusion and confirmation path were compared with code and existing tests.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared PORTABLE_KEYS, wrapper/bare-object parsing, typed fields, routing sanitization and import confirmation with the non-secret backup description.",
+        "snapshot": "61ba8012b7592f70ec712337f794303ae7a9d1acfd4bde1be71371f3873ccb3f"
+      }
+    },
+    {
+      "id": "routing-rules",
+      "title": "First-match routing and rule editor",
+      "area": "routing",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/routing-folders.md#destination-selection"
+      ],
+      "sources": [
+        "src/lib/routingRules.ts",
+        "src/lib/sourceKind.ts",
+        "src/lib/torrentMeta.ts",
+        "src/popup/features/settings/Settings.svelte",
+        "src/popup/features/settings/index.ts",
+        "src/popup/features/settings/settingsUI.ts"
+      ],
+      "evidence": [
+        "src/lib/routingRules.test.ts",
+        "src/lib/sourceKind.test.ts",
+        "src/lib/torrentMeta.test.ts",
+        "tests/e2e/routing-rules.spec.ts",
+        "tests/e2e/routing-matrix.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Classification, release-name routing, domains, list/glob matching and editor behavior were inspected; batch routing difference is explicit.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared first-match conditions, substring/glob lists, source/page domains, torrent metadata names and editor call paths; documented that batch URL submission does not run this matcher.",
+        "snapshot": "f414294e805665ab9844e74435f28ce9fce193dbc26126e438f72ab74baf6fbd"
+      }
+    },
+    {
+      "id": "nas-folders",
+      "title": "NAS folder selection and validation",
+      "area": "routing",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/routing-folders.md#folder-paths-and-validation"
+      ],
+      "sources": [
+        "src/lib/folderPath.ts",
+        "src/popup/features/folderPicker/FolderSelect.svelte",
+        "src/popup/features/folderPicker/folderCache.ts",
+        "src/popup/features/folderPicker/validateFolder.ts"
+      ],
+      "evidence": [
+        "src/popup/features/folderPicker/validateFolder.test.ts",
+        "src/popup/features/folderPicker/folderCache.test.ts",
+        "tests/e2e/settings-connection.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Relative paths, parent listing, writability and invalid-vs-unverifiable outcomes were inspected; permissions can change after validation.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared relative normalization, parent directory lookup, writtable flag, error 4096 and five-minute endpoint/login folder cache with the page and tests.",
+        "snapshot": "ce7ac438db67901e8acee6d6fed2e0b8a7180089b285ff924290c42afb667dd3"
+      }
+    },
+    {
+      "id": "torrent-handoff",
+      "title": "Transactional browser torrent hand-off",
+      "area": "background",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/torrent-handoff.md"
+      ],
+      "sources": [
+        "src/background/downloads.ts",
+        "src/background/index.ts",
+        "src/lib/tabFetch.ts",
+        "src/lib/torrentMeta.ts",
+        "src/lib/torrentSender.ts"
+      ],
+      "evidence": [
+        "src/background/downloads.test.ts",
+        "src/lib/torrentSender.test.ts",
+        "src/lib/tabFetch.test.ts",
+        "tests/e2e/download-interception.spec.ts",
+        "tests/e2e/hotlink-guard.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Event claims, deferred filename, live login, tracker fetch, cancel-after-accept and browser fallback were inspected; BUG-70 remains unproven.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared event ownership, live-login gate, page-context tracker fetch and cancel/erase after NAS acceptance; documented non-persistent claims and unresolved BUG-70 without adding mitigation.",
+        "snapshot": "094be403ab85558c16d750a16bb31e96558473d9b46c03f6af51afd72cdcd01d"
+      }
+    },
+    {
+      "id": "page-capture",
+      "title": "Page magnet and scoped ordinary-file sends",
+      "area": "content",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/page-capture.md"
+      ],
+      "sources": [
+        "src/background/contentScripts.ts",
+        "src/background/index.ts",
+        "src/background/magnetHandler.ts",
+        "src/content/magnet.ts"
+      ],
+      "evidence": [
+        "src/content/magnet.test.ts",
+        "src/background/magnetHandler.test.ts",
+        "src/background/contentScripts.test.ts",
+        "tests/e2e/magnet-interception.spec.ts",
+        "tests/e2e/file-interception.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Eligible click gates, download attributes/path allow-list, Shift override, worker messages, cleanup/reinjection and navigation fallback were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared trusted click gates, HTTP pathname/download-attribute eligibility, Shift override, magnet/file messages, terminal page feedback, cleanup/reinjection and browser navigation fallback.",
+        "snapshot": "3e9079bd61c80c36a45e71bfffdb13241c9e6e186a10c5a17815d0f9f50c324e"
+      }
+    },
+    {
+      "id": "context-menu",
+      "title": "Explicit context-menu link sends",
+      "area": "background",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/context-menu.md"
+      ],
+      "sources": [
+        "src/background/index.ts",
+        "src/background/menus.ts"
+      ],
+      "evidence": [
+        "src/background/menus.test.ts",
+        "tests/e2e/routing-rules.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Menu reinitialization, URL support, shared classification/routing, monitoring and direct failure notifications were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Verified that exactly one link-context menu is created, that menu/content file sends share transport, and that explicit menu failures use direct notification; removed the invented open-NAS menu claim.",
+        "snapshot": "0c8a64b9440c12b288943df8b3b93dbb9ef790d0eede22fc269118a91aaa6a06"
+      }
+    },
+    {
+      "id": "popup-upload",
+      "title": "Local torrent and batch URL submission",
+      "area": "popup",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/popup-upload.md"
+      ],
+      "sources": [
+        "src/popup/features/upload/CreateUrls.svelte",
+        "src/popup/features/upload/batchUpload.ts",
+        "src/popup/features/upload/index.ts",
+        "src/popup/features/upload/torrentUpload.ts"
+      ],
+      "evidence": [
+        "src/popup/features/upload/torrentUpload.test.ts",
+        "src/popup/features/upload/batchUpload.test.ts",
+        "tests/e2e/popup.full-cycle.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Current success/duplicate/error messages, release-name routing for local files and the 50-line independent URL outcomes were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared local torrent metadata routing, existing success/duplicate statuses, file-picker reset, 50-line batch limit and Promise.allSettled outcomes; recorded the per-batch destination policy.",
+        "snapshot": "3314a204ad2ecb25e32f13ed6f1a46b42e89d08a8f0466655f1890633a8d66e0"
+      }
+    },
+    {
+      "id": "task-list",
+      "title": "Live task list, filtering and task details",
+      "area": "popup",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/task-management.md#live-task-list"
+      ],
+      "sources": [
+        "src/lib/tasks.ts",
+        "src/popup/components/downloadItem/DownloadItem.svelte",
+        "src/popup/components/downloadItem/StatusIcon.svelte",
+        "src/popup/components/downloadItem/format.ts",
+        "src/popup/features/downloads/DownloadsList.svelte",
+        "src/popup/features/downloads/autoRefresh.ts",
+        "src/popup/features/downloads/downloadFilters.ts",
+        "src/popup/features/downloads/downloadsManager.ts",
+        "src/popup/features/downloads/downloadsState.ts",
+        "src/popup/features/downloads/downloadsUI.ts",
+        "src/popup/features/downloads/downloadsView.svelte.ts",
+        "src/popup/features/downloads/index.ts"
+      ],
+      "evidence": [
+        "src/lib/tasks.test.ts",
+        "src/popup/features/downloads/downloadsState.test.ts",
+        "src/popup/features/downloads/downloadsManager.test.ts",
+        "src/popup/features/downloads/downloadFilters.test.ts",
+        "src/popup/components/downloadItem/format.test.ts",
+        "tests/e2e/popup.full-cycle.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Query refresh, selection/snapshot state, abort/concurrency control, task status grouping and visible torrent/download fields were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared two-second refresh and query cancellation, task normalization/status groups, selection/snapshot flow and rendered details against list/card code and existing state/filter tests.",
+        "snapshot": "bc91b6ec661919ea82e6d9f30aa41f3cc9c823ff9712373e4189f1d28d4e691f"
+      }
+    },
+    {
+      "id": "task-operations",
+      "title": "Task actions, queue order and torrent file priority",
+      "area": "popup",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/task-management.md#task-operations"
+      ],
+      "sources": [
+        "src/popup/components/downloadItem/DownloadItem.svelte",
+        "src/popup/features/downloads/DownloadsList.svelte",
+        "src/popup/features/downloads/downloadsManager.ts",
+        "src/popup/features/downloads/index.ts",
+        "src/popup/features/toolbar/Toolbar.svelte",
+        "src/popup/features/toolbar/index.ts",
+        "src/popup/features/toolbar/toolbarView.svelte.ts",
+        "src/popup/features/torrentFiles/TorrentFiles.svelte"
+      ],
+      "evidence": [
+        "src/api/client.test.ts",
+        "tests/e2e/torrent-files.spec.ts",
+        "tests/e2e/popup.full-cycle.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Start/pause/stop/remove, clean-delete confirmation, SetTaskPriority and GetFile/SetFile call paths were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared selected task start/stop/pause/remove, explicit unsupported Pause fallback, clean-delete confirmation, queue controls and per-file GetFile/SetFile requests with current controls.",
+        "snapshot": "ca18c9bb71c9f96ace9ffb44bb2178de35991262d5e0ba0d2dadd2e91661be30"
+      }
+    },
+    {
+      "id": "background-monitoring",
+      "title": "Alarm polling, badge and attention state",
+      "area": "background",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/monitoring.md"
+      ],
+      "sources": [
+        "src/background/actions.ts",
+        "src/background/alarms.ts",
+        "src/background/attentionMessage.ts",
+        "src/background/index.ts",
+        "src/background/monitorMessage.ts",
+        "src/lib/tasks.ts",
+        "src/popup/shared/monitor.ts"
+      ],
+      "evidence": [
+        "src/background/actions.test.ts",
+        "src/background/alarms.test.ts",
+        "src/popup/shared/monitor.test.ts"
+      ],
+      "assessment": "verified",
+      "notes": "30-second alarms, single badge writer, session state, authoritative zero handling and stopping on polling failure were inspected; full Task/Query is still used.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared alarm creation/coalescing, full Task/Query polling, session action serialization, first-zero authoritative behavior, download-only count and clearing alarms on failure; removed stale hysteresis/retry claims.",
+        "snapshot": "c4fb866d7850e6b99d04659ab61a6e5114c5dbe82a1b25bb3912a344a2065b5f"
+      }
+    },
+    {
+      "id": "feedback",
+      "title": "Page, popup and system feedback",
+      "area": "interface",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/feedback.md"
+      ],
+      "sources": [
+        "src/background/downloads.ts",
+        "src/background/menus.ts",
+        "src/background/notifier.ts",
+        "src/content/magnet.ts",
+        "src/lib/logger.ts",
+        "src/popup/components/index.ts",
+        "src/popup/components/statusPill/index.ts",
+        "src/popup/components/statusPill/statusPill.ts",
+        "src/popup/features/upload/batchUpload.ts",
+        "src/popup/features/upload/torrentUpload.ts"
+      ],
+      "evidence": [
+        "src/popup/components/statusPill/statusPill.test.ts",
+        "src/lib/logger.test.ts",
+        "src/popup/features/upload/torrentUpload.test.ts",
+        "src/popup/features/upload/batchUpload.test.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Feedback ownership, current success matrix, episode suppression, status pill and logger boundaries were inspected; policy consistency remains open.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared notifier episode state and direct failures with current page toasts, popup success statuses, status-pill/logger ownership and the still-open BUG-71 matrix.",
+        "snapshot": "26fe533a89c88ff4fc0ca2e6773b4c13e053ce1c6f72fc4dd01e9bfe28496d29"
+      }
+    },
+    {
+      "id": "popup-interface",
+      "title": "Svelte popup composition and UI primitives",
+      "area": "interface",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/interface.md#composition"
+      ],
+      "sources": [
+        "src/popup/index.html",
+        "src/popup/index.ts",
+        "src/popup/shared/formatters/index.ts",
+        "src/popup/shared/formatters/speed.ts",
+        "src/popup/ui/Alert.svelte",
+        "src/popup/ui/Badge.svelte",
+        "src/popup/ui/Button.svelte",
+        "src/popup/ui/Checkbox.svelte",
+        "src/popup/ui/DisclosureButton.svelte",
+        "src/popup/ui/EmptyState.svelte",
+        "src/popup/ui/Field.svelte",
+        "src/popup/ui/FormSection.svelte",
+        "src/popup/ui/IconButton.svelte",
+        "src/popup/ui/Link.svelte",
+        "src/popup/ui/ProgressBar.svelte",
+        "src/popup/ui/SearchField.svelte",
+        "src/popup/ui/SegmentedControl.svelte",
+        "src/popup/ui/Select.svelte",
+        "src/popup/ui/SpeedTelemetry.svelte",
+        "src/popup/ui/SplitButton.svelte",
+        "src/popup/ui/Tabs.svelte",
+        "src/popup/ui/controlSize.ts",
+        "src/popup/ui/index.ts"
+      ],
+      "evidence": [
+        "tests/e2e/a11y.spec.ts",
+        "tests/e2e/popup.full-cycle.spec.ts",
+        "src/popup/shared/formatters/speed.test.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Entrypoint mounting, panel switching, runes/components and primitive usage were inspected; unused Card remains a cleanup candidate.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared popup mounting/panel switching and toolbar component bindings, theme/style primitives and formatting; retained the independently confirmed unused Card candidate instead of deleting runtime code.",
+        "snapshot": "70fde1bcefab4e218a0d51b6978886b24c265510316daa5d528a03e31d67eed7"
+      }
+    },
+    {
+      "id": "themes",
+      "title": "Saved Auto, Light and Dark preference",
+      "area": "interface",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/interface.md#composition"
+      ],
+      "sources": [
+        "src/content/magnet.ts",
+        "src/lib/applyTheme.ts",
+        "src/lib/config.ts",
+        "src/popup/features/settings/Settings.svelte",
+        "src/popup/features/settings/index.ts",
+        "src/popup/features/settings/settingsUI.ts",
+        "src/popup/styles/base.css",
+        "src/popup/styles/tokens.css"
+      ],
+      "evidence": [
+        "src/lib/applyTheme.test.ts",
+        "tests/e2e/theme.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Theme application, immediate saving, OS listener replacement and page-toast theme behavior were inspected.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared Auto/Light/Dark persistence, immediate selection saving, media-listener replacement and page-toast theme handling with the theme helper, Settings and content implementation.",
+        "snapshot": "d733b07da82741494889b5c690c4368eb0d5e73cee991d3f22069e6b2720992e"
+      }
+    },
+    {
+      "id": "build-release",
+      "title": "Browser builds, quality gates and release ownership",
+      "area": "engineering",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/development-release.md"
+      ],
+      "sources": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy.yml",
+        ".rulesync/rules/project.md",
+        "aliases.config.ts",
+        "biome.json",
+        "knip.jsonc",
+        "manifest.firefox.json",
+        "manifest.json",
+        "package.json",
+        "playwright.config.ts",
+        "rulesync.jsonc",
+        "scripts/upload-webstore.js",
+        "svelte.config.js",
+        "uno.config.ts",
+        "vite.config.ts",
+        "vitest.config.ts"
+      ],
+      "evidence": [
+        "tests/upload-webstore.test.js",
+        "scripts/tracker-login.test.mjs"
+      ],
+      "assessment": "verified",
+      "notes": "Manifests, build targets, CI/deploy scripts, direct Store API uploader and Rulesync generation were compared; no new deployment or Firefox runtime claim.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Compared actual manifest minima Chrome 120 and Firefox 142, distinct bundles, CI/local hooks, direct Store uploader and project generation; packaging is explicitly separated from Firefox runtime evidence.",
+        "snapshot": "bc04093bfce00cba4f7acef744c8dfee1b88eddf3be75a0e6f6b3e68ca6e1c2a"
+      }
+    },
+    {
+      "id": "development-harness",
+      "title": "Storybook, store assets, demo and manual stand",
+      "area": "engineering",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/interface.md#harnesses-and-assets"
+      ],
+      "sources": [
+        ".storybook/chromeMock.ts",
+        ".storybook/main.ts",
+        ".storybook/preview.ts",
+        "scripts/check-contrast.mjs",
+        "scripts/generate-icons.js",
+        "scripts/generate-store-assets.js",
+        "scripts/start-stand.ts",
+        "scripts/tracker-login.mjs",
+        "src/popup/components/downloadItem/DownloadItemGallery.svelte",
+        "src/popup/components/icons/IconGallery.svelte",
+        "src/popup/features/downloads/DownloadsListShowcase.svelte",
+        "src/popup/features/settings/SettingsShowcase.svelte",
+        "src/popup/features/toolbar/SpeedShowcase.svelte",
+        "src/popup/features/toolbar/ToolbarShowcase.svelte"
+      ],
+      "evidence": [
+        "tests/e2e/demo.spec.ts",
+        "tests/e2e/store-assets.spec.ts",
+        "tests/e2e/store-assets-dark.spec.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Harness entrypoints and consumers were inventoried; compilation/capture quality is not inferred, and undeclared manual-stand tsx remains open.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Inventoried Storybook/showcase consumers and asset/demo/stand entrypoints; documented their dev-only purpose and undeclared tsx issue without claiming a new recording or harness runtime result.",
+        "snapshot": "3a738673f9689137346e67badf28a48e02d956d772a23c5ea5fc3271e09032fc"
+      }
+    },
+    {
+      "id": "verification-infrastructure",
+      "title": "Mocks, fixture servers and real-NAS ownership",
+      "area": "testing",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/verification.md"
+      ],
+      "sources": [
+        "tests/e2e/support/actionPopup.ts",
+        "tests/e2e/support/builds.ts",
+        "tests/e2e/support/demoPageHost.ts",
+        "tests/e2e/support/demoProfile.ts",
+        "tests/e2e/support/e2eEnv.ts",
+        "tests/e2e/support/extension.ts",
+        "tests/e2e/support/fixtureHost.ts",
+        "tests/e2e/support/guardedTrackerHost.ts",
+        "tests/e2e/support/httpCapture.ts",
+        "tests/e2e/support/lan.ts",
+        "tests/e2e/support/mockNas.ts",
+        "tests/e2e/support/popup.ts",
+        "tests/e2e/support/realNasClient.ts",
+        "tests/e2e/support/redactedHttpLog.ts",
+        "tests/e2e/support/sceneRecorder.ts",
+        "tests/e2e/support/spotcheck.ts",
+        "tests/e2e/support/systemCursor.ts",
+        "tests/e2e/support/testStand/app.ts",
+        "tests/e2e/support/testStand/barriers.ts",
+        "tests/e2e/support/testStand/torrent.ts",
+        "tests/e2e/support/testStand/transfer.ts",
+        "tests/e2e/support/testStandHost.ts",
+        "tests/e2e/support/torrentHost.ts",
+        "tests/fixtures/settings.ts",
+        "tests/mocks/chrome.ts",
+        "tests/msw/server.ts",
+        "tests/setup.ts"
+      ],
+      "evidence": [
+        "tests/e2e/mockNas.contract.spec.ts",
+        "tests/e2e/prod-spotcheck.spec.ts",
+        "tests/e2e/support/testStand/app.test.ts"
+      ],
+      "assessment": "verified",
+      "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Recorded actual local audit outcomes after inspecting the verification layers: 513 unit, 45 mock E2E, 28 deployment and 11 documentation tests passed. Hardware, Firefox runtime, Storybook and media capture remain explicitly unexecuted.",
+        "snapshot": "b1270148462eaf910f3342b1d9861128aa28ef96c44a5442c35036977dd67464"
+      }
+    },
+    {
+      "id": "documentation-workflow",
+      "title": "Feature registry, reviews, language and drift guards",
+      "area": "documentation",
+      "implementation": "implemented",
+      "docs": [
+        "docs/system/documentation.md"
+      ],
+      "sources": [
+        ".rulesync/rules/project.md",
+        "scripts/docs/check.mjs",
+        "scripts/docs/language.mjs",
+        "scripts/docs/review.mjs"
+      ],
+      "evidence": [
+        "scripts/docs/check.test.mjs"
+      ],
+      "assessment": "verified",
+      "notes": "Checker, explicit review command, English guard, staged inspection and source-discovery boundaries were inspected and exercised by self-tests.",
+      "review": {
+        "date": "2026-10-09",
+        "reviewer": "Codex",
+        "reason": "Reviewed the documentation tools and 11 self-tests, including an explicitly green shared-source baseline before drift. Source/document/evidence/classification edits, hidden features, broken active navigation, staged-index mismatch and non-English fixture comments all fail their respective guards.",
+        "snapshot": "0af9d914ac7988d30ba69f069cea3515cbfcfb7065630c12ec9d0f0fe97edf2c"
+      }
+    }
+  ],
+  "classifications": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": ".rulesync/rules/project.md",
+      "features": [
+        "documentation-workflow",
+        "build-release"
+      ],
+      "reason": "Explicit shared contract, fixture, or instruction dependency."
+    },
+    {
+      "path": ".storybook/chromeMock.ts",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": ".storybook/main.ts",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": ".storybook/preview.ts",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "aliases.config.ts",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "biome.json",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "knip.jsonc",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "manifest.firefox.json",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "manifest.json",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "package.json",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "playwright.config.ts",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "rulesync.jsonc",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "scripts/check-contrast.mjs",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "scripts/docs/check.mjs",
+      "features": [
+        "documentation-workflow"
+      ],
+      "reason": "Owns Feature registry, reviews, language and drift guards."
+    },
+    {
+      "path": "scripts/docs/language.mjs",
+      "features": [
+        "documentation-workflow"
+      ],
+      "reason": "Owns Feature registry, reviews, language and drift guards."
+    },
+    {
+      "path": "scripts/docs/review.mjs",
+      "features": [
+        "documentation-workflow"
+      ],
+      "reason": "Owns Feature registry, reviews, language and drift guards."
+    },
+    {
+      "path": "scripts/generate-icons.js",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "scripts/generate-store-assets.js",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "scripts/start-stand.ts",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "scripts/tracker-login.mjs",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "scripts/upload-webstore.js",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "src/api/client.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/api/index.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/api/schema.d.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Explicit shared contract, fixture, or instruction dependency."
+    },
+    {
+      "path": "src/api/type.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/api/utils.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/background/actions.ts",
+      "features": [
+        "background-monitoring"
+      ],
+      "reason": "Owns Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/background/alarms.ts",
+      "features": [
+        "background-monitoring"
+      ],
+      "reason": "Owns Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/background/attentionMessage.ts",
+      "features": [
+        "background-monitoring"
+      ],
+      "reason": "Owns Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/background/contentScripts.ts",
+      "features": [
+        "page-capture"
+      ],
+      "reason": "Owns Page magnet and scoped ordinary-file sends."
+    },
+    {
+      "path": "src/background/downloads.ts",
+      "features": [
+        "torrent-handoff",
+        "feedback"
+      ],
+      "reason": "Owns Transactional browser torrent hand-off."
+    },
+    {
+      "path": "src/background/index.ts",
+      "features": [
+        "torrent-handoff",
+        "page-capture",
+        "context-menu",
+        "background-monitoring"
+      ],
+      "reason": "Owns Transactional browser torrent hand-off, Page magnet and scoped ordinary-file sends, Explicit context-menu link sends, Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/background/magnetHandler.ts",
+      "features": [
+        "page-capture"
+      ],
+      "reason": "Owns Page magnet and scoped ordinary-file sends."
+    },
+    {
+      "path": "src/background/menus.ts",
+      "features": [
+        "context-menu",
+        "feedback"
+      ],
+      "reason": "Owns Explicit context-menu link sends."
+    },
+    {
+      "path": "src/background/monitorMessage.ts",
+      "features": [
+        "background-monitoring"
+      ],
+      "reason": "Owns Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/background/notifier.ts",
+      "features": [
+        "feedback"
+      ],
+      "reason": "Owns Page, popup and system feedback."
+    },
+    {
+      "path": "src/content/magnet.ts",
+      "features": [
+        "page-capture",
+        "themes",
+        "feedback"
+      ],
+      "reason": "Owns Page magnet and scoped ordinary-file sends."
+    },
+    {
+      "path": "src/lib/applyTheme.ts",
+      "features": [
+        "themes"
+      ],
+      "reason": "Owns Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/lib/clientSignature.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "features": [
+        "connection-settings",
+        "themes"
+      ],
+      "reason": "Owns Connection form and persistent settings."
+    },
+    {
+      "path": "src/lib/configHealth.ts",
+      "features": [
+        "connection-settings"
+      ],
+      "reason": "Owns Connection form and persistent settings."
+    },
+    {
+      "path": "src/lib/connectionHealth.ts",
+      "features": [
+        "connection-settings"
+      ],
+      "reason": "Owns Connection form and persistent settings."
+    },
+    {
+      "path": "src/lib/errors.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/lib/folderPath.ts",
+      "features": [
+        "nas-folders"
+      ],
+      "reason": "Owns NAS folder selection and validation."
+    },
+    {
+      "path": "src/lib/logger.ts",
+      "features": [
+        "feedback"
+      ],
+      "reason": "Owns Page, popup and system feedback."
+    },
+    {
+      "path": "src/lib/routingRules.ts",
+      "features": [
+        "routing-rules"
+      ],
+      "reason": "Owns First-match routing and rule editor."
+    },
+    {
+      "path": "src/lib/serverUrl.ts",
+      "features": [
+        "connection-settings"
+      ],
+      "reason": "Owns Connection form and persistent settings."
+    },
+    {
+      "path": "src/lib/settings.ts",
+      "features": [
+        "connection-settings"
+      ],
+      "reason": "Owns Connection form and persistent settings."
+    },
+    {
+      "path": "src/lib/settingsLock.ts",
+      "features": [
+        "settings-lock"
+      ],
+      "reason": "Owns Optional Settings-screen password."
+    },
+    {
+      "path": "src/lib/sourceKind.ts",
+      "features": [
+        "routing-rules"
+      ],
+      "reason": "Owns First-match routing and rule editor."
+    },
+    {
+      "path": "src/lib/tabFetch.ts",
+      "features": [
+        "torrent-handoff"
+      ],
+      "reason": "Owns Transactional browser torrent hand-off."
+    },
+    {
+      "path": "src/lib/tasks.ts",
+      "features": [
+        "task-list",
+        "background-monitoring"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/lib/torrentMeta.ts",
+      "features": [
+        "torrent-handoff",
+        "routing-rules"
+      ],
+      "reason": "Owns Transactional browser torrent hand-off."
+    },
+    {
+      "path": "src/lib/torrentSender.ts",
+      "features": [
+        "torrent-handoff"
+      ],
+      "reason": "Owns Transactional browser torrent hand-off."
+    },
+    {
+      "path": "src/popup/components/downloadItem/DownloadItem.svelte",
+      "features": [
+        "task-list",
+        "task-operations"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/components/downloadItem/DownloadItemGallery.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/components/downloadItem/StatusIcon.svelte",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/components/downloadItem/format.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/components/icons/IconGallery.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/components/index.ts",
+      "features": [
+        "feedback"
+      ],
+      "reason": "Owns Page, popup and system feedback."
+    },
+    {
+      "path": "src/popup/components/statusPill/index.ts",
+      "features": [
+        "feedback"
+      ],
+      "reason": "Owns Page, popup and system feedback."
+    },
+    {
+      "path": "src/popup/components/statusPill/statusPill.ts",
+      "features": [
+        "feedback"
+      ],
+      "reason": "Owns Page, popup and system feedback."
+    },
+    {
+      "path": "src/popup/features/downloads/DownloadsList.svelte",
+      "features": [
+        "task-list",
+        "task-operations"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/DownloadsListShowcase.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/features/downloads/autoRefresh.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/downloadFilters.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/downloadsManager.ts",
+      "features": [
+        "task-list",
+        "task-operations"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/downloadsState.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/downloadsUI.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/downloadsView.svelte.ts",
+      "features": [
+        "task-list"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/downloads/index.ts",
+      "features": [
+        "task-list",
+        "task-operations"
+      ],
+      "reason": "Owns Live task list, filtering and task details."
+    },
+    {
+      "path": "src/popup/features/folderPicker/FolderSelect.svelte",
+      "features": [
+        "nas-folders"
+      ],
+      "reason": "Owns NAS folder selection and validation."
+    },
+    {
+      "path": "src/popup/features/folderPicker/folderCache.ts",
+      "features": [
+        "nas-folders"
+      ],
+      "reason": "Owns NAS folder selection and validation."
+    },
+    {
+      "path": "src/popup/features/folderPicker/validateFolder.ts",
+      "features": [
+        "nas-folders"
+      ],
+      "reason": "Owns NAS folder selection and validation."
+    },
+    {
+      "path": "src/popup/features/settings/Settings.svelte",
+      "features": [
+        "connection-settings",
+        "settings-lock",
+        "settings-backup",
+        "routing-rules",
+        "themes"
+      ],
+      "reason": "Owns Connection form and persistent settings, Optional Settings-screen password, Non-secret settings export and import, First-match routing and rule editor, Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/popup/features/settings/SettingsShowcase.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/features/settings/index.ts",
+      "features": [
+        "connection-settings",
+        "settings-lock",
+        "settings-backup",
+        "routing-rules",
+        "themes"
+      ],
+      "reason": "Owns Connection form and persistent settings, Optional Settings-screen password, Non-secret settings export and import, First-match routing and rule editor, Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/popup/features/settings/settingsBackup.ts",
+      "features": [
+        "settings-backup"
+      ],
+      "reason": "Owns Non-secret settings export and import."
+    },
+    {
+      "path": "src/popup/features/settings/settingsUI.ts",
+      "features": [
+        "connection-settings",
+        "settings-lock",
+        "settings-backup",
+        "routing-rules",
+        "themes"
+      ],
+      "reason": "Owns Connection form and persistent settings, Optional Settings-screen password, Non-secret settings export and import, First-match routing and rule editor, Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/popup/features/toolbar/SpeedShowcase.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/features/toolbar/Toolbar.svelte",
+      "features": [
+        "task-operations"
+      ],
+      "reason": "Owns Task actions, queue order and torrent file priority."
+    },
+    {
+      "path": "src/popup/features/toolbar/ToolbarShowcase.svelte",
+      "features": [
+        "development-harness"
+      ],
+      "reason": "Owns Storybook, store assets, demo and manual stand."
+    },
+    {
+      "path": "src/popup/features/toolbar/index.ts",
+      "features": [
+        "task-operations"
+      ],
+      "reason": "Owns Task actions, queue order and torrent file priority."
+    },
+    {
+      "path": "src/popup/features/toolbar/toolbarView.svelte.ts",
+      "features": [
+        "task-operations"
+      ],
+      "reason": "Owns Task actions, queue order and torrent file priority."
+    },
+    {
+      "path": "src/popup/features/torrentFiles/TorrentFiles.svelte",
+      "features": [
+        "task-operations"
+      ],
+      "reason": "Owns Task actions, queue order and torrent file priority."
+    },
+    {
+      "path": "src/popup/features/unlock/Unlock.svelte",
+      "features": [
+        "settings-lock"
+      ],
+      "reason": "Owns Optional Settings-screen password."
+    },
+    {
+      "path": "src/popup/features/upload/CreateUrls.svelte",
+      "features": [
+        "popup-upload"
+      ],
+      "reason": "Owns Local torrent and batch URL submission."
+    },
+    {
+      "path": "src/popup/features/upload/batchUpload.ts",
+      "features": [
+        "popup-upload",
+        "feedback"
+      ],
+      "reason": "Owns Local torrent and batch URL submission."
+    },
+    {
+      "path": "src/popup/features/upload/index.ts",
+      "features": [
+        "popup-upload"
+      ],
+      "reason": "Owns Local torrent and batch URL submission."
+    },
+    {
+      "path": "src/popup/features/upload/torrentUpload.ts",
+      "features": [
+        "popup-upload",
+        "feedback"
+      ],
+      "reason": "Owns Local torrent and batch URL submission."
+    },
+    {
+      "path": "src/popup/index.html",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/index.ts",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/shared/api/clientCache.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/popup/shared/api/index.ts",
+      "features": [
+        "qnap-api"
+      ],
+      "reason": "Owns QNAP transport, login, sessions and API errors."
+    },
+    {
+      "path": "src/popup/shared/formatters/index.ts",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/shared/formatters/speed.ts",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/shared/monitor.ts",
+      "features": [
+        "background-monitoring"
+      ],
+      "reason": "Owns Alarm polling, badge and attention state."
+    },
+    {
+      "path": "src/popup/styles/base.css",
+      "features": [
+        "themes"
+      ],
+      "reason": "Owns Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/popup/styles/tokens.css",
+      "features": [
+        "themes"
+      ],
+      "reason": "Owns Saved Auto, Light and Dark preference."
+    },
+    {
+      "path": "src/popup/ui/Alert.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Badge.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Button.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Card.svelte",
+      "features": [],
+      "reason": "Confirmed unused candidate preserved pending ENG-10; no independent shipped behavior."
+    },
+    {
+      "path": "src/popup/ui/Checkbox.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/DisclosureButton.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/EmptyState.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Field.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/FormSection.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/IconButton.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Link.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/ProgressBar.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/SearchField.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/SegmentedControl.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Select.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/SpeedTelemetry.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/SplitButton.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/Tabs.svelte",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/controlSize.ts",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "src/popup/ui/index.ts",
+      "features": [
+        "popup-interface"
+      ],
+      "reason": "Owns Svelte popup composition and UI primitives."
+    },
+    {
+      "path": "svelte.config.js",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "tests/e2e/support/actionPopup.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/builds.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/demoPageHost.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/demoProfile.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/e2eEnv.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/extension.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/fixtureHost.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/guardedTrackerHost.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/httpCapture.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/lan.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/mockNas.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/popup.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/realNasClient.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/redactedHttpLog.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/sceneRecorder.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/spotcheck.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/systemCursor.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/testStand/app.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/testStand/barriers.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/testStand/torrent.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/testStand/transfer.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/testStandHost.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/e2e/support/torrentHost.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/fixtures/settings.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/mocks/chrome.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Owns Mocks, fixture servers and real-NAS ownership."
+    },
+    {
+      "path": "tests/msw/server.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Explicit shared contract, fixture, or instruction dependency."
+    },
+    {
+      "path": "tests/setup.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Explicit shared contract, fixture, or instruction dependency."
+    },
+    {
+      "path": "uno.config.ts",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "vite.config.ts",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    },
+    {
+      "path": "vitest.config.ts",
+      "features": [
+        "build-release"
+      ],
+      "reason": "Owns Browser builds, quality gates and release ownership."
+    }
+  ],
+  "retired": [],
+  "baseline": {
+    "links": [],
+    "unclassified": [],
+    "reviewDebt": []
+  }
+}

@@ -93,10 +93,6 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     ownsInFlight = true;
 
     const settings = await loadSettings();
-    // No usable NAS: the master password was never entered, storage.session was emptied by a
-    // browser restart, or the connection was never configured. `isLocked()` only distinguishes
-    // the first case for the message — it reports false in the second, so it cannot be the
-    // guard itself. Leave the download alone; the browser will finish it normally.
     // Every setting a hand-off needs, checked before the download is touched. There is no
     // locked state to consider any more: a download starts when the user clicks a link, not
     // when they open the popup, so the password is always readable here or genuinely unset.
@@ -141,12 +137,7 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
     // tracker's hotlink guard expects, and the worker's own fetch would otherwise send none.
     // It also derived a filename from `Content-Disposition`, which for an opaque endpoint like
     // `dl.php?id=1` is the only name the routing rules would otherwise never see.
-    const handedOff = await handOffToNas(
-      settings,
-      url,
-      baseName(item.filename),
-      item.referrer,
-    );
+    const handedOff = await handOffToNas(settings, url, baseName(item.filename), item.referrer);
     if (!handedOff) return;
 
     // The NAS owns the torrent now. A failed cancel is deliberately non-destructive: the browser

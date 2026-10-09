@@ -14,7 +14,7 @@ export type Settings = {
   NASaddress: string; // e.g. "192.168.1.100" or hostname
   NASport: string; // e.g. "8080"
   NASlogin: string;
-  NASpassword: string; // kept in session storage; encrypted at rest when "remember" is on
+  NASpassword: string; // persisted in local storage; mirrored in session storage; not encrypted
   NAStempdir: string; // temporary folder on NAS
   NASdir: string; // final destination folder on NAS
   /**

@@ -21,7 +21,7 @@ A browser popup that talks directly to one user-configured NAS:
 - Send links, magnet URIs, and `.torrent` files to Download Station in one action —
   from the popup or the page context menu.
 - Intercept `.torrent` downloads started in the browser and route them to the NAS instead
-  (Chromium only, experimental).
+  (browser behavior and verification limits are documented in `docs/system/development-release.md`).
 - Monitor tasks live — progress, speed, seeding volume and share ratio — and start, pause,
   stop or remove them.
 - Route downloads to destination folders by rule, with folder paths validated against the
@@ -29,12 +29,13 @@ A browser popup that talks directly to one user-configured NAS:
 
 ## Principles
 
-- **The NAS is the only network peer.** Credentials, URLs and torrent files go to the address
-  the user configured and nowhere else. No analytics, telemetry, advertising, or third-party
-  services. Broad host permissions exist solely because every user's NAS has a different
-  hostname.
-- **Credentials never rest in plaintext.** The NAS password lives in `chrome.storage.session`,
-  and at rest only as a blob encrypted with the user's master password.
+- **No telemetry or hosted service.** NAS credentials go to the configured NAS. User-selected
+  torrent descriptors may be fetched from their source tracker in browser/page context before
+  upload; ordinary file bytes are fetched by the NAS itself. No analytics or advertising.
+  Broad host permissions accommodate user-configured NAS hosts and user-selected source pages.
+- **State the storage boundary honestly.** The NAS password persists in browser-local extension
+  storage and is mirrored in session storage; QuickGet does not encrypt it. The optional settings
+  password locks the settings UI only. See `docs/system/settings.md` for the exact boundary.
 - **Never destroy the user's download.** Any hand-off to the NAS must be recoverable if it
   fails. Cancelling a browser download before the NAS has accepted it is a defect, not a
   trade-off — see `agent-os/product/bugs-kanban.md`.
@@ -45,5 +46,6 @@ A browser popup that talks directly to one user-configured NAS:
 
 - Managing more than one NAS, or NAS models other than QNAP Download Station 5.
 - Any hosted backend, sync service, or user account.
-- Being a general download manager — intercepting anything beyond `.torrent` is explicitly
-  out of scope (`docs/feature-roadmap.md`).
+- Being a general download manager. Ordinary HTTP(S) file links have a scoped, off-by-default
+  NAS send option; arbitrary authenticated downloads, offline queuing, and multi-NAS management
+  are not implemented. See `docs/system/page-capture.md`.

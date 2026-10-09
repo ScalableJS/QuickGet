@@ -1,7 +1,7 @@
 /**
  * Download monitoring via alarms
  *
- * Polls QNAP for aggregated Download Station status and reflects it on the
+ * Queries QNAP tasks, derives their activity counts, and reflects them on the
  * toolbar badge. Two deliberate constraints shaped this design:
  *
  *  - Chrome 120+ clamps any alarm period below 0.5 min to 30 seconds (and logs
@@ -89,8 +89,8 @@ async function runEnsureMonitoring(): Promise<void> {
 }
 
 /**
- * Handle an alarm tick. Stops polling once idle is *confirmed* (see the
- * hysteresis in applyBadgeStats) — the next mutation re-arms it.
+ * Handle an alarm tick. A successful zero-activity snapshot stops polling;
+ * the next explicit monitoring request re-arms it.
  */
 export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
   if (alarm.name !== ALARM_NAME) return;
@@ -99,8 +99,8 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
 
 /**
  * Fetch the task list and hand a confident snapshot to the single toolbar
- * writer. On any failure we keep the last-known badge/icon and keep polling —
- * a transient error must never blank the count.
+ * writer. A failure marks monitoring unavailable and clears the alarm;
+ * a later explicit monitoring request retries.
  */
 async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
   try {

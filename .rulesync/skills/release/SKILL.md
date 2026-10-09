@@ -1,6 +1,6 @@
 ---
 name: release
-description: End-to-end production release workflow for QuickGet Remote — prepares bilingual release notes (Russian review in chat, English for Git/GitHub/Store), synchronizes and cleans Kanban boards and roadmap, bumps versions across all manifests, enforces pre-flight quality gates, promotes via PR from env/dev to env/prod, merges, and monitors deployment to Chrome Web Store. Use when asked to "релиз", "выкати на прод", "залей на прод", "деплой", "deploy", "release to prod", "publish", "ship".
+description: End-to-end production release workflow for QuickGet Remote — prepares bilingual release notes (Russian review in chat, English for Git/GitHub/Store), synchronizes and cleans Kanban boards and roadmap, bumps versions across all manifests, enforces pre-flight quality gates, promotes via PR from env/dev to env/prod, merges, and monitors deployment to Chrome Web Store. Use when asked to release, deploy to production, publish, or ship.
 ---
 
 # QuickGet Remote Production Release Workflow

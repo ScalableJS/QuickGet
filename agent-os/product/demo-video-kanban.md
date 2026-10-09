@@ -157,7 +157,7 @@ preceding click. Park the cursor before the settings beat.
 
 The user asked twice for the credentials to be **typed on camera**; takes 9 and earlier seeded
 them into `chrome.storage.local` and filmed a configured extension. That was my call, and it was
-the wrong one — "настроил → клацнул → скачал" was the requested story, and starting from a
+the wrong one — "configure → click → download" was the requested story, and starting from a
 finished state tells only two thirds of it.
 
 **What changed**
