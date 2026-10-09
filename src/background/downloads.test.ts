@@ -67,6 +67,23 @@ function mockFailedHandoff(): void {
   );
 }
 
+/** The NAS endpoint answered HTTP 200, but its login-page body did not confirm acceptance. */
+function mockUnconfirmedHandoff(): void {
+  server.use(
+    http.get(TORRENT_URL, () =>
+      HttpResponse.arrayBuffer(new TextEncoder().encode("d8:announce…e").buffer as ArrayBuffer, {
+        headers: { "content-type": "application/x-bittorrent" },
+      }),
+    ),
+    http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+      HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+    ),
+    http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+      HttpResponse.text("<html>Session does not exist</html>", { status: 200 }),
+    ),
+  );
+}
+
 /**
  * The tracker itself refuses the .torrent fetch with a 403 — the visitor is not logged in on
  * that site. This is a transient, user-actionable condition on the tracker, not an extension
@@ -106,6 +123,18 @@ describe("download interception", () => {
   it("releases Chromium to the browser when the NAS rejects a held torrent", async () => {
     seedChromeStorage(createTestSettings());
     mockFailedHandoff();
+    const suggest = vi.fn();
+
+    expect(handleDeterminingFilename(createDownloadItem(), suggest)).toBe(true);
+
+    await vi.waitFor(() => expect(suggest).toHaveBeenCalledOnce());
+    expect(downloads.cancel).not.toHaveBeenCalled();
+    expect(downloads.erase).not.toHaveBeenCalled();
+  });
+
+  it("releases Chromium to the browser when AddTorrent returns an unconfirmed HTTP 200", async () => {
+    seedChromeStorage(createTestSettings());
+    mockUnconfirmedHandoff();
     const suggest = vi.fn();
 
     expect(handleDeterminingFilename(createDownloadItem(), suggest)).toBe(true);

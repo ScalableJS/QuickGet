@@ -176,6 +176,41 @@ describe("ApiClient", () => {
     expect(taskAndFiles.get("clean")).toBe("1");
   });
 
+  it("sends each Start, Stop, and Pause command once with the URL-encoded task body", async () => {
+    const settings = createTestSettings();
+    const client = createApiClient({ settings, fetchFn: fetch });
+    const bodies: { command: string; body: string }[] = [];
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Start", async ({ request }) => {
+        bodies.push({ command: "start", body: await request.text() });
+        return HttpResponse.json({ error: 0 });
+      }),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Stop", async ({ request }) => {
+        bodies.push({ command: "stop", body: await request.text() });
+        return HttpResponse.json({ error: 0 });
+      }),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/Pause", async ({ request }) => {
+        bodies.push({ command: "pause", body: await request.text() });
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+
+    await client.startTask("start-hash");
+    await client.stopTask("stop-hash");
+    await client.pauseTask("pause-hash");
+
+    expect(bodies.map(({ command }) => command)).toEqual(["start", "stop", "pause"]);
+    for (const { command, body } of bodies) {
+      const params = new URLSearchParams(body);
+      expect(params.get("sid")).toBe("SID-QNAP");
+      expect(params.get("hash")).toBe(`${command}-hash`);
+    }
+  });
+
   it("updates task queue priority (top, up, down)", async () => {
     const settings = createTestSettings();
     const client = createApiClient({ settings, fetchFn: fetch });
@@ -456,6 +491,43 @@ describe("ApiClient", () => {
     expect(torrentBody).toContain('name="bt_task"');
     // Paths must be relative — an absolute /share/... is rejected by DS (error 4096).
     expect(torrentBody).not.toContain("/share/");
+  });
+
+  it("rejects a structured AddTorrent authentication failure even when its reason says exist", async () => {
+    const client = createApiClient({ settings: createTestSettings(), fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () =>
+        HttpResponse.json({ error: 5, reason: "session does not exist" }),
+      ),
+    );
+
+    await expect(client.addTorrent(new File(["torrent-body"], "expired-session.torrent"))).rejects.toThrow(
+      /connection has expired/i,
+    );
+  });
+
+  it.each([
+    ["HTML", HttpResponse.text("<html><title>Sign in</title></html>", { status: 200 })],
+    ["empty", new HttpResponse(null, { status: 200 })],
+    ["misleading duplicate text", HttpResponse.text("<html>Session does not exist</html>", { status: 200 })],
+    ["malformed JSON", HttpResponse.text('{"error":', { status: 200 })],
+  ])("rejects an unconfirmed HTTP 200 AddTorrent response with %s", async (_description, response) => {
+    const client = createApiClient({ settings: createTestSettings(), fetchFn: fetch });
+
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", () => response),
+    );
+
+    await expect(client.addTorrent(new File(["torrent-body"], "unconfirmed.torrent"))).rejects.toThrow(
+      /AddTorrent error/,
+    );
   });
 });
 

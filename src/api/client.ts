@@ -25,6 +25,11 @@ type SetFileRequest = components["schemas"]["SetFileRequest"];
 type SetTaskPriorityRequest = components["schemas"]["SetTaskPriorityRequest"];
 export type TaskPriorityAction = components["schemas"]["SetTaskPriorityRequest"]["priority"];
 export type TorrentFile = components["schemas"]["TorrentFile"];
+type TaskCommandPath =
+  | "/downloadstation/V4/Task/Start"
+  | "/downloadstation/V4/Task/Stop"
+  | "/downloadstation/V4/Task/Pause"
+  | "/downloadstation/V4/Task/Remove";
 
 export type QueryTasksResult = {
   raw: TaskQueryResponse;
@@ -155,7 +160,7 @@ export class ApiClient {
       // in `reason`, so the old message repeated the link and explained nothing.
       const apiError = createApiError("Add URL failed", data);
       const loopback = explainLoopbackUrl(url, this.settings.NASaddress);
-      if (loopback && (apiError as { code?: number }).code === 12288) {
+      if (loopback && apiError.code === 12288) {
         apiError.message = `Add URL failed: ${loopback}`;
       }
       throw apiError;
@@ -202,11 +207,9 @@ export class ApiClient {
     try {
       payload = await response.clone().json();
     } catch {
-      const rawText = await response
-        .clone()
-        .text()
-        .catch(() => "");
-      payload = response.ok ? { error: 0 } : { error: response.status || -1, reason: rawText || response.statusText };
+      throw new Error(
+        `AddTorrent error: Download Station returned an invalid response (HTTP ${response.status}); torrent acceptance was not confirmed.`,
+      );
     }
 
     if (isSuccessResponse(payload)) {
@@ -214,7 +217,7 @@ export class ApiClient {
     }
 
     const err = createApiError("AddTorrent error", payload);
-    if (isErrorWithDuplicateFlag(err) && err.duplicate) {
+    if (err.duplicate) {
       return { added: false, duplicate: true };
     }
 
@@ -222,16 +225,10 @@ export class ApiClient {
   }
 
   async startTask(hash: string): Promise<boolean> {
-    const body = withEmptySid<ModifyTaskRequest>({ hash });
-    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Start", {
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-      },
-      bodySerializer: serializeUrlEncoded,
-    });
-
-    const payload = data ?? error;
+    const payload = await this.sendTaskCommand(
+      "/downloadstation/V4/Task/Start",
+      withEmptySid<ModifyTaskRequest>({ hash }),
+    );
     if (isSuccessResponse(payload)) {
       return true;
     }
@@ -240,16 +237,10 @@ export class ApiClient {
   }
 
   async stopTask(hash: string): Promise<boolean> {
-    const body = withEmptySid<ModifyTaskRequest>({ hash });
-    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Stop", {
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-      },
-      bodySerializer: serializeUrlEncoded,
-    });
-
-    const payload = data ?? error;
+    const payload = await this.sendTaskCommand(
+      "/downloadstation/V4/Task/Stop",
+      withEmptySid<ModifyTaskRequest>({ hash }),
+    );
     if (isSuccessResponse(payload)) {
       return true;
     }
@@ -258,16 +249,10 @@ export class ApiClient {
   }
 
   async pauseTask(hash: string): Promise<boolean> {
-    const body = withEmptySid<ModifyTaskRequest>({ hash });
-    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Pause", {
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-      },
-      bodySerializer: serializeUrlEncoded,
-    });
-
-    const payload = data ?? error;
+    const payload = await this.sendTaskCommand(
+      "/downloadstation/V4/Task/Pause",
+      withEmptySid<ModifyTaskRequest>({ hash }),
+    );
     if (isSuccessResponse(payload)) {
       return true;
     }
@@ -278,19 +263,13 @@ export class ApiClient {
   }
 
   async removeTask(hash: string, options: { clean?: boolean } = {}): Promise<boolean> {
-    const body = withEmptySid<RemoveTaskRequest>({
-      hash,
-      clean: options.clean != null ? (options.clean ? 1 : 0) : undefined,
-    });
-    const { data, error } = await this.client.POST("/downloadstation/V4/Task/Remove", {
-      body,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-      },
-      bodySerializer: serializeUrlEncoded,
-    });
-
-    const payload = data ?? error;
+    const payload = await this.sendTaskCommand(
+      "/downloadstation/V4/Task/Remove",
+      withEmptySid<RemoveTaskRequest>({
+        hash,
+        clean: options.clean != null ? (options.clean ? 1 : 0) : undefined,
+      }),
+    );
     if (isSuccessResponse(payload)) {
       return true;
     }
@@ -312,7 +291,7 @@ export class ApiClient {
       if (result.status === "fulfilled") {
         return { url, ok: result.value };
       }
-      const reason = result.reason;
+      const reason: unknown = result.reason;
       return { url, ok: false, error: reason instanceof Error ? reason.message : String(reason) };
     });
   }
@@ -380,7 +359,7 @@ export class ApiClient {
       if (result.status === "fulfilled") {
         return { index, ok: true };
       }
-      const reason = result.reason;
+      const reason: unknown = result.reason;
       return { index, ok: false, error: reason instanceof Error ? reason.message : String(reason) };
     });
   }
@@ -441,6 +420,17 @@ export class ApiClient {
 
     return data.data;
   }
+
+  private async sendTaskCommand(path: TaskCommandPath, body: ModifyTaskRequest | RemoveTaskRequest): Promise<unknown> {
+    const { data, error } = await this.client.POST(path, {
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      bodySerializer: serializeUrlEncoded,
+    });
+    return data ?? error;
+  }
 }
 
 export function createApiClient(options: ApiClientOptions): ApiClient {
@@ -459,8 +449,4 @@ function serializeUrlEncoded<T extends { sid: string }>(body: T): URLSearchParam
     params.append(key, String(value));
   }
   return params;
-}
-
-function isErrorWithDuplicateFlag(error: unknown): error is Error & { duplicate?: boolean } {
-  return typeof error === "object" && error !== null && "duplicate" in error && typeof error.duplicate === "boolean";
 }

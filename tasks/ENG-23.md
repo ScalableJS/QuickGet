@@ -25,3 +25,8 @@ API and task-card dictionaries overlap nine error codes with different wording; 
 ## Evidence and scope
 
 [The code-quality audit](../docs/quality/code-quality-audit.md) and [callable inventory](../docs/quality/functions.md) record source-grounded findings and review boundaries. This card is planned work, not an accepted runtime change. Test fixture any is explicitly allowed; no task is created merely to eliminate it.
+
+
+## Comparison: 2026-10-09
+
+[The source-grounded matrix](../docs/quality/code-quality-audit.md#error-fact-comparison-for-eng-23) records all nine overlapping codes and task-only 20488, distinct unknown-code/reason fallbacks, and NAS-login versus tracker-handoff classifier boundaries. No shared dictionary/classifier is accepted: 12288/12289 row labels narrow the API fact, and independent 20488 vendor evidence is still missing. This card remains discussion; the comparison is not a fresh NAS observation.

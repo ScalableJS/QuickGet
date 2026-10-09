@@ -19,7 +19,12 @@ import { findConfigProblem } from "@lib/configHealth.js";
 import { loadSettings } from "@lib/settings.js";
 import { summarizeProgress } from "@lib/tasks.js";
 
-import { applyBadgeStats, markConfigurationProblemAfterActiveState, markMonitoringUnavailable } from "./actions.js";
+import {
+  applyBadgeStats,
+  markConfigurationProblemAfterActiveState,
+  markMonitoringUnavailable,
+  type ToolbarStateOwner,
+} from "./actions.js";
 
 const ALARM_NAME = "download-monitor";
 const CHECK_INTERVAL_MINUTES = 0.5; // 30s — Chrome's real minimum since v120
@@ -28,6 +33,8 @@ let clientCache: { signature: string; client: ApiClient } | null = null;
 let armQueue = Promise.resolve();
 let ensureMonitoringOperation: Promise<void> | null = null;
 let ensureMonitoringRerun = false;
+let pollRevision = 0;
+let monitoringRevision = 0;
 
 async function getClient(settings: Settings): Promise<ApiClient> {
   const signature = clientSignature(settings);
@@ -39,12 +46,17 @@ async function getClient(settings: Settings): Promise<ApiClient> {
   return clientCache.client;
 }
 
+async function isCurrentConnection(signature: string): Promise<boolean> {
+  return clientSignature(await loadSettings()) === signature;
+}
+
 /**
  * Arm the background poll if it isn't already. Idempotent: the alarm survives
  * service-worker restarts and is the single source of truth, so re-arming an
  * armed alarm is a no-op rather than a reset.
  */
 export async function armMonitoring(): Promise<void> {
+  monitoringRevision += 1;
   const operation = armQueue.then(async () => {
     const existing = await chrome.alarms.get(ALARM_NAME);
     if (existing) return;
@@ -55,6 +67,11 @@ export async function armMonitoring(): Promise<void> {
   });
   armQueue = operation.catch(() => {});
   await operation;
+}
+
+/** A confirmed popup snapshot is newer than any in-flight background query. */
+export function invalidateBackgroundPolls(): void {
+  pollRevision += 1;
 }
 
 /**
@@ -103,30 +120,61 @@ export async function handleAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
  * a later explicit monitoring request retries.
  */
 async function pollStatus({ stopWhenIdle }: { stopWhenIdle: boolean }): Promise<void> {
+  let signature: string | undefined;
+  const requestRevision = ++pollRevision;
+  const requestMonitoringRevision = monitoringRevision;
+
   try {
     // An unconfigured extension is a normal state, not a fault. Polling anyway threw "NAS
     // address is empty" on every browser start, which Chrome collects on the extension's
     // Errors page — so a fresh install looked broken before it had ever been set up.
     const settings = await loadSettings();
+    const currentSignature = clientSignature(settings);
+    signature = currentSignature;
+    const ownsCurrentPoll: ToolbarStateOwner = async () =>
+      (await isCurrentConnection(currentSignature)) && requestRevision === pollRevision;
     const problem = findConfigProblem(settings);
     if (problem) {
-      await markConfigurationProblemAfterActiveState(problem.summary);
-      void chrome.alarms.clear(ALARM_NAME);
+      await markConfigurationProblemAfterActiveState(problem.summary, ownsCurrentPoll);
+      await clearMonitoring(requestMonitoringRevision, ownsCurrentPoll);
       return;
     }
 
     const client = await getClient(settings);
     const { tasks } = await client.queryTasks();
 
-    const { idleConfirmed } = await applyBadgeStats(summarizeProgress(tasks));
+    if (!(await ownsCurrentPoll())) return;
 
-    if (idleConfirmed && stopWhenIdle) {
-      // Idle confirmed across consecutive polls — drop the alarm; a mutation re-arms it.
-      void chrome.alarms.clear(ALARM_NAME);
+    const applied = await applyBadgeStats(summarizeProgress(tasks), ownsCurrentPoll);
+
+    if (applied?.idleConfirmed && stopWhenIdle) {
+      // The current connection confirmed idle — drop the alarm; a mutation re-arms it.
+      await clearMonitoring(requestMonitoringRevision, ownsCurrentPoll);
     }
   } catch (error) {
+    if (signature) {
+      const ownsCurrentPoll = (await isCurrentConnection(signature)) && requestRevision === pollRevision;
+      if (!ownsCurrentPoll) return;
+    } else if (requestRevision !== pollRevision) {
+      return;
+    }
     console.error("Monitoring error:", error);
-    await markMonitoringUnavailable();
-    void chrome.alarms.clear(ALARM_NAME);
+    const ownsCurrentPoll: ToolbarStateOwner = async () =>
+      (!signature || (await isCurrentConnection(signature))) && requestRevision === pollRevision;
+    await markMonitoringUnavailable(ownsCurrentPoll);
+    await clearMonitoring(requestMonitoringRevision, ownsCurrentPoll);
+  }
+}
+
+async function clearMonitoring(revision: number, owner: ToolbarStateOwner): Promise<void> {
+  const operation = armQueue.then(async () => {
+    if (!(await owner()) || revision !== monitoringRevision) return;
+    await chrome.alarms.clear(ALARM_NAME);
+  });
+  armQueue = operation.catch(() => {});
+  try {
+    await operation;
+  } catch (error) {
+    console.error("[QuickGet] could not stop monitoring:", error);
   }
 }

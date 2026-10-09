@@ -30,7 +30,9 @@ const uiMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@/popup/components", () => statusMock);
-vi.mock("../../shared/monitor.js", () => ({ requestMonitoring: vi.fn(), sendBadgeSnapshot: vi.fn() }));
+const monitorMock = vi.hoisted(() => ({ requestMonitoring: vi.fn(), sendBadgeSnapshot: vi.fn() }));
+
+vi.mock("../../shared/monitor.js", () => monitorMock);
 vi.mock("./autoRefresh.js", () => ({
   configureAutoRefresh: vi.fn(),
   startAutoRefresh: vi.fn(),
@@ -121,7 +123,11 @@ describe("downloads feature terminal feedback", () => {
   });
 
   it("invalidates pending work, rows, and selection when the connection changes", async () => {
-    let resolveReplacement!: (result: { skipped: false; raw: { error: number; data: [] }; tasks: { hash: string }[] }) => void;
+    let resolveReplacement!: (result: {
+      skipped: false;
+      raw: { error: number; data: [] };
+      tasks: { hash: string }[];
+    }) => void;
     managerMock.listDownloads
       .mockResolvedValueOnce({ skipped: false, raw: { error: 0, data: [] }, tasks: [] })
       .mockImplementationOnce(
@@ -142,6 +148,32 @@ describe("downloads feature terminal feedback", () => {
     expect(stateMock.clearSelection).toHaveBeenCalled();
     expect(uiMock.renderDownloads).toHaveBeenCalledWith([]);
     expect(uiMock.renderDownloads).toHaveBeenLastCalledWith([{ hash: "new" }]);
+  });
+
+  it("does not publish an empty snapshot before the replacement connection confirms its tasks", async () => {
+    let resolveReplacement!: (result: {
+      skipped: false;
+      raw: { error: number; data: [] };
+      tasks: { hash: string }[];
+    }) => void;
+    managerMock.listDownloads
+      .mockResolvedValueOnce({ skipped: false, raw: { error: 0, data: [] }, tasks: [] })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveReplacement = resolve;
+          }),
+      );
+    const feature = await initializeFeature();
+    monitorMock.sendBadgeSnapshot.mockClear();
+
+    feature.connectionChanged();
+    expect(monitorMock.sendBadgeSnapshot).not.toHaveBeenCalled();
+
+    resolveReplacement({ skipped: false, raw: { error: 0, data: [] }, tasks: [{ hash: "new" }] });
+    await Promise.resolve();
+
+    expect(monitorMock.sendBadgeSnapshot).toHaveBeenCalledOnce();
   });
 
   it("does not report a late old-connection query rejection after the replacement has rendered", async () => {

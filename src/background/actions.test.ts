@@ -21,6 +21,20 @@ describe("applyBadgeStats", () => {
     vi.clearAllMocks(); // ...then forget the writes resetActionState just made
   });
 
+  it("checks poll ownership after loading persisted toolbar state", async () => {
+    let current = true;
+    const get = vi.mocked(chrome.storage.session.get);
+    const original = get.getMockImplementation();
+    get.mockImplementationOnce(async (...args) => {
+      const state = await original?.(...args);
+      current = false;
+      return state;
+    });
+
+    await expect(applyBadgeStats(stats(2), async () => current)).resolves.toBeUndefined();
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+  });
+
   it("shows the active count and the active icon", async () => {
     await applyBadgeStats(stats(2));
 

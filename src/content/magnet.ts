@@ -247,18 +247,24 @@ export function showFeedback(
     </style>
     <div class="toast" role="alert">
       ${iconSvg}
-      <span class="msg">${message}</span>
-      ${actions.map((action, index) => `<button id="qg-action-${index}" class="btn-action" type="button">${action.label}</button>`).join("")}
+      <span class="msg"></span>
+      ${actions.map((_, index) => `<button id="qg-action-${index}" class="btn-action" type="button"></button>`).join("")}
       <button id="qg-dismiss" class="btn-dismiss" type="button" title="Close" aria-label="Close">✕</button>
     </div>
   `;
 
+  const messageNode = shadow.querySelector(".msg");
+  if (messageNode) messageNode.textContent = message;
   const dismissBtn = shadow.getElementById("qg-dismiss");
   dismissBtn?.addEventListener("click", () => {
     host?.remove();
   });
   for (const [index, action] of actions.entries()) {
-    shadow.getElementById(`qg-action-${index}`)?.addEventListener("click", action.onClick);
+    const button = shadow.getElementById(`qg-action-${index}`);
+    if (button) {
+      button.textContent = action.label;
+      button.addEventListener("click", action.onClick);
+    }
   }
 
   if (state === "success") {
@@ -277,42 +283,18 @@ export function showFeedback(
  * failure restores the browser's native magnet handler through normal navigation.
  */
 function sendMagnetToWorker(uri: string): void {
-  if (inFlightUris.has(uri)) return;
-  inFlightUris.add(uri);
-
-  showFeedback("loading", "Sending to Download Station…");
-
   const message: MagnetMessage = {
     type: "task:add",
     uri,
     source: "magnet-click",
     pageUrl: window.location.href,
   };
-
-  const dispatch = (): void => {
-    try {
-      chrome.runtime.sendMessage(message, (response: MagnetResponse | undefined) => {
-        inFlightUris.delete(uri);
-        const lastErr = chrome.runtime.lastError;
-        if (lastErr) {
-          fallBackToBrowser(uri, `Could not contact QuickGet: ${lastErr.message}`);
-          return;
-        }
-
-        if (response?.ok) {
-          showFeedback("success", "Sent to Download Station");
-        } else {
-          const err = response?.error || "NAS rejected the link";
-          fallBackToBrowser(uri, `Failed to send: ${err}`);
-        }
-      });
-    } catch (error) {
-      inFlightUris.delete(uri);
-      fallBackToBrowser(uri, `Extension error: ${String(error)}`);
-    }
-  };
-
-  dispatch();
+  sendToWorker(
+    uri,
+    message,
+    (response) => `Failed to send: ${response?.error || "NAS rejected the link"}`,
+    (error) => `Extension error: ${String(error)}`,
+  );
 }
 
 /** Whether a plain click on an ordinary file link is sent to the NAS (RES-5). Off by default. */
@@ -324,12 +306,26 @@ export function setFileCaptureEnabled(enabled: boolean): void {
 
 /** Hand an ordinary file link to the worker through the same path as the context menu. */
 function sendLinkToWorker(url: string): void {
+  const message: SendLinkMessage = { type: "link:send", url, pageUrl: window.location.href };
+  sendToWorker(
+    url,
+    message,
+    (response) => response?.error ?? "Could not send to Download Station",
+    (error) => (error instanceof Error ? error.message : "Could not contact QuickGet"),
+  );
+}
+
+function sendToWorker(
+  url: string,
+  message: MagnetMessage | SendLinkMessage,
+  rejectedMessage: (response: Extract<MagnetResponse, { ok: false }> | undefined) => string,
+  thrownMessage: (error: unknown) => string,
+): void {
   if (inFlightUris.has(url)) return;
   inFlightUris.add(url);
 
   showFeedback("loading", "Sending to Download Station…");
 
-  const message: SendLinkMessage = { type: "link:send", url, pageUrl: window.location.href };
   try {
     chrome.runtime.sendMessage(message, (response: MagnetResponse | undefined) => {
       inFlightUris.delete(url);
@@ -342,11 +338,11 @@ function sendLinkToWorker(url: string): void {
         showFeedback("success", "Sent to Download Station");
         return;
       }
-      fallBackToBrowser(url, response?.error ?? "Could not send to Download Station");
+      fallBackToBrowser(url, rejectedMessage(response));
     });
   } catch (error) {
     inFlightUris.delete(url);
-    fallBackToBrowser(url, error instanceof Error ? error.message : "Could not contact QuickGet");
+    fallBackToBrowser(url, thrownMessage(error));
   }
 }
 
@@ -431,7 +427,7 @@ export function initMagnetInterception(): () => void {
 
 // Auto-run in browser context
 if (typeof window !== "undefined" && typeof chrome !== "undefined" && chrome.runtime?.id) {
-  const existingCleanup = Reflect.get(globalThis, CONTENT_SCRIPT_CLEANUP_KEY);
+  const existingCleanup: unknown = Reflect.get(globalThis, CONTENT_SCRIPT_CLEANUP_KEY);
   if (typeof existingCleanup === "function") existingCleanup();
   Reflect.set(globalThis, CONTENT_SCRIPT_CLEANUP_KEY, initMagnetInterception());
 }

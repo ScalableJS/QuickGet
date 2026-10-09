@@ -123,7 +123,8 @@ export function normalizeDomain(raw: string): string {
 export function sanitizeRoutingRules(raw: unknown): RoutingRule[] {
   if (!Array.isArray(raw)) return [];
   const rules: RoutingRule[] = [];
-  for (const item of raw) {
+  const items: unknown[] = raw;
+  for (const item of items) {
     if (typeof item !== "object" || item === null) continue;
     const candidate = item as Record<string, unknown>;
     if (typeof candidate.destination !== "string") continue;

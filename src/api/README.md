@@ -52,6 +52,8 @@ transparent URL-encoded replay policy. Duplicate torrent errors return a distinc
 outcome. `AddUrl` and `AddTorrent` use the required relative Temp/Target paths; absent Temp is
 reported before multipart upload. URL batches preserve independent outcomes with
 `Promise.allSettled`. A NAS success envelope means acceptance, not completed download progress.
+An unparseable AddTorrent body is rejected even with HTTP 200: HTTP status and words such as
+"exists" in HTML/text do not establish success or a confirmed duplicate.
 
 ## Operations and boundaries
 
@@ -66,3 +68,9 @@ The checked-in schema defines the typed request/response boundary; it is not run
 for every firmware. Unit tests cover login encoding, SID expiry/replay, response errors and
 request payloads. Real-NAS validation is the separate local release spot check described in
 [verification](../../docs/system/verification.md).
+
+## Error and command contracts
+
+createApiError constructs an Error carrying code, reason and optional duplicate/apiUnsupported flags without a construction assertion. isSuccessResponse returns a boolean for supported success envelopes; it does not validate or narrow the full response DTO. Start, Stop, Pause and Remove share a private transport helper restricted to their generated request shapes; each public method retains its own error contract and options.
+
+Duplicate acceptance is limited to Download Station code 8196 and the existing supported 24593 response with duplicate/exist wording. Other codes retain their failure outcome even if their reason contains exist; in particular, code 5 with session-does-not-exist wording is an authentication failure.

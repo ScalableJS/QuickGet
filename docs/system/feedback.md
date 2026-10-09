@@ -8,7 +8,7 @@ features: ["feedback"]
 
 # Feedback, notifications, and errors
 
-Feedback has three owners: the page content script shows in-page send toasts; the popup status pill announces popup operations; the worker controls browser attention and system notifications. These surfaces serve different contexts and are not interchangeable duplicates.
+Feedback has three owners: the page content script shows in-page send toasts; the popup status pill announces popup operations; the worker controls browser attention and system notifications. These surfaces serve different contexts and are not interchangeable duplicates. Page-feedback message text and action labels use textContent while the renderer retains its static theme/control template.
 
 | Path | Success | Failure |
 |---|---|---|

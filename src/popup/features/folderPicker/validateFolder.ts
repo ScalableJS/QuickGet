@@ -55,7 +55,7 @@ export async function validateFolder(raw: string, listDir: FolderLister): Promis
     }
     return { status: "valid" };
   } catch (error) {
-    if ((error as { code?: number })?.code === PATH_NOT_FOUND_CODE) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === PATH_NOT_FOUND_CODE) {
       return { status: "invalid", reason: "Folder not found on NAS" };
     }
     return { status: "error", reason: getErrorMessage(error) };

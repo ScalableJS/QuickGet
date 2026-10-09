@@ -36,69 +36,71 @@
       "resolveTheme",
       "setCurrentTheme"
     ],
-    "sourceHash": "5cdea963f09eba034f0f84ef55865be227c5eb398ab5adab646bbb7d3029dc4d",
-    "reason": "Shadow DOM rendering/theme and native fallback belong to a page context; no universal notification service.",
-    "task": "BUG-71"
+    "sourceHash": "a579fd351b8e311f543269eb8e7e0563b73362c3bf03c2d58b7feeb213a0f9a8",
+    "reason": "Reviewed text-only messages/action labels, controls, timers and distinct page rendering lifetime.",
+    "task": "BUG-71",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "content-dispatch",
-    "assessment": "confirmed-logic-duplication",
+    "assessment": "shared-kernel-preserved-policies",
     "path": "src/content/magnet.ts",
     "names": [
       "sendMagnetToWorker",
-      "sendLinkToWorker"
+      "sendLinkToWorker",
+      "sendToWorker"
     ],
-    "sourceHash": "5cdea963f09eba034f0f84ef55865be227c5eb398ab5adab646bbb7d3029dc4d",
-    "reason": "Both implement claim/loading/runtime callback/release/error fallback, with drift in error wording and fallback handling.",
-    "task": "ENG-20"
+    "sourceHash": "a579fd351b8e311f543269eb8e7e0563b73362c3bf03c2d58b7feeb213a0f9a8",
+    "reason": "Reviewed shared sendToWorker claim/callback/release/fallback kernel; explicit magnet/link policies and targeted duplicate/overlap/error/throw evidence remain.",
+    "task": "ENG-20",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "byte-formatting",
-    "assessment": "confirmed-logic-duplication",
+    "assessment": "single-size-owner-distinct-rate-policy",
     "path": "src/popup/components/downloadItem/format.ts",
     "names": [
       "formatBytes",
       "scaleUnit"
     ],
-    "sourceHash": "94677de04de80e08353bb3bfa2b24c92b811b2bb5555b48f5e64118092d420d2",
-    "reason": "Binary-unit scaling and fixed precision repeated in TorrentFiles; guard behavior differs and needs preserved contract.",
-    "task": "ENG-21"
-  },
-  {
-    "family": "byte-formatting",
-    "assessment": "confirmed-logic-duplication",
-    "path": "src/popup/features/torrentFiles/TorrentFiles.svelte",
-    "names": [
-      "formatSize"
-    ],
-    "sourceHash": "b01c2dbff2ebc7d056bca4364dec782892f526172bc7cc588e82d0c5c129dc71",
-    "reason": "Second binary-size formatter repeats units/scaling/precision from download item; rate formatter intentionally differs.",
-    "task": "ENG-21"
+    "sourceHash": "8d87c31283823f9eca306e1bf1c651650cccbb700f79dbd78f3ef09e884fbeaa",
+    "reason": "Reviewed sole binary-size owner formatBytes, now imported by TorrentFiles; guards and separate rate policy retained.",
+    "task": "ENG-21",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "error-contract",
-    "assessment": "type-contract-follow-up",
+    "assessment": "accurate-error-contract",
     "path": "src/api/utils.ts",
     "names": [
-      "createApiError"
+      "createApiError",
+      "isSuccessResponse"
     ],
-    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
-    "reason": "Returns Error despite assigning code/reason/duplicate/apiUnsupported via assertion; consumers need casts or structural probes.",
-    "task": "ENG-19"
+    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
+    "reason": "Reviewed Object.assign enriched Error construction, accurate return contract and boolean success test without DTO validation claim; supported numeric/string-zero retained. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "task": "ENG-19",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "task-command-transport",
-    "assessment": "confirmed-transport-boilerplate",
+    "assessment": "shared-typed-transport-local-outcomes",
     "path": "src/api/client.ts",
     "names": [
       "startTask",
       "stopTask",
       "pauseTask",
-      "removeTask"
+      "removeTask",
+      "sendTaskCommand"
     ],
-    "sourceHash": "46e415f666f492d1c76c62473ff4dc05f3860ced0fd7b9ba19802a369dc13522",
-    "reason": "Repeated POST/SID/form serializer/success/error handling; Pause enrichment and Remove options must remain distinct.",
-    "task": "ENG-22"
+    "sourceHash": "11299aa1c0b9eb66420702e7c71258a59257b4e60047ef4eecc6cc0fb6aac391",
+    "reason": "Reviewed private four-route typed sendTaskCommand transport and preserved public outcome handling; unparseable torrent replies throw before duplicate inference.",
+    "task": "ENG-22",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "error-catalog",
@@ -108,9 +110,11 @@
       "createApiError",
       "getErrorMessage"
     ],
-    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
-    "reason": "NAS API dictionary and reason formatting have different presentation contracts from task-card errors.",
-    "task": "ENG-23"
+    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
+    "reason": "Rechecked unchanged catalogs, caller-specific wording and custom/reason fallback after size export and error type changes; ENG-23 matrix retains discussion. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "task": "ENG-23",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "error-catalog",
@@ -119,9 +123,11 @@
     "names": [
       "formatError"
     ],
-    "sourceHash": "94677de04de80e08353bb3bfa2b24c92b811b2bb5555b48f5e64118092d420d2",
-    "reason": "Ten task-card code labels overlap nine API codes but differ in wording; task-only20488 needs evidence before common catalog.",
-    "task": "ENG-23"
+    "sourceHash": "8d87c31283823f9eca306e1bf1c651650cccbb700f79dbd78f3ef09e884fbeaa",
+    "reason": "Rechecked unchanged catalogs, caller-specific wording and custom/reason fallback after size export and error type changes; ENG-23 matrix retains discussion.",
+    "task": "ENG-23",
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "error-text",
@@ -142,9 +148,11 @@
       "coerceNumber",
       "coerceString"
     ],
-    "sourceHash": "ce19384b21d8af3325f56c703b38ea35f15062dfb8c6414f8f41f3fd2f9bd98a",
-    "reason": "API fallback defaults differ from task nullable parsers; only consider extraction after equivalence matrix.",
-    "task": null
+    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
+    "reason": "Reviewed unchanged coercion/nullable parsing contracts and unknown annotations; no cross-contract merge. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "task": null,
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "numeric-coercion",
@@ -156,9 +164,11 @@
       "parseString",
       "readString"
     ],
-    "sourceHash": "0a27b9ffcec046d0cd781f909e4d05449e81c8aeaec2b7d8fa96ed239c9487a4",
-    "reason": "Optional task fields preserve absence before caller defaults; no blind merge into API helpers.",
-    "task": null
+    "sourceHash": "60933c5972f7ec75ab9e99d4f8a7b7107f56efa540f17e397cea4270368e6f33",
+    "reason": "Reviewed unchanged coercion/nullable parsing contracts and unknown annotations; no cross-contract merge.",
+    "task": null,
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "connection-url",
@@ -190,9 +200,11 @@
     "names": [
       "getClient"
     ],
-    "sourceHash": "d0d187202c7596bd29f91cc4bb758a53480c544614dcc3122b61ddbaa4ce8064",
-    "reason": "Worker lifetime differs from popup; connection identity is already shared.",
-    "task": null
+    "sourceHash": "56bafe243b874e38dde596e5293d65968e16eaa410863562c05b1431e2c75450",
+    "reason": "Reviewed unchanged signature-keyed worker cache and new post-request/post-writer teardown ownership checks; distinct popup lifetime preserved.",
+    "task": null,
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
   },
   {
     "family": "client-caches",
@@ -297,8 +309,40 @@
       "start",
       "stop"
     ],
-    "sourceHash": "ba7163483e3cfd6231d123466bb0414e623ae83289fbb071a7d9670d19621de8",
-    "reason": "Small inline wrappers differ in command and user-facing outcome; extracting a generic runner is not justified solely by a shape match.",
-    "task": null
+    "sourceHash": "4efd0cd95e285e5fcb734fdaad1ec69559503b3df118e757652dac8178a3bb0d",
+    "reason": "Rechecked unchanged inline command/outcome wrappers after removal of the unconfirmed connection-reset snapshot; no generic popup runner introduced.",
+    "task": null,
+    "reviewedAt": "2026-10-09",
+    "reviewer": "Codex"
+  },
+  {
+    "family": "monitoring-result-ownership",
+    "assessment": "serialized-current-owner",
+    "path": "src/background/alarms.ts",
+    "names": [
+      "armMonitoring",
+      "invalidateBackgroundPolls",
+      "pollStatus",
+      "clearMonitoring",
+      "isCurrentConnection"
+    ],
+    "sourceHash": "56bafe243b874e38dde596e5293d65968e16eaa410863562c05b1431e2c75450",
+    "reason": "Reviewed poll/connection revisions, post-storage ownership checks, serialized alarm create/clear, definite unowned results and separate bookkeeping failure; controlled regressions preserve confirmed idle and explicit retry.",
+    "task": "BUG-76"
+  },
+  {
+    "family": "monitoring-result-ownership",
+    "assessment": "serialized-current-owner",
+    "path": "src/background/actions.ts",
+    "names": [
+      "updateState",
+      "applyBadgeStats",
+      "markConfigurationProblemAfterActiveState",
+      "markMonitoringUnavailable",
+      "acknowledgeAttention"
+    ],
+    "sourceHash": "656f54976f709ea7033a89d446d7eaecf9d19a299da11a80be10d42b74270581",
+    "reason": "Reviewed poll/connection revisions, post-storage ownership checks, serialized alarm create/clear, definite unowned results and separate bookkeeping failure; controlled regressions preserve confirmed idle and explicit retry.",
+    "task": "BUG-76"
   }
 ]

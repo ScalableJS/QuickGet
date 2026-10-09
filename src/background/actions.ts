@@ -56,6 +56,8 @@ type ToolbarState = {
   failureRevision: number;
 };
 
+export type ToolbarStateOwner = () => Promise<boolean>;
+
 const STATE_KEY = "qg:toolbarState";
 const DEFAULT_STATE: ToolbarState = {
   badgeText: "",
@@ -71,9 +73,18 @@ const DEFAULT_STATE: ToolbarState = {
 // get → mutate → set sequences can save in reverse order and erase the newer transition.
 let stateUpdateQueue = Promise.resolve();
 
-async function updateState<Result>(update: (state: ToolbarState) => Promise<Result>): Promise<Result> {
+function updateState<Result>(update: (state: ToolbarState) => Promise<Result>): Promise<Result>;
+function updateState<Result>(
+  update: (state: ToolbarState) => Promise<Result>,
+  owner: ToolbarStateOwner | undefined,
+): Promise<Result | undefined>;
+async function updateState<Result>(
+  update: (state: ToolbarState) => Promise<Result>,
+  owner?: ToolbarStateOwner,
+): Promise<Result | undefined> {
   const operation = stateUpdateQueue.then(async () => {
     const state = await loadState();
+    if (owner && !(await owner())) return undefined;
     const result = await update(state);
     await saveState(state);
     return result;
@@ -135,7 +146,15 @@ function buildTitle(stats: ProgressSummary): string {
  */
 export async function applyBadgeStats(
   stats: ProgressSummary,
-): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean }> {
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean }>;
+export async function applyBadgeStats(
+  stats: ProgressSummary,
+  owner: ToolbarStateOwner,
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean } | undefined>;
+export async function applyBadgeStats(
+  stats: ProgressSummary,
+  owner?: ToolbarStateOwner,
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean } | undefined> {
   return updateState(async (state) => {
     const needsAttention = state.badgeText === CONFIG_BADGE;
     const hasActivity = stats.downloading > 0 || stats.seeding > 0;
@@ -167,7 +186,7 @@ export async function applyBadgeStats(
     }
 
     return { downloading: stats.downloading, seeding: stats.seeding, idleConfirmed: !hasActivity };
-  });
+  }, owner);
 }
 
 /**
@@ -221,11 +240,14 @@ export async function markSendNotice(reason: string): Promise<void> {
  * unconfigured installation is deliberately quiet: it has never shown work,
  * so there is no stale status to correct.
  */
-export async function markConfigurationProblemAfterActiveState(reason: string): Promise<void> {
+export async function markConfigurationProblemAfterActiveState(
+  reason: string,
+  owner?: ToolbarStateOwner,
+): Promise<void> {
   await updateState(async (state) => {
     if (state.icon !== "active" && state.badgeText !== CONFIG_BADGE) return;
     await applyConfigurationProblem(state, reason);
-  });
+  }, owner);
 }
 
 /**
@@ -247,8 +269,10 @@ export async function acknowledgeAttention(): Promise<string | null> {
 }
 
 /** A failed NAS query invalidates the previously displayed task state immediately. */
-export async function markMonitoringUnavailable(): Promise<void> {
-  await markConfigurationProblem("Cannot reach Download Station — task status is unavailable.");
+export async function markMonitoringUnavailable(owner?: ToolbarStateOwner): Promise<void> {
+  await updateState(async (state) => {
+    await applyConfigurationProblem(state, "Cannot reach Download Station — task status is unavailable.");
+  }, owner);
 }
 
 /**

@@ -2,6 +2,13 @@ import type { BaseResponse } from "./type.js";
 
 type ApiResult = Partial<BaseResponse> & Record<string, unknown>;
 
+type ApiError = Error & {
+  code: number;
+  reason: string;
+  duplicate?: boolean;
+  apiUnsupported?: boolean;
+};
+
 function toApiResult(value: unknown): ApiResult {
   if (typeof value === "object" && value !== null) {
     return value as ApiResult;
@@ -132,7 +139,7 @@ export function explainLoopbackUrl(downloadUrl: string, nasHost: string): string
   return `Download Station fetches links itself, from the NAS — so "${host}" points at the NAS, not at this computer. Use this machine's network address instead.`;
 }
 
-export function createApiError(prefix: string, result: unknown): Error {
+export function createApiError(prefix: string, result: unknown): ApiError {
   const payload = toApiResult(result);
   const errorCode = coerceNumber(payload.error, -1);
   const reason = coerceString(payload.reason).trim();
@@ -151,22 +158,16 @@ export function createApiError(prefix: string, result: unknown): Error {
         ? `${prefix} (${errorCode}): ${detail}`
         : `${prefix} (${errorCode})`);
 
-  const error = new Error(message) as Error & {
-    code: number;
-    reason: string;
-    duplicate?: boolean;
-    apiUnsupported?: boolean;
-  };
-
-  error.code = errorCode;
-  error.reason = reason;
+  const error: ApiError = Object.assign(new Error(message), { code: errorCode, reason });
 
   // Flag duplicate errors. QNAP DS V4 reports an already-existing task via
   // AddTorrent as error code 8196 with reason set to the torrent name (no
-  // "duplicate"/"exist" keyword) — verified on a live NAS — so match the code
-  // as well as the textual reason.
+  // "duplicate"/"exist" keyword) — verified on a live NAS. The mock's
+  // duplicate-specific 24593 response supplies the same fact in its reason.
+  // Do not infer that fact from arbitrary errors: an expired session can say
+  // "does not exist" too.
   const reasonLower = reason.toLowerCase();
-  if (errorCode === 8196 || reasonLower.includes("duplicate") || reasonLower.includes("exist")) {
+  if (errorCode === 8196 || (errorCode === 24593 && (reasonLower.includes("duplicate") || reasonLower.includes("exist")))) {
     error.duplicate = true;
   }
 
@@ -179,9 +180,9 @@ export function createApiError(prefix: string, result: unknown): Error {
 }
 
 /**
- * Check if API response indicates success
+ * Check only whether an API response carries a zero error code; it does not validate a DTO.
  */
-export function isSuccessResponse(data: unknown): data is BaseResponse {
+export function isSuccessResponse(data: unknown): boolean {
   if (typeof data !== "object" || data === null) {
     return false;
   }

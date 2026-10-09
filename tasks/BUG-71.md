@@ -70,3 +70,10 @@ See [the current feedback matrix](../docs/system/feedback.md).
 
 
 **2026-10-09 bounded acceptance:** the linked popup and accepted-handoff cards are complete after root review. This card remains partial: new/retained-tab content feedback, native delivery/serialization and the full intent/path policy matrix are unproven. Existing quiet automatic/menu success policy is preserved; no speculative notification framework or persistent dedupe was added.
+
+
+## Code-quality consultation follow-up: 2026-10-09
+
+Mimic's final source review additionally raised page dispatch with a still-pending callback, ordinary-file fallback ignoring anchor download/target attributes, and gray-notice acknowledgement/lifetime. These are broader policy paths, not failures of the extracted claim/callback kernel. The current fallback is same-tab navigation; it does not recreate every native anchor action. No arbitrary dispatch deadline is added: a timeout while NAS acceptance is unknown could start browser handling for an already accepted/in-progress NAS send. Measure the causal lost-response path and decide late-reply/fallback ownership first. Gray notices remain distinct from popup direct/poll statuses; their retention requires the broader intent matrix.
+
+The resetActionState concurrency suggestion was rejected as a production blocker after a repository call-site check found only tests calling that export. This does not certify every toolbar interleaving.

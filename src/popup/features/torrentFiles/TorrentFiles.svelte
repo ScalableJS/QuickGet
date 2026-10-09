@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TorrentFile } from "@api/client.js";
   import { showStatus } from "@/popup/components";
+  import { formatBytes } from "@/popup/components/downloadItem/format.js";
   import { getErrorMessage } from "@lib/errors.js";
   import { Button, Checkbox } from "@ui";
 
@@ -81,17 +82,6 @@
   }
 
   void load();
-
-  function formatSize(bytes: number): string {
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    let v = bytes;
-    let u = 0;
-    while (v >= 1024 && u < units.length - 1) {
-      v /= 1024;
-      u += 1;
-    }
-    return `${v.toFixed(u === 0 ? 0 : 1)} ${units[u]}`;
-  }
 </script>
 
 <div class="torrent-files mt-[6px] p-2 rounded-[var(--radius)] bg-[var(--color-bg-alt)]">
@@ -107,7 +97,7 @@
         <li class="py-[3px] text-12px">
           <Checkbox bind:checked={wanted[file.no]}>
             <span class="tf-name flex-1 overflow-hidden text-ellipsis whitespace-nowrap" title={file.filename}>{file.filename}</span>
-            <span class="tf-size text-[var(--color-text-secondary)] flex-none">{formatSize(file.size)}</span>
+            <span class="tf-size text-[var(--color-text-secondary)] flex-none">{formatBytes(file.size)}</span>
           </Checkbox>
         </li>
       {/each}

@@ -9,6 +9,7 @@ import {
   setCurrentTheme,
   showFeedback,
 } from "./magnet.js";
+import type { MagnetResponse } from "./magnet.js";
 
 function createClickEvent(
   init: MouseEventInit & { isTrusted?: boolean; composedPath?: EventTarget[] } = {},
@@ -209,6 +210,22 @@ describe("magnet content script", () => {
       const shadow = host?.shadowRoot;
       expect(shadow?.textContent).toContain("NAS offline");
       expect(shadow?.getElementById("qg-dismiss")).not.toBeNull();
+    });
+
+    it("renders dynamic messages and action labels as literal text", () => {
+      const action = vi.fn();
+      showFeedback("error", '<b data-test="message">not markup</b>', [
+        { label: '<img data-test="action" src=x>', onClick: action },
+      ]);
+
+      const shadow = document.getElementById("quickget-feedback-host")?.shadowRoot;
+      expect(shadow?.querySelector('[data-test="message"]')).toBeNull();
+      expect(shadow?.querySelector('[data-test="action"]')).toBeNull();
+      expect(shadow?.querySelector(".msg")?.textContent).toBe('<b data-test="message">not markup</b>');
+      const actionButton = shadow?.getElementById("qg-action-0") as HTMLButtonElement | null;
+      expect(actionButton?.textContent).toBe('<img data-test="action" src=x>');
+      actionButton?.click();
+      expect(action).toHaveBeenCalledOnce();
     });
 
     it("removes toast on clicking dismiss button", () => {
@@ -415,6 +432,165 @@ describe("magnet content script", () => {
 
       cleanup();
       expect(removeEventListenerSpy).toHaveBeenCalledWith("click", expect.any(Function), true);
+    });
+  });
+
+  describe("worker dispatch lifecycle", () => {
+    function startIntercepting(
+      sendMessage: (message: unknown, callback: (response: MagnetResponse | undefined) => void) => void,
+      runtime: Record<string, unknown> = {},
+    ): { cleanup: () => void; dispatch: (event: MouseEvent) => void } {
+      let clickHandler: ((event: MouseEvent) => void) | undefined;
+      vi.spyOn(document, "addEventListener").mockImplementation((type, listener, options) => {
+        if (type === "click" && (options as { capture?: boolean })?.capture) {
+          clickHandler = listener as (event: MouseEvent) => void;
+        }
+      });
+      const mockRuntime = { id: "test-extension-id", sendMessage };
+      Object.defineProperties(mockRuntime, Object.getOwnPropertyDescriptors(runtime));
+      (globalThis as unknown as { chrome: unknown }).chrome = {
+        storage: {
+          local: { get: vi.fn((_keys, callback) => callback({ interceptFileLinks: false })) },
+          onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
+        runtime: mockRuntime,
+      };
+
+      const cleanup = initMagnetInterception();
+      return {
+        cleanup,
+        dispatch(event) {
+          expect(clickHandler).toBeDefined();
+          clickHandler?.(event);
+        },
+      };
+    }
+
+    function clickLink(href: string, shiftKey = false): MouseEvent {
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      document.body.appendChild(anchor);
+      return createClickEvent({
+        button: 0,
+        cancelable: true,
+        isTrusted: true,
+        shiftKey,
+        composedPath: [anchor, document.body, document, window],
+      });
+    }
+
+    it("dispatches a duplicate magnet once and shows its one success outcome", () => {
+      const callbacks: Array<(response: MagnetResponse | undefined) => void> = [];
+      const sendMessage = vi.fn((_message: unknown, callback: (response: MagnetResponse | undefined) => void) => {
+        callbacks.push(callback);
+      });
+      const interception = startIntercepting(sendMessage);
+      const event = clickLink("magnet:?xt=urn:btih:duplicate&dn=Duplicate");
+
+      interception.dispatch(event);
+      interception.dispatch(clickLink("magnet:?xt=urn:btih:duplicate&dn=Duplicate"));
+
+      expect(sendMessage).toHaveBeenCalledOnce();
+      callbacks[0]?.({ ok: true });
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain("Sent to Download Station");
+      interception.cleanup();
+    });
+
+    it("dispatches overlapping magnet and Shift-file sends once each", () => {
+      const callbacks: Array<(response: MagnetResponse | undefined) => void> = [];
+      const sendMessage = vi.fn((_message: unknown, callback: (response: MagnetResponse | undefined) => void) => {
+        callbacks.push(callback);
+      });
+      const interception = startIntercepting(sendMessage);
+
+      interception.dispatch(clickLink("magnet:?xt=urn:btih:overlap&dn=Overlap"));
+      interception.dispatch(clickLink("https://example.com/overlap.zip", true));
+
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+      expect(sendMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: "task:add" }), expect.any(Function));
+      expect(sendMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: "link:send" }), expect.any(Function));
+      callbacks.forEach((callback) => {
+        callback({ ok: true });
+      });
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain("Sent to Download Station");
+      interception.cleanup();
+    });
+
+    it("falls back after a rejected reply and releases its magnet claim", () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const callbacks: Array<(response: MagnetResponse | undefined) => void> = [];
+      const sendMessage = vi.fn((_message: unknown, callback: (response: MagnetResponse | undefined) => void) => {
+        callbacks.push(callback);
+      });
+      const interception = startIntercepting(sendMessage);
+      const uri = "magnet:?xt=urn:btih:rejected&dn=Rejected";
+
+      interception.dispatch(clickLink(uri));
+      callbacks[0]?.({ ok: false, error: "NAS rejected it" });
+
+      expect(sendMessage).toHaveBeenCalledOnce();
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain(
+        "Failed to send: NAS rejected it. Continuing in the browser.",
+      );
+
+      interception.dispatch(clickLink(uri));
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+      callbacks[1]?.({ ok: true });
+      interception.cleanup();
+    });
+
+    it("falls back after runtime.lastError and releases its ordinary-file claim", () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const callbacks: Array<(response: MagnetResponse | undefined) => void> = [];
+      const sendMessage = vi.fn((_message: unknown, callback: (response: MagnetResponse | undefined) => void) => {
+        callbacks.push(callback);
+      });
+      let lastError: { message: string } | undefined;
+      const interception = startIntercepting(sendMessage, {
+        get lastError() {
+          return lastError;
+        },
+      });
+      const url = "https://example.com/runtime-error.zip";
+
+      interception.dispatch(clickLink(url, true));
+      lastError = { message: "The message port closed" };
+      callbacks[0]?.({ ok: true });
+
+      expect(sendMessage).toHaveBeenCalledOnce();
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain(
+        "Could not contact QuickGet: The message port closed. Continuing in the browser.",
+      );
+
+      lastError = undefined;
+      interception.dispatch(clickLink(url, true));
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+      callbacks[1]?.({ ok: true });
+      interception.cleanup();
+    });
+
+    it("falls back after a synchronous dispatch throw and releases its ordinary-file claim", () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      let attempts = 0;
+      const sendMessage = vi.fn((_message: unknown, callback: (response: MagnetResponse | undefined) => void) => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("Extension context invalidated");
+        callback({ ok: true });
+      });
+      const interception = startIntercepting(sendMessage);
+      const url = "https://example.com/synchronous-throw.zip";
+
+      interception.dispatch(clickLink(url, true));
+
+      expect(sendMessage).toHaveBeenCalledOnce();
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain(
+        "Extension context invalidated. Continuing in the browser.",
+      );
+
+      interception.dispatch(clickLink(url, true));
+      expect(sendMessage).toHaveBeenCalledTimes(2);
+      expect(document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent).toContain("Sent to Download Station");
+      interception.cleanup();
     });
   });
 });

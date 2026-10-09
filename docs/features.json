@@ -34,9 +34,9 @@
       "notes": "Typed client, SID middleware, login encoding/replay, task methods and schema were compared with current sources; hardware interoperability is not inferred.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared the typed client, explicit multipart login, single-flight SID middleware and one URL-encoded replay with the API README and login/client tests; no hardware guarantee is inferred.",
-        "snapshot": "93f2acbb7593e029bca5cf8d1e3a4f592f58aa878917b8ad46ba56e104999c61"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed malformed torrent rejection, supported duplicate codes, typed Error construction and four command envelopes against API/client and utils regressions; README updated.",
+        "snapshot": "c237ec036f76ea75c3da5043ac280d2fe5b112e84e60fe1e55a6495e730f68c5"
       }
     },
     {
@@ -157,9 +157,9 @@
       "notes": "Classification, release-name routing, domains, list/glob matching and editor behavior were inspected; batch routing difference is explicit.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared unchanged first-match destination resolution and rule editor with uploads callback isolation and shared Settings change; local descriptor routing and documented per-batch destination limitation remain unchanged.",
-        "snapshot": "6566fb2cad14d6de4a38a30460da271843721c992fc1f99243cf8936b51239b1"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed explicit unknown-array iteration; routing behavior and canonical page remain unchanged, existing routing unit/browser coverage passes.",
+        "snapshot": "6e3ff0ede5a322b01c1445d7fee4004f4f9f3ecb5c9cabdc9186ca891c539e40"
       }
     },
     {
@@ -185,9 +185,9 @@
       "notes": "Relative paths, parent listing, writability and invalid-vs-unverifiable outcomes were inspected; permissions can change after validation.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared relative normalization, parent directory lookup, writtable flag, error 4096 and five-minute endpoint/login folder cache with the page and tests.",
-        "snapshot": "ce7ac438db67901e8acee6d6fed2e0b8a7180089b285ff924290c42afb667dd3"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed structural code narrowing for path-not-found without stricter Error-instance requirements; folder behavior and canonical page unchanged.",
+        "snapshot": "87d95f9d1c2ad8021730dc4373ef8037569e351a72a522b45d2db32323a66cd0"
       }
     },
     {
@@ -216,9 +216,9 @@
       "notes": "Event claims, deferred filename, live login, tracker fetch, cancel-after-accept and browser fallback were inspected; BUG-70 remains unproven.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared accepted AddTorrent ordering, rejected failure-episode cleanup isolation, cancel/erase and actual preacceptance fallback against downloads regression and interception E2E; no live NAS claim.",
-        "snapshot": "f80826b45551b5b6f3dfc47e676a2f6a9d6cf88387997dca505f5387c8636217"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed worker cancellation boundaries for unconfirmed malformed replies and supported duplicate results; canonical handoff page and mock browser regression match.",
+        "snapshot": "441db08a020e19bf2de6d7efae6f47ec80149c762db35b223df033429b97284d"
       }
     },
     {
@@ -246,9 +246,9 @@
       "notes": "Eligible click gates, download attributes/path allow-list, Shift override, worker messages, cleanup/reinjection and navigation fallback were inspected.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared trusted click gates, HTTP pathname/download-attribute eligibility, Shift override, magnet/file messages, terminal page feedback, cleanup/reinjection and browser navigation fallback.",
-        "snapshot": "3e9079bd61c80c36a45e71bfffdb13241c9e6e186a10c5a17815d0f9f50c324e"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed textContent feedback and shared sendToWorker claim/release/dispatch kernel against magnet/link regression cases; page policy limitations remain explicit.",
+        "snapshot": "e8b1be0ff09df8bc8af4f37e36f1cabc67ac76bba3c65b181057b2d16a372fc7"
       }
     },
     {
@@ -271,9 +271,9 @@
       "notes": "Menu reinitialization, URL support, shared classification/routing, monitoring and direct failure notifications were inspected.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Verified that exactly one link-context menu is created, that menu/content file sends share transport, and that explicit menu failures use direct notification; removed the invented open-NAS menu claim.",
-        "snapshot": "0c8a64b9440c12b288943df8b3b93dbb9ef790d0eede22fc269118a91aaa6a06"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed worker unknown catch types and snapshot poll invalidation; context menu sending remains unchanged and monitoring canonical page records current ownership.",
+        "snapshot": "3606741b72d3f2777d2e8da99208145887b368b7bc13159160d42c6c70bbbe27"
       }
     },
     {
@@ -343,9 +343,9 @@
       "notes": "Current-query rendering, live shared selection, abort/controller identity, connection generation and removal reconciliation were inspected; the unread parallel snapshot is removed.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared query abort/controller identity, connection generation, recovery and removal reconciliation; rechecked removal of unread snapshot producer/listeners while preserving selection and current query rendering.",
-        "snapshot": "62e5473d1b8ed792325633305187d84183ea45023766f9ded87d2caad6358479"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed explicit item unknown type, shared binary size formatter, and removal of speculative zero publication on connection change; task-list behavior preserved.",
+        "snapshot": "2b9d944d9be788346321fd9f550d7eb90fe68b598d3dfbaa0efbf9d4d6ad9a14"
       }
     },
     {
@@ -378,9 +378,9 @@
       "notes": "Start/pause/stop/remove, clean-delete confirmation, SetTaskPriority and GetFile/SetFile call paths were inspected.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared caught Start/Stop/Pause/Remove rejection, typed unsupported-Pause Stop outcome including transport failure, independent removal-marker owner and newer command precedence against orchestration tests and Chromium regressions.",
-        "snapshot": "280b9bc54f61846881be07df120257ac5ef47579a5376e401c45eb2c8b618eb0"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed shared size import and public task command outcomes without universal command runner; task-management page and torrent files E2E agree.",
+        "snapshot": "dfbbdc3f437d93fdb8ba8e7166dd256a8d86e669c71545e7ca3f89d529929058"
       }
     },
     {
@@ -409,9 +409,9 @@
       "notes": "30-second alarms, single badge writer, session state, authoritative zero handling and stopping on polling failure were inspected; full Task/Query is still used.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared unchanged single toolbar writer, progress summary bridge and actionable-attention acknowledgement with current popup query invalidation; poll feedback recovery does not clear worker attention.",
-        "snapshot": "9d85b0d0b1477e706e267e127ceacbf879ce09b19c42158c241a0e9370184826"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed revisions, post-session-read writer ownership, post-settings-read freshness and serialized alarm create/clear; controlled regressions cover named races and bookkeeping failure.",
+        "snapshot": "521ed3b1f0c231d5aa4691bed6d29da36157495661e7681ffc2042179a0d54b4"
       }
     },
     {
@@ -448,9 +448,9 @@
       "notes": "Direct/poll ownership, scoped recovery, episode dismissal, timer receipt guards and accepted-outcome isolation are verified for targeted popup regressions; wider native/page policy remains open.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared direct/poll ownership, scoped recovery, episode dismissal/reset, timer replacement, accepted-outcome callbacks and typed control failures with real-renderer and browser regressions; native/page secondary-surface policy remains open.",
-        "snapshot": "ca0c96ac04d33f5bea307962a51f28d41aa32facb24c511e417443dc305498c6"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed literal page text, supported auth failure classification and bounded shared dispatch; canonical feedback and monitoring pages preserve distinct lifetime policies.",
+        "snapshot": "3b6ef1e35baef66d812789431f302a2745a91ed4c923e352924e2d6cc472e424"
       }
     },
     {
@@ -527,9 +527,9 @@
       "notes": "Theme application, immediate saving, OS listener replacement and page-toast theme behavior were inspected.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared unchanged Auto/Light/Dark storage and listener behavior plus dismiss-control token usage with interface docs and browser theme checks; no theme API or source change.",
-        "snapshot": "93874376a4b452686c353415e57e2d24959f775ef6390270dac04f77ad56b15b"
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed unchanged theme resolution and controls after page feedback/kernel refactor; no theme documentation change required and existing browser theme tests pass.",
+        "snapshot": "16c10b7d1b91444f35de71fda3a4e774557b9a31c05b2b4ddb591ea492fbc99d"
       }
     },
     {
@@ -659,9 +659,9 @@
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
         "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Reviewed AST/Svelte/HTML callable inventory, five scanner regression cases, hash-bound manual manifest and permitted test-fixture any. Updated verification page to distinguish static candidates from executed behavior and hardware evidence.",
-        "snapshot": "e1f51967f11d5cf069e99091cac130e85b7193a258a3ec5b9044a46e633c5110"
+        "reviewer": "Codex final acceptance",
+        "reason": "Reviewed final 571-unit/60-Chromium evidence, current controlled regressions and fresh configured V8 coverage; explicit Svelte/index exclusions and hardware boundaries retained.",
+        "snapshot": "432b2a0eab04bf0db5911abda3357fd3ff985abf37d3d0c029e0152c755a916a"
       }
     },
     {

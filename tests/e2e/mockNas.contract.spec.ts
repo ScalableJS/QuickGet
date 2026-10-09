@@ -274,3 +274,32 @@ test("mock NAS upload flow returns real-like added jobs and duplicate/missing si
     await mockNas.close();
   }
 });
+
+test("mock NAS can return an explicit unconfirmed AddTorrent HTTP success", async () => {
+  const mockNas = await startMockNas({ addTorrentResponse: "html" });
+  const baseUrl = `http://127.0.0.1:${mockNas.port}`;
+
+  try {
+    const form = new FormData();
+    form.append("sid", "E2E-SID-123");
+    form.append("bt", new File(["torrent-body"], "sample.torrent", { type: "application/x-bittorrent" }));
+
+    const response = await fetch(`${baseUrl}/downloadstation/V4/Task/AddTorrent`, {
+      method: "POST",
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    await expect(response.text()).resolves.toBe("<html><title>Sign in</title></html>");
+    expect(mockNas.requestLog.toJSON()).toContainEqual(
+      expect.objectContaining({
+        path: "/downloadstation/V4/Task/AddTorrent",
+        responseBody: "<html><title>Sign in</title></html>",
+        status: 200,
+      }),
+    );
+  } finally {
+    await mockNas.close();
+  }
+});

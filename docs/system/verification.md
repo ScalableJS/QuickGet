@@ -69,3 +69,8 @@ is implied by these local gates.
 ## Callable quality audit
 
 [The code-quality audit](../quality/code-quality-audit.md) separates automated callable inventory from manual semantic review and permits concise test-fixture any. Use npm run test:quality to exercise AST/Svelte/HTML inventory boundaries, npm run quality:audit for a read-only scan, npm run quality:report for explicit regeneration and npm run quality:check to detect source/report drift. Manual review hashes in docs/quality/reviews.json must reflect an actual source review. These checks do not execute product behavior or certify the NAS.
+
+
+## Code-quality normalization acceptance: 2026-10-09
+
+Fresh integrated gates passed 571 unit/fixture tests across 40 files, 60 Chromium mock E2E, typecheck, Svelte (zero errors/warnings), lint and production build. [The acceptance record](../quality/code-quality-audit.md#accepted-normalization-2026-10-09) records root rejection/correction probes and scanner review limits. Configured V8 coverage on the final patch: statements 90.86%, branches 84.96%, functions 89.77%, lines 91.56%. The include/exclude rules are unchanged: this measures selected TypeScript modules and excludes Svelte components and index entrypoints; it is not whole-product coverage. No fresh NAS, Firefox or publication result is claimed.

@@ -5,7 +5,7 @@ import { createTestSettings } from "../../tests/fixtures/settings";
 import { seedChromeStorage } from "../../tests/mocks/chrome";
 import { server } from "../../tests/msw/server";
 
-import { resetActionState } from "./actions.js";
+import { applyBadgeStats, resetActionState } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
 
 vi.mock("@lib/settings.js", async (importOriginal) => {
@@ -14,11 +14,12 @@ vi.mock("@lib/settings.js", async (importOriginal) => {
 });
 
 const BASE = "http://nas.local:8080/downloadstation/V4";
+const REPLACEMENT_BASE = "http://replacement.local:8080/downloadstation/V4";
 
 const ACTIVE_ICON = { 32: "icons/32_active.png", 128: "icons/128_active.png" };
 
-function loginHandler() {
-  return http.post(`${BASE}/Misc/Login`, () => HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }));
+function loginHandler(base = BASE) {
+  return http.post(`${base}/Misc/Login`, () => HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }));
 }
 
 // Minimal Task/Query job. `state` drives the unified status (104=downloading,
@@ -72,6 +73,18 @@ describe("background alarms", () => {
 
   afterEach(async () => {
     await resetActionState(); // leave the toolbar state clean for the next test
+  });
+
+  it("does not turn a confirmed idle NAS response into a connection fault when alarm clear fails", async () => {
+    server.use(loginHandler(), queryHandler([]));
+    vi.mocked(chrome.alarms.clear).mockRejectedValueOnce(new Error("alarm unavailable"));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+      expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "!" });
+    } finally {
+      errors.mockRestore();
+    }
   });
 
   it("ensureMonitoring arms the alarm once and is idempotent", async () => {
@@ -264,13 +277,299 @@ describe("background alarms", () => {
     expect(alarms["download-monitor"]).toBeUndefined();
   });
 
-  it("loads one settings snapshot for each monitoring tick", async () => {
+  it("rechecks the current connection again when the queued writer commits", async () => {
     server.use(loginHandler(), queryHandler([job(104)]));
     vi.mocked(loadSettings).mockClear();
 
     await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
 
-    expect(loadSettings).toHaveBeenCalledTimes(1);
+    expect(loadSettings).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not apply or clear monitoring for a stale successful connection query", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    let releaseOldQuery!: () => void;
+    let signalOldQuery!: () => void;
+    const oldQueryGate = new Promise<void>((resolve) => {
+      releaseOldQuery = resolve;
+    });
+    const oldQueryReached = new Promise<void>((resolve) => {
+      signalOldQuery = resolve;
+    });
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, async () => {
+        signalOldQuery();
+        await oldQueryGate;
+        return HttpResponse.json({ error: 0, data: [], total: 0 });
+      }),
+    );
+
+    const stalePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await oldQueryReached;
+    seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+    vi.clearAllMocks();
+    releaseOldQuery();
+    await stalePoll;
+
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+    expect(chrome.alarms.clear).not.toHaveBeenCalled();
+
+    server.use(
+      loginHandler(REPLACEMENT_BASE),
+      http.post(`${REPLACEMENT_BASE}/Task/Query`, () => HttpResponse.json({ error: 0, data: [job(104)], total: 1 })),
+    );
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "1" });
+  });
+
+  it("does not clear the replacement alarm after a connection changes during the badge write", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    await ensureMonitoring();
+    let releaseWrite!: () => void;
+    let signalWrite!: () => void;
+    const writeGate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const writeReached = new Promise<void>((resolve) => {
+      signalWrite = resolve;
+    });
+    server.use(queryHandler([]));
+    vi.spyOn(chrome.action, "setTitle").mockImplementationOnce(async () => {
+      signalWrite();
+      await writeGate;
+    });
+    const oldPoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await writeReached;
+    seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+    server.use(
+      loginHandler(REPLACEMENT_BASE),
+      http.post(`${REPLACEMENT_BASE}/Task/Query`, () => HttpResponse.json({ error: 0, data: [job(104)], total: 1 })),
+    );
+    const newPoll = ensureMonitoring();
+    releaseWrite();
+    await Promise.all([oldPoll, newPoll]);
+    expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "1" });
+    expect(alarms["download-monitor"]).toBeDefined();
+  });
+
+  it("does not publish a stale connection failure or clear its alarm", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    let releaseOldQuery!: () => void;
+    let signalOldQuery!: () => void;
+    const oldQueryGate = new Promise<void>((resolve) => {
+      releaseOldQuery = resolve;
+    });
+    const oldQueryReached = new Promise<void>((resolve) => {
+      signalOldQuery = resolve;
+    });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, async () => {
+        signalOldQuery();
+        await oldQueryGate;
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+
+    try {
+      const stalePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+      await oldQueryReached;
+      seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+      vi.clearAllMocks();
+      releaseOldQuery();
+      await stalePoll;
+
+      expect(errors).not.toHaveBeenCalled();
+      expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+      expect(chrome.alarms.clear).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it("does not let an older same-connection poll repaint an idle toolbar after monitoring stops", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    let releaseOldQuery!: () => void;
+    let signalOldQuery!: () => void;
+    const oldQueryGate = new Promise<void>((resolve) => {
+      releaseOldQuery = resolve;
+    });
+    const oldQueryReached = new Promise<void>((resolve) => {
+      signalOldQuery = resolve;
+    });
+    let queryCount = 0;
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, async () => {
+        queryCount += 1;
+        if (queryCount === 1) {
+          signalOldQuery();
+          await oldQueryGate;
+          return HttpResponse.json({ error: 0, data: [job(104)], total: 1 });
+        }
+        return HttpResponse.json({ error: 0, data: [], total: 0 });
+      }),
+    );
+
+    const oldPoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await oldQueryReached;
+    await handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    expect(alarms["download-monitor"]).toBeUndefined();
+    vi.clearAllMocks();
+
+    releaseOldQuery();
+    await oldPoll;
+
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "1" });
+    expect(chrome.action.setIcon).not.toHaveBeenCalledWith({ path: ACTIVE_ICON });
+    expect(alarms["download-monitor"]).toBeUndefined();
+  });
+
+  it("does not commit a configuration warning that was queued before a valid replacement connection", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    await ensureMonitoring();
+    vi.clearAllMocks();
+
+    let releaseWrite!: () => void;
+    let signalWrite!: () => void;
+    const writeGate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const writeReached = new Promise<void>((resolve) => {
+      signalWrite = resolve;
+    });
+    vi.spyOn(chrome.action, "setTitle").mockImplementationOnce(async () => {
+      signalWrite();
+      await writeGate;
+    });
+    const blockingWriter = applyBadgeStats({ downloading: 2, seeding: 0, all: 2, downRate: 0, upRate: 0 });
+    await writeReached;
+
+    vi.mocked(loadSettings).mockResolvedValueOnce(createTestSettings({ NAStempdir: "" }));
+    const stalePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await vi.waitFor(() => expect(loadSettings).toHaveBeenCalled());
+    seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+    releaseWrite();
+    await Promise.all([blockingWriter, stalePoll]);
+
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "!" });
+  });
+
+  it("does not commit a failed-query warning that was queued before a valid replacement connection", async () => {
+    server.use(loginHandler(), queryHandler([job(104)]));
+    await ensureMonitoring();
+    vi.clearAllMocks();
+
+    let releaseWrite!: () => void;
+    let signalWrite!: () => void;
+    const writeGate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const writeReached = new Promise<void>((resolve) => {
+      signalWrite = resolve;
+    });
+    vi.spyOn(chrome.action, "setTitle").mockImplementationOnce(async () => {
+      signalWrite();
+      await writeGate;
+    });
+    const blockingWriter = applyBadgeStats({ downloading: 2, seeding: 0, all: 2, downRate: 0, upRate: 0 });
+    await writeReached;
+
+    let signalOwnershipCheck!: () => void;
+    const ownershipCheckReached = new Promise<void>((resolve) => {
+      signalOwnershipCheck = resolve;
+    });
+    const oldSettings = createTestSettings();
+    vi.mocked(loadSettings)
+      .mockResolvedValueOnce(oldSettings)
+      .mockImplementationOnce(async () => {
+        signalOwnershipCheck();
+        return oldSettings;
+      });
+    server.use(
+      loginHandler(),
+      http.post(`${BASE}/Task/Query`, () => new HttpResponse(null, { status: 500 })),
+    );
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const stalePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+      await ownershipCheckReached;
+      seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+      releaseWrite();
+      await Promise.all([blockingWriter, stalePoll]);
+
+      expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "!" });
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it("re-arms after a same-connection monitor request queues behind an idle alarm clear", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    let releaseClear!: () => void;
+    let signalClear!: () => void;
+    const clearGate = new Promise<void>((resolve) => {
+      releaseClear = resolve;
+    });
+    const clearReached = new Promise<void>((resolve) => {
+      signalClear = resolve;
+    });
+    vi.mocked(chrome.alarms.clear).mockImplementationOnce(async (name = "download-monitor") => {
+      signalClear();
+      await clearGate;
+      delete alarms[name];
+      return true;
+    });
+    server.use(loginHandler(), queryHandler([]));
+
+    const idlePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await clearReached;
+    const monitoringRequest = ensureMonitoring();
+    await Promise.resolve();
+    expect(chrome.alarms.get).not.toHaveBeenCalled();
+    releaseClear();
+    await Promise.all([idlePoll, monitoringRequest]);
+
+    expect(alarms["download-monitor"]).toBeDefined();
+    expect(chrome.alarms.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-arms after a replacement connection requests monitoring behind an idle alarm clear", async () => {
+    alarms["download-monitor"] = { name: "download-monitor" } as chrome.alarms.Alarm;
+    let releaseClear!: () => void;
+    let signalClear!: () => void;
+    const clearGate = new Promise<void>((resolve) => {
+      releaseClear = resolve;
+    });
+    const clearReached = new Promise<void>((resolve) => {
+      signalClear = resolve;
+    });
+    vi.mocked(chrome.alarms.clear).mockImplementationOnce(async (name = "download-monitor") => {
+      signalClear();
+      await clearGate;
+      delete alarms[name];
+      return true;
+    });
+    server.use(loginHandler(), queryHandler([]));
+
+    const idlePoll = handleAlarm({ name: "download-monitor" } as chrome.alarms.Alarm);
+    await clearReached;
+    seedChromeStorage(createTestSettings({ NASaddress: "replacement.local" }));
+    server.use(
+      loginHandler(REPLACEMENT_BASE),
+      http.post(`${REPLACEMENT_BASE}/Task/Query`, () => HttpResponse.json({ error: 0, data: [job(104)], total: 1 })),
+    );
+    const monitoringRequest = ensureMonitoring();
+    releaseClear();
+    await Promise.all([idlePoll, monitoringRequest]);
+
+    expect(alarms["download-monitor"]).toBeDefined();
+    expect(chrome.alarms.create).toHaveBeenCalledTimes(1);
+    expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "1" });
   });
 });
 

@@ -25,7 +25,7 @@ function formatSpeed(bytes: number): string {
   return formatRate(bytes);
 }
 
-function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number): string {
   return scaleUnit(bytes, SIZE_UNITS);
 }
 

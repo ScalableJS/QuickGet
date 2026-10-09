@@ -1,6 +1,6 @@
 import type { Task } from "@lib/tasks.js";
 import { describe, expect, it } from "vitest";
-import { formatDestination, getDownloadItemView } from "./format.js";
+import { formatBytes, formatDestination, getDownloadItemView } from "./format.js";
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -118,6 +118,20 @@ describe("getDownloadItemView", () => {
     expect(getDownloadItemView(makeTask({ uploadedBytes: 1024 * 1024 })).uploadedText).toBe("1.0 MB");
     expect(getDownloadItemView(makeTask({ uploadedBytes: 1024 * 1024 * 1024 })).uploadedText).toBe("1.0 GB");
     expect(getDownloadItemView(makeTask({ uploadedBytes: 1024 * 1024 * 1024 * 1024 * 2 })).uploadedText).toBe("2.0 TB");
+  });
+
+  it("keeps binary-size boundaries and invalid-value fallback stable", () => {
+    expect(formatBytes(1023)).toBe("1023 B");
+    expect(formatBytes(1024)).toBe("1.0 KB");
+    expect(formatBytes(1024 ** 2)).toBe("1.0 MB");
+    expect(formatBytes(1024 ** 3)).toBe("1.0 GB");
+    expect(formatBytes(1024 ** 4)).toBe("1.0 TB");
+    expect(formatBytes(1024 ** 5)).toBe("1024.0 TB");
+    expect(formatBytes(0)).toBe("0 B");
+    expect(formatBytes(-1)).toBe("0 B");
+    expect(formatBytes(Number.NaN)).toBe("0 B");
+    expect(formatBytes(Number.POSITIVE_INFINITY)).toBe("0 B");
+    expect(formatBytes(Number.NEGATIVE_INFINITY)).toBe("0 B");
   });
 
   it("handles fallback status labels for unlisted statuses", () => {

@@ -12,7 +12,7 @@ features: ["torrent-handoff"]
 
 Browser download events recognize torrents from MIME type, browser-derived filename, URL suffix, or the known opaque `dl.php` source fallback when contrary metadata is absent. `onCreated` and `onChanged` may observe one download; a synchronous, operation-scoped ID claim elects one sender. Chromium's filename callback can defer the save decision until the hand-off finishes.
 
-Torrent processing is unconditional when configuration and live NAS login permit it. No user switch is needed to enable torrents. The ordinary-file setting does not own or reclassify them. The transaction verifies configuration and a live login before fetching the torrent. It uploads through the shared torrent sender, resolves routing from the release name, and only then cancels/erases the browser download after NAS acceptance. Duplicate-torrent acceptance is handled as an already-owned NAS task. Every earlier exit releases deferred browser handling.
+Torrent processing is unconditional when configuration and live NAS login permit it. No user switch is needed to enable torrents. The ordinary-file setting does not own or reclassify them. The transaction verifies configuration and a live login before fetching the torrent. It uploads through the shared torrent sender, resolves routing from the release name, and only then cancels/erases the browser download after NAS acceptance. Duplicate-torrent acceptance is handled as an already-owned NAS task. An unparseable NAS upload response, including HTTP 200 HTML or empty content, does not confirm either acceptance or a duplicate and leaves browser fallback available. Every earlier exit releases deferred browser handling.
 
 ## Tracker access
 

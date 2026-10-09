@@ -16,7 +16,9 @@ Ordinary capture is off by default. Enabling the setting captures eligible ordin
 
 ## Sending and fallback
 
-`task:add` carries a magnet and origin page to the worker's magnet handler. `link:send` carries an ordinary URL to the shared context-menu transport. Runtime-message inputs are checked at the worker boundary. In-page feedback shows loading, success, and failure. A failed send restores native navigation through the content-script fallback; the content script owns that navigation, not the browser-download transaction.
+`task:add` carries a magnet and origin page to the worker's magnet handler. `link:send` carries an ordinary URL to the shared context-menu transport. Runtime-message inputs are checked at the worker boundary. In-page feedback shows loading, success, and failure. Dynamic messages and action labels are inserted as literal text; NAS reason strings cannot become toast markup. A failed send restores native navigation through the content-script fallback; the content script owns that navigation, not the browser-download transaction. Magnet and ordinary-link sends share only their in-flight/runtime callback/release/fallback kernel; payload construction and failure wording remain explicit.
+
+Current failure fallback uses same-tab navigation. It does not recreate an anchor's download filename or target browsing context; [BUG-71](../../tasks/BUG-71.md) retains that wider fallback-policy comparison and the still-pending-response case.
 
 The NAS fetches ordinary file bytes itself. A URL that needs page cookies or server-side redirect resolution can fail at the NAS despite a successful browser session. The current phase does not promise arbitrary authenticated-download support. Popup URL sends have the same NAS network reachability restriction.
 

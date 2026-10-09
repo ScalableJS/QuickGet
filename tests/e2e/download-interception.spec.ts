@@ -116,6 +116,29 @@ test("does not replay or retain a successfully intercepted torrent after browser
   }
 });
 
+test("keeps the browser torrent when AddTorrent returns an unconfirmed HTTP success", async () => {
+  const mockNas = await startMockNas({ addTorrentResponse: "html" });
+  const { torrentHost, session } = await startSession({ bodyDelayMs: BODY_DELAY_MS });
+
+  try {
+    await seedSettings(session.worker, nasSettings(mockNas.port));
+    const page = await session.context.newPage();
+    await page.goto(torrentHost.url).catch(() => {
+      // Navigating to an attachment aborts the navigation; the download is what matters.
+    });
+
+    await expect
+      .poll(() => mockNas.requestLog.includesPath("/downloadstation/V4/Task/AddTorrent"), { timeout: 30_000 })
+      .toBe(true);
+    await expect.poll(() => downloadStates(session.worker), { timeout: 30_000 }).toContain("complete");
+    expect(await downloadStates(session.worker)).not.toContain("interrupted");
+  } finally {
+    await session.close();
+    await torrentHost.close();
+    await mockNas.close();
+  }
+});
+
 test("returns the toolbar to idle as soon as the popup snapshot is empty", async () => {
   const session = await launchExtensionPopup(devBuildPath);
 

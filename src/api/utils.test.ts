@@ -7,23 +7,18 @@ describe("api/utils", () => {
     it("flags QNAP AddTorrent error 8196 as a duplicate (reason is the torrent name)", () => {
       // Verified on a live NAS: re-adding an existing torrent returns
       // {"error":8196,"reason":"<torrent name>"} with no duplicate/exist keyword.
-      const error = createApiError("AddTorrent error", { error: 8196, reason: "Sintel" }) as Error & {
-        code: number;
-        duplicate?: boolean;
-      };
+      const error = createApiError("AddTorrent error", { error: 8196, reason: "Sintel" });
       expect(error.code).toBe(8196);
       expect(error.duplicate).toBe(true);
     });
 
-    it("flags textual duplicate/exist reasons", () => {
-      const dup = createApiError("x", { error: 24593, reason: "Duplicate task already exists" }) as Error & {
-        duplicate?: boolean;
-      };
+    it("flags the supported textual duplicate response", () => {
+      const dup = createApiError("x", { error: 24593, reason: "Duplicate task already exists" });
       expect(dup.duplicate).toBe(true);
     });
 
-    it("does not flag unrelated errors as duplicate", () => {
-      const error = createApiError("x", { error: 1, reason: "temp" }) as Error & { duplicate?: boolean };
+    it("does not mistake an authentication failure that says exist for a duplicate", () => {
+      const error = createApiError("x", { error: 5, reason: "session does not exist" });
       expect(error.duplicate).toBeUndefined();
     });
   });
@@ -31,6 +26,7 @@ describe("api/utils", () => {
   describe("isSuccessResponse", () => {
     it("treats error:0 as success and non-zero as failure", () => {
       expect(isSuccessResponse({ error: 0 })).toBe(true);
+      expect(isSuccessResponse({ error: "0" })).toBe(true);
       expect(isSuccessResponse({ error: 8196 })).toBe(false);
     });
   });

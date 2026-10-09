@@ -28,9 +28,9 @@ Current corrections are documented in [[docs/system/feedback|feedback]],
 preserves coverage limits and red/green evidence. Proven snapshot/UI/helper/dependency cleanup
 is complete. The canonical MV3 standard and credential review guidance match current code.
 
-## Code-quality follow-up
+## Code-quality normalization
 
-[The audit](../quality/code-quality-audit.md) inventories all 566 runtime implementations and records 51 manual family assessments. Tests may retain concise fixture any. The Code quality view prioritizes BUG-74, BUG-75 and BUG-76 before ENG-19 through ENG-23. These are planned corrections, not runtime changes accepted in this documentation/tooling pass.
+[The accepted audit](../quality/code-quality-audit.md#accepted-normalization-2026-10-09) records BUG-74 through BUG-76 and ENG-19 through ENG-22. Terra implemented the bounded patches; Codex rejected acceptance loopholes and verified additional storage-read and alarm-clear regressions after consulting Mimic; the final patch preserves current request ownership and separates browser bookkeeping failures. Fresh integrated gates passed 571 unit/fixture tests, 60 Chromium mock E2E, typecheck, Svelte, lint and production build. The refreshed registry inventories 575 runtime implementations with 63 manual family assessments; tests may retain concise fixture any. Configured TypeScript V8 coverage is 90.86% statements / 84.96% branches / 89.77% functions / 91.56% lines, excluding Svelte and index entrypoints. ENG-23 remains discussion until missing code/label vendor evidence is available.
 
 ## Next work
 

@@ -175,7 +175,6 @@ export async function initializeDownloads(): Promise<DownloadsFeature> {
       clearSelection();
       setRemovingDownload(null);
       renderDownloads([]);
-      sendBadgeSnapshot(summarizeProgress([]));
       void refreshNow(connectionGeneration);
     },
     onSelectionChange: (listener: (hash: string | null) => void) => onSelectionChange(listener),

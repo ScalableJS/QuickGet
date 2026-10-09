@@ -46,6 +46,7 @@ test("multi-file torrent selection loads files and saves changed priorities", as
 
     const thirdFile = page.locator(".torrent-files li").filter({ hasText: "Episode 03.mkv" });
     await expect(thirdFile).toBeVisible();
+    await expect(thirdFile.locator(".tf-size")).toHaveText("1.5 GB");
     const thirdFileCheckbox = thirdFile.locator('input[type="checkbox"]');
     await expect(thirdFileCheckbox).not.toBeChecked();
     await thirdFileCheckbox.check();
