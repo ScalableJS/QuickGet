@@ -1,8 +1,8 @@
 # Plan: settings form — validation, grouping, a11y
 
 Status: **shipped**, and kept as the reasoning behind the form rather than as a backlog. Every
-item below landed as a `UX-` card — the board in `agent-os/product/settings-ux-kanban.md` is the
-current state; this file is why. Written after reviewing Settings in Storybook
+item below landed as a `UX-` card — current state lives in `tasks/UX-*.md` frontmatter,
+shown by `views/tasks.base`; this file is why. Written after reviewing Settings in Storybook
 (`Features/Settings`) and measuring what was in the form at the time.
 
 ## What was measured, not assumed

@@ -292,3 +292,23 @@ maintain it. This is entirely optional and affects nothing in the extension.
 Please only send what you can comfortably spare — crypto transfers are
 irreversible, and there is no refund mechanism. A star on the repository or a
 bug report is just as welcome.
+
+## Project instructions and task board
+
+Project tasks live in [`tasks/`](tasks/README.md); open [`views/tasks.base`](views/tasks.base)
+in Obsidian for the kanban or table view. Task frontmatter owns status; the former boards
+in `agent-os/product/` keep context and stable links. Agent OS conventions live in
+`agent-os/standards/`, and mission, roadmap and tech stack remain in `agent-os/product/`.
+
+Project instructions and skill wrappers are generated from `.rulesync/rules/` and
+`.rulesync/skills/`. After editing their canonical sources, run:
+
+```sh
+rulesync generate
+rulesync generate --check
+```
+
+`rulesync.jsonc` selects the supported agents without deleting unrelated files. Agent OS
+command bodies are canonical in `.rulesync/commands/agent-os/` and generated into
+`.claude/commands/agent-os/`; skill wrappers reference the generated commands.
+Global instructions and MCP settings are managed separately in `~/.ai-rulesync/`.

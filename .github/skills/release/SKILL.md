@@ -75,16 +75,16 @@ npm run build:dev && npm run build
 ### Step 3: Kanban & Roadmap Synchronization
 Actively audit and update the project tracking documents before releasing:
 
-1. **`agent-os/product/bugs-kanban.md`**:
-   - Locate resolved defect cards (`BUG-xx`).
-   - Move their status from `In Progress` / `In Review` to `Done`.
-   - Append a resolution stamp under the card:
+1. **`tasks/BUG-*.md`**:
+   - Locate resolved defect cards, using frontmatter status as canonical.
+   - Change `doing` / `review` to `done` only when resolution evidence exists; update `updated`.
+   - Append a resolution stamp in the task body:
      ```markdown
      **Resolved YYYY-MM-DD** — shipped in vX.Y.Z: <brief description of fix>
      ```
-   - Ensure the summary table at the top of the file reflects the updated status.
-2. **`agent-os/product/settings-ux-kanban.md`**:
-   - If settings or UI controls were touched, update relevant `UX-xx` cards to `Done`.
+   - `views/tasks.base` derives its board from task metadata; do not maintain a second status table.
+2. **`tasks/UX-*.md`**:
+   - If settings or UI controls were touched, update resolved cards to `done` with evidence.
 3. **`agent-os/product/roadmap.md`**:
    - Move completed features or phase objectives (`GAP-xx`) to the "Shipped" section with `(shipped in vX.Y.Z)`.
 

@@ -38,6 +38,14 @@ coverage/
 !agent-os/**/*.md
 !.agents/**/*.md
 !.rulesync/**/*.md
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/commands/
+!.claude/skills/**/*.md
+!.claude/commands/**/*.md
+!.opencode/skills/**/*.md
+!tasks/**/*.md
 
 !docs/toolbar-actions.md
 !docs/svelte-migration-plan.md
