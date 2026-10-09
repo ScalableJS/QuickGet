@@ -17,7 +17,7 @@ Feedback has three owners: the page content script shows in-page send toasts; th
 | Context-menu send | No system success notification | Direct system notification |
 | Popup local torrent | Success or duplicate status message | Error status message |
 | Popup URL batch | Full/partial-success status | Per-batch failure summary |
-| Task start/pause/stop | Popup status | Operation error path |
+| Task start/pause/stop | Popup status | Rejections currently escape without a visible operation error (BUG-72) |
 
 Worker failure episodes are session-stored and suppressed for 30 minutes while kind/fingerprint remain unchanged. A new problem, elapsed repeat period, or successful clearing of the episode allows a notification again. A settings problem is different from a tracker rejecting access; classification is part of meaningful feedback.
 
@@ -26,6 +26,19 @@ The status pill and accessible form messages are UI mechanisms, not an activity 
 ## Open consistency work
 
 [BUG-71](../../tasks/BUG-71.md) tracks inconsistent send feedback. Current popup sends already have success messages, so the original absence assertion does not describe the current code. The remaining comparison must focus on the intentionally silent torrent/menu paths and any observed lost response; the audit does not close that defect by assumption.
+
+## Popup recovery investigation: 2026-10-09
+
+A fresh Chromium probe reproduced [BUG-58](../../tasks/BUG-58.md): a task-list poll error
+remains in the shared pill after successful polling recovers. The same pill accepts settings,
+upload and control messages, so periodic failures can overwrite a direct operation result.
+A separate Chromium probe reproduced [BUG-72](../../tasks/BUG-72.md): rejected Pause causes
+an unhandled popup error without a terminal failure message. Existing happy-path tests pass.
+
+[[notification-normalization-audit|The audit and phased normalization plan]] records measured
+coverage, reproduction evidence, duplicate candidates and test prerequisites. No runtime fix
+was made by this investigation. [BUG-73](../../tasks/BUG-73.md) separately protects NAS acceptance
+from failure-episode cleanup errors; a mocked-acceptance unit probe reproduced that boundary.
 
 ## Sources and evidence
 

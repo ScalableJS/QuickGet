@@ -17,6 +17,8 @@ source classification, language guard, and CI documentation checks. Read
 
 ## Next work
 
+- [Popup feedback investigation](../system/notification-normalization-audit.md): confirmed stale poll errors and rejected toolbar commands. [ENG-15](../../tasks/ENG-15.md) establishes regression gates; [BUG-58](../../tasks/BUG-58.md) and [BUG-72](../../tasks/BUG-72.md) own the popup fixes; [BUG-73](../../tasks/BUG-73.md) protects accepted handoffs from notification bookkeeping failures; [ENG-16](../../tasks/ENG-16.md) records an unread snapshot cleanup.
+
 - [BUG-71](../../tasks/BUG-71.md): compare send feedback across real user paths. Popup success
   feedback exists in current code; the original missing-success assertion is historical.
 - [ENG-9](../../tasks/ENG-9.md) and [ENG-10](../../tasks/ENG-10.md): existing proven cleanup

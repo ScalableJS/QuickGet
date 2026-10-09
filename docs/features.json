@@ -436,8 +436,8 @@
       "review": {
         "date": "2026-10-09",
         "reviewer": "Codex",
-        "reason": "Compared notifier episode state and direct failures with current page toasts, popup success statuses, status-pill/logger ownership and the still-open BUG-71 matrix.",
-        "snapshot": "26fe533a89c88ff4fc0ca2e6773b4c13e053ce1c6f72fc4dd01e9bfe28496d29"
+        "reason": "Compared popup polling, toolbar rejection boundaries, notification bookkeeping and current feedback descriptions against source, 513-test V8 baseline, 45 mock E2E, two Chromium defect probes and five unit diagnostics; documented confirmed gaps without claiming fixes.",
+        "snapshot": "23782debff84f53ee7070b363303fce4591feaf78d4119fbad59de6f3165e9d5"
       }
     },
     {

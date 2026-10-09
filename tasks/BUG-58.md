@@ -2,12 +2,12 @@
 type: "task"
 id: "BUG-58"
 status: "todo"
-priority: "p3"
+priority: "p2"
 area: "popup/UX"
 board: "bugs"
 updated: "2026-10-09"
 legacy_status: "Backlog"
-severity: "low"
+severity: "medium"
 ---
 
 # The background task poller writes its errors into the settings screen's status pill
@@ -28,3 +28,17 @@ its own test.
 **Proposed fix:** either scope the poller's failures to the downloads list where they belong, or
 give the pill a notion of precedence so a direct answer to a user action outranks a background
 report.
+
+
+**2026-10-09 investigation:** the user identified the popup as the affected surface. A new
+Chromium diagnostic aborted popup `Task/Query`, observed the poll error, restored the route,
+and confirmed a successful query and visible list while the old status error remained visible.
+The successful refresh path does not resolve its error; the popup provides no dismiss control.
+This recovery defect expands the original competing-writers finding. Priority is now P2.
+
+**Acceptance extension:** recovery resolves only polling-owned feedback, repeated poll failures
+do not overwrite a direct Save/Test/Upload result, and an old timer cannot erase a newer operation
+message. A global `clearStatus()` on every healthy poll is not an acceptable fix. Add unit and
+browser regressions through [ENG-15](ENG-15.md).
+
+See [the audit and normalization plan](../docs/system/notification-normalization-audit.md).

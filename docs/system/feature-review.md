@@ -48,3 +48,13 @@ Unused exports of task-status sets and error formatters do not imply unused impl
 ## Verification limits
 
 Knip results are candidates, not a proof of product redundancy. No usage telemetry exists, so low user demand cannot be inferred from imports. No real-NAS recurrence of BUG-70 was captured in this audit. The new documentation checker cannot infer a new feature inside an old file or prove that feature descriptions are honest; explicit review owns that responsibility.
+
+
+## Follow-up popup audit: 2026-10-09
+
+[[notification-normalization-audit|The feedback audit]] records actual test coverage and
+confirmed lifecycle failures. A production call-site search additionally found that
+`downloadsManager.ts` builds a duplicate-detection snapshot with no reader or subscriber;
+[ENG-16](../../tasks/ENG-16.md) owns removing that pipeline while preserving live selection state.
+[ENG-15](../../tasks/ENG-15.md) gates normalization on behavior-level unit and browser regressions.
+These findings do not authorize merging unrelated caches, transport paths or presentation state.
