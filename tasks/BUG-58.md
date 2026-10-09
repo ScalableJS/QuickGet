@@ -8,6 +8,9 @@ board: "bugs"
 updated: "2026-10-09"
 legacy_status: "Backlog"
 severity: "medium"
+execution_order: 2
+depends_on:
+  - ENG-15
 ---
 
 # The background task poller writes its errors into the settings screen's status pill
@@ -42,3 +45,6 @@ message. A global `clearStatus()` on every healthy poll is not an acceptable fix
 browser regressions through [ENG-15](ENG-15.md).
 
 See [the audit and normalization plan](../docs/system/notification-normalization-audit.md).
+
+
+**2026-10-09 execution priority:** order 2 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.

@@ -7,6 +7,9 @@ area: background/torrent handoff
 board: bugs
 updated: 2026-10-09
 severity: medium
+execution_order: 4
+depends_on:
+  - ENG-15
 ---
 
 # Notification bookkeeping can misreport an accepted NAS handoff as failed
@@ -40,3 +43,6 @@ and API client, served the checked-in sample torrent through MSW, and returned `
 from the mock `AddTorrent` endpoint exactly once. Rejecting only session cleanup still produced
 `Download failed` and no browser cancellation. Only monitoring was stubbed; no physical NAS
 was contacted. The finding is no longer dependent on stubbing the sender's return value.
+
+
+**2026-10-09 execution priority:** order 4 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.

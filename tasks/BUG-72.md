@@ -7,6 +7,9 @@ area: popup/task controls
 board: bugs
 updated: 2026-10-09
 severity: medium
+execution_order: 3
+depends_on:
+  - ENG-15
 ---
 
 # Rejected toolbar task commands lack visible terminal feedback
@@ -42,3 +45,6 @@ Each denied Start/Stop/Pause request was observed exactly once; Playwright captu
 `pageerror` and no new status feedback. The previous Pause-only limitation is superseded.
 The four-test diagnostic suite also confirmed recovery using the popup's own successful response
 and a newly rendered `Recovery marker` task, rather than worker-wide request counts.
+
+
+**2026-10-09 execution priority:** order 3 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.

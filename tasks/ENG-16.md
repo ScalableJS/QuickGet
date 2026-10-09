@@ -6,6 +6,11 @@ priority: p3
 area: popup/downloads
 board: engineering
 updated: 2026-10-09
+execution_order: 6
+depends_on:
+  - ENG-15
+  - BUG-58
+  - BUG-72
 ---
 
 # Remove the unread duplicate-detection snapshot pipeline
@@ -31,3 +36,6 @@ handling is based on NAS responses. The selection state in the same module remai
 
 [Duplication review](../docs/system/notification-normalization-audit.md#duplication-and-state-review).
 No runtime removal was made during the audit.
+
+
+**2026-10-09 execution priority:** order 6 in the feedback normalization view. Cleanup follows verified behavioral fixes. Recheck production consumers before removing code; preserve live neighboring helpers and API duplicate semantics.

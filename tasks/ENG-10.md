@@ -8,6 +8,10 @@ board: "engineering"
 updated: "2026-10-09"
 legacy_status: "Backlog"
 size: "S"
+execution_order: 7
+depends_on:
+  - ENG-15
+  - ENG-16
 ---
 
 # Remove Knip-confirmed dead UI and test-support code
@@ -22,3 +26,6 @@ No module imports the `Card` barrel export or its component. `isPinnedToToolbar(
 
 **Acceptance:** remove only the unused Card component/barrel export and the two uncalled helpers;
 keep the live neighbouring helpers intact. Run typecheck, unit tests, and mock E2E after removal.
+
+
+**2026-10-09 execution priority:** order 7 in the feedback normalization view. Cleanup follows verified behavioral fixes. Recheck production consumers before removing code; preserve live neighboring helpers and API duplicate semantics.

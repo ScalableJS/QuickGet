@@ -6,6 +6,11 @@ priority: p3
 area: popup/upload feedback
 board: engineering
 updated: 2026-10-09
+execution_order: 5
+depends_on:
+  - ENG-15
+  - BUG-58
+  - BUG-72
 ---
 
 # Keep accepted upload results distinct from later callback failures
@@ -36,3 +41,6 @@ boundary to cover during normalization, after confirmed BUG-58/BUG-72 fixes.
 - [ ] Add controlled callback-injection unit tests and browser checks for normal upload/refresh interleaving through ENG-15.
 
 [Revalidation and plan](../docs/system/notification-normalization-audit.md).
+
+
+**2026-10-09 execution priority:** order 5 in the feedback normalization view. Terra implements the bounded correction with regression evidence; Codex reviews asynchronous ordering, failure semantics and the full project checks before closing the card.

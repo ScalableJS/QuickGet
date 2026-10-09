@@ -8,6 +8,12 @@ board: "bugs"
 updated: "2026-10-09"
 legacy_status: "In Progress"
 severity: "medium"
+execution_order: 9
+depends_on:
+  - BUG-58
+  - BUG-72
+  - BUG-73
+  - ENG-17
 ---
 
 # Send feedback appears for some torrent/link paths but not for others
@@ -56,3 +62,6 @@ terminal success status messages. The original assertion that they refresh witho
 feedback is historical. The browser-torrent/context-menu success policy remains silent, while
 page clicks have terminal toasts. This correction does not close the reported real-use inconsistency.
 See [the current feedback matrix](../docs/system/feedback.md).
+
+
+**2026-10-09 execution priority:** order 9 in the feedback normalization view. The broader cross-surface investigation remains open; finish the confirmed popup and transaction boundaries before changing feedback policy.

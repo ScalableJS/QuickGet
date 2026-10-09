@@ -10,7 +10,8 @@ Agent OS owns engineering standards and product context, while `tasks/` owns wor
 Required: `type: task`, unique `id`, `status`, `priority` (`p0`–`p3`), `area`,
 `board`, and `updated` (`YYYY-MM-DD`). Board values are `bugs`, `settings-ux`,
 `competitive-gaps`, `engineering`, and `demo-video`. Preserve the existing ID prefixes.
-Optional: `severity`, `size`, and `depends_on` (a list of task IDs).
+Optional: `severity`, `size`, `depends_on` (a list of task IDs), and `execution_order`
+(a numeric implementation order within a focused view; distinct from defect severity).
 
 | Status | Meaning |
 |--------|---------|

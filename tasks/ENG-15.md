@@ -1,11 +1,12 @@
 ---
 type: task
 id: ENG-15
-status: todo
+status: doing
 priority: p2
 area: popup/testing
 board: engineering
 updated: 2026-10-09
+execution_order: 1
 ---
 
 # Establish popup feedback regression gates before normalization
@@ -50,3 +51,6 @@ Stop success and failure after unsupported Pause and report the actual fallback 
 an accepted Remove from a failing refresh. [ENG-17](ENG-17.md) adds callback-fault cases for
 accepted/duplicate torrent uploads and partial batches; existing built-in callbacks were not
 observed throwing in production.
+
+
+**2026-10-09 execution priority:** order 1 in the feedback normalization view. Terra implements regression gates alongside each bounded fix; Codex owns review and acceptance. Reproduced defects require a recorded failing baseline before their tests can be accepted.

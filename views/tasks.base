@@ -16,6 +16,10 @@ properties:
     displayName: Workstream
   updated:
     displayName: Updated
+  execution_order:
+    displayName: Execution order
+  depends_on:
+    displayName: Depends on
   id:
     displayName: ID
 views:
@@ -55,3 +59,27 @@ views:
         direction: ASC
       - property: file.name
         direction: ASC
+  - type: kanban
+    name: Feedback normalization
+    filters:
+      and:
+        - execution_order != null
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - execution_order
+      - priority
+      - depends_on
+      - area
+    sort:
+      - property: execution_order
+        direction: ASC
+    boardColumns:
+      - todo
+      - doing
+      - review
+      - blocked
+      - partial
+      - done
