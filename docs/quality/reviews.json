@@ -1,28 +1,1138 @@
 [
   {
-    "family": "notification-surfaces",
-    "assessment": "distinct-contexts",
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/api/client.ts",
+    "names": [
+      "anonymous",
+      "error",
+      "debug",
+      "baseUrl",
+      "queryTasks",
+      "queryTasksRaw",
+      "addUrl",
+      "addTorrent",
+      "startTask",
+      "stopTask",
+      "pauseTask",
+      "removeTask",
+      "addUrls",
+      "callback:urls.map",
+      "callback:settled.map",
+      "getStatus",
+      "getTaskFiles",
+      "setTaskFiles",
+      "callback:selections.map",
+      "setTaskFile",
+      "setTaskPriority",
+      "listDir",
+      "sendTaskCommand",
+      "createApiClient",
+      "withEmptySid",
+      "serializeUrlEncoded"
+    ],
+    "sourceHash": "23331420982dd189b1e7b1fbf17a9af6f9b9223d83d18e87107b1cf05bf9433d",
+    "reason": "API DTO/transport boundary: reviewed SID body construction, success/error envelopes, bulk settlement and shared task-command transport. `addTorrent` is the only confirmed contract breach; callers include torrentSender and popup torrentUpload. Final delta: move is always serialized, including the permitted empty setting; dest_path remains conditional, typed request-body regression and real NAS spot check preserve value validation at the NAS.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/api/index.ts",
+    "names": [
+      "anonymous",
+      "buildLoginError",
+      "buildNASBaseUrl",
+      "callback:UNPROTECTED_ROUTES.some",
+      "callback:performLogin.then",
+      "callback:performLogin.then.finally",
+      "createOpenApiFetchClient",
+      "createSidMiddleware",
+      "encodeQnapPassword",
+      "ensureSid",
+      "injectSid",
+      "isSessionExpired",
+      "isUnprotected",
+      "loginErrorCode",
+      "onRequest",
+      "onResponse",
+      "performLogin",
+      "requestLogin"
+    ],
+    "sourceHash": "4a30fae9289395b912dba86b332a1d6eed3ec6122c0e5c324a49314268dab977",
+    "reason": "Authentication/SID middleware: reviewed shared-login, one-replay URL-encoded request ownership, non-replayable multipart behavior, timeout and typed LoginError boundary.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/api/utils.ts",
+    "names": [
+      "isDuplicateApiError",
+      "toApiResult",
+      "hasFalsyString",
+      "coerceNumber",
+      "coerceString",
+      "explainReason",
+      "isLoopbackHost",
+      "explainLoopbackUrl",
+      "createApiError",
+      "isSuccessResponse",
+      "getErrorMessage"
+    ],
+    "sourceHash": "8f642638d32fe5baef5b44909f28642910fa45284111925d03c4371ee6d38fdf",
+    "reason": "Untyped NAS-response boundary: reviewed coercion, enriched error flags, supported duplicate gating, loopback explanation and intentionally separate task-card error catalog. Final delta: confirmed Error duplicate marker is reused by worker entrypoints; destination free-space code 20488 is vendor-verified. Error context/fallback policies remain distinct. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/actions.ts",
+    "names": [
+      "updateState",
+      "callback:stateUpdateQueue.then",
+      "callback:operation.then",
+      "tryActionUpdate",
+      "loadState",
+      "saveState",
+      "buildTitle",
+      "applyBadgeStats",
+      "callback:updateState",
+      "callback:tryActionUpdate",
+      "markConfigurationProblem",
+      "markSendNotice",
+      "markConfigurationProblemAfterActiveState",
+      "acknowledgeAttention",
+      "markMonitoringUnavailable",
+      "resetActionState",
+      "applyConfigurationProblem"
+    ],
+    "sourceHash": "931cd804b1705e9f84a36224b62efd15dd4af55817ea125a7c0c67ea0421b685",
+    "reason": "Single toolbar writer: reviewed persisted state mutation queue, owner checks after awaits, badge/attention priorities and action API failure isolation. Final delta: gray/red attention survives polls until explicit acknowledgement; gray returns no configuration reason. Serialized writes and failed-write retry retain their existing owner contract.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/alarms.ts",
+    "names": [
+      "armMonitoring",
+      "callback:armQueue.then",
+      "callback:operation.catch",
+      "callback:runEnsureMonitoring.finally",
+      "clearMonitoring",
+      "ensureMonitoring",
+      "getClient",
+      "handleAlarm",
+      "invalidateBackgroundPolls",
+      "isCurrentConnection",
+      "ownsCurrentPoll",
+      "pollStatus",
+      "runEnsureMonitoring"
+    ],
+    "sourceHash": "56bafe243b874e38dde596e5293d65968e16eaa410863562c05b1431e2c75450",
+    "reason": "MV3 monitoring lifecycle: reviewed client cache identity, polling revisions, post-query ownership checks, serialized alarm create/clear and idle teardown.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/contentScripts.ts",
+    "names": [
+      "refreshRetainedContentScripts",
+      "refreshContentScripts",
+      "callback:scripts.map",
+      "callback:scripts.map.filter",
+      "callback:tabs.flatMap",
+      "callback:filesByScript.map"
+    ],
+    "sourceHash": "78d0f9a158b10b304aea37a7c9fe4bd28808050c7e8ad0aecbd29e7ff8873259",
+    "reason": "Update-time content-script reinjection: reviewed manifest-derived file groups, http(s)-tab boundary and per-frame failure isolation. Final delta acceptance: one session-lifetime completion marker prevents per-worker-wake reinjection and resets for real extension reload. Existing manifest-driven HTTP(S)/allFrames injection retains disappearing/forbidden-tab tolerance. Marker reset and suspension behavior have controlled unit and actual-browser evidence.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra and Mimic review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/downloads.ts",
+    "names": [
+      "baseName",
+      "callback:chrome.downloads.onChanged.addListener",
+      "callback:chrome.downloads.onCreated.addListener",
+      "cancelBrowserDownload",
+      "claimDownload",
+      "classifyConnectionFailure",
+      "classifyFailure",
+      "eraseBrowserDownload",
+      "handOffToNas",
+      "handleDeterminingFilename",
+      "handleDownloadChanged",
+      "handleDownloadCreated",
+      "initDownloadInterception",
+      "releaseHeldFilename",
+      "route"
+    ],
+    "sourceHash": "758c8fdce8e436c77222611aba4e2d029fb6b535333211fc60ae1e14f2c1a6b7",
+    "reason": "NAS-first torrent handoff: reviewed synchronous in-flight claim, live preflight, routing, cancel-before-erase, deferred-filename release and failure-class separation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/index.ts",
+    "names": [
+      "callback:self.addEventListener",
+      "callback:chrome.runtime.onInstalled.addListener",
+      "callback:migrateSettings.catch",
+      "callback:chrome.runtime.onStartup.addListener",
+      "callback:refreshRetainedContentScripts.catch",
+      "callback:chrome.runtime.onMessage.addListener",
+      "callback:acknowledgeAttention.then",
+      "callback:acknowledgeAttention.then.catch",
+      "callback:handleMagnetAdd.then.catch",
+      "callback:sendDownloadToStation.then",
+      "callback:sendDownloadToStation.then.catch",
+      "callback:applyBadgeStats.then",
+      "callback:applyBadgeStats.then.catch"
+    ],
+    "sourceHash": "81536b9b43760b2c0230b5fc35ee53a811a3fc8c169d4b186101a76099e29ccc",
+    "reason": "Service-worker entry/listener ownership: reviewed synchronous registration, message validation, toolbar-message delegation and fire-and-forget rejection handling. Final delta: link reply forwards accepted duplicate metadata without moving browser-torrent transaction ownership. Final lifecycle acceptance: register listeners synchronously, then start session-lifetime retained-tab refresh with contained rejection. Existing menus/migration/monitoring install behavior remains; duplicate reply metadata does not move torrent-transaction ownership.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra and Mimic review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/magnetHandler.ts",
+    "names": ["handleMagnetAdd"],
+    "sourceHash": "a36ea7123b514fdcfb28f4114dfe0160684dc1d491c3217480f757c937ab3218",
+    "reason": "Magnet worker entry: reviewed settings/routing/API sequence, monitoring handoff and failure-to-toolbar path. Final delta: recognized duplicate acceptance re-arms monitoring without red configuration attention; actual rejection retains its error path.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/background/menus.ts",
+    "names": [
+      "createContextMenus",
+      "callback:chrome.contextMenus.removeAll",
+      "handleContextMenuClick",
+      "sendDownloadToStation",
+      "route",
+      "isSupportedUrl"
+    ],
+    "sourceHash": "48193b3d58d0ee239db918f338567154bbafe636d62feea33fb856c0955957ad",
+    "reason": "Context-menu/page-link dispatch: reviewed source classification shared with routing, tracker-cookie torrent transport and direct-action failure delivery. Final delta: shared page transport returns structured duplicate acceptance; explicit context-menu success stays quiet. Torrent classification/routing and cookie fetch remain separate from browser cancellation.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
     "path": "src/background/notifier.ts",
     "names": [
       "notifyFailure",
+      "callback:queueEpisode",
+      "clearFailureEpisode",
       "notifyDirect",
-      "createNotification",
-      "clearFailureEpisode"
+      "queueEpisode",
+      "callback:queued.then",
+      "createNotification"
     ],
-    "sourceHash": "11d667688315dc2450abb22d031dffee53abfad784ea0293943d6e57b86c760b",
-    "reason": "Native delivery and durable episode suppression differ from popup/page rendering; existing native helper already shared.",
-    "task": "BUG-71"
+    "sourceHash": "e4982ec57d2fa36b3e441be457ed013f734df59feb8903f50ce9586bd6442aa2",
+    "reason": "Native notification episode policy: reviewed session-persisted fingerprint suppression, direct notifications and separate popup/page lifetimes. Final delta: one queue owns episode decision/create/persist/recovery; suppression follows Chrome create acceptance and rejected creation permits retry. Direct notification contains async API rejection. This is API-level proof only.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/content/magnet.ts",
+    "names": [
+      "isEligibleClick",
+      "getFileSendUrl",
+      "findAnchor",
+      "getMagnetUri",
+      "setCurrentTheme",
+      "resolveTheme",
+      "showFeedback",
+      "callback:actions.map",
+      "callback:dismissBtn.addEventListener",
+      "callback:setTimeout",
+      "sendMagnetToWorker",
+      "callback:sendToWorker",
+      "setFileCaptureEnabled",
+      "installMagnetInterception",
+      "sendLinkToWorker",
+      "sendToWorker",
+      "callback:chrome.runtime.sendMessage",
+      "fallBackToBrowser",
+      "showUnknownAcceptance",
+      "releaseDispatch",
+      "isNoReceivingEnd",
+      "isPreDispatchInvalidation",
+      "onDocumentClick",
+      "claimLinkClick",
+      "initMagnetInterception",
+      "onClick",
+      "callback:chrome.storage.local.get",
+      "storageListener",
+      "anonymous",
+      "isCurrentFeedback",
+      "clearFeedback",
+      "invalidateFeedback",
+      "snapshotFallback",
+      "activateNativeFallback"
+    ],
+    "sourceHash": "dacd310df2b7631491bf3e19a73d5a2d1f438c56ad4c0a7b0c53d0e01025b73b",
+    "reason": "Page capture/feedback boundary: reviewed trusted-click eligibility, Shadow-DOM text insertion, one in-flight URI claim, fallback navigation and content-script cleanup. Final delta acceptance: one pending-dispatch map owns claims; latest gesture owns the toast while each request keeps its native/result outcome. Unknown acceptance retains its claim with UI-only uncertainty and guarded late replies. Native fallback preserves target/download attributes. DOM-first cleanup and stale-runtime retirement yield the same trusted click to the replacement without a page-controlled cleanup bridge. Genuine retained-tab magnet and Shift-file browser cases pass; the strengthened retirement unit fails with the guard removed.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra and Mimic review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/applyTheme.ts",
+    "names": ["applyTheme", "resolve", "setAttr"],
+    "sourceHash": "370d96e16f0f05e5401b6ce2e4fa02912fa84eccb111218de04d75468810b82c",
+    "reason": "Document theme owner: reviewed auto media-listener replacement and direct theme application; no shared rendering algorithm.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/clientSignature.ts",
+    "names": ["clientSignature"],
+    "sourceHash": "3b86d5b91656c42eada0c2fd5ddf558a51ea0b4dc62ddff9156c438c644f285b",
+    "reason": "Connection-cache identity serialization shared by worker/popup caches; reviewed fields against API-client construction.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/configHealth.ts",
+    "names": ["findConfigProblem"],
+    "sourceHash": "5f6d7664152579c96444c43e66973a5b817e46abd1c26bb27984e84fc3544056",
+    "reason": "Configuration preflight family: reviewed required credential/temp checks; it is relevant to the AddTorrent target-folder finding because it currently permits an empty NASdir.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/connectionHealth.ts",
+    "names": [
+      "classify",
+      "connectionFailure",
+      "describe",
+      "describeAddress",
+      "isTimeout",
+      "pingNas",
+      "readConnectionState",
+      "readField",
+      "readMessage"
+    ],
+    "sourceHash": "400b40e80fb0d9fcca218f661c848561706025ef9d936772cc7db3fa26dd7f4a",
+    "reason": "Live-login health classification: reviewed typed LoginError preference, timeout decoding and presentation distinction from tracker handoff errors.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/errors.ts",
+    "names": ["getErrorMessage"],
+    "sourceHash": "78f5e8ca7a31ab2eb7b47d6fd463e4bd3f3e01c2f5c9dfc31a7561c202225955",
+    "reason": "Thrown-value message normalization; intentionally distinct from API payload error/reason extraction.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/folderPath.ts",
+    "names": ["normalizeFolderPath"],
+    "sourceHash": "92cbcefa8ef1f9adc8e799bf67509c4ea0999978bead903fcbfb2f18d30cd1ef",
+    "reason": "QNAP share-relative folder normalization, shared by validation and AddUrl/AddTorrent request creation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/logger.ts",
+    "names": [
+      "createLogger",
+      "debug",
+      "emit",
+      "error",
+      "info",
+      "isEnabled",
+      "log",
+      "setEnabled",
+      "shouldEmit",
+      "warn",
+      "write"
+    ],
+    "sourceHash": "df928b007f097cca879d2992ca9d8edc3cd38299d334f53680de2c4099be4f3f",
+    "reason": "Logger closure/facade: reviewed level gate, listener emission and the explicit console implementation exemption.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/routingRules.ts",
+    "names": [
+      "callback:array.filter",
+      "callback:hosts.some",
+      "callback:listValues.some",
+      "generateId",
+      "globToRegExp",
+      "hostOf",
+      "listValues",
+      "matchesAnyDomain",
+      "matchesName",
+      "matchesValue",
+      "nameOf",
+      "normalizeDomain",
+      "originHosts",
+      "resolveDestination",
+      "safeDecodeURIComponent",
+      "sanitizeRoutingRules",
+      "serializeRoutingRuleDraft",
+      "stripQueryAndHash",
+      "toRoutingRuleDraft",
+      "validateRoutingRuleDraft"
+    ],
+    "sourceHash": "6bb918a5fd801f8ea50d019765286d0c28c390831ffb0a83954a285a59e2cbb4",
+    "reason": "Untrusted storage/import rule sanitizer and first-match router: reviewed draft serialization, domain/name glob semantics and caller-supplied source context.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/serverUrl.ts",
+    "names": ["composeServerUrl", "parseServerUrl"],
+    "sourceHash": "0718b8d2e8b7ecc2120aff4f1f5defe90dd21c5c504c57822560ec369c11d68f",
+    "reason": "Editable server-string parsing/composition, intentionally separate from API request URL validation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/settings.ts",
+    "names": [
+      "loadSettings",
+      "anonymous",
+      "callback:chrome.storage.local.get",
+      "callback:chrome.storage.session.get",
+      "stringWithDefault",
+      "booleanWithDefault",
+      "themeWithDefault",
+      "migrateSettings",
+      "saveSettings",
+      "resetSettings",
+      "callback:chrome.storage.local.clear",
+      "callback:chrome.storage.session.clear",
+      "callback:chrome.storage.local.set"
+    ],
+    "sourceHash": "e266fb92740f3f01b1b3d732cf48112f1edbbeb777e759bb00f9a7626dd0e6ff",
+    "reason": "Storage migration/default/credential precedence: reviewed portable setting resolution and partial-save preservation; no unsafe production any. Final delta: reads resolve defaults without writes; controlled stale snapshot cannot replace newer preferences. Save/migration owns persistence; credential and portable normalization contracts remain distinct.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/settingsLock.ts",
+    "names": [
+      "deriveVerifier",
+      "disableSettingsLock",
+      "enableSettingsLock",
+      "fromBase64",
+      "getSettingsLockState",
+      "lockSettings",
+      "timingSafeEqual",
+      "toBase64",
+      "unlockSettings"
+    ],
+    "sourceHash": "1a2c8926469e98e987cc2395e1d34bd264eca674e186ddebbe297fd92e054b19",
+    "reason": "Settings-UI lock only: reviewed PBKDF2 verifier, session unlock flag, base64 conversion and malformed-verifier reset policy.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/sourceKind.ts",
+    "names": [
+      "classifySource",
+      "hasTorrentExtension",
+      "isDownloadableFileUrl",
+      "isMagnet",
+      "isTorrentMime",
+      "isTorrentSource",
+      "magnetDisplayName"
+    ],
+    "sourceHash": "ff2867d619e61a973717a6ddfa029b1a6fa2c9cf1854e9890e93de677bc14e57",
+    "reason": "One source classifier used by routing and transport: reviewed torrent/magnet/file predicates and metadata precedence.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/tabFetch.ts",
+    "names": [
+      "base64ToBytes",
+      "callback:fetch.then",
+      "callback:tabs.find",
+      "fetchFromPageContext",
+      "fetchInPage",
+      "findTabOnOrigin"
+    ],
+    "sourceHash": "6c5b0e94848070dc1596efc9cc261f155c7b79c1014fb7680a249e47528665b0",
+    "reason": "Tracker page-context fetch boundary: reviewed origin-tab selection, injected self-contained base64 transport and local decode.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/tasks.ts",
+    "names": [
+      "asRecord",
+      "callback:list.map",
+      "callback:value.filter",
+      "callback:variants.find",
+      "clamp",
+      "isCompleted",
+      "isDownloadPhase",
+      "isInProgress",
+      "isReorderableStatus",
+      "mapStatus",
+      "normalizeQnap",
+      "normalizeTasks",
+      "parseDateToEpoch",
+      "parseNumber",
+      "parseString",
+      "readNumber",
+      "readString",
+      "summarizeProgress",
+      "toRecordArray"
+    ],
+    "sourceHash": "60933c5972f7ec75ab9e99d4f8a7b7107f56efa540f17e397cea4270368e6f33",
+    "reason": "Untyped task normalization and status/progress aggregates: reviewed numeric-state mapping, coercions and distinct popup/badge status predicates.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/torrentMeta.ts",
+    "names": ["decodeUtf8", "readByteString", "readTorrentName", "seekKey", "skipValue"],
+    "sourceHash": "5c6ced7b5c13ae6a5ec434c3a12be671bcdcdd4f309a508d3cc99c5cecd1f741",
+    "reason": "Bounded bencode name reader: reviewed depth/size bounds, skip traversal and malformed-input fallback.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/lib/torrentSender.ts",
+    "names": [
+      "assertLooksLikeTorrent",
+      "callback:rawVal.replace",
+      "parseContentDispositionFilename",
+      "sendTorrentUrlToNas",
+      "torrentFileName"
+    ],
+    "sourceHash": "b0f85c797cddb9e906e2aa93143c9b998cb117dd8f8c6d8d05a9d512f3d633c2",
+    "reason": "Tracker-cookie torrent transport: reviewed page-context fallback, bencode/HTML guard, filename parsing and late route resolution; reaches ApiClient.addTorrent.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/components/downloadItem/DownloadItem.svelte",
+    "names": [
+      "callback:$effect",
+      "openMenu",
+      "callback:queueMicrotask",
+      "closeMenu",
+      "handleSetPriority",
+      "onMenuKeydown",
+      "toggle",
+      "handleKey",
+      "template-callback"
+    ],
+    "sourceHash": "35669e94287ca357454d82f4f9fc1ab2db51c7e49b9bd3dd7e3c0ba9417a825f",
+    "reason": "Task-card UI: reviewed local selection, queue-priority keyboard menu, file disclosure and event-propagation boundaries. Final delta changes only muted color references to the existing token; selection, priority and disclosure handlers are unchanged.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/components/downloadItem/DownloadItemGallery.svelte",
+    "names": ["sample", "template-callback"],
+    "sourceHash": "549d3a97951fc58c3b6682b22e316620b3db6c363ce69fb8f63a8eadd979b687",
+    "reason": "Storybook status sample builder and inert card callbacks; visual harness behavior only.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/components/downloadItem/format.ts",
+    "names": [
+      "formatSpeed",
+      "formatBytes",
+      "scaleUnit",
+      "formatETA",
+      "formatAddedDate",
+      "formatStatus",
+      "formatError",
+      "formatTaskSize",
+      "formatSwarm",
+      "getDownloadItemView",
+      "formatDestination",
+      "callback:raw.split.map",
+      "isSameFolder",
+      "formatFullPath",
+      "callback:call.split.map"
+    ],
+    "sourceHash": "d6748893c3504b16d5b83d7c5ae2718f7ee3e4c731282ce42b853e1e83d31ed0",
+    "reason": "Task-card presentation model: reviewed sole binary-size formatter, status/error rendering and destination/staging display policy. Final delta: vendor facts correct 12288,12289,20488 labels; typed numeric lookup removes casts while custom/unknown error fallback remains unchanged. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/components/statusPill/statusPill.ts",
+    "names": [
+      "anonymous",
+      "callback:setTimeout",
+      "clearStatus",
+      "dismissStatus",
+      "getStatusElements",
+      "isCurrentDirectStatus",
+      "showStatus"
+    ],
+    "sourceHash": "715aa3fefe01a4f1118f1f6837d27ecb8912063afe3ced98885c37f26ff39a51",
+    "reason": "Popup feedback ownership: reviewed direct-vs-poll revision/receipt handling, DOM text output, dismissal and timer replacement.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/DownloadsList.svelte",
+    "names": [
+      "callback:loadSettings.then",
+      "callback:view.tasks.filter",
+      "handlePriority",
+      "handleToggleMenu",
+      "template-callback"
+    ],
+    "sourceHash": "56b4efbdd51db428238cde4797238b645a8023add55b997099c37bbd8e8f6355",
+    "reason": "List UI: reviewed filter/search/queue optimistic reorder, post-command refresh and menu ownership.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/DownloadsListShowcase.svelte",
+    "names": ["template-callback"],
+    "sourceHash": "261100540d80325b75d242f8120ddf8ee0cfc4cfe4b930e8ce59c3d03ce765b1",
+    "reason": "Storybook derived view and no-op callback only.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/autoRefresh.ts",
+    "names": [
+      "callback:refreshCallback.catch",
+      "callback:setInterval",
+      "configureAutoRefresh",
+      "startAutoRefresh",
+      "stopAutoRefresh"
+    ],
+    "sourceHash": "8f3a167749211897d33f442830069d67ea31c039a5c06c2d88a55eee68d1a945",
+    "reason": "Popup-lifetime polling timer: reviewed single callback/interval ownership and stop behavior.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/downloadFilters.ts",
+    "names": [
+      "callback:next.findIndex",
+      "callback:tasks.filter",
+      "callback:tasks.findIndex",
+      "filterDownloads",
+      "reorderTasks"
+    ],
+    "sourceHash": "8d13e3844e15c92010d3eb43bcf770183e2ad2d7ca0cf633d538aee1f331f644",
+    "reason": "Pure filtering and optimistic reorder; reviewed queue-status-scoped move algorithm rather than extracting a generic list helper.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/downloadsManager.ts",
+    "names": [
+      "abortListDownloads",
+      "anonymous",
+      "getTorrentFiles",
+      "hasUnsupportedApiError",
+      "listDownloads",
+      "pauseTorrent",
+      "removeDownload",
+      "setTaskPriority",
+      "setTorrentFiles",
+      "startTorrent",
+      "stopTorrent"
+    ],
+    "sourceHash": "ff2a6d203b64e77eabd820bde3ae8cebbb72e2ce02a9841bdbc2ef1a2eb19a59",
+    "reason": "Popup API command wrappers: reviewed abortable query ownership, unsupported-Pause fallback and per-file command delegation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/downloadsState.ts",
+    "names": [
+      "anonymous",
+      "callback:selectionListeners.forEach",
+      "clearSelection",
+      "getSelectedHash",
+      "onSelectionChange",
+      "setSelectedHash"
+    ],
+    "sourceHash": "e6957f11cbca2c390817e0d05ddd030bdf76dda9211cfbd9561064a1a6800483",
+    "reason": "Selection store/listener ownership; local popup state only.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/downloadsUI.ts",
+    "names": [
+      "callback:onSelectionChange",
+      "callback:tasks.reduce",
+      "ensureElements",
+      "hideDownloads",
+      "renderDownloads",
+      "setRemovingDownload",
+      "setupDownloadsUI",
+      "toggleSelection",
+      "updateStatusSpeed"
+    ],
+    "sourceHash": "71f67f3af6c2bd699f88f1fbda380fc9c173f7b1a193e0292986b6dc68ed9b95",
+    "reason": "Svelte mount/legacy DOM bridge: reviewed selection subscription, speed aggregation and visibility behavior.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/downloads/index.ts",
+    "names": [
+      "abortRefresh",
+      "callback:window.addEventListener",
+      "clearSelection",
+      "connectionChanged",
+      "getSelected",
+      "hideDownloads",
+      "initializeDownloads",
+      "onRefresh",
+      "onSelectionChange",
+      "pause",
+      "refreshNow",
+      "remove",
+      "start",
+      "stop"
+    ],
+    "sourceHash": "4efd0cd95e285e5fcb734fdaad1ec69559503b3df118e757652dac8178a3bb0d",
+    "reason": "Downloads feature orchestration: reviewed generation/operation guards, status ownership, refresh retry and monitoring handoff.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/folderPicker/FolderSelect.svelte",
+    "names": [
+      "callback:entries.filter",
+      "callback:setTimeout",
+      "choose",
+      "clearSuccess",
+      "focus",
+      "listDirFor",
+      "load",
+      "nextSelectable",
+      "onInput",
+      "onKeydown",
+      "optionId",
+      "showSuccess",
+      "template-callback",
+      "validate"
+    ],
+    "sourceHash": "634bcaa4c75f514767722482ba2c304dad7ffb253965eafad6fed811025ce1df",
+    "reason": "Folder combobox: reviewed async validation token, writable-entry selection, keyboard navigation and cache/load boundary.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/folderPicker/folderCache.ts",
+    "names": ["getTopLevelFolders", "invalidateFolderCache", "signatureOf"],
+    "sourceHash": "43613997288399ce3820847204310e94d14b6465b011c3bf07b88ba55832f629",
+    "reason": "Popup folder-list cache keyed to connection identity, with TTL/force invalidation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/folderPicker/validateFolder.ts",
+    "names": ["callback:entries.find", "validateFolder"],
+    "sourceHash": "6eabdcd33f29ee255478bcec3d12ab607f0bfb67fd28d9f2b86f742955474f32",
+    "reason": "Folder validation at NAS list-dir boundary: reviewed parent lookup, writable flag and coded-not-found distinction.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/settings/Settings.svelte",
+    "names": [
+      "addRule",
+      "applyImport",
+      "applyServerUrl",
+      "callback:REQUIRED_FIELDS.find",
+      "callback:form.routingRules.map",
+      "callback:routingRuleDrafts.map.filter",
+      "callback:serializedRules.map",
+      "callback:untrack",
+      "chooseTheme",
+      "clearDraftError",
+      "conditionErrorId",
+      "connectionSignature",
+      "exportBackup",
+      "focusMoveControl",
+      "importBackup",
+      "load",
+      "markClean",
+      "markMissingFields",
+      "moveRule",
+      "panels",
+      "removeConnection",
+      "removeRule",
+      "save",
+      "setRuleType",
+      "settingsSignature",
+      "syncServerUrl",
+      "template-callback",
+      "testConnection",
+      "validateField",
+      "value"
+    ],
+    "sourceHash": "89b40f6f0bbd5900242e0e19d0c340a071116f7ac912145163982d4f9ffc507f",
+    "reason": "Settings form orchestration: reviewed parse-before-save, dirty/connection signatures, routing draft validation, import confirmation, lock flow and post-save health check.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/settings/SettingsShowcase.svelte",
+    "names": ["callback:onMount"],
+    "sourceHash": "a881c31bdf1764e95750be29c0290e7db6c78446501d55d55bc10c2bb372a253",
+    "reason": "Storybook-only storage seeding and mounted Settings load.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/settings/index.ts",
+    "names": [
+      "initializeSettings",
+      "isPanelVisible",
+      "mountSettings",
+      "onUnlock",
+      "togglePanel",
+      "toggleSettingsPanel"
+    ],
+    "sourceHash": "3116227b21ed49b7dc3033abc61571da8028cbc49ba0fcce31eca8d47786a1d6",
+    "reason": "Settings/unlock mount and panel visibility handoff to popup orchestration.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/settings/settingsBackup.ts",
+    "names": [
+      "callback:call.map",
+      "callback:call.map.filter",
+      "describeImport",
+      "exportSettings",
+      "parseImportedSettings"
+    ],
+    "sourceHash": "9c63266a8b23e2994609866eb377d164744a1ad1218d431256d418c83261076c",
+    "reason": "Untrusted backup parser/exporter: reviewed portable-key allowlist, runtime type checks and routing sanitization.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/settings/settingsUI.ts",
+    "names": ["getSettingsPanel", "isSettingsPanelVisible"],
+    "sourceHash": "5ef0ba5d22d2065e54c671970d8456e19c08d8be827da15437ec85e346b7c6db",
+    "reason": "Settings-panel DOM lookup/visibility helper.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/toolbar/SpeedShowcase.svelte",
+    "names": ["getDigitCount"],
+    "sourceHash": "739fd083d5534ae3f44eb9357eaa81b368a4240ce5b6c1d4e88b83d06ec3bb8a",
+    "reason": "Storybook speed-format matrix and digit-count display helper. Final delta changes only the existing muted color token; speed-format harness behavior is unchanged.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/toolbar/Toolbar.svelte",
+    "names": ["fileIcon", "linkIcon", "plusIcon", "trashIcon"],
+    "sourceHash": "d92e25a567ed78111db8c5be5d0375a596fb5a6e383d39290d975346e2adf25c",
+    "reason": "Toolbar action bindings and visual selection gating; commands remain owned by feature modules.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/toolbar/ToolbarShowcase.svelte",
+    "names": ["callback:$effect", "noop", "toggleSettings"],
+    "sourceHash": "f8a51ee5c90b6f2d6ac777eb4ca39383dbac9c3a53ec4f11df20a9404cba7552",
+    "reason": "Storybook toolbar state effect and inert action callbacks.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/toolbar/index.ts",
+    "names": [
+      "add",
+      "addUrls",
+      "callback:downloads.onSelectionChange",
+      "initializeToolbar",
+      "pause",
+      "remove",
+      "removeWithFiles",
+      "requireSelection",
+      "start",
+      "stop",
+      "toggleSettings"
+    ],
+    "sourceHash": "0f49443b461ee3060c57e0e2d129df6b913bceb0ac62cd08ebd3fd0929fccec8",
+    "reason": "Toolbar mount and selected-hash command delegation, including destructive clean-remove confirmation.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/torrentFiles/TorrentFiles.svelte",
+    "names": [
+      "callback:files.filter",
+      "callback:files.filter.map",
+      "callback:files.map",
+      "callback:results.filter",
+      "load",
+      "save"
+    ],
+    "sourceHash": "2202cf2992262a7e34feab472e462ed253f645f7cb32b2134268683f56dc55dc",
+    "reason": "Per-file priority UI: reviewed load/save state, changed-selection diff and bounded first-100 display policy.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/unlock/Unlock.svelte",
+    "names": ["focusOnMount", "handleReset", "handleUnlock", "template-callback"],
+    "sourceHash": "3e481b91f5c369d7eadc00c2c9f63d865a09a2d51ceb7cac936fe47ea164b360",
+    "reason": "Settings-only unlock/reset interaction and status error boundary.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/upload/CreateUrls.svelte",
+    "names": ["callback:loadSettings.then", "create", "onSuccess"],
+    "sourceHash": "01a95379f3e8cddb86d44d42f77ce6751963455512b05f9ed5d4a8b1cb46c315",
+    "reason": "Batch URL form: reviewed derived non-empty lines, configured target load and submission state.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/upload/batchUpload.ts",
+    "names": ["callback:raw.split.map", "callback:results.filter", "parseUrlLines", "uploadUrls"],
+    "sourceHash": "93a83e577ab39a62a8bd83f28c15e614c3a3ccd82ac39854d415e7a7b178653c",
+    "reason": "Batch URL result aggregation/feedback/monitoring: intentional different policy from routing per ENG-13.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/upload/index.ts",
+    "names": [
+      "callback:fileInput.addEventListener",
+      "callback:upload.finally",
+      "getFileInput",
+      "getUrlPanel",
+      "initializeUpload",
+      "onDuplicate",
+      "onSuccess",
+      "reset",
+      "toggleUrlPanel",
+      "triggerFilePicker"
+    ],
+    "sourceHash": "3e1ebf82dc35b9626f67ce476d223c7cd3e5d812ce5e5f0a0552c2831ff3805d",
+    "reason": "Upload DOM bridge: reviewed file-input listener/reset and URL-panel mount/toggle behavior.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/upload/torrentUpload.ts",
+    "names": ["callback:reportFollowUpFailure", "uploadTorrent"],
+    "sourceHash": "7213137a12d407ee204b94f6819b8b9a4f2cedcdd3fdcbeb527aff683451847a",
+    "reason": "Popup torrent upload: reviewed extension gate, bencode-name routing and addTorrent outcome/receipt handling; reaches confirmed API finding.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/features/upload/uploadFeedback.ts",
+    "names": ["reportFollowUpFailure"],
+    "sourceHash": "795a4ded13a67b5d6af70e312197ae58238e037d52bd8072783afee510aaece4",
+    "reason": "Post-success callback failure reporting under direct-status receipt ownership.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/index.ts",
+    "names": [
+      "acknowledgeToolbarAttention",
+      "callback:document.addEventListener",
+      "handleInitializationError",
+      "onConnectionSaved",
+      "onUploadSuccess",
+      "onVisibilityChange",
+      "runMainInit"
+    ],
+    "sourceHash": "55b8afde75f949c5bc483aa168b20feaf68137128e2e00db5eb533e4fb8ec4d4",
+    "reason": "Popup bootstrap: reviewed theme best effort, toolbar-attention acknowledgement and feature initialization ordering.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/shared/api/clientCache.ts",
+    "names": ["getApiClient", "invalidateClientCache"],
+    "sourceHash": "b6e88d581b9cbf81941e5ecb42424d33664e94c082a3bd79e9f1846789b1da1b",
+    "reason": "Popup client cache: reviewed throwaway unsaved-settings clients and signature-keyed saved clients; intentionally distinct from worker cache lifetime.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/shared/formatters/speed.ts",
+    "names": ["formatRate"],
+    "sourceHash": "b23207fa6c9e38fe63559b24b49acb2ba80f0ba5f6f4694d5a4aa9fd10d5d017",
+    "reason": "Rate-specific formatter: reviewed minimum nonzero/rate promotion policy, intentionally distinct from byte-size formatting.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/shared/monitor.ts",
+    "names": ["callback:chrome.runtime.sendMessage.catch", "requestMonitoring", "sendBadgeSnapshot"],
+    "sourceHash": "123d128dcda2d4d9b43452b075ea2ab4c1931afd95b0f79dac829ce7fdc0c0ef",
+    "reason": "Best-effort popup-to-worker monitoring/snapshot messages; separate receiver-lifetime failure handling.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/ui/SearchField.svelte",
+    "names": ["template-callback"],
+    "sourceHash": "ac1fdc5d5323fb240f5aad3f38c0cf815ce78be0c9c122737ab4742487163b00",
+    "reason": "Bound search input and local clear action. Final delta reveals the existing resting control border; clear/input behavior and focus transitions remain unchanged.",
+    "task": "ENG-24",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/ui/SegmentedControl.svelte",
+    "names": ["template-callback"],
+    "sourceHash": "b2599725428bf97a59c5aa235fbfc2169db310f9b233848d6aec0f487c3cfb9d",
+    "reason": "Generic controlled segments with inline activation callback.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/ui/SpeedTelemetry.svelte",
+    "names": ["resolveSpeed"],
+    "sourceHash": "e0d2fc83d985279eae03ee3a7c6efdb5c20d2e5629a5dc1ba5dfab5f189b1021",
+    "reason": "Single/dual speed presentation and raw-rate formatting branch.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/ui/SplitButton.svelte",
+    "names": ["callback:queueMicrotask", "closeMenu", "onMenuKeydown", "openMenu", "pick", "template-callback"],
+    "sourceHash": "17a9429da9ff6288938b27ff43db057ff1d24a71b6c4ad19d6752f3f8be7abb4",
+    "reason": "Local menu focus/keyboard/selection behavior; action execution remains caller-owned.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "module",
+    "assessment": "reviewed",
+    "path": "src/popup/ui/Tabs.svelte",
+    "names": ["callback:tabs.findIndex", "onKeydown", "template-callback"],
+    "sourceHash": "3b3fcb3d23772d5ca7fc79676fbc3f7b37eba8c830ea1f0be26b31c187a345ed",
+    "reason": "Generic roving-tab keyboard activation and mounted hidden panels.",
+    "task": "ENG-24"
+  },
+  {
+    "family": "notification-surfaces",
+    "assessment": "distinct-contexts",
+    "path": "src/background/notifier.ts",
+    "names": ["notifyFailure", "notifyDirect", "createNotification", "clearFailureEpisode"],
+    "sourceHash": "e4982ec57d2fa36b3e441be457ed013f734df59feb8903f50ce9586bd6442aa2",
+    "reason": "Native delivery and durable episode suppression differ from popup/page rendering; existing native helper already shared. Final delta: one queue owns episode decision/create/persist/recovery; suppression follows Chrome create acceptance and rejected creation permits retry. Direct notification contains async API rejection. This is API-level proof only.",
+    "task": "BUG-71",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "notification-surfaces",
     "assessment": "distinct-contexts",
     "path": "src/popup/components/statusPill/statusPill.ts",
-    "names": [
-      "showStatus",
-      "clearStatus",
-      "dismissStatus",
-      "isCurrentDirectStatus"
-    ],
+    "names": ["showStatus", "clearStatus", "dismissStatus", "isCurrentDirectStatus"],
     "sourceHash": "715aa3fefe01a4f1118f1f6837d27ecb8912063afe3ced98885c37f26ff39a51",
     "reason": "Popup direct/poll ownership, receipt and DOM timer state belong to the popup lifetime.",
     "task": "BUG-71"
@@ -31,111 +1141,84 @@
     "family": "notification-surfaces",
     "assessment": "distinct-contexts",
     "path": "src/content/magnet.ts",
-    "names": [
-      "showFeedback",
-      "resolveTheme",
-      "setCurrentTheme"
-    ],
-    "sourceHash": "a579fd351b8e311f543269eb8e7e0563b73362c3bf03c2d58b7feeb213a0f9a8",
-    "reason": "Reviewed text-only messages/action labels, controls, timers and distinct page rendering lifetime.",
+    "names": ["showFeedback", "resolveTheme", "setCurrentTheme"],
+    "sourceHash": "dacd310df2b7631491bf3e19a73d5a2d1f438c56ad4c0a7b0c53d0e01025b73b",
+    "reason": "Reviewed text-only messages/action labels, controls, timers and distinct page rendering lifetime. Final delta acceptance: one pending-dispatch map owns claims; latest gesture owns the toast while each request keeps its native/result outcome. Unknown acceptance retains its claim with UI-only uncertainty and guarded late replies. Native fallback preserves target/download attributes. DOM-first cleanup and stale-runtime retirement yield the same trusted click to the replacement without a page-controlled cleanup bridge. Genuine retained-tab magnet and Shift-file browser cases pass; the strengthened retirement unit fails with the guard removed.",
     "task": "BUG-71",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra and Mimic review"
   },
   {
     "family": "content-dispatch",
     "assessment": "shared-kernel-preserved-policies",
     "path": "src/content/magnet.ts",
-    "names": [
-      "sendMagnetToWorker",
-      "sendLinkToWorker",
-      "sendToWorker"
-    ],
-    "sourceHash": "a579fd351b8e311f543269eb8e7e0563b73362c3bf03c2d58b7feeb213a0f9a8",
-    "reason": "Reviewed shared sendToWorker claim/callback/release/fallback kernel; explicit magnet/link policies and targeted duplicate/overlap/error/throw evidence remain.",
+    "names": ["sendMagnetToWorker", "sendLinkToWorker", "sendToWorker"],
+    "sourceHash": "dacd310df2b7631491bf3e19a73d5a2d1f438c56ad4c0a7b0c53d0e01025b73b",
+    "reason": "Reviewed shared sendToWorker claim/callback/release/fallback kernel; explicit magnet/link policies and targeted duplicate/overlap/error/throw evidence remain. Final delta acceptance: one pending-dispatch map owns claims; latest gesture owns the toast while each request keeps its native/result outcome. Unknown acceptance retains its claim with UI-only uncertainty and guarded late replies. Native fallback preserves target/download attributes. DOM-first cleanup and stale-runtime retirement yield the same trusted click to the replacement without a page-controlled cleanup bridge. Genuine retained-tab magnet and Shift-file browser cases pass; the strengthened retirement unit fails with the guard removed.",
     "task": "ENG-20",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra and Mimic review"
   },
   {
     "family": "byte-formatting",
     "assessment": "single-size-owner-distinct-rate-policy",
     "path": "src/popup/components/downloadItem/format.ts",
-    "names": [
-      "formatBytes",
-      "scaleUnit"
-    ],
-    "sourceHash": "8d87c31283823f9eca306e1bf1c651650cccbb700f79dbd78f3ef09e884fbeaa",
-    "reason": "Reviewed sole binary-size owner formatBytes, now imported by TorrentFiles; guards and separate rate policy retained.",
+    "names": ["formatBytes", "scaleUnit"],
+    "sourceHash": "d6748893c3504b16d5b83d7c5ae2718f7ee3e4c731282ce42b853e1e83d31ed0",
+    "reason": "Reviewed sole binary-size owner formatBytes, now imported by TorrentFiles; guards and separate rate policy retained. Final delta: vendor facts correct 12288,12289,20488 labels; typed numeric lookup removes casts while custom/unknown error fallback remains unchanged. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
     "task": "ENG-21",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "error-contract",
     "assessment": "accurate-error-contract",
     "path": "src/api/utils.ts",
-    "names": [
-      "createApiError",
-      "isSuccessResponse"
-    ],
-    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
-    "reason": "Reviewed Object.assign enriched Error construction, accurate return contract and boolean success test without DTO validation claim; supported numeric/string-zero retained. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "names": ["createApiError", "isSuccessResponse"],
+    "sourceHash": "8f642638d32fe5baef5b44909f28642910fa45284111925d03c4371ee6d38fdf",
+    "reason": "Reviewed Object.assign enriched Error construction, accurate return contract and boolean success test without DTO validation claim; supported numeric/string-zero retained. Final review verified supported duplicate-code gating and authentication failures containing exist. Final delta: confirmed Error duplicate marker is reused by worker entrypoints; destination free-space code 20488 is vendor-verified. Error context/fallback policies remain distinct. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
     "task": "ENG-19",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "task-command-transport",
     "assessment": "shared-typed-transport-local-outcomes",
     "path": "src/api/client.ts",
-    "names": [
-      "startTask",
-      "stopTask",
-      "pauseTask",
-      "removeTask",
-      "sendTaskCommand"
-    ],
-    "sourceHash": "11299aa1c0b9eb66420702e7c71258a59257b4e60047ef4eecc6cc0fb6aac391",
-    "reason": "Reviewed private four-route typed sendTaskCommand transport and preserved public outcome handling; unparseable torrent replies throw before duplicate inference.",
+    "names": ["startTask", "stopTask", "pauseTask", "removeTask", "sendTaskCommand"],
+    "sourceHash": "23331420982dd189b1e7b1fbf17a9af6f9b9223d83d18e87107b1cf05bf9433d",
+    "reason": "Reviewed private four-route typed sendTaskCommand transport and preserved public outcome handling; unparseable torrent replies throw before duplicate inference. Final delta: move is always serialized, including the permitted empty setting; dest_path remains conditional, typed request-body regression and real NAS spot check preserve value validation at the NAS.",
     "task": "ENG-22",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "error-catalog",
     "assessment": "review-before-consolidation",
     "path": "src/api/utils.ts",
-    "names": [
-      "createApiError",
-      "getErrorMessage"
-    ],
-    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
-    "reason": "Rechecked unchanged catalogs, caller-specific wording and custom/reason fallback after size export and error type changes; ENG-23 matrix retains discussion. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "names": ["createApiError", "getErrorMessage"],
+    "sourceHash": "8f642638d32fe5baef5b44909f28642910fa45284111925d03c4371ee6d38fdf",
+    "reason": "Reviewed installed-vendor error facts and caller-specific wording, custom/reason fallback and supported duplicate gating; ENG-23 resolves without a universal catalog/classifier. Final review verified supported duplicate-code gating and authentication failures containing exist. Final delta: confirmed Error duplicate marker is reused by worker entrypoints; destination free-space code 20488 is vendor-verified. Error context/fallback policies remain distinct. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
     "task": "ENG-23",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "error-catalog",
     "assessment": "review-before-consolidation",
     "path": "src/popup/components/downloadItem/format.ts",
-    "names": [
-      "formatError"
-    ],
-    "sourceHash": "8d87c31283823f9eca306e1bf1c651650cccbb700f79dbd78f3ef09e884fbeaa",
-    "reason": "Rechecked unchanged catalogs, caller-specific wording and custom/reason fallback after size export and error type changes; ENG-23 matrix retains discussion.",
+    "names": ["formatError"],
+    "sourceHash": "d6748893c3504b16d5b83d7c5ae2718f7ee3e4c731282ce42b853e1e83d31ed0",
+    "reason": "Reviewed installed-vendor error facts and caller-specific wording, custom/reason fallback and supported duplicate gating; ENG-23 resolves without a universal catalog/classifier. Final delta: vendor facts correct 12288,12289,20488 labels; typed numeric lookup removes casts while custom/unknown error fallback remains unchanged. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
     "task": "ENG-23",
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "error-text",
     "assessment": "distinct-contracts",
     "path": "src/lib/errors.ts",
-    "names": [
-      "getErrorMessage"
-    ],
+    "names": ["getErrorMessage"],
     "sourceHash": "78f5e8ca7a31ab2eb7b47d6fd463e4bd3f3e01c2f5c9dfc31a7561c202225955",
     "reason": "Unknown thrown values vs API payload reason/error extraction are distinct contracts despite identical function names.",
     "task": null
@@ -144,26 +1227,18 @@
     "family": "numeric-coercion",
     "assessment": "distinct-contracts",
     "path": "src/api/utils.ts",
-    "names": [
-      "coerceNumber",
-      "coerceString"
-    ],
-    "sourceHash": "3833f2f4fdf302cbe2dd4ad1cae5f655771102b50cd11df37989372ba4ba8dca",
-    "reason": "Reviewed unchanged coercion/nullable parsing contracts and unknown annotations; no cross-contract merge. Final review verified supported duplicate-code gating and authentication failures containing exist.",
+    "names": ["coerceNumber", "coerceString"],
+    "sourceHash": "8f642638d32fe5baef5b44909f28642910fa45284111925d03c4371ee6d38fdf",
+    "reason": "Reviewed unchanged coercion/nullable parsing contracts and unknown annotations; no cross-contract merge. Final review verified supported duplicate-code gating and authentication failures containing exist. Final delta: confirmed Error duplicate marker is reused by worker entrypoints; destination free-space code 20488 is vendor-verified. Error context/fallback policies remain distinct. Final type-only review: partial numeric catalogs explicitly permit unknown codes; unchanged custom/reason fallback and lookup behavior remain covered.",
     "task": null,
-    "reviewedAt": "2026-10-09",
-    "reviewer": "Codex"
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "numeric-coercion",
     "assessment": "distinct-contracts",
     "path": "src/lib/tasks.ts",
-    "names": [
-      "parseNumber",
-      "readNumber",
-      "parseString",
-      "readString"
-    ],
+    "names": ["parseNumber", "readNumber", "parseString", "readString"],
     "sourceHash": "60933c5972f7ec75ab9e99d4f8a7b7107f56efa540f17e397cea4270368e6f33",
     "reason": "Reviewed unchanged coercion/nullable parsing contracts and unknown annotations; no cross-contract merge.",
     "task": null,
@@ -174,9 +1249,7 @@
     "family": "connection-url",
     "assessment": "distinct-contracts",
     "path": "src/api/index.ts",
-    "names": [
-      "buildNASBaseUrl"
-    ],
+    "names": ["buildNASBaseUrl"],
     "sourceHash": "4a30fae9289395b912dba86b332a1d6eed3ec6122c0e5c324a49314268dab977",
     "reason": "Request URL validation throws on missing address/non-numeric port; editable form composition can return empty.",
     "task": null
@@ -185,10 +1258,7 @@
     "family": "connection-url",
     "assessment": "distinct-contracts",
     "path": "src/lib/serverUrl.ts",
-    "names": [
-      "composeServerUrl",
-      "parseServerUrl"
-    ],
+    "names": ["composeServerUrl", "parseServerUrl"],
     "sourceHash": "0718b8d2e8b7ecc2120aff4f1f5defe90dd21c5c504c57822560ec369c11d68f",
     "reason": "Form display and pasted-input parsing are different boundaries from request URL validation.",
     "task": null
@@ -197,9 +1267,7 @@
     "family": "client-caches",
     "assessment": "distinct-contexts",
     "path": "src/background/alarms.ts",
-    "names": [
-      "getClient"
-    ],
+    "names": ["getClient"],
     "sourceHash": "56bafe243b874e38dde596e5293d65968e16eaa410863562c05b1431e2c75450",
     "reason": "Reviewed unchanged signature-keyed worker cache and new post-request/post-writer teardown ownership checks; distinct popup lifetime preserved.",
     "task": null,
@@ -210,10 +1278,7 @@
     "family": "client-caches",
     "assessment": "distinct-contexts",
     "path": "src/popup/shared/api/clientCache.ts",
-    "names": [
-      "getApiClient",
-      "invalidateClientCache"
-    ],
+    "names": ["getApiClient", "invalidateClientCache"],
     "sourceHash": "b6e88d581b9cbf81941e5ecb42424d33664e94c082a3bd79e9f1846789b1da1b",
     "reason": "Popup cache preserves unsaved explicit settings as throwaway clients, unlike worker poll state.",
     "task": null
@@ -222,10 +1287,7 @@
     "family": "base64-decode",
     "assessment": "small-shared-kernel-candidate",
     "path": "src/lib/settingsLock.ts",
-    "names": [
-      "fromBase64",
-      "toBase64"
-    ],
+    "names": ["fromBase64", "toBase64"],
     "sourceHash": "1a2c8926469e98e987cc2395e1d34bd264eca674e186ddebbe297fd92e054b19",
     "reason": "Base64-byte loop repeats tabFetch decoding, but tiny context and ArrayBuffer/Uint8Array output differ; no priority refactor.",
     "task": null
@@ -234,9 +1296,7 @@
     "family": "base64-decode",
     "assessment": "small-shared-kernel-candidate",
     "path": "src/lib/tabFetch.ts",
-    "names": [
-      "base64ToBytes"
-    ],
+    "names": ["base64ToBytes"],
     "sourceHash": "6c5b0e94848070dc1596efc9cc261f155c7b79c1014fb7680a249e47528665b0",
     "reason": "Byte-loop overlap confirmed; injected page closure must remain self-contained if a future helper is extracted.",
     "task": null
@@ -245,9 +1305,7 @@
     "family": "rate-formatting",
     "assessment": "distinct-contracts",
     "path": "src/popup/shared/formatters/speed.ts",
-    "names": [
-      "formatRate"
-    ],
+    "names": ["formatRate"],
     "sourceHash": "b23207fa6c9e38fe63559b24b49acb2ba80f0ba5f6f4694d5a4aa9fd10d5d017",
     "reason": "Rate rounding, minimum nonzero indication and promotion differ from binary file size labels.",
     "task": null
@@ -256,10 +1314,7 @@
     "family": "connection-errors",
     "assessment": "review-before-consolidation",
     "path": "src/background/downloads.ts",
-    "names": [
-      "classifyFailure",
-      "classifyConnectionFailure"
-    ],
+    "names": ["classifyFailure", "classifyConnectionFailure"],
     "sourceHash": "758c8fdce8e436c77222611aba4e2d029fb6b535333211fc60ae1e14f2c1a6b7",
     "reason": "Text classifiers distinguish tracker send failure and NAS preflight; typed LoginError already exists in UI health classification.",
     "task": "ENG-23"
@@ -268,11 +1323,7 @@
     "family": "connection-errors",
     "assessment": "distinct-contracts",
     "path": "src/lib/connectionHealth.ts",
-    "names": [
-      "connectionFailure",
-      "classify",
-      "describe"
-    ],
+    "names": ["connectionFailure", "classify", "describe"],
     "sourceHash": "400b40e80fb0d9fcca218f661c848561706025ef9d936772cc7db3fa26dd7f4a",
     "reason": "Typed NAS login/timeout health presentation is narrower than tracker handoff and notification episode kind.",
     "task": "ENG-23"
@@ -281,22 +1332,18 @@
     "family": "settings-import",
     "assessment": "distinct-contracts",
     "path": "src/lib/settings.ts",
-    "names": [
-      "loadSettings",
-      "saveSettings"
-    ],
-    "sourceHash": "0b1fe03ab0a2dea37e6c8ad8d9f8f4ca3061ee53c9bda0aae9c8d1585f89fe66",
-    "reason": "Storage defaults/migration/credential precedence differ from portable user-selected backup patches.",
-    "task": null
+    "names": ["loadSettings", "saveSettings"],
+    "sourceHash": "e266fb92740f3f01b1b3d732cf48112f1edbbeb777e759bb00f9a7626dd0e6ff",
+    "reason": "Storage defaults/migration/credential precedence differ from portable user-selected backup patches. Final delta: reads resolve defaults without writes; controlled stale snapshot cannot replace newer preferences. Save/migration owns persistence; credential and portable normalization contracts remain distinct.",
+    "task": null,
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
   },
   {
     "family": "settings-import",
     "assessment": "distinct-contracts",
     "path": "src/popup/features/settings/settingsBackup.ts",
-    "names": [
-      "parseImportedSettings",
-      "exportSettings"
-    ],
+    "names": ["parseImportedSettings", "exportSettings"],
     "sourceHash": "9c63266a8b23e2994609866eb377d164744a1ad1218d431256d418c83261076c",
     "reason": "Import trust boundary allows only portable keys and omission preserves existing settings; not a full storage loader.",
     "task": null
@@ -305,10 +1352,7 @@
     "family": "command-feedback-wrappers",
     "assessment": "intentional-local-repetition",
     "path": "src/popup/features/downloads/index.ts",
-    "names": [
-      "start",
-      "stop"
-    ],
+    "names": ["start", "stop"],
     "sourceHash": "4efd0cd95e285e5fcb734fdaad1ec69559503b3df118e757652dac8178a3bb0d",
     "reason": "Rechecked unchanged inline command/outcome wrappers after removal of the unconfirmed connection-reset snapshot; no generic popup runner introduced.",
     "task": null,
@@ -319,13 +1363,7 @@
     "family": "monitoring-result-ownership",
     "assessment": "serialized-current-owner",
     "path": "src/background/alarms.ts",
-    "names": [
-      "armMonitoring",
-      "invalidateBackgroundPolls",
-      "pollStatus",
-      "clearMonitoring",
-      "isCurrentConnection"
-    ],
+    "names": ["armMonitoring", "invalidateBackgroundPolls", "pollStatus", "clearMonitoring", "isCurrentConnection"],
     "sourceHash": "56bafe243b874e38dde596e5293d65968e16eaa410863562c05b1431e2c75450",
     "reason": "Reviewed poll/connection revisions, post-storage ownership checks, serialized alarm create/clear, definite unowned results and separate bookkeeping failure; controlled regressions preserve confirmed idle and explicit retry.",
     "task": "BUG-76"
@@ -341,8 +1379,21 @@
       "markMonitoringUnavailable",
       "acknowledgeAttention"
     ],
-    "sourceHash": "656f54976f709ea7033a89d446d7eaecf9d19a299da11a80be10d42b74270581",
-    "reason": "Reviewed poll/connection revisions, post-storage ownership checks, serialized alarm create/clear, definite unowned results and separate bookkeeping failure; controlled regressions preserve confirmed idle and explicit retry.",
-    "task": "BUG-76"
+    "sourceHash": "931cd804b1705e9f84a36224b62efd15dd4af55817ea125a7c0c67ea0421b685",
+    "reason": "Reviewed poll/connection revisions, post-storage ownership checks, serialized alarm create/clear, definite unowned results and separate bookkeeping failure; controlled regressions preserve confirmed idle and explicit retry. Final delta: gray/red attention survives polls until explicit acknowledgement; gray returns no configuration reason. Serialized writes and failed-write retry retain their existing owner contract.",
+    "task": "BUG-76",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex acceptance after Terra review"
+  },
+  {
+    "family": "retained-script-build",
+    "assessment": "reviewed-platform-build-boundary",
+    "path": "vite.config.ts",
+    "names": ["callback:process.argv.some", "devManifest"],
+    "sourceHash": "64cff997b9d47bcef4a3d3cd3806897f98229eab95b78f2880b7557427ccbd0c",
+    "reason": "Reviewed Chrome/dev/Firefox manifest selection, deliberate manifest literal narrowing, Storybook CRX exclusion and the supported standaloneFiles build option. Fresh IIFE execution resolves the reproduced cached-runtime boundary; no independent new loader or dependency is introduced.",
+    "task": "BUG-79",
+    "reviewedAt": "2026-10-10",
+    "reviewer": "Codex"
   }
 ]

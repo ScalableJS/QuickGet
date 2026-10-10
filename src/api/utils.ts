@@ -9,6 +9,10 @@ type ApiError = Error & {
   apiUnsupported?: boolean;
 };
 
+export function isDuplicateApiError(error: unknown): boolean {
+  return error instanceof Error && "duplicate" in error && error.duplicate === true;
+}
+
 function toApiResult(value: unknown): ApiResult {
   if (typeof value === "object" && value !== null) {
     return value as ApiResult;
@@ -59,7 +63,7 @@ const coerceString = (value: unknown, fallback = ""): string => {
  * http://…/linux-minimal.iso" — it repeated what the user had just clicked and said nothing about
  * why. The code is the part that carries meaning.
  */
-const DS_ERROR_MESSAGES: Record<number, string> = {
+const DS_ERROR_MESSAGES: Partial<Record<number, string>> = {
   1: "Incorrect parameters for the API.",
   2: "This API does not exist.",
   3: "Incorrect parameters for the API.",
@@ -88,6 +92,7 @@ const DS_ERROR_MESSAGES: Record<number, string> = {
   16385: "The torrent file was not found.",
   16386: "Incorrect torrent file format.",
   16387: "Download Station rejected the torrent configuration.",
+  20488: "Insufficient free space in the destination folder.",
 };
 
 /**
@@ -167,7 +172,10 @@ export function createApiError(prefix: string, result: unknown): ApiError {
   // Do not infer that fact from arbitrary errors: an expired session can say
   // "does not exist" too.
   const reasonLower = reason.toLowerCase();
-  if (errorCode === 8196 || (errorCode === 24593 && (reasonLower.includes("duplicate") || reasonLower.includes("exist")))) {
+  if (
+    errorCode === 8196 ||
+    (errorCode === 24593 && (reasonLower.includes("duplicate") || reasonLower.includes("exist")))
+  ) {
     error.duplicate = true;
   }
 

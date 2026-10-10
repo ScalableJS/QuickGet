@@ -1,11 +1,11 @@
 ---
 type: "task"
 id: "BUG-66"
-status: "todo"
+status: done
 priority: "p2"
 area: "tooling"
 board: "bugs"
-updated: "2026-10-09"
+updated: 2026-10-10
 legacy_status: "Backlog"
 severity: "medium"
 ---
@@ -38,3 +38,18 @@ port has to be re-entered into extension settings for each manual session. A fix
 override would make the stand usable without that ritual.
 
 Found while bringing the stand up to hand over for manual testing.
+
+
+## Polish execution: 2026-10-10
+
+Terra owns the bounded implementation/reproduction work; Codex owns review, Mimic consultation, integrated verification and acceptance. This starts the current polish pass without closing historical evidence gaps.
+
+
+## Implementation reviewed: 2026-10-10
+
+tsx is a declared development dependency with lockfile entries. The actual npm run stand command started its services and stopped with Ctrl+C. A fixed default stand port is an optional future UX choice, not needed to fix the missing executable. Integrated verification is recorded below.
+
+
+## Accepted polish: 2026-10-10
+
+Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.

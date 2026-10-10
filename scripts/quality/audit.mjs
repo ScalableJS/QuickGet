@@ -192,10 +192,10 @@ function main() {
   const report = {
     reviewStates,
     inferredAny,
-    version: 1,
+    version: 2,
     sourceRevision: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
     method:
-      "TypeScript AST, inline HTML scripts and Svelte compiler script/template callable inventory; >=40-token whole-body exact/identifier-and-literal-normalized candidates; semantic duplication requires manual review",
+      "TypeScript AST, inline HTML scripts and Svelte compiler script/template callable inventory; >=40-token whole-body exact/identifier-and-literal-normalized candidates; semantic duplication requires manual review; omitted callable screening means automated-screened, omitted groups means no whole-body match",
     exclusions: [
       "Dependencies/build outputs ignored by Git",
       "Generated declarations and function/type signatures without bodies",
@@ -203,7 +203,11 @@ function main() {
       "Algorithms duplicated as partial blocks or expressed differently may have no whole-body fingerprint match",
     ],
     files: files.map(({ functions: _functions, risks: _risks, ...file }) => file),
-    functions: functions.map(({ shape: _shape, ...fn }) => fn),
+    functions: functions.map(({ shape: _shape, screening, groups: memberships, ...fn }) => ({
+      ...fn,
+      ...(screening !== "automated-screened" ? { screening } : {}),
+      ...(memberships.length > 0 ? { groups: memberships } : {}),
+    })),
     groups,
     risks: files.flatMap((file) => file.risks),
   };
@@ -223,7 +227,7 @@ function main() {
       "type: research",
       "status: active",
       "area: engineering",
-      "updated: 2026-10-09",
+      `updated: ${new Date().toISOString().slice(0, 10)}`,
       "---",
       "",
       "# Callable duplication screening inventory",

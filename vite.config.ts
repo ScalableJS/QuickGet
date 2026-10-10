@@ -41,7 +41,7 @@ function devManifest(base: Manifest): Manifest {
 }
 const plugins: PluginOption[] = [UnoCSS(), svelte(), Icons({ compiler: "svelte" })];
 if (!isStorybook) {
-  plugins.push(crx({ manifest }));
+  plugins.push(crx({ manifest, contentScripts: { standaloneFiles: ["src/content/magnet.ts"] } }));
 }
 
 export default defineConfig({

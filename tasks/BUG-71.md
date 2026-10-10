@@ -1,11 +1,11 @@
 ---
 type: "task"
 id: "BUG-71"
-status: "partial"
+status: done
 priority: "p2"
 area: "content/background/popup UX"
 board: "bugs"
-updated: "2026-10-09"
+updated: 2026-10-10
 legacy_status: "In Progress"
 severity: "medium"
 execution_order: 10
@@ -77,3 +77,15 @@ See [the current feedback matrix](../docs/system/feedback.md).
 Mimic's final source review additionally raised page dispatch with a still-pending callback, ordinary-file fallback ignoring anchor download/target attributes, and gray-notice acknowledgement/lifetime. These are broader policy paths, not failures of the extracted claim/callback kernel. The current fallback is same-tab navigation; it does not recreate every native anchor action. No arbitrary dispatch deadline is added: a timeout while NAS acceptance is unknown could start browser handling for an already accepted/in-progress NAS send. Measure the causal lost-response path and decide late-reply/fallback ownership first. Gray notices remain distinct from popup direct/poll statuses; their retention requires the broader intent matrix.
 
 The resetActionState concurrency suggestion was rejected as a production blocker after a repository call-site check found only tests calling that export. This does not certify every toolbar interleaving.
+
+
+## Polish execution: 2026-10-10
+
+Terra owns the bounded implementation/reproduction work; Codex owns review, Mimic consultation, integrated verification and acceptance. This starts the current polish pass without closing historical evidence gaps.
+
+
+## Accepted polish: 2026-10-10
+
+Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.
+
+The finite matrix now covers current popup, page, automatic torrent, context-menu, native API and attention contracts. Genuine retained-tab extension reload keeps the site open and proves one magnet plus one Shift-file request with terminal success. Superseded page gestures keep their individual transport outcome but do not own a second toast; quiet automatic/menu success uses task-list/toolbar confirmation. Unknown acceptance never triggers automatic browser handling or retry. OS display and every tracker/firmware combination are explicit external limits, not uncompleted renderer refactoring.

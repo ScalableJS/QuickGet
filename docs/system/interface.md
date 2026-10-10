@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: interface
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["popup-interface", "themes", "development-harness"]
 ---
 
@@ -29,3 +29,8 @@ The unused `Card.svelte` component and its barrel export were removed through [E
 - [Store capture scripts](../../scripts/generate-store-assets.js), [demo scenario](../../tests/e2e/demo.spec.ts), and the [historical demo board](../../agent-os/product/demo-video-kanban.md) explain recording context.
 
 The axe gate covers the scenarios it opens; it does not certify every interaction. Storybook compilation and recorded-video quality require their own runs and are not inferred from mock E2E.
+
+
+## Control boundary polish: 2026-10-10
+
+Field, SearchField and Select use a visible resting control border. The light token reuses the existing checkbox-border color, measured at 3.45:1 against the page surface; dark remains 5.57:1. Focus and invalid states retain their own borders/rings. Muted download metrics and toolbar labels use the existing text-muted token rather than an undefined alias. The contrast guard now includes the control boundary pair.

@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: background
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["torrent-handoff"]
 ---
 
@@ -38,3 +38,8 @@ After NAS acceptance, clearing the previous failure episode is best-effort bookk
 session-storage cleanup is logged without changing acceptance or preventing browser cancellation.
 Pre-acceptance send failures still preserve the browser transfer. The regression injects cleanup
 rejection after one mocked `AddTorrent` acceptance; it is not a physical-NAS observation.
+
+
+## Polish verification: 2026-10-10
+
+The production spot check passed real torrent acceptance and direct-link lifecycle checks, with no owned tasks left behind. [Verification](verification.md#final-polish-hardware-evidence-2026-10-10) records the executed scope; it does not certify browser outcomes outside the named scenarios.

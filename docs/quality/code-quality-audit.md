@@ -2,7 +2,7 @@
 type: research
 status: active
 area: engineering
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 # Code quality and algorithm duplication audit
@@ -126,3 +126,62 @@ Two gateway extractions returned an earlier audit or only a code fragment; neith
 The substantive final Mimic review prompted tests for structured authentication errors, same-connection out-of-order results, queued configuration/failure warnings and alarm rearming during removal. Terra restricted duplicate acceptance to the supported codes, introduced poll revisions, guarded the queued toolbar writer and serialized alarm removal with creation. Codex found two further defects during acceptance: ownership was checked before an awaited session-state read, and a rejected alarm clear turned a successful NAS reply into connection attention. Both new regression tests failed before correction and passed afterward. Ownership now follows the state read and awaited connection check; alarm bookkeeping failures are logged separately. The no-owner writer overload retains its definite result contract without a fallback or assertion.
 
 These controlled cases establish their named interleavings, not universal concurrency certification. Ordinary page/native feedback lifetime and fallback policy remain BUG-71 work.
+
+
+## Final polish execution: 2026-10-10
+
+The independent Terra semantic pass read all 68 runtime files and inspected all 575 implementations in the starting registry, grouping nested handlers with their owning module contracts. This is a source/caller review, not a proof of universal correctness or zero duplication. Confirmed duplication decisions preserve separate storage/import, URL/form, numeric coercion, cache lifetime, rate/size, tracker/NAS and UI feedback contracts; whole-body matches remain candidates rather than an artificial zero score.
+
+The pass found a missing multipart move parameter when the Target setting is empty. Codex accepted the omission finding and rejected the proposed new mandatory-setting policy: the minimal correction sends the already declared required parameter, leaving the NAS to validate its value. The request-body regression fails before the correction and passes afterward. No assumption that every firmware accepts an empty value is made.
+
+Codex inspected the previously failed CI browser run 37991849420. Its trace shows the ordinary file reached browser download handling rather than AddUrl. A controlled settings regression established that default backfilling could overwrite a newer file-capture choice; a second controlled regression showed the same race for HTTPS, port and theme, so settings reads now resolve all defaults in memory and leave persistence to save/migration. This corrects a reproduced race without weakening the browser assertion or adding waits/retries.
+
+### Vendor error fact verification
+
+Public Download Station assets libs/ds-all.js and lang/ENG.js were fetched directly from the locally configured NAS on 2026-10-10, without logging its address or credentials. This supplies primary installed-vendor evidence for the nine shared codes and code 20488; it does not imply every firmware uses identical codes.
+
+| Code | Vendor language key | Interpretation |
+|---|---|---|
+| 4096 | ERR_FOLDER_NOT_FOUND | This directory does not exist. |
+| 4097 | ERR_FOLDER_ACCESS_DENY | You cannot access this directory. |
+| 8196 | ERR_DUPLICATE_TASK | This task already exists. |
+| 12288 | ERR_URL_NOT_SUPPORTED | This URL format is not supported. |
+| 12289 | ERR_URL_DOWNLOAD_FAIL | URL download failed. |
+| 12290 | ERR_PARSE_HOST_FAIL | Failed to parse the web address |
+| 16384 | ERR_MAGNET_FORMAT | Incorrect Magnet format. |
+| 16385 | ERR_TORRENT_FILE_NOT_EXISTS | The Torrent file was not found. |
+| 16386 | ERR_TORRENT_FILE_FORMAT | Incorrect Torrent file format. |
+| 20488 | ERR_DST_SPEACE_NOT_ENOUGH | Insufficient free space in destination folder. |
+
+Source SHA256: libs/ds-all.js 4da2583104e9d6b70a4f8c79d0d7f64962ed97dde32d96bbc224772ccffd1de1; lang/ENG.js 05714173b0322d9fd6e989e1c96d813e07df04b53b2c7086c2f19f123bf6f3c5.
+
+ENG-23 resolves as a bounded no-extraction decision: API explanations, task-row labels and tracker/NAS failure classification retain their distinct contexts. Corrected task labels cover URL format rather than only protocol, general URL download failure rather than only connection, and destination-folder free space rather than the entire appliance. Typed numeric lookup removes two assertions; no shared dictionary or classifier is forced merely to eliminate overlapping codes.
+
+
+### Final consultation and evidence boundaries
+
+Mimic supplied a fresh substantive review of the current feedback boundaries. Its confirmed page-owner, notification-episode and gray-attention cases were assigned to Terra for bounded corrective work; source suggestions are accepted only with reproduction and integration checks. The first reinjection-only test was not accepted as proof of extension reload. Unknown messaging acceptance is kept separate from an explicit worker rejection; a UI-only uncertainty wait must not trigger native fallback or release a still-pending duplicate-send claim. Three surface owners and distinct error texts remain intentional contracts.
+
+The callable JSON schema now omits only redundant default screening/group fields, with defaults documented in its method string. Individual hashes, locations, scope, matching groups, type risks and manual evidence remain; no test/harness sources are excluded to stay below the formatter's 1 MiB file limit.
+
+### Genuine retained-tab reload correction
+
+The original repeat-init test was rejected as reload evidence. Enabling developer mode in the ephemeral Chromium profile allowed runtime.reload to execute, revealing zero AddUrl requests from the retained site. Three boundaries contributed: the update-only worker hook did not perform a refresh in this sequence, dynamic module reuse retained an invalidated runtime, and stale cleanup touched chrome.storage before removing its document listener. That exception left the obsolete capture handler ahead of its replacement, where stopImmediatePropagation blocked sending.
+
+The correction uses the existing CRX standaloneFiles option for a fresh IIFE context, a session-lifetime refresh marker that survives worker suspension but resets on extension reload, and DOM-first cleanup before invalidated API access. It does not introduce a page reload, test-only injection, per-wake reinjection or native-success spam. BUG-79 records the mandatory real-reload browser acceptance; source and test deltas receive root review before their final hashes are accepted.
+
+Codex rejected stopping at the replacement cleanup: the new isolated context cannot always reach the old cleanup through globalThis. The accepted capture boundary makes an invalidated old handler remove itself and return without preventDefault, stopImmediatePropagation, sending or native fallback. The fresh handler receives the same event. Genuine retained-tab magnet and Shift-file sends then pass with one NAS request each. This complements, rather than simulates, the real extension lifecycle.
+
+### Final integrated acceptance
+
+Root reviewed the full final deltas and strengthened stale-handler retirement assertions. The old-handler test fails with the guard removed, then passes after restoration. Session refresh is tested both across wakes and after reset; overlapping initial duplicate tests were combined into one meaningful lifecycle case.
+
+The final registry inventories 2661 implementations in 216 files: 594 runtime, 153 tooling, 1871 tests and 43 harness. All 594 runtime implementations have current module/family evidence; two reviewed Vite tooling implementations bring the manual total to 596. Zero manual review records are stale. There are 23 whole-body candidate groups, including legitimate runtime wrappers and test repetition; this is not relabeled zero duplication. Runtime has zero explicit or recorded inferred any, zero double/non-null assertions, 37 ordinary assertions, six const assertions and the sanctioned logger lint exemption. Tests retain seven pragmatic any uses.
+
+The compact JSON is 935686 bytes. Restoring redundant default screening/group fields would exceed the formatter's 1 MiB limit. The scanner preserves the full source/callable/test inventory and meaningful match/negative evidence rather than excluding hard-to-review code.
+
+Fresh final checks passed: 595 unit/fixture tests across 41 files, 61 Chromium mock E2E, ten classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production/dev builds, 26 contrast checks, 28 deployment unit tests, Storybook build, and Firefox build/lint/package. Six production-bundle real-NAS spot checks passed and the owned-task ledger is empty. Firefox packaging is not Firefox runtime parity; Chrome notification creation is not OS-display proof. No release, version bump or store publication occurred.
+
+Configured V8 coverage: statements 90.94%, branches 84.72%, functions 90.54%, lines 92.00%. Existing selected-TypeScript exclusions, including Svelte components and index entrypoints, remain unchanged. These percentages do not certify the whole product; browser scenarios cover named rendering/wiring boundaries. The prior failed CI classifier trace was investigated and its causal default-write race corrected, rather than bypassed with waits or weaker assertions.
+
+BUG-64, BUG-65, BUG-66, BUG-71, BUG-77, BUG-78, BUG-79, ENG-23 and ENG-24 complete the bounded polish. Unreproduced BUG-70 and separate product decisions remain outside this acceptance. Documentation, scanner, language, Rulesync and actual staged-index checks accompany the accepted source evidence.

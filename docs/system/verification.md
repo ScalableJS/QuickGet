@@ -2,7 +2,7 @@
 type: reference
 status: active
 area: testing
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["verification-infrastructure"]
 ---
 
@@ -21,7 +21,7 @@ features: ["verification-infrastructure"]
 | Documentation | `npm run docs:check` | Registry integrity, classification and reviewed snapshot consistency | Product usefulness or automatically discovered behavior inside old files |
 | Documentation self-tests | `npm run test:docs` | Checks actually fail on drift, missing links, hidden features, non-English comments and staged mismatch | The accuracy of a human-written review reason |
 
-No coverage percentage merges these evidence levels. The documentation registry links existing evidence files; a file link is not a claim that its suite was run on a particular machine. The local quality gates are run for this change, while a new real-NAS test is outside this documentation audit.
+No coverage percentage merges these evidence levels. The documentation registry links existing evidence files; a file link is not a claim that its suite was run on a particular machine. Dated acceptance sections below identify which local and real-NAS suites were actually executed; documentation review alone does not establish those runtime results.
 
 ## Fixtures and hardware ownership
 
@@ -74,3 +74,14 @@ is implied by these local gates.
 ## Code-quality normalization acceptance: 2026-10-09
 
 Fresh integrated gates passed 571 unit/fixture tests across 40 files, 60 Chromium mock E2E, typecheck, Svelte (zero errors/warnings), lint and production build. [The acceptance record](../quality/code-quality-audit.md#accepted-normalization-2026-10-09) records root rejection/correction probes and scanner review limits. Configured V8 coverage on the final patch: statements 90.86%, branches 84.96%, functions 89.77%, lines 91.56%. The include/exclude rules are unchanged: this measures selected TypeScript modules and excludes Svelte components and index entrypoints; it is not whole-product coverage. No fresh NAS, Firefox or publication result is claimed.
+
+
+## Final polish hardware evidence: 2026-10-10
+
+The production spot check was executed against the locally configured real NAS after the required-field correction. Six tests passed: preflight, extension connection, torrent acceptance, magnet AddUrl, direct-link fetch/pause/resume/remove, and fixture-prefix ownership. The owned-task ledger was empty after cleanup. This is a real hardware result, distinct from the mock suite and vendor documentation review. It does not publish a release or prove native OS notification display. Final messaging/UI corrective checks are recorded with the integrated acceptance run below.
+
+## Final polish integrated acceptance: 2026-10-10
+
+Final production-bundle hardware checks passed all six spot-check tests with an empty owned-task ledger. Final local integration passed 595 unit/fixture tests across 41 files, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production/dev builds, 26 contrast checks, 28 deployment unit tests, Storybook and Firefox build/lint/package. The genuine extension-reload browser test retains the website and checks exactly one accepted magnet and one Shift-file send. Controlled stale-handler retirement fails without the guard and passes with it.
+
+Configured V8 coverage is 90.94% statements, 84.72% branches, 90.54% functions and 92.00% lines under unchanged selected-TypeScript exclusions. Svelte and index wiring use separate named browser evidence. All 594 current runtime implementations have current manual duplication-review hashes, independently of the test percentages. [The final audit](../quality/code-quality-audit.md#final-integrated-acceptance) records remaining assertion boundaries and review limits. This completes bounded polish, not every future feature, Firefox runtime, OS notification display or store release.

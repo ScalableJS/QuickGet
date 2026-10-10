@@ -8,7 +8,7 @@ import { migrateSettings } from "@lib/settings.js";
 import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
 import { armMonitoring, ensureMonitoring, handleAlarm, invalidateBackgroundPolls } from "./alarms.js";
 import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
-import { refreshContentScripts } from "./contentScripts.js";
+import { refreshRetainedContentScripts } from "./contentScripts.js";
 import { initDownloadInterception } from "./downloads.js";
 import { handleMagnetAdd } from "./magnetHandler.js";
 import { createContextMenus, handleContextMenuClick, sendDownloadToStation } from "./menus.js";
@@ -41,11 +41,10 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 });
 
 // Initialize on install
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(() => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
   void migrateSettings().catch((error: unknown) => console.error("[QuickGet] Settings migration failed:", error));
-  if (details.reason === "update") void refreshContentScripts();
   // Reflect any already-running downloads right away after an install/update.
   void ensureMonitoring();
 });
@@ -66,6 +65,10 @@ chrome.alarms.onAlarm.addListener(handleAlarm);
 
 // Redirect torrent downloads to the NAS; ordinary-file click interception has its own setting.
 initDownloadInterception();
+
+void refreshRetainedContentScripts().catch((error: unknown) =>
+  console.error("[QuickGet] could not refresh retained content scripts:", error),
+);
 
 // The background is the single writer of the toolbar action. Other contexts
 // (the popup) talk to it by message: MONITOR_MESSAGE arms the poll after a
@@ -114,7 +117,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       return;
     }
     void sendDownloadToStation(url, _sender.tab?.url)
-      .then(() => sendResponse({ ok: true }))
+      .then(({ duplicate }) => sendResponse({ ok: true, duplicate }))
       .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
     return true;
   }

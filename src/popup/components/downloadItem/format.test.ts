@@ -1,6 +1,6 @@
 import type { Task } from "@lib/tasks.js";
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDestination, getDownloadItemView } from "./format.js";
+import { formatBytes, formatDestination, formatError, getDownloadItemView } from "./format.js";
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -282,7 +282,7 @@ describe("getDownloadItemView", () => {
         errorCode: 20488,
       }),
     );
-    expect(diskFullView.errorDetail).toBe("Not enough disk space on NAS");
+    expect(diskFullView.errorDetail).toBe("Not enough space in the destination folder");
 
     // Duplicate
     const duplicateView = getDownloadItemView(
@@ -411,5 +411,15 @@ describe("the folder line only appears when it is news", () => {
       "Download",
     );
     expect(view.folderTitle).toBe("Saving to Multimedia/Movies");
+  });
+});
+
+describe("vendor-backed error wording", () => {
+  it.each([
+    [12288, "URL format not supported"],
+    [12289, "URL download failed"],
+    [20488, "Not enough space in the destination folder"],
+  ])("preserves the scope of Download Station code %s", (code, label) => {
+    expect(formatError(code)).toBe(label);
   });
 });

@@ -14,14 +14,8 @@ export async function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
     chrome.storage.local.get(null, (localItems) => {
       chrome.storage.session.get("sessionNASpassword", (sessionItems) => {
-        const missing: Partial<Settings> = {};
-
-        /**
-         * `persist: false` resolves the default in memory without writing it back. Used for
-         * the folders: persisting one would freeze today's default as an explicit user choice
-         * that no later change could override — the same trap the interception mode fell into.
-         */
-        const stringWithDefault = (key: keyof Settings, fallback: string, persist = true): string => {
+        // Resolve defaults from this snapshot without writing them back over a newer user choice.
+        const stringWithDefault = (key: keyof Settings, fallback: string): string => {
           const raw = localItems[key];
           if (typeof raw === "string") {
             const trimmed = raw.trim();
@@ -31,13 +25,10 @@ export async function loadSettings(): Promise<Settings> {
             if (asString) return asString;
           }
 
-          if (fallback && persist) {
-            (missing as Record<string, unknown>)[key] = fallback;
-          }
           return fallback;
         };
 
-        const booleanWithDefault = (key: keyof Settings, fallback: boolean, persist = true): boolean => {
+        const booleanWithDefault = (key: keyof Settings, fallback: boolean): boolean => {
           const raw = localItems[key];
           if (typeof raw === "boolean") {
             return raw;
@@ -47,24 +38,14 @@ export async function loadSettings(): Promise<Settings> {
             if (normalized === "true" || normalized === "1") return true;
             if (normalized === "false" || normalized === "0") return false;
           }
-          if (persist) {
-            (missing as Record<string, unknown>)[key] = fallback;
-          }
           return fallback;
         };
 
-        /**
-         * Behavioural flags are resolved in memory only — deliberately NOT added to
-         * `missing`. Persisting one turns it into an explicit user choice that a later
-         * default change can no longer override, which is how interception silently
-         * stayed off for every existing profile.
-         */
         const themeWithDefault = (key: keyof Settings, fallback: ThemeMode): ThemeMode => {
           const raw = localItems[key];
           if (typeof raw === "string" && (THEME_MODES as readonly string[]).includes(raw)) {
             return raw as ThemeMode;
           }
-          (missing as Record<string, unknown>)[key] = fallback;
           return fallback;
         };
 
@@ -89,20 +70,14 @@ export async function loadSettings(): Promise<Settings> {
           NASport: stringWithDefault("NASport", DEFAULTS.NASport),
           NASlogin: stringWithDefault("NASlogin", DEFAULTS.NASlogin),
           NASpassword,
-          NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir, false),
-          NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir, false),
+          NAStempdir: stringWithDefault("NAStempdir", DEFAULTS.NAStempdir),
+          NASdir: stringWithDefault("NASdir", DEFAULTS.NASdir),
           interceptFileLinks: booleanWithDefault("interceptFileLinks", DEFAULTS.interceptFileLinks),
           routingRules: sanitizeRoutingRules(localItems.routingRules),
           theme: themeWithDefault("theme", DEFAULTS.theme),
         };
 
-        const finish = (): void => resolve(settings);
-
-        if (Object.keys(missing).length > 0) {
-          chrome.storage.local.set(missing, finish);
-        } else {
-          finish();
-        }
+        resolve(settings);
       });
     });
   });

@@ -106,6 +106,11 @@ test("Shift-click sends one ordinary file while automatic interception is off", 
       .toBe(1);
     expect(getsFor(testStand.requestLog, "/files/plain-clip.mkv")).toBe(0);
     expect(await browserDownloads(session)).toBe(before);
+    await expect
+      .poll(() =>
+        standPage.evaluate(() => document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent ?? ""),
+      )
+      .toContain("Sent to Download Station");
   } finally {
     await session.close();
     await testStand.close();
@@ -167,6 +172,11 @@ test("a failed ordinary-file hand-off resumes the standard browser download auto
 
     await expect.poll(() => getsFor(testStand.requestLog, "/files/plain-clip.mkv")).toBeGreaterThan(0);
     expect(addUrlBodies(mockNas.requestLog.toJSON())).toHaveLength(0);
+    await expect
+      .poll(() =>
+        standPage.evaluate(() => document.getElementById("quickget-feedback-host")?.shadowRoot?.textContent ?? ""),
+      )
+      .toContain("Continuing in the browser");
   } finally {
     await session.close();
     await testStand.close();

@@ -541,6 +541,21 @@ describe("AddTorrent folder requirements", () => {
     type: "application/x-bittorrent",
   });
 
+  it("includes the required move parameter even when the optional target is empty", async () => {
+    const client = createApiClient({ settings: createTestSettings({ NASdir: "" }), fetchFn: fetch });
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddTorrent", async ({ request }) => {
+        const body = await request.text();
+        expect(body).toContain('name="move"\r\n\r\n\r\n--');
+        return HttpResponse.json({ error: 0 });
+      }),
+    );
+    await expect(client.addTorrent(torrent)).resolves.toEqual({ added: true });
+  });
+
   it("names the setting instead of asking the NAS with an empty temp folder", async () => {
     const client = createApiClient({
       settings: createTestSettings({ NAStempdir: "" }),

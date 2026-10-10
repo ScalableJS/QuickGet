@@ -156,7 +156,10 @@ export async function applyBadgeStats(
   owner?: ToolbarStateOwner,
 ): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean } | undefined> {
   return updateState(async (state) => {
-    const needsAttention = state.badgeText === CONFIG_BADGE;
+    // A successful task poll knows the current count, but it does not resolve a tracker action
+    // the user still needs to take. Both attention states therefore survive polling; red remains
+    // the stronger state because markSendNotice() never replaces it.
+    const needsAttention = state.badgeText === CONFIG_BADGE || state.badgeText === NOTICE_BADGE;
     const hasActivity = stats.downloading > 0 || stats.seeding > 0;
     const text = stats.downloading > 0 ? String(stats.downloading) : "";
 
@@ -251,20 +254,24 @@ export async function markConfigurationProblemAfterActiveState(
 }
 
 /**
- * Opening the popup is the acknowledgement: return the persisted reason so it can be read in
- * context, then remove the toolbar alarm. The reason has no timer and survives worker sleeps.
+ * Opening the popup acknowledges either toolbar state. A red configuration failure returns its
+ * reason for the popup to show; a gray send notice simply clears without being reclassified as a
+ * NAS error. Both states have no timer and survive worker sleeps.
  */
 export async function acknowledgeAttention(): Promise<string | null> {
   return updateState(async (state) => {
-    if (state.badgeText !== CONFIG_BADGE) return null;
+    if (state.badgeText !== CONFIG_BADGE && state.badgeText !== NOTICE_BADGE) return null;
 
+    const isConfigurationProblem = state.badgeText === CONFIG_BADGE;
     const reason = state.failureReason;
-    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) return reason;
+    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) {
+      return isConfigurationProblem ? reason : null;
+    }
 
     state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
     state.failureReason = null;
-    return reason;
+    return isConfigurationProblem ? reason : null;
   });
 }
 

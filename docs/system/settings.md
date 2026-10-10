@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: settings
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["connection-settings", "settings-lock", "settings-backup"]
 ---
 
@@ -44,3 +44,8 @@ Auto, Light, and Dark are applied and saved immediately, without waiting for Sav
 - Unit tests cover settings, lock, URL parsing, connection health, and backup parsing. [Connection E2E](../../tests/e2e/settings-connection.spec.ts) covers the visible form and time budget; [popup cycle](../../tests/e2e/popup.full-cycle.spec.ts) covers the lock and import/export journey.
 
 Source inspection and existing tests do not certify encrypted storage: there is none. Field behavior on every NAS firmware is outside these checks.
+
+
+## Interception default ownership
+
+Settings reads resolve defaults and legacy values in memory without writing inferred defaults back. A controlled older-snapshot interleaving reproduced overwriting newer file interception, HTTPS, port and theme choices. Explicit save and migration own persistence; stored boolean/string choices still follow the existing normalization contract. The absent file-interception choice remains false.

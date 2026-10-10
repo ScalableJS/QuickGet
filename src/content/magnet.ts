@@ -3,11 +3,12 @@
  * Injected at document_start into all frames.
  *
  * Adheres to strict DOM Event Loop semantics:
- * - Magnet clicks are always claimed; a failed NAS hand-off invokes the browser handler.
+ * - Magnet clicks are always claimed; a known rejection invokes the browser handler.
  * - Shift-click opts one ordinary file into sending while automatic file interception is off.
  * - Forward magnet URI to the Service Worker via runtime.sendMessage.
  * - Provide immediate feedback in an isolated Shadow DOM toast.
- * - On failure, restore the browser's normal navigation automatically.
+ * - Restore native handling only for known rejection or proven pre-dispatch failure.
+ * - Unknown acceptance stays claimed so a lost reply cannot cause a duplicate download.
  */
 
 import { DEFAULTS } from "@lib/config.js";
@@ -26,10 +27,16 @@ export type SendLinkMessage = {
   pageUrl: string;
 };
 
-export type MagnetResponse = { ok: true } | { ok: false; error: string; code?: string };
+export type MagnetResponse = { ok: true; duplicate?: boolean } | { ok: false; error: string; code?: string };
 
-const inFlightUris = new Set<string>();
+type NativeFallback = {
+  url: string;
+  target: string;
+  download: string | null;
+};
+
 const CONTENT_SCRIPT_CLEANUP_KEY = "quickget:magnet-content-cleanup";
+const UI_REPLY_TIMEOUT_MS = 30_000;
 
 /**
  * Determine whether a mouse event represents an eligible, trusted primary click on a link.
@@ -110,6 +117,16 @@ export function getMagnetUri(event: MouseEvent): string | null {
 
 let toastTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
+let feedbackRevision = 0;
+
+// A page owns only its newest feedback. Transport claims are separate: an unanswered request
+// remains claimed because Download Station may already have accepted it.
+let feedbackOwner = 0;
+
+const pendingDispatches = new Map<string, { owner: number; timeoutId: ReturnType<typeof setTimeout> }>();
+
+let interceptionRevision = 0;
+
 let currentTheme: "auto" | "light" | "dark" = "auto";
 
 export function setCurrentTheme(theme: "auto" | "light" | "dark"): void {
@@ -132,8 +149,10 @@ export function showFeedback(
   state: "loading" | "success" | "error",
   message: string,
   actions: Array<{ label: string; onClick: () => void }> = [],
-): void {
-  if (typeof document === "undefined" || !document.body) return;
+  persistent = false,
+): number {
+  const revision = ++feedbackRevision;
+  if (typeof document === "undefined" || !document.body) return revision;
 
   if (toastTimeoutId) {
     clearTimeout(toastTimeoutId);
@@ -257,7 +276,8 @@ export function showFeedback(
   if (messageNode) messageNode.textContent = message;
   const dismissBtn = shadow.getElementById("qg-dismiss");
   dismissBtn?.addEventListener("click", () => {
-    host?.remove();
+    if (feedbackRevision !== revision) return;
+    clearFeedback(host);
   });
   for (const [index, action] of actions.entries()) {
     const button = shadow.getElementById(`qg-action-${index}`);
@@ -269,20 +289,22 @@ export function showFeedback(
 
   if (state === "success") {
     toastTimeoutId = setTimeout(() => {
-      host?.remove();
+      if (feedbackRevision === revision) clearFeedback(host);
     }, 2500);
-  } else if (state === "error" && actions.length === 0) {
+  } else if (state === "error" && actions.length === 0 && !persistent) {
     toastTimeoutId = setTimeout(() => {
-      host?.remove();
+      if (feedbackRevision === revision) clearFeedback(host);
     }, 4000);
   }
+
+  return revision;
 }
 
 /**
  * Forward an eligible magnet URI to the Service Worker. The click is claimed before dispatch;
  * failure restores the browser's native magnet handler through normal navigation.
  */
-function sendMagnetToWorker(uri: string): void {
+function sendMagnetToWorker(uri: string, fallback: NativeFallback): void {
   const message: MagnetMessage = {
     type: "task:add",
     uri,
@@ -291,6 +313,7 @@ function sendMagnetToWorker(uri: string): void {
   };
   sendToWorker(
     uri,
+    fallback,
     message,
     (response) => `Failed to send: ${response?.error || "NAS rejected the link"}`,
     (error) => `Extension error: ${String(error)}`,
@@ -304,11 +327,23 @@ export function setFileCaptureEnabled(enabled: boolean): void {
   fileCaptureEnabled = enabled;
 }
 
+/**
+ * Replace any preceding content-script handler for this document execution.
+ */
+function installMagnetInterception(): void {
+  if (typeof window === "undefined" || typeof chrome === "undefined" || !chrome.runtime?.id) return;
+
+  const existingCleanup: unknown = Reflect.get(globalThis, CONTENT_SCRIPT_CLEANUP_KEY);
+  if (typeof existingCleanup === "function") existingCleanup();
+  Reflect.set(globalThis, CONTENT_SCRIPT_CLEANUP_KEY, initMagnetInterception());
+}
+
 /** Hand an ordinary file link to the worker through the same path as the context menu. */
-function sendLinkToWorker(url: string): void {
+function sendLinkToWorker(url: string, fallback: NativeFallback): void {
   const message: SendLinkMessage = { type: "link:send", url, pageUrl: window.location.href };
   sendToWorker(
     url,
+    fallback,
     message,
     (response) => response?.error ?? "Could not send to Download Station",
     (error) => (error instanceof Error ? error.message : "Could not contact QuickGet"),
@@ -317,38 +352,89 @@ function sendLinkToWorker(url: string): void {
 
 function sendToWorker(
   url: string,
+  fallback: NativeFallback,
   message: MagnetMessage | SendLinkMessage,
   rejectedMessage: (response: Extract<MagnetResponse, { ok: false }> | undefined) => string,
   thrownMessage: (error: unknown) => string,
 ): void {
-  if (inFlightUris.has(url)) return;
-  inFlightUris.add(url);
-
+  if (pendingDispatches.has(url)) return;
+  const owner = ++feedbackOwner;
   showFeedback("loading", "Sending to Download Station…");
+
+  const pending = {
+    owner,
+    timeoutId: setTimeout(() => {
+      if (pendingDispatches.get(url)?.owner !== owner) return;
+      showUnknownAcceptance(owner);
+    }, UI_REPLY_TIMEOUT_MS),
+  };
+  pendingDispatches.set(url, pending);
 
   try {
     chrome.runtime.sendMessage(message, (response: MagnetResponse | undefined) => {
-      inFlightUris.delete(url);
+      if (pendingDispatches.get(url)?.owner !== owner) return;
       const lastErr = chrome.runtime.lastError;
       if (lastErr) {
-        fallBackToBrowser(url, `Could not contact QuickGet: ${lastErr.message}`);
+        if (isNoReceivingEnd(lastErr.message ?? "")) {
+          releaseDispatch(url, pending);
+          fallBackToBrowser(fallback, `Could not contact QuickGet: ${lastErr.message ?? ""}`, owner);
+        } else {
+          showUnknownAcceptance(owner, lastErr.message);
+        }
         return;
       }
       if (response?.ok) {
-        showFeedback("success", "Sent to Download Station");
+        releaseDispatch(url, pending);
+        if (isCurrentFeedback(owner)) {
+          showFeedback(
+            "success",
+            response.duplicate ? "Already exists on Download Station" : "Sent to Download Station",
+          );
+        }
         return;
       }
-      fallBackToBrowser(url, rejectedMessage(response));
+      if (response) {
+        releaseDispatch(url, pending);
+        fallBackToBrowser(fallback, rejectedMessage(response), owner);
+      } else showUnknownAcceptance(owner);
     });
   } catch (error) {
-    inFlightUris.delete(url);
-    fallBackToBrowser(url, thrownMessage(error));
+    if (isPreDispatchInvalidation(error)) {
+      releaseDispatch(url, pending);
+      fallBackToBrowser(fallback, thrownMessage(error), owner);
+    } else {
+      showUnknownAcceptance(owner, error instanceof Error ? error.message : undefined);
+    }
   }
 }
 
-function fallBackToBrowser(url: string, message: string): void {
-  showFeedback("error", `${message}. Continuing in the browser.`);
-  window.location.assign(url);
+function fallBackToBrowser(fallback: NativeFallback, message: string, owner: number): void {
+  if (isCurrentFeedback(owner)) showFeedback("error", `${message}. Continuing in the browser.`);
+  activateNativeFallback(fallback);
+}
+
+function showUnknownAcceptance(owner: number, detail?: string): void {
+  if (!isCurrentFeedback(owner)) return;
+  const suffix = detail ? ` (${detail})` : "";
+  showFeedback(
+    "error",
+    `QuickGet could not confirm whether Download Station accepted this link${suffix}. Check Download Station before trying again.`,
+    [],
+    true,
+  );
+}
+
+function releaseDispatch(url: string, pending: { owner: number; timeoutId: ReturnType<typeof setTimeout> }): void {
+  clearTimeout(pending.timeoutId);
+  if (pendingDispatches.get(url)?.owner === pending.owner) pendingDispatches.delete(url);
+}
+
+function isNoReceivingEnd(message: string): boolean {
+  return /receiving end does not exist|could not establish connection[^.]*receiving end/i.test(message);
+}
+
+function isPreDispatchInvalidation(error: unknown): boolean {
+  return error instanceof Error && /extension context invalidated/i.test(error.message);
 }
 
 /**
@@ -360,8 +446,9 @@ function fallBackToBrowser(url: string, message: string): void {
 function onDocumentClick(event: MouseEvent): void {
   const uri = getMagnetUri(event);
   if (uri) {
+    const fallback = snapshotFallback(event, uri);
     claimLinkClick(event);
-    sendMagnetToWorker(uri);
+    sendMagnetToWorker(uri, fallback);
     return;
   }
 
@@ -369,8 +456,9 @@ function onDocumentClick(event: MouseEvent): void {
   if (!fileUrl) return;
   if (!fileCaptureEnabled && !event.shiftKey) return;
 
+  const fallback = snapshotFallback(event, fileUrl);
   claimLinkClick(event);
-  sendLinkToWorker(fileUrl);
+  sendLinkToWorker(fileUrl, fallback);
 }
 
 /**
@@ -387,7 +475,16 @@ function claimLinkClick(event: MouseEvent): void {
  * Initialize the unconditional magnet listener and the ordinary-file preference.
  */
 export function initMagnetInterception(): () => void {
-  document.addEventListener("click", onDocumentClick, { capture: true, passive: false });
+  const session = ++interceptionRevision;
+  const onClick = (event: MouseEvent): void => {
+    if (!chrome.runtime?.id) {
+      document.removeEventListener("click", onClick, true);
+      if (interceptionRevision === session) invalidateFeedback();
+      return;
+    }
+    onDocumentClick(event);
+  };
+  document.addEventListener("click", onClick, { capture: true, passive: false });
 
   try {
     chrome.storage.local.get(["interceptFileLinks", "theme"], (items) => {
@@ -413,21 +510,61 @@ export function initMagnetInterception(): () => void {
     chrome.storage.onChanged.addListener(storageListener);
 
     return () => {
-      chrome.storage.onChanged.removeListener(storageListener);
-      document.removeEventListener("click", onDocumentClick, true);
+      document.removeEventListener("click", onClick, true);
+      try {
+        chrome.storage.onChanged.removeListener(storageListener);
+      } catch {
+        // The prior extension context is invalid after a reload.
+      }
+      if (interceptionRevision === session) invalidateFeedback();
     };
   } catch {
     // Storage unreachable (torn-down extension context): magnets and Shift still work; only the
     // automatic ordinary-file preference cannot be learned.
     return () => {
-      document.removeEventListener("click", onDocumentClick, true);
+      document.removeEventListener("click", onClick, true);
+      if (interceptionRevision === session) invalidateFeedback();
     };
   }
 }
 
-// Auto-run in browser context
-if (typeof window !== "undefined" && typeof chrome !== "undefined" && chrome.runtime?.id) {
-  const existingCleanup: unknown = Reflect.get(globalThis, CONTENT_SCRIPT_CLEANUP_KEY);
-  if (typeof existingCleanup === "function") existingCleanup();
-  Reflect.set(globalThis, CONTENT_SCRIPT_CLEANUP_KEY, initMagnetInterception());
+function isCurrentFeedback(revision: number): boolean {
+  return feedbackOwner === revision;
 }
+
+function clearFeedback(host: HTMLElement | null): void {
+  if (toastTimeoutId) {
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = undefined;
+  }
+  feedbackRevision += 1;
+  feedbackOwner += 1;
+  host?.remove();
+}
+
+function invalidateFeedback(): void {
+  for (const [url, pending] of pendingDispatches) releaseDispatch(url, pending);
+  const host = document.getElementById("quickget-feedback-host");
+  clearFeedback(host);
+}
+
+function snapshotFallback(event: MouseEvent, url: string): NativeFallback {
+  const anchor = findAnchor(event);
+  if (!(anchor instanceof HTMLAnchorElement)) return { url, target: "", download: null };
+
+  return {
+    url,
+    target: anchor.target,
+    download: anchor.hasAttribute("download") ? anchor.getAttribute("download") : null,
+  };
+}
+
+function activateNativeFallback({ url, target, download }: NativeFallback): void {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = target;
+  if (download !== null) anchor.setAttribute("download", download);
+  anchor.click();
+}
+
+installMagnetInterception();

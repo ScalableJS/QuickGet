@@ -66,7 +66,7 @@ test("popup renders the QNAP transition states with their official meaning", asy
         moving: "Moving",
         allocating: "Allocating",
         seeding: "Seeding",
-        error: "Not enough disk space on NAS",
+        error: "Not enough space in the destination folder",
       }[status];
       await expect(session.page.locator(".download-item").filter({ hasText: name })).toContainText(expected);
     }
@@ -78,7 +78,7 @@ test("popup renders the QNAP transition states with their official meaning", asy
 
     // Verify error taxonomy (BUG-37)
     const errorCard = session.page.locator(".download-item").filter({ hasText: "Error disk full task" });
-    await expect(errorCard).toContainText("Not enough disk space on NAS");
+    await expect(errorCard).toContainText("Not enough space in the destination folder");
   } finally {
     await session.close();
     await mockNas.close();

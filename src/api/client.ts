@@ -191,9 +191,9 @@ export class ApiClient {
     formData.append("bt", file);
     formData.append("bt_task", file);
     formData.append("temp", temp);
+    formData.append("move", move);
 
     if (move) {
-      formData.append("move", move);
       formData.append("dest_path", move);
     }
 

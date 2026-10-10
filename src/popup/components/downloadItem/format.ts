@@ -63,23 +63,22 @@ function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export const QNAP_ERROR_MESSAGES = {
+export const QNAP_ERROR_MESSAGES: Readonly<Partial<Record<number, string>>> = {
   4096: "Destination folder not found",
   4097: "Destination folder access denied",
   8196: "Torrent already added on NAS",
-  12288: "URL protocol not supported",
-  12289: "Download connection failed",
+  12288: "URL format not supported",
+  12289: "URL download failed",
   12290: "Host not found (DNS error)",
   16384: "Invalid magnet link format",
   16385: "Torrent file not found",
   16386: "Invalid or corrupt torrent file",
-  20488: "Not enough disk space on NAS",
-} as const satisfies Readonly<Record<number, string>>;
+  20488: "Not enough space in the destination folder",
+};
 
 export function formatError(errorCode?: number, customMessage?: string): string {
-  if (errorCode && QNAP_ERROR_MESSAGES[errorCode as keyof typeof QNAP_ERROR_MESSAGES]) {
-    return QNAP_ERROR_MESSAGES[errorCode as keyof typeof QNAP_ERROR_MESSAGES];
-  }
+  const message = errorCode ? QNAP_ERROR_MESSAGES[errorCode] : undefined;
+  if (message) return message;
   if (customMessage) return customMessage;
   if (errorCode) return `Error ${errorCode}`;
   return "Download failed";

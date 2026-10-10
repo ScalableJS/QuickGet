@@ -25,6 +25,8 @@ const EPISODE_KEY = "qg:notificationEpisode";
 /** How long an unchanged, unresolved failure stays quiet before speaking up again. */
 const REPEAT_AFTER_MS = 30 * 60 * 1000;
 
+let episodeQueue = Promise.resolve();
+
 export type FailureKind = "not-configured" | "auth" | "unreachable" | "handoff" | "recovery-needed";
 
 type Episode = {
@@ -46,18 +48,20 @@ export async function notifyFailure(
   message: string,
   fingerprint = "",
 ): Promise<void> {
-  const stored = await chrome.storage.session.get(EPISODE_KEY);
-  const previous = stored[EPISODE_KEY] as Episode | undefined;
+  await queueEpisode(async () => {
+    const stored = await chrome.storage.session.get(EPISODE_KEY);
+    const previous = stored[EPISODE_KEY] as Episode | undefined;
 
-  const now = Date.now();
-  const sameProblem = previous?.kind === kind && previous.fingerprint === fingerprint;
-  if (sameProblem && now - previous.shownAt < REPEAT_AFTER_MS) {
-    // Same unresolved problem, recently announced. The badge is still showing it.
-    return;
-  }
+    const now = Date.now();
+    const sameProblem = previous?.kind === kind && previous.fingerprint === fingerprint;
+    if (sameProblem && now - previous.shownAt < REPEAT_AFTER_MS) {
+      // Same unresolved problem, recently announced. The badge is still showing it.
+      return;
+    }
 
-  await chrome.storage.session.set({ [EPISODE_KEY]: { kind, fingerprint, shownAt: now } satisfies Episode });
-  createNotification(title, message);
+    if (!(await createNotification(title, message))) return;
+    await chrome.storage.session.set({ [EPISODE_KEY]: { kind, fingerprint, shownAt: now } satisfies Episode });
+  });
 }
 
 /**
@@ -66,7 +70,7 @@ export async function notifyFailure(
  * that asks nothing of the user.
  */
 export async function clearFailureEpisode(): Promise<void> {
-  await chrome.storage.session.remove(EPISODE_KEY);
+  await queueEpisode(() => chrome.storage.session.remove(EPISODE_KEY));
 }
 
 /**
@@ -74,18 +78,29 @@ export async function clearFailureEpisode(): Promise<void> {
  * clicked something a moment ago and are waiting to hear what happened.
  */
 export function notifyDirect(title: string, message: string): void {
-  createNotification(title, message);
+  void createNotification(title, message);
 }
 
-function createNotification(title: string, message: string): void {
+function queueEpisode(operation: () => Promise<void>): Promise<void> {
+  const queued = episodeQueue.then(operation);
+  episodeQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
+}
+
+async function createNotification(title: string, message: string): Promise<boolean> {
   try {
-    chrome.notifications.create({
+    await chrome.notifications.create({
       type: "basic",
       iconUrl: chrome.runtime.getURL("icons/128_download.png"),
       title,
       message,
     });
+    return true;
   } catch (error) {
     console.log("Notifications not available:", error);
+    return false;
   }
 }

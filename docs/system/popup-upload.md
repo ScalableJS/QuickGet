@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: popup
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["popup-upload"]
 ---
 
@@ -28,4 +28,4 @@ its error outcome. No offline queue or durable upload ledger is introduced.
 - [Upload initializer](../../src/popup/features/upload/index.ts), [torrentUpload.ts](../../src/popup/features/upload/torrentUpload.ts), [batchUpload.ts](../../src/popup/features/upload/batchUpload.ts), [CreateUrls.svelte](../../src/popup/features/upload/CreateUrls.svelte).
 - [Accepted-feedback renderer tests](../../src/popup/features/upload/acceptedFeedback.test.ts) and [shared follow-up helper](../../src/popup/features/upload/uploadFeedback.ts) cover accepted, duplicate, partial and superseded results.
 - Torrent/batch unit tests and [popup E2E](../../tests/e2e/popup.full-cycle.spec.ts).
-- Success messages already exist in current code. [BUG-71](../../tasks/BUG-71.md) remains open for consistent feedback across all paths; its original popup-success diagnosis is historical.
+- Success messages already exist in current code. [BUG-71](../../tasks/BUG-71.md) is accepted with the bounded feedback matrix; its original popup-success diagnosis is historical.

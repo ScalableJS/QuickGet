@@ -1,11 +1,11 @@
 ---
 type: "task"
 id: "BUG-65"
-status: "todo"
+status: done
 priority: "p2"
 area: "popup/a11y"
 board: "bugs"
-updated: "2026-10-09"
+updated: 2026-10-10
 legacy_status: "Backlog"
 severity: "medium"
 ---
@@ -39,3 +39,18 @@ and do not trade away the focus ring or the `aria-invalid` border to get there.
 
 Found while measuring contrast for UX-26; deliberately left out of that change because it is a
 palette decision, not a spacing one.
+
+
+## Polish execution: 2026-10-10
+
+Terra owns the bounded implementation/reproduction work; Codex owns review, Mimic consultation, integrated verification and acceptance. This starts the current polish pass without closing historical evidence gaps.
+
+
+## Implementation reviewed: 2026-10-10
+
+Field, SearchField and Select expose a resting control border. The existing checkbox-border token supplies the light color, measured at 3.45:1 (previously 1.45:1); dark remains 5.57:1. Focus/invalid styles are preserved. All 26 contrast checks pass; integrated verification is recorded below.
+
+
+## Accepted polish: 2026-10-10
+
+Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.

@@ -57,7 +57,7 @@
 
   --color-border: #d6dce5;
   --color-border-strong: #526276;
-  --color-control-border: #c7d0dc;
+  --color-control-border: var(--color-checkbox-border);
   --color-checkbox-border: #78869a;
   --torrent-border: #d6dce5;
 

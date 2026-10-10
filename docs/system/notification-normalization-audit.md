@@ -400,3 +400,8 @@ Local acceptance logs use `/tmp/quickget-integrated-*.log`; regression review lo
 `/tmp/quickget-feedback-upload-race-baseline-red.log` and
 `/tmp/quickget-feedback-connection-episode-baseline-red.log`. The scenario/results above are durable
 evidence; temporary files are not required to understand the accepted contracts.
+
+
+## Subsequent bounded polish: 2026-10-10
+
+The earlier pending BUG-71/page/native/retained-tab statements above describe the 2026-10-09 acceptance boundary. The subsequent [final polish audit](../quality/code-quality-audit.md#final-integrated-acceptance) accepts the finite feedback matrix, real extension reload, native creation queue/rejection handling and gray attention acknowledgement. Current behavior belongs to [[feedback]] and [[page-capture]]; OS display and universal tracker/firmware proof remain external limits.

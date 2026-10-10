@@ -2,7 +2,7 @@
 type: reference
 status: active
 area: engineering
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["build-release"]
 ---
 
@@ -29,10 +29,19 @@ CI runs typecheck, Svelte check, lint, unit/deployment tests, builds, and mock E
 
 Agent OS owns mission/roadmap/stack and engineering standards. Task frontmatter owns work state; Obsidian Bases are views. Rulesync sources under `.rulesync` own project rules, commands, and skill wrappers; generation must be checked. Source comments, descriptions, and maintained prose are English, with non-Latin data retained in deliberate Unicode tests.
 
-The manual test stand is launched with `npm run stand`, which currently calls `tsx` without a declared dependency; [BUG-66](../../tasks/BUG-66.md) remains open. E2E imports the Hono stand through its own harness and passing fixture tests do not make the manual command available.
+The manual test stand is launched with `npm run stand` using the declared development dependency `tsx`; [BUG-66](../../tasks/BUG-66.md) records its accepted startup/shutdown verification. E2E imports the Hono stand through its own harness and passing fixture tests do not make the manual command available.
 
 ## Sources and evidence
 
 - [package.json](../../package.json), [Vite configuration](../../vite.config.ts), [CI](../../.github/workflows/ci.yml), [deploy workflow](../../.github/workflows/deploy.yml), [Store uploader](../../scripts/upload-webstore.js).
 - [Local development](../local-development.md), [Firefox release](../firefox-release-guide.md), [Web Store guide](../../CHROMEWEBSTORE.md).
 - Build/lint/unit/mock checks are reproducible commands; deployment tests exercise the uploader without publishing. No release is authorized by documentation work.
+
+
+## Manual stand
+
+npm run stand uses the declared tsx development dependency rather than relying on a global executable. It starts the existing local stand and mock NAS and shuts both down on Ctrl+C. This change does not establish real-NAS behavior or alter the stand's port policy.
+
+## Retained-tab content-script build
+
+The CRX contentScripts.standaloneFiles option builds src/content/magnet.ts as an IIFE. The current runtime context must be recreated on extension reload; an old dynamically imported module can retain an invalidated context. The background session-lifetime refresh and DOM-first cleanup complement this build choice. The Chromium regression performs an actual extension reload while keeping the site open; see [[page-capture]]. This is not Firefox runtime certification.

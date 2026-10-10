@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { acknowledgeAttention, applyBadgeStats, markConfigurationProblem, resetActionState } from "./actions.js";
+import {
+  acknowledgeAttention,
+  applyBadgeStats,
+  markConfigurationProblem,
+  markSendNotice,
+  resetActionState,
+} from "./actions.js";
 
 /** `stats(downloading, seeding)` — the two channels the toolbar renders separately (BUG-62). */
 const stats = (
@@ -220,6 +226,26 @@ describe("applyBadgeStats", () => {
     expect(chrome.action.setTitle).not.toHaveBeenCalled();
   });
 
+  it("keeps a gray send notice through successful polling until the popup acknowledges it", async () => {
+    await markSendNotice("Sign in to the tracker to continue");
+    vi.clearAllMocks();
+
+    await applyBadgeStats(stats(2));
+
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalled();
+    expect(chrome.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
+    expect(chrome.action.setTitle).not.toHaveBeenCalled();
+    expect(chrome.action.setIcon).toHaveBeenCalledWith({
+      path: { 32: "icons/32_active.png", 128: "icons/128_active.png" },
+    });
+
+    await acknowledgeAttention();
+    vi.clearAllMocks();
+    await applyBadgeStats(stats(2));
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "2" });
+  });
+
   it("keeps the failure until the popup acknowledges it, then returns the reason and clears the alarm", async () => {
     await markConfigurationProblem("Download Station rejected the torrent");
     vi.clearAllMocks();
@@ -249,6 +275,32 @@ describe("applyBadgeStats", () => {
     expect(afterSuccessfulAcknowledgement["qg:toolbarState"]).toEqual(
       expect.objectContaining({ badgeText: "", failureReason: null }),
     );
+  });
+
+  it("acknowledges a gray send notice without reporting a NAS failure", async () => {
+    await markSendNotice("Sign in to the tracker to continue");
+    vi.clearAllMocks();
+
+    await expect(acknowledgeAttention()).resolves.toBeNull();
+
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
+    expect(chrome.action.setTitle).toHaveBeenCalledWith({ title: "" });
+    const stored = await chrome.storage.session.get("qg:toolbarState");
+    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ badgeText: "", failureReason: null }));
+  });
+
+  it("retries a rejected gray-notice acknowledgement without losing the notice", async () => {
+    await markSendNotice("Sign in to the tracker to continue");
+    vi.clearAllMocks();
+    vi.mocked(chrome.action.setBadgeText).mockRejectedValueOnce(new Error("action unavailable"));
+
+    await expect(acknowledgeAttention()).resolves.toBeNull();
+    let stored = await chrome.storage.session.get("qg:toolbarState");
+    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ badgeText: "i" }));
+
+    await expect(acknowledgeAttention()).resolves.toBeNull();
+    stored = await chrome.storage.session.get("qg:toolbarState");
+    expect(stored["qg:toolbarState"]).toEqual(expect.objectContaining({ badgeText: "" }));
   });
 
   it("does not let an overlapping NAS poll erase a newer red failure", async () => {

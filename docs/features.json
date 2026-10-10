@@ -33,10 +33,10 @@
       "assessment": "verified",
       "notes": "Typed client, SID middleware, login encoding/replay, task methods and schema were compared with current sources; hardware interoperability is not inferred.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed malformed torrent rejection, supported duplicate codes, typed Error construction and four command envelopes against API/client and utils regressions; README updated.",
-        "snapshot": "c237ec036f76ea75c3da5043ac280d2fe5b112e84e60fe1e55a6495e730f68c5"
+        "date": "2026-10-10",
+        "reviewer": "Codex",
+        "reason": "Reviewed required multipart move serialization, empty-target body regression, vendor-verified destination-space wording and the reused confirmed-duplicate marker; API README retains NAS value validation and unknown/reason fallback. Final type-only review uses partial numeric catalogs to represent unknown codes accurately; runtime lookup and fallback behavior are unchanged.",
+        "snapshot": "5f74a337c3600b263795e6cd0857d8e5ec7e72615d29964d0b0a3c9fab79be77"
       }
     },
     {
@@ -69,10 +69,10 @@
       "assessment": "verified",
       "notes": "Storage precedence, local credential persistence, schema migration, configured-vs-health state and five-second login check were inspected.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared Save/Test/Remove lifecycle, 2.5-second plain-save confirmation, current connection invalidation, retained credential storage and five-second check boundary with Settings code and Chromium connection regressions.",
-        "snapshot": "742dfd457f0099834d74a91c884deb271a02a9ddf45f88930440f47d3517b79a"
+        "date": "2026-10-10",
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed read-only loadSettings defaults and the controlled stale-snapshot overwrite regression for file capture, HTTPS, port and theme; explicit save/migration and credential persistence remain the documented writers.",
+        "snapshot": "40b30aaed12814d4f505848c911518d3c3c607009cf1abb3fad690f464d0c5a4"
       }
     },
     {
@@ -97,10 +97,10 @@
       "assessment": "verified",
       "notes": "PBKDF2 verifier, session unlock and Settings-only mounting were inspected; no encrypted-credential guarantee is claimed.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared unchanged PBKDF2/session unlock and Settings-only protection with the shared Settings callback change; canonical storage section still excludes credential encryption.",
-        "snapshot": "3b3a496315c1f3f85c6b41c178f1426b654e81b042af6210565cca74f5a448c0"
+        "date": "2026-10-10",
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed unchanged PBKDF2/session unlock and Settings-only protection against the updated shared settings page; read-only defaults do not change lock scope or encrypt credentials.",
+        "snapshot": "8bb072dbca211d0552bf998c72980772276b017fe6ac15fd7a0bbb1aa363c180"
       }
     },
     {
@@ -124,10 +124,10 @@
       "assessment": "verified",
       "notes": "Portable keys, parser boundaries, password exclusion and confirmation path were compared with code and existing tests.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared unchanged portable import/export key filtering and confirmation with the changed shared Settings component; backup behavior and tests remain accurate.",
-        "snapshot": "31c4ace1a75779dc3bfa5de9bc217f88dec4992a43ce2d83950b24cc5663df0b"
+        "date": "2026-10-10",
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed unchanged portable import/export filtering and confirmation against the updated shared settings page; default persistence changes do not alter backup schema or password exclusion.",
+        "snapshot": "c17e047c976f498e6e51554d48082a62e6fc7656d7b9dff51b59e2ee2957ee36"
       }
     },
     {
@@ -215,10 +215,10 @@
       "assessment": "verified",
       "notes": "Event claims, deferred filename, live login, tracker fetch, cancel-after-accept and browser fallback were inspected; BUG-70 remains unproven.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed worker cancellation boundaries for unconfirmed malformed replies and supported duplicate results; canonical handoff page and mock browser regression match.",
-        "snapshot": "441db08a020e19bf2de6d7efae6f47ec80149c762db35b223df033429b97284d"
+        "reason": "Reviewed worker wiring, accepted-torrent cancellation and failure-episode separation against unchanged transaction sources and torrent/hotlink regressions; updated canonical handoff page preserves browser fallback boundaries.",
+        "snapshot": "03630975995ab465d1b7197638cf7c3238dd80135dacf8d457ae4602e8560642"
       }
     },
     {
@@ -245,10 +245,10 @@
       "assessment": "verified",
       "notes": "Eligible click gates, download attributes/path allow-list, Shift override, worker messages, cleanup/reinjection and navigation fallback were inspected.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed textContent feedback and shared sendToWorker claim/release/dispatch kernel against magnet/link regression cases; page policy limitations remain explicit.",
-        "snapshot": "e8b1be0ff09df8bc8af4f37e36f1cabc67ac76bba3c65b181057b2d16a372fc7"
+        "reason": "Reviewed pending-map ownership, late/dismissed replies, unknown acceptance, duplicate metadata, preserved native anchor attributes and genuine retained-tab reload; page-capture canonical contract now matches the controlled callback and browser evidence.",
+        "snapshot": "250c056ccac4245d54f4e770523b2528b31ce0736a8d3ea8944dbad003bab420"
       }
     },
     {
@@ -270,10 +270,10 @@
       "assessment": "verified",
       "notes": "Menu reinitialization, URL support, shared classification/routing, monitoring and direct failure notifications were inspected.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed worker unknown catch types and snapshot poll invalidation; context menu sending remains unchanged and monitoring canonical page records current ownership.",
-        "snapshot": "3606741b72d3f2777d2e8da99208145887b368b7bc13159160d42c6c70bbbe27"
+        "reason": "Reviewed accepted duplicate outcomes and shared page result metadata; actual failures propagate while success stays quiet and task-list/toolbar confirmation remains explicit.",
+        "snapshot": "c116e3fb108798281271499f5f63d1da6e953847e13b12205917402761af1024"
       }
     },
     {
@@ -301,10 +301,10 @@
       "assessment": "verified",
       "notes": "Current success/duplicate/error messages, release-name routing for local files and the 50-line independent URL outcomes were inspected.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex",
-        "reason": "Compared full/partial/duplicate acceptance, sync/async follow-up failure, status receipts and suppression after newer direct feedback or invalid submission against real-renderer tests and browser upload interleaving; no durable queue.",
-        "snapshot": "921920164b310b5b88d1aa33a41685ec26d66930a395e1d180a4909d23b02a0e"
+        "reason": "Reviewed unchanged accepted/duplicate/partial upload status and follow-up refresh failure against the final feedback policy; existing upload tests and full-cycle evidence retain their canonical page.",
+        "snapshot": "3ca317a708c6adbb79178c6197083e40d35e017eb8221a57a9b001080a5e41c7"
       }
     },
     {
@@ -342,10 +342,10 @@
       "assessment": "verified",
       "notes": "Current-query rendering, live shared selection, abort/controller identity, connection generation and removal reconciliation were inspected; the unread parallel snapshot is removed.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed explicit item unknown type, shared binary size formatter, and removal of speculative zero publication on connection change; task-list behavior preserved.",
-        "snapshot": "2b9d944d9be788346321fd9f550d7eb90fe68b598d3dfbaa0efbf9d4d6ad9a14"
+        "date": "2026-10-10",
+        "reviewer": "Codex",
+        "reason": "Reviewed vendor-verified error labels for URL format/download/destination space, typed numeric lookup and muted metric token; custom unknown error text, filtering and task semantics remain unchanged. Final type-only review uses partial numeric catalogs to represent unknown codes accurately; runtime lookup and fallback behavior are unchanged.",
+        "snapshot": "8944e8536473c7e0d93b9235915cc4e58594ac20bd406bc1e63d1450f894dfc6"
       }
     },
     {
@@ -377,10 +377,10 @@
       "assessment": "verified",
       "notes": "Start/pause/stop/remove, clean-delete confirmation, SetTaskPriority and GetFile/SetFile call paths were inspected.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed shared size import and public task command outcomes without universal command runner; task-management page and torrent files E2E agree.",
-        "snapshot": "dfbbdc3f437d93fdb8ba8e7166dd256a8d86e669c71545e7ca3f89d529929058"
+        "reason": "Reviewed DownloadItem color-only delta; start/pause/stop, unsupported Pause-to-Stop outcome and latest command ownership remain unchanged and existing operation regressions retained.",
+        "snapshot": "8ee9ff51de435ddfe638eea9446e9bb6b3eccb107af2523a03d8b28e5bdff102"
       }
     },
     {
@@ -408,10 +408,10 @@
       "assessment": "verified",
       "notes": "30-second alarms, single badge writer, session state, authoritative zero handling and stopping on polling failure were inspected; full Task/Query is still used.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed revisions, post-session-read writer ownership, post-settings-read freshness and serialized alarm create/clear; controlled regressions cover named races and bookkeeping failure.",
-        "snapshot": "521ed3b1f0c231d5aa4691bed6d29da36157495661e7681ffc2042179a0d54b4"
+        "reason": "Reviewed gray/red attention preservation, gray acknowledgement without a false NAS failure, write retry and independent activity icon; serialized current-connection polling/alarm ownership remains intact.",
+        "snapshot": "6bda9f4e36b714f0ff7f8757964874428b2f0e08d5fa4aa052e848750b94b616"
       }
     },
     {
@@ -442,15 +442,16 @@
         "src/popup/features/upload/batchUpload.test.ts",
         "src/popup/features/upload/acceptedFeedback.test.ts",
         "src/popup/features/downloads/index.test.ts",
-        "tests/e2e/feedback-normalization.spec.ts"
+        "tests/e2e/feedback-normalization.spec.ts",
+        "src/background/notifier.test.ts"
       ],
       "assessment": "verified",
       "notes": "Direct/poll ownership, scoped recovery, episode dismissal, timer receipt guards and accepted-outcome isolation are verified for targeted popup regressions; wider native/page policy remains open.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed literal page text, supported auth failure classification and bounded shared dispatch; canonical feedback and monitoring pages preserve distinct lifetime policies.",
-        "snapshot": "3b6ef1e35baef66d812789431f302a2745a91ed4c923e352924e2d6cc472e424"
+        "reason": "Reviewed latest page owner, preserved per-request outcome, uncertainty without unsafe fallback, queued native failure episodes and explicit gray/red acknowledgement; canonical finite matrix names unit/browser evidence and OS-display limits.",
+        "snapshot": "d57424ee55409be8b6230965611caf71c876b6519007060b2364579295dd5eea"
       }
     },
     {
@@ -495,10 +496,10 @@
       "assessment": "verified",
       "notes": "Entrypoint mounting, native themed dismissal, panel invalidation and active primitives were inspected; unused Card is removed.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared themed native keyboard dismissal and existing popup mounting/panel callbacks; removed unused Card/barrel after consumer search; active primitives and accessibility checks remain intact.",
-        "snapshot": "eaf00e0e38873408e60df84cea71659d3fea94d13e6e178b6cdf03fbf699d1f8"
+        "date": "2026-10-10",
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed resting Field/SearchField/Select boundaries, original focus/invalid states and existing muted token; contrast guard measures 3.45:1 light and 5.57:1 dark with no new rendering abstraction.",
+        "snapshot": "21d821406fcadb68ed940d938e2ce6ffd7ba0721b37a12b4bb47ef3645f15884"
       }
     },
     {
@@ -526,10 +527,10 @@
       "assessment": "verified",
       "notes": "Theme application, immediate saving, OS listener replacement and page-toast theme behavior were inspected.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed unchanged theme resolution and controls after page feedback/kernel refactor; no theme documentation change required and existing browser theme tests pass.",
-        "snapshot": "16c10b7d1b91444f35de71fda3a4e774557b9a31c05b2b4ddb591ea492fbc99d"
+        "reason": "Reviewed existing light checkbox-border reuse and unchanged dark token, auto-theme ownership and page rendering; visible control-boundary behavior and focus states remain consistent with the updated interface page.",
+        "snapshot": "a06ce89961fe34d5dc6f9e9ac1d661686226f674ff466d6cd2f1f98caf758749"
       }
     },
     {
@@ -565,10 +566,10 @@
       "assessment": "verified",
       "notes": "Manifests, build targets, CI/deploy scripts, direct Store API uploader and Rulesync generation were compared; no new deployment or Firefox runtime claim.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex",
-        "reason": "Added local read-only audit/report/self-test scripts to package.json; existing build, release ownership and publication commands are unchanged. Development-release documentation remains accurate.",
-        "snapshot": "e1a05025f77b30df43d900240fc63be5e85ebbd0f5d7773849863f2db7cc8af6"
+        "reason": "Reviewed declared tsx dependency/lockfile, actual stand startup/shutdown and standalone retained-tab content-script build; production/Firefox packaging gates preserve release through env/dev-to-env/prod PR only.",
+        "snapshot": "eb95a9fd572b0d20d871c3a5ddd1164f595f6ec43429515ad576cf133b7f4e3f"
       }
     },
     {
@@ -603,10 +604,10 @@
       "assessment": "verified",
       "notes": "Harness entrypoints and consumers were inventoried; compilation/capture quality is not inferred, and undeclared manual-stand tsx remains open.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex",
-        "reason": "Compared Card/helper removals with positive popup-size and HTTP-bundle callers, preserved assets/demo/stand ownership and Storybook build; undeclared stand tsx remains open.",
-        "snapshot": "5c2b859e64949b64ed3aa400a2ff77f060470702033168f6f045d843987b5f6f"
+        "date": "2026-10-10",
+        "reviewer": "Codex acceptance after Terra and Mimic review",
+        "reason": "Reviewed SpeedShowcase token-only delta and the added control contrast pair; stand execution uses declared tsx, while showcases remain development consumers and the interface page retains that boundary.",
+        "snapshot": "c001ec7b55b5a497668cce5e6beccfcf17ab240587233046542a04c25d68c387"
       }
     },
     {
@@ -658,10 +659,10 @@
       "assessment": "verified",
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex final acceptance",
-        "reason": "Reviewed final 571-unit/60-Chromium evidence, current controlled regressions and fresh configured V8 coverage; explicit Svelte/index exclusions and hardware boundaries retained.",
-        "snapshot": "432b2a0eab04bf0db5911abda3357fd3ff985abf37d3d0c029e0152c755a916a"
+        "date": "2026-10-10",
+        "reviewer": "Codex",
+        "reason": "Reviewed semantic callable hash evidence, compact JSON defaults without inventory exclusions, fresh named runtime/hardware gates and scanner/documentation self-tests; coverage and native OS limits remain explicit. Final type-only review uses partial numeric catalogs to represent unknown codes accurately; runtime lookup and fallback behavior are unchanged.",
+        "snapshot": "124ab9ff24ccb1661b4d73ae7cde2e1ba90862e4843a8aa549e47092205aca17"
       }
     },
     {
@@ -684,9 +685,9 @@
       "assessment": "verified",
       "notes": "Checker, explicit review command, English guard, staged inspection and source-discovery boundaries were inspected and exercised by self-tests.",
       "review": {
-        "date": "2026-10-09",
+        "date": "2026-10-10",
         "reviewer": "Codex",
-        "reason": "Compared the unchanged documentation checker with the added callable-evidence maintenance instructions: source-hash manual review complements feature documentation, with explicit report generation and no feature denominator change.",
+        "reason": "Reviewed unchanged one-feature review and actual-staged snapshot workflow against registry/report updates; new review reasons describe inspected evidence rather than automatic hash acceptance.",
         "snapshot": "62b95fc2c848bfa387ee77179ca80d5cb0f4d6d953b55b9202c14f7313d8640a"
       }
     }

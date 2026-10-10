@@ -73,7 +73,17 @@ describe("magnetHandler", () => {
 
     const result = await handleMagnetAdd(magnet);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("Connection refused");
+    if (!result.ok) expect(result.error).toContain("Connection refused");
     expect(mockMarkConfigurationProblem).toHaveBeenCalled();
+  });
+
+  it("treats AddUrl duplicate 8196 as an existing accepted task, not a configuration fault", async () => {
+    mockAddUrl.mockRejectedValueOnce(
+      Object.assign(new Error("Add URL failed: This task already exists."), { duplicate: true }),
+    );
+
+    await expect(handleMagnetAdd("magnet:?xt=urn:btih:duplicate")).resolves.toEqual({ ok: true, duplicate: true });
+    expect(mockEnsureMonitoring).toHaveBeenCalledOnce();
+    expect(mockMarkConfigurationProblem).not.toHaveBeenCalled();
   });
 });

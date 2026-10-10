@@ -14,7 +14,7 @@ vi.mock("./alarms.js", () => ({
   ensureMonitoring: vi.fn(),
 }));
 
-import { createContextMenus, handleContextMenuClick } from "./menus.js";
+import { createContextMenus, handleContextMenuClick, sendDownloadToStation } from "./menus.js";
 
 describe("context-menu registration", () => {
   it("offers one explicit link action only on web pages", () => {
@@ -95,6 +95,20 @@ describe("context-menu routing", () => {
     expect(requests[1].get("move")).toBe("Multimedia/Default");
     expect(requests[1].get("temp")).toBe("Download");
     expect(requests[1].get("url")).toBe("https://downloads.example.org/archive.zip");
+  });
+
+  it("treats an AddUrl duplicate 8196 as existing without raising a red failure", async () => {
+    server.use(
+      http.post("http://nas.local:8080/downloadstation/V4/Misc/Login", () =>
+        HttpResponse.json({ error: 0, sid: "SID-QNAP", user: "admin" }),
+      ),
+      http.post("http://nas.local:8080/downloadstation/V4/Task/AddUrl", () =>
+        HttpResponse.json({ error: 8196, reason: "existing magnet" }),
+      ),
+    );
+
+    await expect(sendDownloadToStation("magnet:?xt=urn:btih:duplicate")).resolves.toEqual({ duplicate: true });
+    expect(getChromeSessionStorageSnapshot()["qg:toolbarState"]).toBeUndefined();
   });
 });
 

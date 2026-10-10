@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: background
-updated: 2026-10-09
+updated: 2026-10-10
 features: ["background-monitoring"]
 ---
 
@@ -16,7 +16,7 @@ The current poll calls `Task/Query` and derives counts; it does not use the ligh
 
 Alarm creation and removal share one queue. Removal rechecks poll ownership and the monitoring revision; a newer monitoring request either prevents removal or re-arms after an already-running removal finishes. Failure to remove an alarm is logged as a browser bookkeeping failure and does not turn a successful NAS snapshot into connection attention.
 
-Missing configuration stops the alarm and surfaces actionable attention. A monitoring failure calls `markMonitoringUnavailable()` and clears the alarm; the next explicit monitoring request can retry. Documentation does not promise continuous automatic retries after that failure. Attention acknowledgement is distinct from successful task data and must not pretend the NAS was checked.
+Missing configuration stops the alarm and surfaces actionable attention. A monitoring failure calls `markMonitoringUnavailable()` and clears the alarm; the next explicit monitoring request can retry. Documentation does not promise continuous automatic retries after that failure. Gray tracker/send notices and red configuration attention survive successful task polls until popup acknowledgement; red has priority. Acknowledging gray clears it without reporting a NAS connection failure. Icons still reflect current activity, and failed acknowledgement writes retain state for retry. Attention acknowledgement is distinct from successful task data and must not pretend the NAS was checked.
 
 ## Sources and evidence
 

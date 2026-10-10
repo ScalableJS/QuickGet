@@ -2,7 +2,7 @@
 type: research
 status: active
 area: engineering
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 # Feature inventory: duplication, unused code, and gaps
@@ -38,9 +38,9 @@ Unused exports of task-status sets and error formatters do not imply unused impl
 | Finding | Current evidence | Follow-up |
 |---|---|---|
 | Batch URLs do not evaluate routing rules per line | `batchUpload.ts` calls `addUrls()`; the API maps each URL to `addUrl()` with one destination | [ENG-13](../../tasks/ENG-13.md): decide/document consistent destination policy before changing behavior |
-| Feedback differs by path; original BUG-71 popup diagnosis is stale | Popup uploads now emit terminal success, while torrent/menu successes are silent | [BUG-71](../../tasks/BUG-71.md) stays open; audit note corrects the matrix |
+| Feedback differs by path; original BUG-71 popup diagnosis is stale | Popup uploads now emit terminal success, while torrent/menu successes are silent | [BUG-71](../../tasks/BUG-71.md) now records the accepted finite matrix, including actual retained-tab reload |
 | Full task query is used for background badge polling | `alarms.ts` calls `queryTasks()`, not `getStatus()` | Existing [BUG-39](../../tasks/BUG-39.md) |
-| Manual stand relies on undeclared `tsx` | `package.json` stand command; Knip missing binary | Existing [BUG-66](../../tasks/BUG-66.md) |
+| Manual stand relies on undeclared `tsx` | `package.json` stand command; Knip missing binary | [BUG-66](../../tasks/BUG-66.md) accepted: tsx is declared and the stand starts/stops |
 | Security mission/privacy text claimed old session-only/encrypted storage | `saveSettings()` writes local password; lock is PBKDF2 UI verifier only | Current mission/privacy/config comment corrected; no storage behavior changed |
 | Firefox parity is not proved by packaging | Optional Chromium filename callback; mock suite runs Chromium | [ENG-14](../../tasks/ENG-14.md): establish explicit Firefox runtime verification |
 | Historical plans describe superseded architecture | Svelte/UnoCSS conversion and old encryption decisions already shipped | Old plans labeled historical; current pages linked |
@@ -66,4 +66,6 @@ was removed from the canonical standard; no worker policy was changed by that co
 
 ## Callable review: 2026-10-09
 
-[The code-quality audit](../quality/code-quality-audit.md) owns the function inventory, type-contract findings, manually compared algorithm families and prioritized follow-ups. It distinguishes repeated page dispatch/size/command mechanics from necessary browser-context state and permits pragmatic any in test fixtures. BUG-74 through BUG-76 now record accepted acceptance, text-rendering and monitoring corrections, with root red-before-green checks and explicit hardware limits. ENG-19 through ENG-22 are accepted targeted normalization; ENG-23 retains its source-fact comparison and unresolved vendor evidence.
+[The code-quality audit](../quality/code-quality-audit.md) owns the function inventory, type-contract findings, manually compared algorithm families and prioritized follow-ups. It distinguishes repeated page dispatch/size/command mechanics from necessary browser-context state and permits pragmatic any in test fixtures. BUG-74 through BUG-76 now record accepted acceptance, text-rendering and monitoring corrections, with root red-before-green checks and explicit hardware limits. ENG-19 through ENG-22 are accepted targeted normalization; ENG-23 resolves with installed-vendor evidence, corrected labels and a documented no-extraction decision; API/card/tracker contexts remain distinct.
+
+The final polish additionally closes required multipart move serialization, stale settings-default writes, visible control boundaries and actual extension reload. [The final audit](../quality/code-quality-audit.md#final-integrated-acceptance) records all 594 current runtime manual judgments and the fresh local/hardware gates. Unreproduced restart behavior and product decisions remain separate.

@@ -74,3 +74,8 @@ request payloads. Real-NAS validation is the separate local release spot check d
 createApiError constructs an Error carrying code, reason and optional duplicate/apiUnsupported flags without a construction assertion. isSuccessResponse returns a boolean for supported success envelopes; it does not validate or narrow the full response DTO. Start, Stop, Pause and Remove share a private transport helper restricted to their generated request shapes; each public method retains its own error contract and options.
 
 Duplicate acceptance is limited to Download Station code 8196 and the existing supported 24593 response with duplicate/exist wording. Other codes retain their failure outcome even if their reason contains exist; in particular, code 5 with session-does-not-exist wording is an authentication failure.
+
+
+## Installed-vendor verification: 2026-10-10
+
+The error comparison now includes primary evidence from the configured NAS's public Download Station assets, including 20488 / ERR_DST_SPEACE_NOT_ENOUGH (destination-folder free space). [The code-quality audit](../../docs/quality/code-quality-audit.md#vendor-error-fact-verification) records asset hashes and the bounded no-extraction decision. API explanations and task-row labels retain their distinct caller contexts. AddTorrent always includes the required move field, including an empty configured value; the NAS still validates the destination. Missing Temp remains a local precondition. No new Target requirement or silent fallback is introduced.

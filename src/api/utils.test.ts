@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createApiError, explainLoopbackUrl, getErrorMessage, isSuccessResponse } from "./utils.js";
+import {
+  createApiError,
+  explainLoopbackUrl,
+  getErrorMessage,
+  isDuplicateApiError,
+  isSuccessResponse,
+} from "./utils.js";
 
 describe("api/utils", () => {
   describe("createApiError", () => {
@@ -20,6 +26,12 @@ describe("api/utils", () => {
     it("does not mistake an authentication failure that says exist for a duplicate", () => {
       const error = createApiError("x", { error: 5, reason: "session does not exist" });
       expect(error.duplicate).toBeUndefined();
+      expect(isDuplicateApiError(error)).toBe(false);
+    });
+
+    it("recognises only the API's confirmed duplicate marker", () => {
+      expect(isDuplicateApiError(createApiError("x", { error: 8196, reason: "Existing task" }))).toBe(true);
+      expect(isDuplicateApiError(new Error("already exists"))).toBe(false);
     });
   });
 
