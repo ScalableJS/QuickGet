@@ -34,7 +34,7 @@ is complete. The canonical MV3 standard and credential review guidance match cur
 
 ## Current polish acceptance: 2026-10-10
 
-Terra implemented the bounded patches in shared ownership sets, Mimic provided substantive source review, and Codex reproduced/adjudicated findings and accepted the final integration. BUG-64/65/66/71/77/78/79 and ENG-23/24 are done. Notification/page ownership, gray attention acknowledgement, serialized native episodes, read-only settings defaults, required torrent move serialization, vendor error labels, control contrast and genuine retained-tab reload are documented in their canonical system pages.
+Terra implemented the bounded patches in shared ownership sets, Mimic provided substantive source review, and Codex reproduced/adjudicated findings and accepted the final integration. BUG-64/65/66/71/77/78/79 and ENG-23/24/25 are done. Notification/page ownership, gray attention acknowledgement, serialized native episodes, read-only settings defaults, required torrent move serialization, vendor error labels, control contrast and genuine retained-tab reload are documented in their canonical system pages.
 
 Fresh final evidence: 595 unit/fixture tests, 61 Chromium mock E2E, ten classifier repetitions, six real-NAS spot checks with an empty owned-task ledger, types/Svelte/lint, production/dev/Storybook builds, 26 contrast checks, 28 deployment tests and Firefox package checks. Current manual semantic evidence covers all 594 runtime implementations; tests may retain pragmatic any. Coverage and external limits are recorded in [[docs/system/verification|verification]] and [the final audit](../quality/code-quality-audit.md#final-integrated-acceptance). All changes belong to env/dev; version 2.6.0 and release/store state are unchanged.
 
@@ -44,4 +44,4 @@ Fresh final evidence: 595 unit/fixture tests, 61 Chromium mock E2E, ten classifi
 - [ENG-14](../../tasks/ENG-14.md): define Firefox runtime evidence separately from packaging.
 - [BUG-70](../../tasks/BUG-70.md): wait for a real recurrence and captured causal sequence; no persistent dedupe, history sweep or guessed restart mitigation is accepted.
 
-These are separate decisions/evidence tasks and do not reopen the completed polish. [[docs/system/feature-review|The feature review]] retains their rationale. Repository CI must be checked against the pushed env/dev revision; local results alone are not a CI outcome.
+These are separate decisions/evidence tasks and do not reopen the completed polish. [[docs/system/feature-review|The feature review]] retains their rationale. The first pushed polish CI exposed a transient-success timing fixture; ENG-25 fixes clock ordering while preserving priority, expiry and subsequent poll visibility. Its source-guard counter-check fails without protection and passes after restoration. Repository CI must be checked against the pushed env/dev revision; local results alone are not a CI outcome.

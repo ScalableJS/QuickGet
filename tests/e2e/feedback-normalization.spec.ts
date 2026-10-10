@@ -232,20 +232,24 @@ test("poll failures cannot replace settings or upload feedback", async () => {
 
   try {
     await seedNas(session.worker, mockNas.port);
+    await session.page.clock.install({ time: new Date("2026-01-01T00:00:00.000Z") });
     await session.page.reload({ waitUntil: "domcontentloaded" });
     await waitForPopupReady(session.page);
+    await session.page.clock.pauseAt(new Date("2026-01-01T00:01:00.000Z"));
 
     let failedPolls = 0;
     await session.page.route(queryRoute, async (route) => {
       failedPolls += 1;
       await route.abort("failed");
     });
+    await session.page.clock.runFor(2000);
     await expect.poll(() => failedPolls).toBeGreaterThan(0);
 
     await openSettingsPanel(session.page);
     await session.page.getByRole("button", { name: "Test connection" }).click();
     await expect(session.page.locator("#status-message")).toHaveText("Connected to the NAS");
     const pollsBeforeUpload = failedPolls;
+    await session.page.clock.runFor(2000);
     await expect.poll(() => failedPolls).toBeGreaterThan(pollsBeforeUpload);
     await expect(session.page.locator("#status-message")).toHaveText("Connected to the NAS");
 
@@ -253,8 +257,16 @@ test("poll failures cannot replace settings or upload feedback", async () => {
     await session.page.setInputFiles("#torrentFileInput", sampleTorrentPath);
     await expect(session.page.locator("#status-message")).toContainText('Added "sample.torrent" to Download Station');
     const pollsBeforeAssertion = failedPolls;
+    await session.page.clock.runFor(2000);
     await expect.poll(() => failedPolls).toBeGreaterThan(pollsBeforeAssertion);
     await expect(session.page.locator("#status-message")).toContainText('Added "sample.torrent" to Download Station');
+    await session.page.clock.runFor(500);
+    await expect(session.page.locator(".status-bar")).toBeHidden();
+
+    const pollsBeforeExpiry = failedPolls;
+    await session.page.clock.runFor(1500);
+    await expect.poll(() => failedPolls).toBeGreaterThan(pollsBeforeExpiry);
+    await expect(session.page.locator("#status-message")).toContainText("Failed to list downloads");
   } finally {
     await session.close();
     await mockNas.close();

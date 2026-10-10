@@ -70,9 +70,9 @@
       "notes": "Storage precedence, local credential persistence, schema migration, configured-vs-health state and five-second login check were inspected.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed read-only loadSettings defaults and the controlled stale-snapshot overwrite regression for file capture, HTTPS, port and theme; explicit save/migration and credential persistence remain the documented writers.",
-        "snapshot": "40b30aaed12814d4f505848c911518d3c3c607009cf1abb3fad690f464d0c5a4"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "2625836087b3479771c86d02d39d621b3566b5d35f77d52ea3b74be0ec7a9768"
       }
     },
     {
@@ -302,9 +302,9 @@
       "notes": "Current success/duplicate/error messages, release-name routing for local files and the 50-line independent URL outcomes were inspected.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex",
-        "reason": "Reviewed unchanged accepted/duplicate/partial upload status and follow-up refresh failure against the final feedback policy; existing upload tests and full-cycle evidence retain their canonical page.",
-        "snapshot": "3ca317a708c6adbb79178c6197083e40d35e017eb8221a57a9b001080a5e41c7"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "b85e1e73bff9b1ed7514c86d188f5b75c925b72039b1849f66344a1a1005b979"
       }
     },
     {
@@ -343,9 +343,9 @@
       "notes": "Current-query rendering, live shared selection, abort/controller identity, connection generation and removal reconciliation were inspected; the unread parallel snapshot is removed.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex",
-        "reason": "Reviewed vendor-verified error labels for URL format/download/destination space, typed numeric lookup and muted metric token; custom unknown error text, filtering and task semantics remain unchanged. Final type-only review uses partial numeric catalogs to represent unknown codes accurately; runtime lookup and fallback behavior are unchanged.",
-        "snapshot": "8944e8536473c7e0d93b9235915cc4e58594ac20bd406bc1e63d1450f894dfc6"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "7a79d1efe5476e147abd20b632bc3a9fb9594593b45bd9475f5d7e9e5cbb7e34"
       }
     },
     {
@@ -378,9 +378,9 @@
       "notes": "Start/pause/stop/remove, clean-delete confirmation, SetTaskPriority and GetFile/SetFile call paths were inspected.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed DownloadItem color-only delta; start/pause/stop, unsupported Pause-to-Stop outcome and latest command ownership remain unchanged and existing operation regressions retained.",
-        "snapshot": "8ee9ff51de435ddfe638eea9446e9bb6b3eccb107af2523a03d8b28e5bdff102"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "e766e3f03f263c85d3bfa294c14d226083678754b66597e547b2f86d782591e9"
       }
     },
     {
@@ -449,9 +449,9 @@
       "notes": "Direct/poll ownership, scoped recovery, episode dismissal, timer receipt guards and accepted-outcome isolation are verified for targeted popup regressions; wider native/page policy remains open.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed latest page owner, preserved per-request outcome, uncertainty without unsafe fallback, queued native failure episodes and explicit gray/red acknowledgement; canonical finite matrix names unit/browser evidence and OS-display limits.",
-        "snapshot": "d57424ee55409be8b6230965611caf71c876b6519007060b2364579295dd5eea"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "e63832ebaeff1e64ba563fcaf60c06e7069f281bca67ea0ca79cea2259e9be8d"
       }
     },
     {
@@ -497,9 +497,9 @@
       "notes": "Entrypoint mounting, native themed dismissal, panel invalidation and active primitives were inspected; unused Card is removed.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed resting Field/SearchField/Select boundaries, original focus/invalid states and existing muted token; contrast guard measures 3.45:1 light and 5.57:1 dark with no new rendering abstraction.",
-        "snapshot": "21d821406fcadb68ed940d938e2ce6ffd7ba0721b37a12b4bb47ef3645f15884"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "1c3a514e47b8138f723ab3d12596910f1d9e5fc820caaf81ce7214ec8e7ec9fc"
       }
     },
     {
@@ -660,9 +660,9 @@
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
         "date": "2026-10-10",
-        "reviewer": "Codex",
-        "reason": "Reviewed semantic callable hash evidence, compact JSON defaults without inventory exclusions, fresh named runtime/hardware gates and scanner/documentation self-tests; coverage and native OS limits remain explicit. Final type-only review uses partial numeric catalogs to represent unknown codes accurately; runtime lookup and fallback behavior are unchanged.",
-        "snapshot": "124ab9ff24ccb1661b4d73ae7cde2e1ba90862e4843a8aa549e47092205aca17"
+        "reviewer": "Codex acceptance after Terra fixture correction",
+        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
+        "snapshot": "d3064ca3055b341303a7c1f3da8e7afb58492d1e7c862ae4a3aefaf7ef0380a2"
       }
     },
     {
