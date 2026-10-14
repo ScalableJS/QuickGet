@@ -2,7 +2,7 @@
 type: research
 status: active
 area: engineering
-updated: 2026-10-10
+updated: 2026-10-14
 ---
 
 # Callable duplication screening inventory
@@ -1976,64 +1976,64 @@ Every entry was inventoried/screened, not individually certified free of semanti
 | tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:206](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:213](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:229](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:241](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:246](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:253](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:261](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:243](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:249](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:260](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:268](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:276](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:280](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseUpload | [tests/e2e/feedback-normalization.spec.ts:281](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:290](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:293](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:296](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:275](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:283](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:287](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseUpload | [tests/e2e/feedback-normalization.spec.ts:288](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:297](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:300](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:303](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:311](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:324](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:348](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:353](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:310](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:318](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:331](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:355](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:360](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:364](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:375](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:385](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseFirstQuery | [tests/e2e/feedback-normalization.spec.ts:387](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseFirstStart | [tests/e2e/feedback-normalization.spec.ts:388](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:398](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:401](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:404](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | settle | [tests/e2e/feedback-normalization.spec.ts:405](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | onRequestFailed | [tests/e2e/feedback-normalization.spec.ts:410](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | onRequestFinished | [tests/e2e/feedback-normalization.spec.ts:413](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:419](../../tests/e2e/feedback-normalization.spec.ts) | shape-5c16152c005b | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:430](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:433](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:436](../../tests/e2e/feedback-normalization.spec.ts) | shape-5c16152c005b | not-reviewed |
-| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:444](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:456](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.worker.evaluate | [tests/e2e/feedback-normalization.spec.ts:456](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:464](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.worker.evaluate | [tests/e2e/feedback-normalization.spec.ts:464](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:476](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:480](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseQuery | [tests/e2e/feedback-normalization.spec.ts:482](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseStart | [tests/e2e/feedback-normalization.spec.ts:483](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:492](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:495](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | settle | [tests/e2e/feedback-normalization.spec.ts:496](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | onRequestFailed | [tests/e2e/feedback-normalization.spec.ts:501](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | onRequestFinished | [tests/e2e/feedback-normalization.spec.ts:504](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:510](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:513](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:522](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:525](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:528](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:534](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.once | [tests/e2e/feedback-normalization.spec.ts:540](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:561](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | releaseOldQuery | [tests/e2e/feedback-normalization.spec.ts:564](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:573](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:576](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
-| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:580](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:367](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:371](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:382](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:392](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseFirstQuery | [tests/e2e/feedback-normalization.spec.ts:394](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseFirstStart | [tests/e2e/feedback-normalization.spec.ts:395](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:405](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:408](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:411](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | settle | [tests/e2e/feedback-normalization.spec.ts:412](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | onRequestFailed | [tests/e2e/feedback-normalization.spec.ts:417](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | onRequestFinished | [tests/e2e/feedback-normalization.spec.ts:420](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:426](../../tests/e2e/feedback-normalization.spec.ts) | shape-5c16152c005b | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:437](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:440](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:443](../../tests/e2e/feedback-normalization.spec.ts) | shape-5c16152c005b | not-reviewed |
+| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:451](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:463](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.worker.evaluate | [tests/e2e/feedback-normalization.spec.ts:463](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:expect.poll | [tests/e2e/feedback-normalization.spec.ts:471](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.worker.evaluate | [tests/e2e/feedback-normalization.spec.ts:471](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:483](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.on | [tests/e2e/feedback-normalization.spec.ts:487](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseQuery | [tests/e2e/feedback-normalization.spec.ts:489](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseStart | [tests/e2e/feedback-normalization.spec.ts:490](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:499](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:502](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | settle | [tests/e2e/feedback-normalization.spec.ts:503](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | onRequestFailed | [tests/e2e/feedback-normalization.spec.ts:508](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | onRequestFinished | [tests/e2e/feedback-normalization.spec.ts:511](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:517](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:520](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:529](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:532](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:535](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.waitForResponse | [tests/e2e/feedback-normalization.spec.ts:541](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.once | [tests/e2e/feedback-normalization.spec.ts:547](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:test | [tests/e2e/feedback-normalization.spec.ts:568](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | releaseOldQuery | [tests/e2e/feedback-normalization.spec.ts:571](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:580](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | anonymous | [tests/e2e/feedback-normalization.spec.ts:583](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
+| tests | callback:session.page.route | [tests/e2e/feedback-normalization.spec.ts:587](../../tests/e2e/feedback-normalization.spec.ts) | No whole-body match | not-reviewed |
 | tests | configure | [tests/e2e/file-interception.spec.ts:22](../../tests/e2e/file-interception.spec.ts) | No whole-body match | not-reviewed |
 | tests | callback:session.worker.evaluate | [tests/e2e/file-interception.spec.ts:24](../../tests/e2e/file-interception.spec.ts) | No whole-body match | not-reviewed |
 | tests | addUrlBodies | [tests/e2e/file-interception.spec.ts:40](../../tests/e2e/file-interception.spec.ts) | No whole-body match | not-reviewed |

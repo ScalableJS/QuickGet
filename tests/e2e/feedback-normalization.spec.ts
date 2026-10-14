@@ -235,6 +235,8 @@ test("poll failures cannot replace settings or upload feedback", async () => {
     await session.page.clock.install({ time: new Date("2026-01-01T00:00:00.000Z") });
     await session.page.reload({ waitUntil: "domcontentloaded" });
     await waitForPopupReady(session.page);
+    // The 2s poll interval is armed only after the initial refresh settles; the rendered row proves it ran.
+    await expect(session.page.locator(".download-name")).toHaveText("Feedback marker");
     await session.page.clock.pauseAt(new Date("2026-01-01T00:01:00.000Z"));
 
     let failedPolls = 0;
@@ -242,8 +244,13 @@ test("poll failures cannot replace settings or upload feedback", async () => {
       failedPolls += 1;
       await route.abort("failed");
     });
-    await session.page.clock.runFor(2000);
-    await expect.poll(() => failedPolls).toBeGreaterThan(0);
+    // Keep advancing the paused clock until the first interval tick fires, however late it was armed.
+    await expect
+      .poll(async () => {
+        await session.page.clock.runFor(2000);
+        return failedPolls;
+      })
+      .toBeGreaterThan(0);
 
     await openSettingsPanel(session.page);
     await session.page.getByRole("button", { name: "Test connection" }).click();
