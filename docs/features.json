@@ -568,8 +568,8 @@
       "review": {
         "date": "2026-10-14",
         "reviewer": "Antigravity",
-        "reason": "Updated Node.js LTS in CI workflows to Node 22 via .nvmrc; updated package dependencies to latest minor/patch versions; modernized vite.config.ts for native config loader compatibility; quality gates and builds verified.",
-        "snapshot": "6409bf760e357ac63afef7ce5ef165bf6ca38ffedae12f177a849c41ed07bc50"
+        "reason": "Preserved validated package dependencies and cross-platform lockfile bindings matching release 2.6.1 while running CI on Node 22 LTS via .nvmrc.",
+        "snapshot": "a163443f22dcdead2d8f97a9f24ef79e54e23c9fb4d09e21733ac50a0d256dea"
       }
     },
     {
