@@ -1,0 +1,31 @@
+filters:
+  and:
+    - or:
+        - file.inFolder("docs")
+        - file.inFolder("src/api")
+    - status == "active"
+properties:
+  file.name:
+    displayName: Page
+  type:
+    displayName: Type
+  area:
+    displayName: Area
+  features:
+    displayName: Feature IDs
+  updated:
+    displayName: Reviewed
+views:
+  - type: table
+    name: Current documentation
+    order:
+      - file.name
+      - type
+      - area
+      - features
+      - updated
+    sort:
+      - property: area
+        direction: ASC
+      - property: file.name
+        direction: ASC

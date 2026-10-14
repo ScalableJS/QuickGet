@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   getChromeSessionStorageSnapshot,
@@ -26,7 +26,7 @@ describe("settings", () => {
     expect(DEFAULTS.NASdir).toBe("Download");
   });
 
-  it("loads settings, normalizes values, and backfills missing defaults", async () => {
+  it("loads settings and resolves defaults without persisting inferred choices", async () => {
     seedChromeStorage({
       NASaddress: "files.local",
       NASport: 9090,
@@ -44,11 +44,25 @@ describe("settings", () => {
       NAStempdir: DEFAULTS.NAStempdir,
       NASdir: DEFAULTS.NASdir,
     });
-    expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
+    expect(chrome.storage.local.set).not.toHaveBeenCalled();
     expect(snapshot.NASaddress).toBe("files.local");
     expect(snapshot.NASlogin).toBeUndefined();
     expect(snapshot.NAStempdir).toBeUndefined();
     expect(settings.interceptFileLinks).toBe(false);
+  });
+
+  it("does not overwrite newer explicit preferences after reading an older empty snapshot", async () => {
+    seedChromeStorage({});
+    const newer = { interceptFileLinks: true, NASsecure: true, NASport: "9090", theme: "dark" };
+    vi.mocked(chrome.storage.local.get).mockImplementationOnce((_keys, callback) => {
+      const earlier = getChromeStorageSnapshot();
+      seedChromeStorage(newer);
+      callback?.(earlier);
+      return Promise.resolve(earlier);
+    });
+
+    await loadSettings();
+    expect(getChromeStorageSnapshot()).toEqual(newer);
   });
 
   describe("migrateSettings", () => {

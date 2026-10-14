@@ -33,8 +33,8 @@
   import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
-  type Props = { initialTab?: "connection" | "advanced" };
-  let { initialTab = "connection" }: Props = $props();
+  type Props = { initialTab?: "connection" | "advanced"; onConnectionSaved?: () => void };
+  let { initialTab = "connection", onConnectionSaved }: Props = $props();
 
   let form = $state<Settings>({ ...DEFAULTS });
 
@@ -450,6 +450,7 @@
       editingConnection = false;
 
       invalidateClientCache();
+      onConnectionSaved?.();
       applyTheme(form.theme);
       markClean();
 
@@ -460,7 +461,7 @@
       if (verifyAfterSave) {
         showStatus("Settings saved — checking the NAS…", "info");
       } else {
-        showStatus("Settings saved", "success");
+        showStatus("Settings saved", "success", { autoHideMs: 2500 });
       }
     } catch (error) {
       showStatus(`Failed to save settings: ${getErrorMessage(error)}`, "error");
@@ -508,6 +509,8 @@
     serverUrl = composeServerUrl(form);
     connection = await readConnectionState(form);
     editingConnection = false;
+    invalidateClientCache();
+    onConnectionSaved?.();
     markClean();
     showStatus("Connection removed", "info", { autoHideMs: 2500 });
   }

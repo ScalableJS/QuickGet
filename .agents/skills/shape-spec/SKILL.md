@@ -1,8 +1,9 @@
 ---
 name: shape-spec
-description: Run the Agent OS shape-spec workflow for this project when asked to shape, plan, or specify a feature before implementation.
+description: >-
+  Run the Agent OS shape-spec workflow for this project when asked to shape,
+  plan, or specify a feature before implementation.
 ---
-
 # Agent OS: Shape Spec
 
 1. Resolve the QuickGet Remote project root.

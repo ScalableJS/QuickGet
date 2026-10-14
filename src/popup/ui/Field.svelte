@@ -47,7 +47,7 @@
     {id}
     {type}
     class={[
-      "w-full px-2 border border-solid border-transparent rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] hover:border-[var(--color-control-border)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
+      "w-full px-2 border border-solid border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
       sizeClasses[size],
       error && "border-[var(--color-error)]",
       klass,

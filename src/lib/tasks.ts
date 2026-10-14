@@ -250,7 +250,7 @@ const toRecordArray = (value: unknown): RawTaskRecord[] => {
     return [];
   }
 
-  return value.filter((item): item is RawTaskRecord => typeof item === "object" && item !== null);
+  return value.filter((item: unknown): item is RawTaskRecord => typeof item === "object" && item !== null);
 };
 
 const normalizeQnap = (input: unknown): Task => {

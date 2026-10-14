@@ -121,7 +121,9 @@ function parseContentDispositionFilename(disposition: string): string | undefine
     if (rawVal) {
       try {
         if (charset === "ISO-8859-1" || charset === "LATIN1") {
-          return rawVal.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+          return rawVal.replace(/%([0-9A-Fa-f]{2})/g, (_match: string, hex: string) =>
+            String.fromCharCode(parseInt(hex, 16)),
+          );
         }
         return decodeURIComponent(rawVal);
       } catch {

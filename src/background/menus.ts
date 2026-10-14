@@ -4,6 +4,7 @@
  */
 
 import { createApiClient } from "@api/client.js";
+import { isDuplicateApiError } from "@api/utils.js";
 import { getErrorMessage } from "@lib/errors.js";
 import { resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
@@ -78,7 +79,7 @@ export async function handleContextMenuClick(
  * for historical reasons rather than good ones — if a third caller appears, move it out of the
  * context-menu module.
  */
-export async function sendDownloadToStation(url: string, referrer?: string): Promise<void> {
+export async function sendDownloadToStation(url: string, referrer?: string): Promise<{ duplicate: boolean }> {
   const settings = await loadSettings();
   // One classification decides both the transport and the routing, so the two can never
   // disagree about what a link is — a `dl.php` torrent used to be uploaded as a torrent and
@@ -95,17 +96,24 @@ export async function sendDownloadToStation(url: string, referrer?: string): Pro
   };
 
   try {
+    let duplicate = false;
     if (kind === "torrent") {
       // Resolved inside: the release name only exists once the .torrent has been fetched.
-      await sendTorrentUrlToNas(settings, url, route, referrer);
+      duplicate = (await sendTorrentUrlToNas(settings, url, route, referrer)).duplicate;
     } else {
       const client = createApiClient({ settings });
-      await client.addUrl(url, { targetFolder: route() });
+      try {
+        await client.addUrl(url, { targetFolder: route() });
+      } catch (error) {
+        if (!isDuplicateApiError(error)) throw error;
+        duplicate = true;
+      }
     }
 
     void ensureMonitoring();
     // Silent on success: the user watched themselves click the menu item, and a toast per
     // click is the noise that buried the messages worth reading.
+    return { duplicate };
   } catch (error) {
     await markConfigurationProblem(getErrorMessage(error));
     throw error;

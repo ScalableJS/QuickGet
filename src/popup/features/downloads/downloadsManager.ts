@@ -1,13 +1,23 @@
 import type { QueryTasksResult, TaskPriorityAction, TorrentFile } from "@api/client.js";
 
+import { getErrorMessage } from "@lib/errors.js";
+
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
-
-import { buildTaskSnapshot, updateSnapshot } from "./downloadsState.js";
 
 let listAbortController: AbortController | null = null;
 
 export type ListDownloadsResult = ({ skipped: false } & QueryTasksResult) | { skipped: true };
+
+export class PauseFallbackStopError extends Error {
+  readonly stopError: unknown;
+
+  constructor(stopError: unknown) {
+    super(getErrorMessage(stopError));
+    this.name = "PauseFallbackStopError";
+    this.stopError = stopError;
+  }
+}
 
 export async function listDownloads(): Promise<ListDownloadsResult> {
   if (listAbortController) {
@@ -21,14 +31,20 @@ export async function listDownloads(): Promise<ListDownloadsResult> {
     const client = await getApiClient();
     const { raw, tasks } = await client.queryTasks({ signal: controller.signal });
 
-    const snapshot = buildTaskSnapshot(Array.isArray(raw?.data) ? raw.data : []);
-    updateSnapshot(snapshot);
+    if (controller.signal.aborted || listAbortController !== controller) {
+      return { skipped: true };
+    }
 
     return {
       skipped: false,
       raw,
       tasks,
     };
+  } catch (error) {
+    if (controller.signal.aborted || listAbortController !== controller) {
+      return { skipped: true };
+    }
+    throw error;
   } finally {
     if (listAbortController === controller) {
       listAbortController = null;
@@ -59,19 +75,28 @@ export async function stopTorrent(hash: string): Promise<void> {
   await client.stopTask(hash);
 }
 
-export async function pauseTorrent(hash: string): Promise<void> {
+export async function pauseTorrent(hash: string): Promise<"paused" | "stopped"> {
   const client = await getApiClient();
   try {
     await client.pauseTask(hash);
+    return "paused";
   } catch (error) {
     // Older Download Station builds lack Task/Pause (error 2 / "no such api").
     // Only then fall back to Stop; other failures should surface.
-    if ((error as { apiUnsupported?: boolean })?.apiUnsupported) {
-      await client.stopTask(hash);
-      return;
+    if (hasUnsupportedApiError(error)) {
+      try {
+        await client.stopTask(hash);
+        return "stopped";
+      } catch (stopError) {
+        throw new PauseFallbackStopError(stopError);
+      }
     }
     throw error;
   }
+}
+
+function hasUnsupportedApiError(error: unknown): error is { apiUnsupported: true } {
+  return typeof error === "object" && error !== null && "apiUnsupported" in error && error.apiUnsupported === true;
 }
 
 export async function getTorrentFiles(hash: string): Promise<TorrentFile[]> {

@@ -182,7 +182,7 @@ For the complete testing map, runbook, and capture refresh workflow, see [`tests
 ## Troubleshooting Checklist
 
 **Extension fails to load**
-- Verify browser version (Chrome/Edge ≥ 120, Firefox ≥ 121).
+- Verify browser version (Chrome/Edge ≥ 120, Firefox ≥ 142).
 - Confirm the extension was loaded from the `dist` directory.
 
 **Connection errors**
@@ -200,7 +200,7 @@ For the complete testing map, runbook, and capture refresh workflow, see [`tests
 |---------|-----------------|------------------|
 | Chrome  | 120             | Manifest V3 build |
 | Edge    | 120             | Same as Chrome    |
-| Firefox | 121             | AMO-compatible Manifest V3 build |
+| Firefox | 142             | AMO-compatible Manifest V3 build |
 
 ## Architecture
 
@@ -292,3 +292,28 @@ maintain it. This is entirely optional and affects nothing in the extension.
 Please only send what you can comfortably spare — crypto transfers are
 irreversible, and there is no refund mechanism. A star on the repository or a
 bug report is just as welcome.
+
+## Project knowledge base and task board
+
+Start at [Documentation home](docs/index.md) for the current system description, feature coverage,
+verification boundaries, and confirmed cleanup candidates. Open the repository root in Obsidian;
+[the page catalog](views/documentation.base) and [task board](views/tasks.base) provide views.
+[The feature registry](docs/features.json) links capabilities to documentation, sources and evidence.
+See [the documentation workflow](docs/system/documentation.md) before changing mapped behavior.
+
+Project tasks live in [`tasks/`](tasks/README.md). Task frontmatter owns status; the former boards
+in `agent-os/product/` retain context and stable links. Agent OS owns product context and conventions.
+Project instructions, commands and skill wrappers are generated from `.rulesync` sources:
+
+```sh
+rulesync generate
+rulesync generate --check
+npm run test:docs
+npm run docs:check
+npm run docs:language
+```
+
+After a substantive feature review, refresh [the coverage report](docs/system/coverage.md) with
+`npm run docs:report`. A documentation percentage describes registered review coverage, not live
+NAS verification or proof that every feature is useful. Global instructions/MCP settings remain
+managed separately in `~/.ai-rulesync/`.

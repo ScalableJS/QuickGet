@@ -6,9 +6,9 @@
 import { getErrorMessage } from "@lib/errors.js";
 import { migrateSettings } from "@lib/settings.js";
 import { acknowledgeAttention, applyBadgeStats } from "./actions.js";
-import { armMonitoring, ensureMonitoring, handleAlarm } from "./alarms.js";
+import { armMonitoring, ensureMonitoring, handleAlarm, invalidateBackgroundPolls } from "./alarms.js";
 import { ACKNOWLEDGE_ATTENTION_MESSAGE, type AttentionResponse } from "./attentionMessage.js";
-import { refreshContentScripts } from "./contentScripts.js";
+import { refreshRetainedContentScripts } from "./contentScripts.js";
 import { initDownloadInterception } from "./downloads.js";
 import { handleMagnetAdd } from "./magnetHandler.js";
 import { createContextMenus, handleContextMenuClick, sendDownloadToStation } from "./menus.js";
@@ -41,11 +41,10 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 });
 
 // Initialize on install
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(() => {
   console.log("[QuickGet] Extension installed/updated");
   createContextMenus();
-  void migrateSettings().catch((error) => console.error("[QuickGet] Settings migration failed:", error));
-  if (details.reason === "update") void refreshContentScripts();
+  void migrateSettings().catch((error: unknown) => console.error("[QuickGet] Settings migration failed:", error));
   // Reflect any already-running downloads right away after an install/update.
   void ensureMonitoring();
 });
@@ -67,6 +66,10 @@ chrome.alarms.onAlarm.addListener(handleAlarm);
 // Redirect torrent downloads to the NAS; ordinary-file click interception has its own setting.
 initDownloadInterception();
 
+void refreshRetainedContentScripts().catch((error: unknown) =>
+  console.error("[QuickGet] could not refresh retained content scripts:", error),
+);
+
 // The background is the single writer of the toolbar action. Other contexts
 // (the popup) talk to it by message: MONITOR_MESSAGE arms the poll after a
 // mutation; SNAPSHOT_MESSAGE hands over the popup's fresh counts so the badge
@@ -81,7 +84,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
         sendResponse({ reason } satisfies AttentionResponse);
         if (reason) void ensureMonitoring();
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error("[QuickGet] could not acknowledge toolbar attention:", error);
         sendResponse({ reason: null } satisfies AttentionResponse);
       });
@@ -101,7 +104,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     }
     void handleMagnetAdd(uri, typeof pageUrl === "string" ? pageUrl : undefined)
       .then(sendResponse)
-      .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
     return true;
   }
 
@@ -114,8 +117,8 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       return;
     }
     void sendDownloadToStation(url, _sender.tab?.url)
-      .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: getErrorMessage(error) }));
+      .then(({ duplicate }) => sendResponse({ ok: true, duplicate }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: getErrorMessage(error) }));
     return true;
   }
 
@@ -123,13 +126,14 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     const { stats } = message as BadgeSnapshotMessage;
     // This is the successful Task/Query the popup just rendered. Its empty
     // result is authoritative for the open app, unlike a lone alarm poll.
+    invalidateBackgroundPolls();
     void applyBadgeStats(stats)
       .then(({ downloading, seeding }) => {
         // Seeding keeps the poll armed too: otherwise a seed finishing after the popup closes
         // could never return the icon to idle without reopening the popup.
         if (downloading > 0 || seeding > 0) void armMonitoring();
       })
-      .catch((error) => console.error("[QuickGet] could not apply the badge snapshot:", error));
+      .catch((error: unknown) => console.error("[QuickGet] could not apply the badge snapshot:", error));
   }
 });
 

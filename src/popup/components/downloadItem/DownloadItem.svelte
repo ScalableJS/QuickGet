@@ -285,30 +285,30 @@
           </span>
 
           {#if view.sizeText}
-            <span class="text-[var(--color-text-muted)]">•</span>
+            <span class="text-[var(--text-muted)]">•</span>
             <span class="tabular-nums flex-none">{view.sizeText}</span>
           {/if}
 
           {#if task.status === "seeding"}
             {#if task.upSpeedBps > 0}
-              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="text-[var(--text-muted)]">•</span>
               <SpeedTelemetry direction="up" value={view.uploadSpeedText} class="font-500" />
             {/if}
             {#if view.etaText}
-              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="text-[var(--text-muted)]">•</span>
               <span>ETA: {view.etaText}</span>
             {/if}
             {#if view.ratioText}
-              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="text-[var(--text-muted)]">•</span>
               <span>Ratio {view.ratioText}</span>
             {/if}
           {:else if !view.isDownloadComplete}
             {#if task.downSpeedBps > 0}
-              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="text-[var(--text-muted)]">•</span>
               <SpeedTelemetry direction="down" value={view.downloadSpeedText} class="font-500" />
             {/if}
             {#if view.etaText}
-              <span class="text-[var(--color-text-muted)]">•</span>
+              <span class="text-[var(--text-muted)]">•</span>
               <span>{view.etaText}</span>
             {/if}
           {/if}
@@ -316,7 +316,7 @@
         </div>
 
         {#if view.addedText && !view.swarmText}
-          <span class="text-11px text-[var(--color-text-muted)] flex-none">{view.addedText}</span>
+          <span class="text-11px text-[var(--text-muted)] flex-none">{view.addedText}</span>
         {/if}
       {/if}
     </div>

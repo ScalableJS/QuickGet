@@ -6,7 +6,7 @@ Derived from `package.json`, `vite.config.ts`, and `.github/workflows/ci.yml`.
 
 - **Chrome extension, Manifest V3** — service worker background, `minimum_chrome_version: 120`.
 - **Firefox** via a separate `manifest.firefox.json` and `BROWSER_TARGET=firefox` build
-  (`strict_min_version: 121`). Download interception is Chromium-only.
+  (`strict_min_version: 142.0`). Chromium-specific filename deferral is optional in the shared listener setup; Firefox runtime parity is not established by packaging/lint.
 - **Node 20** in CI.
 
 ## Language & UI
@@ -34,7 +34,8 @@ Derived from `package.json`, `vite.config.ts`, and `.github/workflows/ci.yml`.
   opt-in suite against a real NAS behind `QNAP_E2E_REAL=1`.
 - **svelte-check** for Svelte/TS diagnostics.
 
-CI and the pre-push hook gate on: `typecheck → unit tests → build → mock E2E`.
+CI gates on typecheck, Svelte check, lint, unit/deployment tests, builds and mock E2E.
+The local pre-push hook runs typecheck. Documentation/language checks are maintained separately.
 
 ## API
 
@@ -46,5 +47,5 @@ CI and the pre-push hook gate on: `typecheck → unit tests → build → mock E
 
 - `env/dev` is the working branch; releases go out through a PR to `env/prod`, which is the
   only branch allowed to publish. Chrome Web Store upload is automated in
-  `.github/workflows/deploy.yml` via `chrome-webstore-upload`; Firefox is packaged with
+  `.github/workflows/deploy.yml` via the direct API implementation in `scripts/upload-webstore.js`; Firefox is packaged with
   `web-ext` (see `docs/firefox-release-guide.md`).

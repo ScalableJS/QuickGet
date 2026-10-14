@@ -1,3 +1,12 @@
+---
+type: research
+status: obsolete
+area: history
+updated: 2026-10-09
+---
+
+> Historical analysis or superseded plan. For current behavior, start at [the system guide](system/README.md).
+
 # Svelte Migration Plan — QuickGet Remote
 
 Status: **complete** · Target: Svelte 5 (runes)

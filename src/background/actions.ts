@@ -56,6 +56,8 @@ type ToolbarState = {
   failureRevision: number;
 };
 
+export type ToolbarStateOwner = () => Promise<boolean>;
+
 const STATE_KEY = "qg:toolbarState";
 const DEFAULT_STATE: ToolbarState = {
   badgeText: "",
@@ -71,9 +73,18 @@ const DEFAULT_STATE: ToolbarState = {
 // get → mutate → set sequences can save in reverse order and erase the newer transition.
 let stateUpdateQueue = Promise.resolve();
 
-async function updateState<Result>(update: (state: ToolbarState) => Promise<Result>): Promise<Result> {
+function updateState<Result>(update: (state: ToolbarState) => Promise<Result>): Promise<Result>;
+function updateState<Result>(
+  update: (state: ToolbarState) => Promise<Result>,
+  owner: ToolbarStateOwner | undefined,
+): Promise<Result | undefined>;
+async function updateState<Result>(
+  update: (state: ToolbarState) => Promise<Result>,
+  owner?: ToolbarStateOwner,
+): Promise<Result | undefined> {
   const operation = stateUpdateQueue.then(async () => {
     const state = await loadState();
+    if (owner && !(await owner())) return undefined;
     const result = await update(state);
     await saveState(state);
     return result;
@@ -135,14 +146,24 @@ function buildTitle(stats: ProgressSummary): string {
  */
 export async function applyBadgeStats(
   stats: ProgressSummary,
-): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean }> {
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean }>;
+export async function applyBadgeStats(
+  stats: ProgressSummary,
+  owner: ToolbarStateOwner,
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean } | undefined>;
+export async function applyBadgeStats(
+  stats: ProgressSummary,
+  owner?: ToolbarStateOwner,
+): Promise<{ downloading: number; seeding: number; idleConfirmed: boolean } | undefined> {
   return updateState(async (state) => {
-    const needsAttention = state.badgeText === CONFIG_BADGE;
+    // A successful task poll knows the current count, but it does not resolve a tracker action
+    // the user still needs to take. Both attention states therefore survive polling; red remains
+    // the stronger state because markSendNotice() never replaces it.
+    const needsAttention = state.badgeText === CONFIG_BADGE || state.badgeText === NOTICE_BADGE;
     const hasActivity = stats.downloading > 0 || stats.seeding > 0;
     const text = stats.downloading > 0 ? String(stats.downloading) : "";
 
-    // Refresh the tooltip only when we actually apply a state — during an idle
-    // hold the tooltip keeps matching the count still on the badge.
+    // Preserve actionable configuration attention until the popup acknowledges it.
     if (!needsAttention) {
       const title = buildTitle(stats);
       if (title !== state.title && (await tryActionUpdate("title", () => chrome.action.setTitle({ title })))) {
@@ -168,7 +189,7 @@ export async function applyBadgeStats(
     }
 
     return { downloading: stats.downloading, seeding: stats.seeding, idleConfirmed: !hasActivity };
-  });
+  }, owner);
 }
 
 /**
@@ -222,34 +243,43 @@ export async function markSendNotice(reason: string): Promise<void> {
  * unconfigured installation is deliberately quiet: it has never shown work,
  * so there is no stale status to correct.
  */
-export async function markConfigurationProblemAfterActiveState(reason: string): Promise<void> {
+export async function markConfigurationProblemAfterActiveState(
+  reason: string,
+  owner?: ToolbarStateOwner,
+): Promise<void> {
   await updateState(async (state) => {
     if (state.icon !== "active" && state.badgeText !== CONFIG_BADGE) return;
     await applyConfigurationProblem(state, reason);
-  });
+  }, owner);
 }
 
 /**
- * Opening the popup is the acknowledgement: return the persisted reason so it can be read in
- * context, then remove the toolbar alarm. The reason has no timer and survives worker sleeps.
+ * Opening the popup acknowledges either toolbar state. A red configuration failure returns its
+ * reason for the popup to show; a gray send notice simply clears without being reclassified as a
+ * NAS error. Both states have no timer and survive worker sleeps.
  */
 export async function acknowledgeAttention(): Promise<string | null> {
   return updateState(async (state) => {
-    if (state.badgeText !== CONFIG_BADGE) return null;
+    if (state.badgeText !== CONFIG_BADGE && state.badgeText !== NOTICE_BADGE) return null;
 
+    const isConfigurationProblem = state.badgeText === CONFIG_BADGE;
     const reason = state.failureReason;
-    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) return reason;
+    if (!(await tryActionUpdate("badge", () => chrome.action.setBadgeText({ text: "" })))) {
+      return isConfigurationProblem ? reason : null;
+    }
 
     state.badgeText = "";
     if (await tryActionUpdate("title", () => chrome.action.setTitle({ title: "" }))) state.title = "";
     state.failureReason = null;
-    return reason;
+    return isConfigurationProblem ? reason : null;
   });
 }
 
 /** A failed NAS query invalidates the previously displayed task state immediately. */
-export async function markMonitoringUnavailable(): Promise<void> {
-  await markConfigurationProblem("Cannot reach Download Station — task status is unavailable.");
+export async function markMonitoringUnavailable(owner?: ToolbarStateOwner): Promise<void> {
+  await updateState(async (state) => {
+    await applyConfigurationProblem(state, "Cannot reach Download Station — task status is unavailable.");
+  }, owner);
 }
 
 /**

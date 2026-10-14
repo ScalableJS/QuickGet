@@ -1,0 +1,110 @@
+filters:
+  and:
+    - file.inFolder("tasks")
+    - type == "task"
+    - file.name != "TEMPLATE"
+properties:
+  file.name:
+    displayName: Task
+  status:
+    displayName: Status
+  priority:
+    displayName: Priority
+  area:
+    displayName: Area
+  board:
+    displayName: Workstream
+  updated:
+    displayName: Updated
+  execution_order:
+    displayName: Execution order
+  audit_order:
+    displayName: Audit order
+  depends_on:
+    displayName: Depends on
+  id:
+    displayName: ID
+views:
+  - type: kanban
+    name: Board
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - priority
+      - board
+      - area
+      - updated
+    boardColumns:
+      - discussion
+      - todo
+      - doing
+      - review
+      - blocked
+      - partial
+      - deferred
+      - rejected
+      - done
+  - type: table
+    name: All tasks
+    order:
+      - file.name
+      - status
+      - priority
+      - board
+      - area
+      - updated
+      - id
+    sort:
+      - property: priority
+        direction: ASC
+      - property: file.name
+        direction: ASC
+  - type: kanban
+    name: Feedback normalization
+    filters:
+      and:
+        - execution_order != null
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - execution_order
+      - priority
+      - depends_on
+      - area
+    sort:
+      - property: execution_order
+        direction: ASC
+    boardColumns:
+      - todo
+      - doing
+      - review
+      - blocked
+      - partial
+      - done
+  - type: kanban
+    name: Code quality
+    filters:
+      and:
+        - audit_order != null
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - audit_order
+      - priority
+      - area
+    sort:
+      - property: audit_order
+        direction: ASC
+    boardColumns:
+      - discussion
+      - todo
+      - doing
+      - review
+      - blocked
+      - done

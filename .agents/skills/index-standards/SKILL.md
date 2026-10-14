@@ -1,8 +1,9 @@
 ---
 name: index-standards
-description: Run the Agent OS index-standards workflow after adding, deleting, or reorganizing project standard files.
+description: >-
+  Run the Agent OS index-standards workflow after adding, deleting, or
+  reorganizing project standard files.
 ---
-
 # Agent OS: Index Standards
 
 1. Resolve the QuickGet Remote project root.

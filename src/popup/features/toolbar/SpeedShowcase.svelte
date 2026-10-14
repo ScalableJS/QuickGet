@@ -71,7 +71,7 @@
           <tr class="border-b border-[var(--color-control-border)] last:border-0 hover:bg-[var(--bg-hover)]">
             <td class="py-1 px-2 whitespace-nowrap">
               <span class="font-mono font-600 text-11px tabular-nums">{formatted}</span>
-              <span class="text-10px text-[var(--color-text-muted)] block leading-tight">{item.label}</span>
+              <span class="text-10px text-[var(--text-muted)] block leading-tight">{item.label}</span>
             </td>
             <td class="py-1 px-1.5 text-center whitespace-nowrap">
               <span class={["px-1 py-0.5 rounded text-9px font-600", digits <= 3 ? "bg-[var(--status-success-bg)] text-[var(--color-success)]" : "bg-[var(--status-error-bg)] text-[var(--color-error)]"]}>

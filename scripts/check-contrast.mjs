@@ -84,6 +84,7 @@ const RULES = [
   ["--color-text-on-primary", "--color-primary-solid", 4.5, "primary button label"],
   ["--color-error", "--color-bg", 4.5, "error text"],
   ["--color-focus-ring", "--color-bg", 3.0, "keyboard focus ring"],
+  ["--color-control-border", "--color-bg", 3.0, "control boundary"],
   ["--color-checkbox-border", "--color-bg", 3.0, "unchecked checkbox boundary"],
   ["--textbox-text", "--textbox-bg", 4.5, "textbox text"],
   ["--textbox-placeholder", "--textbox-bg", 4.5, "placeholder"],

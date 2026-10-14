@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getChromeRuntimeMock, getChromeScriptingMock, getChromeTabsMock } from "../../tests/mocks/chrome.js";
-import { refreshContentScripts } from "./contentScripts.js";
+import { refreshContentScripts, refreshRetainedContentScripts } from "./contentScripts.js";
 
 describe("refreshContentScripts", () => {
   it("reinjects every declared content script into already open web tabs", async () => {
@@ -35,10 +35,29 @@ describe("refreshContentScripts", () => {
     expect(getChromeScriptingMock().executeScript).toHaveBeenCalledTimes(2);
   });
 
+  it("refreshes once across worker wakes and again after the session resets", async () => {
+    getChromeRuntimeMock().getManifest.mockReturnValue({
+      content_scripts: [{ js: ["assets/magnet.js"] }],
+    } as unknown as chrome.runtime.Manifest);
+    getChromeTabsMock().query.mockResolvedValue([{ id: 17 }] as chrome.tabs.Tab[]);
+
+    await refreshRetainedContentScripts();
+    await refreshRetainedContentScripts();
+
+    expect(getChromeScriptingMock().executeScript).toHaveBeenCalledOnce();
+
+    await chrome.storage.session.remove("quickget:retained-content-scripts-ready");
+    await refreshRetainedContentScripts();
+    expect(getChromeScriptingMock().executeScript).toHaveBeenCalledTimes(2);
+  });
+
   it("does nothing when the manifest has no content scripts", async () => {
-    getChromeRuntimeMock().getManifest.mockReturnValue(
-      ({ manifest_version: 3, name: "QuickGet", version: "0", content_scripts: [] }) as unknown as chrome.runtime.Manifest,
-    );
+    getChromeRuntimeMock().getManifest.mockReturnValue({
+      manifest_version: 3,
+      name: "QuickGet",
+      version: "0",
+      content_scripts: [],
+    } as unknown as chrome.runtime.Manifest);
 
     await refreshContentScripts();
 

@@ -1,8 +1,9 @@
 ---
 name: inject-standards
-description: Run the Agent OS inject-standards workflow when selecting relevant project standards for a task or implementation context.
+description: >-
+  Run the Agent OS inject-standards workflow when selecting relevant project
+  standards for a task or implementation context.
 ---
-
 # Agent OS: Inject Standards
 
 1. Resolve the QuickGet Remote project root.

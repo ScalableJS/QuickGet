@@ -9,18 +9,47 @@ NAS Download Station. Built with Vite, linted/formatted by **Biome**, tested wit
 This repo uses [Agent OS](https://github.com/buildermethods/agent-os). Product context and
 machine-readable standards live in `agent-os/`:
 
-- **`agent-os/product/`** — `mission.md` (problem, users, principles, non-goals),
-  `roadmap.md` (phases; details in `docs/feature-roadmap.md`), `tech-stack.md`,
-  **`bugs-kanban.md` — the single source of truth for open defects**, and
-  `settings-ux-kanban.md` — the same kanban convention, scoped to Settings UX work
-  (details in `docs/settings-ux-plan.md`), and `demo-video-kanban.md` — the promotional
-  recording, scoped to the `demo-video` skill's method.
-- **`agent-os/standards/`** — concise, injectable rules, listed in `index.yml`.
-  Read the index first and pull only what the task needs; `/inject-standards` does this
-  for you. Commands live in `.claude/commands/agent-os/`, skills in `.agents/skills/`.
+- **`agent-os/product/`** — mission, roadmap and tech stack; the former kanban documents
+  retain context and stable links to migrated cards.
+- **`tasks/`** — canonical task files. Status lives in YAML frontmatter, never in a summary table.
+  Read `tasks/README.md` for statuses and `tasks/TEMPLATE.md` for new work.
+- **`views/tasks.base`** — Obsidian board and table derived from task metadata. Filter `board`
+  for defects, settings UX, competitive gaps, engineering or demo recording.
+- **`agent-os/standards/`** — canonical engineering conventions, indexed in `index.yml`.
+  Commands are generated from `.rulesync/commands/agent-os/` to
+  `.claude/commands/agent-os/`; skill wrappers are generated from `.rulesync/skills/`.
 
-Before starting work: check `bugs-kanban.md` for a card covering it, and read the standards
-relevant to the area you are touching.
+Before substantial work: check tasks with `todo`, `doing`, `review`, `blocked`, `partial`,
+`deferred` or `discussion` status, then read the relevant standards from the index.
+Closed statuses are `done` and `rejected`. Preserve existing task IDs and dated evidence.
+
+## Rulesync
+
+Project instructions are generated from `.rulesync/rules/project.md`; project skills from
+`.rulesync/skills/`. Edit those sources, then run `rulesync generate` and
+`rulesync generate --check`. `rulesync.jsonc` declares the supported agents.
+Do not edit generated `AGENTS.md`, `CLAUDE.md`, or Copilot instructions directly.
+Global rules and MCP configuration belong to `~/.ai-rulesync/.rulesync/`.
+
+## Knowledge base and documentation coverage
+
+Read `docs/index.md` and `docs/handoff/current.md` before substantial work. Current behavior
+belongs to `docs/system/` or the authoritative module README linked in `docs/features.json`.
+Agent OS owns standards and product context; task frontmatter remains canonical for work state.
+
+Before changing a feature, find its owning sources and documentation in the registry. Compare
+behavior, failure paths, access/data boundaries and existing evidence. Update its canonical page
+or record a concrete no-documentation-change reason through a single-feature review. A changed
+snapshot needs review; it does not prove the prose is wrong. Do not bulk-reset reviews or hide
+features/debt to inflate coverage. Classify new sources explicitly, and keep runtime/NAS evidence
+distinct from documentation review. Follow `docs/system/documentation.md` for the workflow.
+
+All maintained comments, descriptions and prose are English. Non-Latin string literals in the
+three documented Unicode fixture tests are deliberate input data, not a prose exception.
+After relevant changes run `npm run test:docs`, `npm run docs:check` and `npm run docs:language`.
+Before committing, stage only the intended files and check the actual index with
+`node scripts/docs/check.mjs --strict --base HEAD --staged`. Regenerate the visible report
+explicitly with `npm run docs:report`; ordinary checks are read-only.
 
 ## Code standards — read before writing code
 
@@ -31,7 +60,8 @@ Follow the repo code standard and review guide in `.github/instructions/`:
 
 ## Must stay green
 
-`.github/workflows/ci.yml` and the pre-push hook gate on: **typecheck → unit tests → build → mock E2E**.
+`.github/workflows/ci.yml` gates on **typecheck → Svelte check → lint → unit tests → build → mock E2E**.
+The local pre-push hook runs typecheck; run the full checks below before finishing changes.
 Before finishing any change run, at minimum:
 
 ```bash

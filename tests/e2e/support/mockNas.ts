@@ -11,6 +11,11 @@ interface MockNasOptions {
   initialTasks?: Array<DownloadJob | Task>;
   removeDelayMs?: number;
   /**
+   * Make AddTorrent return an HTTP-success body that does not confirm QNAP acceptance. This is
+   * limited to transport-regression fixtures; it never creates a task.
+   */
+  addTorrentResponse?: "html" | "empty" | "malformed-json";
+  /**
    * Opt-in: advance downloading tasks a step on every `Task/Query`, so successive polls return
    * a rising series instead of the same frozen row.
    *
@@ -340,6 +345,20 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       });
       sendJson(response, status, payload);
     };
+    const replyText = (status: number, text: string, contentType: string): void => {
+      requestLog.add({
+        method,
+        path,
+        status,
+        requestBody: body,
+        responseBody: text,
+      });
+      response.writeHead(status, {
+        "Content-Type": contentType,
+        "Content-Length": Buffer.byteLength(text),
+      });
+      response.end(text);
+    };
 
     if (path === "/downloadstation/V4/Misc/Login" && method === "POST") {
       if (options.credentials && !acceptsCredentials(options.credentials, body)) {
@@ -561,6 +580,19 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
       const sid = readMultipartField(body, "sid");
       if (!sid) {
         reply(400, { error: 1001, reason: "Missing sid" });
+        return;
+      }
+
+      if (path === "/downloadstation/V4/Task/AddTorrent" && options.addTorrentResponse === "html") {
+        replyText(200, "<html><title>Sign in</title></html>", "text/html; charset=utf-8");
+        return;
+      }
+      if (path === "/downloadstation/V4/Task/AddTorrent" && options.addTorrentResponse === "empty") {
+        replyText(200, "", "text/plain; charset=utf-8");
+        return;
+      }
+      if (path === "/downloadstation/V4/Task/AddTorrent" && options.addTorrentResponse === "malformed-json") {
+        replyText(200, '{"error":', "application/json; charset=utf-8");
         return;
       }
 

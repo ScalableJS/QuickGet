@@ -1,52 +1,38 @@
 # MV3 Service Worker
 
-The background is a Manifest V3 service worker — it is killed and restarted constantly.
+- Register browser listeners synchronously during module evaluation; `src/background/index.ts`
+  calls the interception initializers before awaiting work.
+- Persist state that must survive worker suspension in session or local storage. Operation-scoped
+  claims, client caches and short serialization queues may live in memory; they are not durable state.
+- The worker owns toolbar icon, badge, title and attention. Other contexts send
+  `MONITOR_MESSAGE` or `SNAPSHOT_MESSAGE`; they do not write `chrome.action` directly.
 
-- **Register every `chrome.*` listener synchronously during module evaluation.** A listener
-  added after an `await` will not wake the worker. `src/background/index.ts` calls
-  `initDownloadInterception()` at top level for exactly this reason.
-- **Never keep state in module globals.** The worker is suspended after ~30s idle and its
-  memory is gone. Persist to `chrome.storage.session` (transient) or `chrome.storage.local`
-  (durable), and read it back on every event.
-- **The background is the single writer of the toolbar action.** Other contexts message it
-  (`MONITOR_MESSAGE`, `SNAPSHOT_MESSAGE`); they never call `chrome.action.*` themselves.
+## NAS-first browser handoff
 
-## Destructive browser operations must be transactional
-
-Never cancel, erase, or otherwise destroy a user's browser download before the NAS has
-accepted the hand-off:
-
-```
-identify → guard credentials → pause → send to NAS
-  → success: cancel the browser download
-  → failure: resume it
+```text
+identify -> validate configuration -> live NAS login -> fetch/send torrent
+  -> NAS acceptance: cancel browser download, then erase cancelled history
+  -> earlier failure: leave normal browser download handling available
 ```
 
-This ordering is the fix for a real data-loss defect — see `docs/download-interception-bugs.md`.
+- Chromium filename deferral holds the save decision during handoff; release the owned callback
+  in `finally`. The current transaction does not pause the native download or run a recovery queue.
+- A failure after NAS acceptance, such as notification bookkeeping cleanup, must not convert the
+  accepted transaction into a failed send or prevent cancellation.
+- A failed browser cancellation keeps the browser copy; do not erase before cancellation succeeds.
+- Do not promise recovery or exactly-once delivery across worker death from operation-scoped memory.
+  [The handoff page](../../../docs/system/torrent-handoff.md) owns the current lifetime boundaries.
 
-Two consequences measured in E2E, not assumed:
+## Listener ownership
 
-- **A small file usually completes before the cancel lands**, so the browser keeps a copy even
-  on success. The transaction protects against loss, not against a stray file.
-- **The worker can die mid-hand-off**, leaving the download paused forever. Record a marker in
-  `chrome.storage.session` before pausing, clear it in a `finally`, and sweep for leftovers on
-  every worker start.
+Take the in-memory download-ID claim synchronously before the first await; release it when the
+operation finishes. A storage read followed by a write is not an atomic claim. Do not add persisted
+claims, history sweeps or guessed restart mitigation without reproduced causal evidence for BUG-70.
 
-## Deduplicate listeners synchronously
+## Credentials and settings lock
 
-`onCreated` and `onChanged` can both fire for the same download. A claim written as
-`await storage.get()` then `storage.set()` is not atomic — both callers read "unclaimed" and
-act twice. Take the claim from an in-memory `Set` **before the first await**, and keep a session
-entry as the durable record across worker restarts.
-
-## Credential preconditions apply to background entry points too
-
-Locking is not only a popup concern. Before any background code path uses the NAS client:
-
-```ts
-if (!settings.NASpassword) return; // locked, or session storage cleared by a restart
-```
-
-`isLocked()` is **not** a sufficient guard — it returns `false` when `rememberPassword` is
-off, even though the password is empty after a browser restart. Use it only to choose the
-wording of a notification.
+Background entry points validate configuration through `findConfigProblem()` and use a live
+login before handoff. `loadSettings()` supplies the current credential; session storage can
+supplement the locally persisted NAS password. The optional settings password protects the
+Settings screen only, and does not gate background operations or encrypt NAS credentials.
+Do not restore the retired `rememberPassword` / `isLocked()` background contract.

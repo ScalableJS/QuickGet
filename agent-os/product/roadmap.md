@@ -11,7 +11,7 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 - Core task management: add URL / magnet / `.torrent`, list, start, pause, stop, remove,
   seeding view with share ratio.
 - Context-menu send, toolbar badge and status-driven icon, alarm-based polling with idle
-  hysteresis.
+  snapshots treated as authoritative.
 - Session hardening: single-flight login, re-login-and-replay on expiry, badge preserved
   across transient poll errors (F2).
 - Folder path validation against `Misc/Dir` with inline valid/invalid state (F1).
@@ -47,6 +47,10 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
   NAS fails. The only remaining interception setting is for ordinary files; it stays off by
   default, and Shift-click sends one eligible file while it is off. Shipped in v2.6.0
   (GAP-16, ENG-11; supersedes UX-23/UX-24's torrent gesture).
+- **Feedback you can trust:** every send path reports its outcome on the page, an accepted NAS
+  hand-off is never reported as failed because of later browser bookkeeping, rejected toolbar
+  commands end visibly, confirmations expire and persistent messages can be dismissed, and page
+  interception survives an extension reload. Shipped in v2.6.1 (BUG-71..BUG-79, ENG-15..ENG-25).
 - **A connection test that answers in five seconds and says what it found:** the check is a login
   ping with a budget, saving no longer waits on the network, and a rejected password is told apart
   from an absent NAS by the code Download Station answered with rather than by matching words in

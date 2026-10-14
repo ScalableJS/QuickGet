@@ -1,8 +1,9 @@
 ---
 name: plan-product
-description: Run the Agent OS plan-product workflow for this project when asked to create or update product mission, roadmap, or tech-stack documentation.
+description: >-
+  Run the Agent OS plan-product workflow for this project when asked to create
+  or update product mission, roadmap, or tech-stack documentation.
 ---
-
 # Agent OS: Plan Product
 
 1. Resolve the QuickGet Remote project root.

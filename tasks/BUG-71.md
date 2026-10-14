@@ -1,0 +1,93 @@
+---
+type: "task"
+id: "BUG-71"
+status: done
+priority: "p2"
+area: "content/background/popup UX"
+board: "bugs"
+updated: "2026-10-14"
+legacy_status: "In Progress"
+severity: "medium"
+execution_order: 10
+depends_on:
+  - BUG-58
+  - BUG-72
+  - BUG-73
+  - ENG-17
+---
+
+# Send feedback appears for some torrent/link paths but not for others
+
+**Severity:** medium · **Area:** content/background/popup UX
+**Files:** `src/content/magnet.ts`, `src/background/downloads.ts`,
+`src/background/magnetHandler.ts`, `src/background/menus.ts`, `src/background/notifier.ts`,
+`src/popup/features/upload/torrentUpload.ts`, `src/popup/features/upload/batchUpload.ts`
+
+Reported from real use on 2026-09-15: adding torrents and download links does not produce
+consistent feedback — a toast appears on some attempts and not on others. This makes a successful
+send hard to distinguish from a missed click and encourages duplicate retries.
+
+The current code already contains an intentional path-dependent split that can explain at least
+part of the observation. An ordinary magnet and a Shift-clicked link go through the content script
+and show an in-page loading/success/error toast. An ordinary `.torrent` is instead discovered by
+`chrome.downloads` and is silent on success. A context-menu send is also silent on success and uses
+a system notification only for failure. Popup torrent and batch-URL uploads show an in-progress
+status and errors, but a fully successful request returns through the refresh callback without a
+terminal success message. This is a confirmed inconsistency in the feedback contract; it does not
+yet prove that any individual path intermittently loses a toast.
+
+**Diagnostic acceptance:** build a matrix for ordinary click, Shift-click, context menu, popup
+`.torrent` upload, and popup URL upload across `.torrent`, magnet, and ordinary URL sources. For
+each applicable cell, record the initiating context, NAS request count/result, local-browser
+outcome, toolbar transition, and visible feedback. Repeat on a newly opened tab and a tab retained
+across an extension update so a stale content script is not confused with the designed split.
+
+**Decision acceptance:** define one feedback contract by user intent rather than implementation
+path. A direct gesture must have one observable terminal outcome for success, duplicate, and
+failure; background automation must remain quiet on success; and the solution must not restore the
+system-notification spam deliberately removed by UX-10. State explicitly whether the task list or
+toolbar is sufficient confirmation for each silent path.
+
+**Fix acceptance:** implement the chosen contract at the narrowest shared boundary and add tests
+that prove exactly one NAS request and the expected terminal feedback for every affected path. A
+success indication must occur only after Download Station accepts the request, never merely after
+dispatch to the service worker.
+
+**Moved to In Progress 2026-09-15** — popup torrent and batch URL uploads now replace their working
+status with a terminal success only after the API reports acceptance. Content-click, automatic
+download and context-menu paths remain to be measured against the full matrix before this closes.
+
+**Documentation audit 2026-10-09** — current popup torrent and batch URL senders now emit
+terminal success status messages. The original assertion that they refresh without success
+feedback is historical. The browser-torrent/context-menu success policy remains silent, while
+page clicks have terminal toasts. This correction does not close the reported real-use inconsistency.
+See [the current feedback matrix](../docs/system/feedback.md).
+
+
+**2026-10-09 execution priority:** order 9 in the feedback normalization view. The broader cross-surface investigation remains open; finish the confirmed popup and transaction boundaries before changing feedback policy.
+
+**2026-10-09 scheduling:** status is partial: popup terminal success already exists, while cross-surface/new-tab/retained-tab acceptance remains unproven. The current implementation assignment covers the narrower confirmed cards linked above; this broader policy card is not claimed complete.
+
+
+**2026-10-09 bounded acceptance:** the linked popup and accepted-handoff cards are complete after root review. This card remains partial: new/retained-tab content feedback, native delivery/serialization and the full intent/path policy matrix are unproven. Existing quiet automatic/menu success policy is preserved; no speculative notification framework or persistent dedupe was added.
+
+
+## Code-quality consultation follow-up: 2026-10-09
+
+Mimic's final source review additionally raised page dispatch with a still-pending callback, ordinary-file fallback ignoring anchor download/target attributes, and gray-notice acknowledgement/lifetime. These are broader policy paths, not failures of the extracted claim/callback kernel. The current fallback is same-tab navigation; it does not recreate every native anchor action. No arbitrary dispatch deadline is added: a timeout while NAS acceptance is unknown could start browser handling for an already accepted/in-progress NAS send. Measure the causal lost-response path and decide late-reply/fallback ownership first. Gray notices remain distinct from popup direct/poll statuses; their retention requires the broader intent matrix.
+
+The resetActionState concurrency suggestion was rejected as a production blocker after a repository call-site check found only tests calling that export. This does not certify every toolbar interleaving.
+
+
+## Polish execution: 2026-10-10
+
+Terra owns the bounded implementation/reproduction work; Codex owns review, Mimic consultation, integrated verification and acceptance. This starts the current polish pass without closing historical evidence gaps.
+
+
+## Accepted polish: 2026-10-10
+
+Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.
+
+The finite matrix now covers current popup, page, automatic torrent, context-menu, native API and attention contracts. Genuine retained-tab extension reload keeps the site open and proves one magnet plus one Shift-file request with terminal success. Superseded page gestures keep their individual transport outcome but do not own a second toast; quiet automatic/menu success uses task-list/toolbar confirmation. Unknown acceptance never triggers automatic browser handling or retry. OS display and every tracker/firmware combination are explicit external limits, not uncompleted renderer refactoring.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: torrent and link sends now produce consistent page feedback on every path.

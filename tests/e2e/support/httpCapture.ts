@@ -119,14 +119,6 @@ export async function readClientSideRequestCapture(page: Page): Promise<ClientSi
   });
 }
 
-export async function persistHttpCapture(rootDir: string, fileName: string, content: string): Promise<string> {
-  const artifactsDir = path.join(rootDir, ".e2e-artifacts");
-  await mkdir(artifactsDir, { recursive: true });
-  const filePath = path.join(artifactsDir, fileName);
-  await writeFile(filePath, content, "utf8");
-  return filePath;
-}
-
 export async function persistHttpCaptureBundle(
   rootDir: string,
   baseName: string,

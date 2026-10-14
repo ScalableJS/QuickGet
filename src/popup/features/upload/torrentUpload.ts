@@ -1,15 +1,18 @@
 import { resolveDestination } from "@lib/routingRules.js";
+import { getErrorMessage } from "@lib/errors.js";
 import { loadSettings } from "@lib/settings.js";
 import { readTorrentName } from "@lib/torrentMeta.js";
-import { showStatus } from "@/popup/components";
+import { isCurrentDirectStatus, showStatus } from "@/popup/components";
 
 import { getApiClient } from "../../shared/api";
 import { requestMonitoring } from "../../shared/monitor.js";
 
-interface UploadOptions {
-  onDuplicate?: (fileName: string) => void;
-  onSuccess?: () => void;
-}
+import { reportFollowUpFailure } from "./uploadFeedback.js";
+
+type UploadOptions = {
+  onDuplicate?: (fileName: string) => void | Promise<void>;
+  onSuccess?: () => void | Promise<void>;
+};
 
 export async function uploadTorrent(file: File, options: UploadOptions = {}): Promise<void> {
   if (!file.name.toLowerCase().endsWith(".torrent")) {
@@ -17,7 +20,7 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
     return;
   }
 
-  showStatus(`Uploading torrent: ${file.name}...`, "info");
+  const receipt = showStatus(`Uploading torrent: ${file.name}...`, "info");
 
   try {
     // A file dropped here is the same torrent as one clicked on a tracker, so it must obey the
@@ -35,20 +38,25 @@ export async function uploadTorrent(file: File, options: UploadOptions = {}): Pr
 
     if (result.added) {
       requestMonitoring();
-      showStatus(`Added "${file.name}" to Download Station`, "success", { autoHideMs: 2500 });
-      options.onSuccess?.();
+      const message = `Added "${file.name}" to Download Station`;
+      if (isCurrentDirectStatus(receipt)) {
+        const terminalReceipt = showStatus(message, "success", { autoHideMs: 2500 });
+        await reportFollowUpFailure(terminalReceipt, message, options.onSuccess);
+      }
       return;
     }
 
     if (result.duplicate) {
-      showStatus(`"${file.name}" already exists on Download Station`, "info", { autoHideMs: 2000 });
-      options.onDuplicate?.(file.name);
+      const message = `"${file.name}" already exists on Download Station`;
+      if (isCurrentDirectStatus(receipt)) {
+        const terminalReceipt = showStatus(message, "info", { autoHideMs: 2000 });
+        await reportFollowUpFailure(terminalReceipt, message, () => options.onDuplicate?.(file.name));
+      }
       return;
     }
 
-    showStatus("Failed to add torrent", "error");
+    if (isCurrentDirectStatus(receipt)) showStatus("Failed to add torrent", "error");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    showStatus(`Error: ${message}`, "error");
+    if (isCurrentDirectStatus(receipt)) showStatus(`Error: ${getErrorMessage(error)}`, "error");
   }
 }

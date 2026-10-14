@@ -4,6 +4,7 @@
 
 import { createApiClient } from "@api/client.js";
 import { getErrorMessage } from "@lib/errors.js";
+import { isDuplicateApiError } from "@api/utils.js";
 import { resolveDestination } from "@lib/routingRules.js";
 import { loadSettings } from "@lib/settings.js";
 import { magnetDisplayName } from "@lib/sourceKind.js";
@@ -15,7 +16,7 @@ export async function handleMagnetAdd(
   /** The page the magnet was clicked on. A magnet has no host of its own, so this is the only
    *  thing a domain rule can match — and the content script has always sent it. */
   pageUrl?: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: true; duplicate?: boolean } | { ok: false; error: string }> {
   try {
     const settings = await loadSettings();
     const targetFolder = resolveDestination(
@@ -32,6 +33,10 @@ export async function handleMagnetAdd(
     void ensureMonitoring();
     return { ok: true };
   } catch (error) {
+    if (isDuplicateApiError(error)) {
+      void ensureMonitoring();
+      return { ok: true, duplicate: true };
+    }
     const errorMsg = getErrorMessage(error);
     console.error("[QuickGet] magnet send failed:", error);
     await markConfigurationProblem(errorMsg);
