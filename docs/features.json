@@ -566,10 +566,10 @@
       "assessment": "verified",
       "notes": "Manifests, build targets, CI/deploy scripts, direct Store API uploader and Rulesync generation were compared; no new deployment or Firefox runtime claim.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex",
-        "reason": "Reviewed declared tsx dependency/lockfile, actual stand startup/shutdown and standalone retained-tab content-script build; production/Firefox packaging gates preserve release through env/dev-to-env/prod PR only.",
-        "snapshot": "eb95a9fd572b0d20d871c3a5ddd1164f595f6ec43429515ad576cf133b7f4e3f"
+        "date": "2026-10-14",
+        "reviewer": "Antigravity release agent",
+        "reason": "v2.6.1 release changes only the version field in package.json, package-lock.json, manifest.json and manifest.firefox.json; development-release.md states no version number and its build, gate and deploy descriptions remain accurate; fresh gates and real-NAS spot check passed 2026-10-14.",
+        "snapshot": "72cf29cefcdcb73aba46e579a63277474d81d06592bc89ce14b24b70120e6e3d"
       }
     },
     {

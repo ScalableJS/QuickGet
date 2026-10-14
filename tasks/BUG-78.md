@@ -5,7 +5,7 @@ status: done
 priority: p2
 area: settings/interception
 board: bugs
-updated: 2026-10-10
+updated: "2026-10-14"
 audit_order: 11
 ---
 
@@ -21,3 +21,5 @@ Final integrated browser/CI acceptance is pending. [The canonical audit](../docs
 ## Accepted polish: 2026-10-10
 
 Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: stale defaults no longer overwrite newer preferences.

@@ -5,7 +5,7 @@ status: done
 priority: p2
 area: content/feedback
 board: bugs
-updated: 2026-10-09
+updated: "2026-10-14"
 audit_order: 2
 ---
 
@@ -32,3 +32,5 @@ Terra (Codex CLI, gpt-5.6-terra/high) owns the isolated runtime and regression-t
 Terra replaced only dynamic message/action-label insertion with textContent. Codex reviewed the static template, theme, dismiss/action handlers and timers. Literal-markup tests and existing page browser scenarios pass; no script-execution claim is made.
 
 Integrated env/dev verification: 563 unit/fixture tests across 40 files, 60 Chromium mock E2E, typecheck, Svelte (zero errors/warnings), lint and production build passed. [The acceptance record](../docs/quality/code-quality-audit.md#accepted-normalization-2026-10-09) distinguishes runtime evidence from documentation review and hardware evidence.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: page-feedback messages are rendered as text.

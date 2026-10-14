@@ -5,7 +5,7 @@ status: done
 priority: p2
 area: popup/task controls
 board: bugs
-updated: 2026-10-09
+updated: "2026-10-14"
 severity: medium
 execution_order: 3
 depends_on:
@@ -53,3 +53,5 @@ and a newly rendered `Recovery marker` task, rather than worker-wide request cou
 
 
 **2026-10-09 root acceptance:** Start/Stop/Pause failures are caught once and remain retryable. Unsupported Pause reports the real Stop success/failure, including rejected transport, with typed fallback context. Terra implemented the patch; Codex inspected the actual diff, challenged it with reproduced ordering failures and consulted Mimic. 546 unit/fixture tests, 58 Chromium mock E2E, typecheck, Svelte (0 errors/warnings), lint, production and Storybook builds, and 28 deployment unit tests passed in the integrated env/dev working copy. See [accepted evidence](../docs/system/notification-normalization-audit.md#accepted-implementation-and-review). These are mocked/browser results; no fresh physical-NAS or Firefox certification.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: rejected toolbar task commands now end in visible terminal feedback.

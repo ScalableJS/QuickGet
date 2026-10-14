@@ -8,7 +8,7 @@ updated: 2026-10-10
 # Current handoff
 
 The working branch is `env/dev`; production releases use a PR into `env/prod`.
-The product version is 2.6.0. [[docs/system/overview|The current overview]] owns shipped behavior;
+The product version is 2.6.1. [[docs/system/overview|The current overview]] owns shipped behavior;
 [task files](../../tasks/README.md) own work status and historical evidence.
 
 The new English knowledge base has a feature registry, explicit review snapshots, independent
@@ -36,7 +36,7 @@ is complete. The canonical MV3 standard and credential review guidance match cur
 
 Terra implemented the bounded patches in shared ownership sets, Mimic provided substantive source review, and Codex reproduced/adjudicated findings and accepted the final integration. BUG-64/65/66/71/77/78/79 and ENG-23/24/25 are done. Notification/page ownership, gray attention acknowledgement, serialized native episodes, read-only settings defaults, required torrent move serialization, vendor error labels, control contrast and genuine retained-tab reload are documented in their canonical system pages.
 
-Fresh final evidence: 595 unit/fixture tests, 61 Chromium mock E2E, ten classifier repetitions, six real-NAS spot checks with an empty owned-task ledger, types/Svelte/lint, production/dev/Storybook builds, 26 contrast checks, 28 deployment tests and Firefox package checks. Current manual semantic evidence covers all 594 runtime implementations; tests may retain pragmatic any. Coverage and external limits are recorded in [[docs/system/verification|verification]] and [the final audit](../quality/code-quality-audit.md#final-integrated-acceptance). All changes belong to env/dev; version 2.6.0 and release/store state are unchanged.
+Fresh final evidence: 595 unit/fixture tests, 61 Chromium mock E2E, ten classifier repetitions, six real-NAS spot checks with an empty owned-task ledger, types/Svelte/lint, production/dev/Storybook builds, 26 contrast checks, 28 deployment tests and Firefox package checks. Current manual semantic evidence covers all 594 runtime implementations; tests may retain pragmatic any. Coverage and external limits are recorded in [[docs/system/verification|verification]] and [the final audit](../quality/code-quality-audit.md#final-integrated-acceptance). These changes shipped in v2.6.1 (2026-10-14) after fresh gates and six real-NAS spot checks.
 
 ## Separate future work
 

@@ -5,7 +5,7 @@ status: done
 priority: p2
 area: content/extension lifecycle
 board: bugs
-updated: 2026-10-10
+updated: "2026-10-14"
 audit_order: 12
 ---
 
@@ -21,3 +21,5 @@ Terra owns diagnosis and the minimal retained-tab correction. The mandatory brow
 Codex accepted the bounded source/test delta after Terra implementation and substantive Mimic consultation. Fresh integration passed 595 unit/fixture tests, 61 Chromium mock E2E, ten consecutive classifier repetitions, typecheck, Svelte (zero errors/warnings), lint, production build and six real-NAS spot checks; the owned-task ledger is empty. [The final audit](../docs/quality/code-quality-audit.md#final-integrated-acceptance) and [verification](../docs/system/verification.md#final-polish-integrated-acceptance-2026-10-10) retain exact scope and coverage limits. No release or store publication is performed.
 
 Codex additionally rejected the initial retirement unit's final-only assertion: it did not establish that the old listener yielded the click. Strengthened assertions require no prevention, propagation stop or send from the stale handler and verify its removal before invoking the current listener. This test fails with the stale-runtime guard removed and passes after restoration. The session-lifetime test verifies one refresh across wakes and a new refresh after reset.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: page interception is restored after a genuine extension reload.

@@ -5,7 +5,7 @@ status: done
 priority: p2
 area: background/monitoring
 board: bugs
-updated: 2026-10-09
+updated: "2026-10-14"
 audit_order: 3
 ---
 
@@ -43,3 +43,5 @@ Mimic supplied additional structured-duplicate and concurrent monitoring/queued-
 Mimic's final review was checked against the source and controlled regressions. Supported duplicate-code gating rejects structured authentication errors; poll revisions, post-storage writer ownership and serialized alarm creation/removal preserve current monitoring state. Codex's two additional storage-read and alarm-clear regressions failed before correction and pass afterward. Browser alarm bookkeeping failure cannot misreport a successful NAS reply as a connection failure.
 
 Final integrated verification passed 571 unit/fixture tests across 40 files, 60 Chromium mock E2E, typecheck, Svelte (zero errors/warnings), lint and production build. Earlier 563-test evidence remains the first-pass record; this final run covers the corrective patch. Broader feedback policies remain in BUG-71.
+
+**Resolved 2026-10-14** — shipped in v2.6.1: monitoring snapshots stay tied to confirmed connection results.

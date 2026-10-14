@@ -7,7 +7,7 @@ updated: 2026-10-09
 
 # QuickGet Remote: current system
 
-QuickGet Remote 2.6.0 is a browser extension for one QNAP NAS running Download Station. It has no hosted backend, user accounts, multi-NAS selection, analytics, or cloud synchronization. Chromium uses an MV3 service worker; Firefox has its own MV3 manifest and background-script configuration.
+QuickGet Remote 2.6.1 is a browser extension for one QNAP NAS running Download Station. It has no hosted backend, user accounts, multi-NAS selection, analytics, or cloud synchronization. Chromium uses an MV3 service worker; Firefox has its own MV3 manifest and background-script configuration.
 
 ## User journeys
 
