@@ -7,7 +7,7 @@ Derived from `package.json`, `vite.config.ts`, and `.github/workflows/ci.yml`.
 - **Chrome extension, Manifest V3** — service worker background, `minimum_chrome_version: 120`.
 - **Firefox** via a separate `manifest.firefox.json` and `BROWSER_TARGET=firefox` build
   (`strict_min_version: 142.0`). Chromium-specific filename deferral is optional in the shared listener setup; Firefox runtime parity is not established by packaging/lint.
-- **Node 20** in CI.
+- **Node 22** (LTS) in CI (managed via `.nvmrc`).
 
 ## Language & UI
 

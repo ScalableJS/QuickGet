@@ -5,9 +5,9 @@ import UnoCSS from "unocss/vite";
 import Icons from "unplugin-icons/vite";
 import { defineConfig, type PluginOption } from "vite";
 
-import { alias } from "./aliases.config";
-import firefoxManifestJson from "./manifest.firefox.json";
-import chromeManifestJson from "./manifest.json";
+import { alias } from "./aliases.config.ts";
+import firefoxManifestJson from "./manifest.firefox.json" with { type: "json" };
+import chromeManifestJson from "./manifest.json" with { type: "json" };
 
 /** The plain-object arm of `ManifestV3Export`; the plugin also accepts a promise or a function. */
 type Manifest = Extract<ManifestV3Export, { manifest_version: number }>;
@@ -49,7 +49,7 @@ export default defineConfig({
     outDir: isFirefox ? "dist-firefox" : isDevBuild ? "dist-dev" : "dist",
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "src/popup/index.html"),
+        popup: resolve(import.meta.dirname, "src/popup/index.html"),
       },
     },
   },
