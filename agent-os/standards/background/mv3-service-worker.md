@@ -15,8 +15,10 @@ identify -> validate configuration -> live NAS login -> fetch/send torrent
   -> earlier failure: leave normal browser download handling available
 ```
 
-- Chromium filename deferral holds the save decision during handoff; release the owned callback
-  in `finally`. The current transaction does not pause the native download or run a recovery queue.
+- Chromium filename deferral holds the save decision during handoff. After successful cancellation,
+  discard the held callback before erasing history; release it in `finally` when browser fallback
+  should continue. Calling it after cancellation/erasure produces an invalid filename decision.
+  The current transaction does not pause the native download or run a recovery queue.
 - A failure after NAS acceptance, such as notification bookkeeping cleanup, must not convert the
   accepted transaction into a failed send or prevent cancellation.
 - A failed browser cancellation keeps the browser copy; do not erase before cancellation succeeds.

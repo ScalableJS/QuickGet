@@ -215,10 +215,10 @@
       "assessment": "verified",
       "notes": "Event claims, deferred filename, live login, tracker fetch, cancel-after-accept and browser fallback were inspected; BUG-70 remains unproven.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed worker wiring, accepted-torrent cancellation and failure-episode separation against unchanged transaction sources and torrent/hotlink regressions; updated canonical handoff page preserves browser fallback boundaries.",
-        "snapshot": "03630975995ab465d1b7197638cf7c3238dd80135dacf8d457ae4602e8560642"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "BUG-80: traced real Chromium invalid downloadId after erase, observed red native-download E2E, then independently passed the unchanged regression three times. Reviewed callback discard after successful cancel and retained browser fallback on rejection against source, 40 handoff unit tests, and canonical lifetime documentation; mock NAS evidence only.",
+        "snapshot": "2eec95ef0c723bf9781e6543acc47dcd0394ae2059558e5fdd2cef05c9d754f9"
       }
     },
     {
@@ -448,10 +448,10 @@
       "assessment": "verified",
       "notes": "Direct/poll ownership, scoped recovery, episode dismissal, timer receipt guards and accepted-outcome isolation are verified for targeted popup regressions; wider native/page policy remains open.",
       "review": {
-        "date": "2026-10-14",
-        "reviewer": "Antigravity release agent",
-        "reason": "Only tests/e2e/feedback-normalization.spec.ts changed: the 'poll failures cannot replace settings or upload feedback' scenario now waits for the initial refresh and advances the paused clock until the first 2s poll fires, removing a CI race (failed in runs 38068161110 and 38615736670). Assertions, product source and canonical-page behavior are unchanged; 20/20 repeats and the full spec passed locally.",
-        "snapshot": "6978de3573c30d73b3c26e36d762edfdb78b4609b42ca892ceac04e3725243ab"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "BUG-80 shared-source review: only successful-cancel filename callback lifetime changed. Error collection is asserted in native Chromium rather than suppressed. Notification classification, accepted-handoff isolation, NAS-first cancellation and fallback branches retain their existing behavior; canonical feedback prose remains accurate.",
+        "snapshot": "8fc4b671d6d489efac8ce47a10ac1150c613991eb364daa0629f67595d2e07cb"
       }
     },
     {
@@ -566,10 +566,10 @@
       "assessment": "verified",
       "notes": "Manifests, build targets, CI/deploy scripts, direct Store API uploader and Rulesync generation were compared; no new deployment or Firefox runtime claim.",
       "review": {
-        "date": "2026-10-14",
-        "reviewer": "Antigravity release agent",
-        "reason": "v2.6.1 release changes only the version field in package.json, package-lock.json, manifest.json and manifest.firefox.json; development-release.md states no version number and its build, gate and deploy descriptions remain accurate; fresh gates and real-NAS spot check passed 2026-10-14.",
-        "snapshot": "72cf29cefcdcb73aba46e579a63277474d81d06592bc89ce14b24b70120e6e3d"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Reviewed synchronized 2.6.2 package, lockfile and Chrome/Firefox manifest versions against env/dev-to-env/prod release workflow. Existing Node 22 CI pin and verified dependency/lockfile maintenance remain included; no build or publication semantics changed and canonical tooling documentation remains accurate.",
+        "snapshot": "5fd67bf5a9df817011e7d0cbb70db911cfb35ad4b37d5488773082a7c3483f7c"
       }
     },
     {
@@ -659,10 +659,10 @@
       "assessment": "verified",
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra fixture correction",
-        "reason": "Reviewed ENG-25 deterministic browser clock before initialization: actual upload and rejected polling preserve direct priority before 2500 ms, normal expiry and subsequent poll failure. The source-guard counter-check fails without protection and passes after restoration. Runtime behavior and canonical feature contract remain unchanged; verification evidence now records the CI fixture correction.",
-        "snapshot": "d3064ca3055b341303a7c1f3da8e7afb58492d1e7c862ae4a3aefaf7ef0380a2"
+        "date": "2026-10-14",
+        "reviewer": "Antigravity",
+        "reason": "Updated vite.config.ts hash in docs/quality/reviews.json following native config loader modernization; mock infrastructure, test stand, and spotcheck contracts remain identical.",
+        "snapshot": "309bb32eac20a7843889df797d8f236e11fc59b582cb14dd85e2769ecd2e7abe"
       }
     },
     {

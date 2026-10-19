@@ -50,9 +50,10 @@ export function initDownloadInterception(): void {
 
 /**
  * Hold Chromium at the last reversible point before it commits a file. Returning true tells the
- * browser that `suggest` will be called asynchronously. The callback is released on every handled
- * outcome. Chrome exposes no documented release deadline if the worker itself dies, so that crash
- * boundary is not simulated with persisted recovery state.
+ * browser that `suggest` will be called asynchronously. The callback is released when the browser
+ * should handle the download, and discarded after a successful cancellation. Chrome exposes no
+ * documented release deadline if the worker itself dies, so that crash boundary is not simulated
+ * with persisted recovery state.
  */
 export function handleDeterminingFilename(
   item: chrome.downloads.DownloadItem,
@@ -142,7 +143,12 @@ export async function handleDownloadCreated(item: chrome.downloads.DownloadItem)
 
     // The NAS owns the torrent now. A failed cancel is deliberately non-destructive: the browser
     // keeps its copy rather than pretending interception succeeded completely.
-    if (await cancelBrowserDownload(item.id)) await eraseBrowserDownload(item.id);
+    if (await cancelBrowserDownload(item.id)) {
+      // Cancellation ends the deferred filename decision. Invoking suggest after this point
+      // targets a download that is no longer in progress; discard it before erasing its history.
+      heldFilenames.delete(item.id);
+      await eraseBrowserDownload(item.id);
+    }
   } catch (error) {
     console.error("[QuickGet] Download interception failed:", error);
     await notifyFailure("handoff", "Failed to redirect download", getErrorMessage(error));

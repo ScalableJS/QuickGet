@@ -79,7 +79,7 @@ All configuration values are stored in `chrome.storage.local` and remain on the 
 ## Development
 
 ### Prerequisites
-- Node.js 20.19+ or 22.12+ (required by Vite 8; CI builds on Node 20)
+- Node.js 22.12+ (managed via `.nvmrc`; CI builds on Node 22)
 - npm (bundled with Node.js)
 
 ### Setup

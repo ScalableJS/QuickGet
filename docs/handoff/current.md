@@ -2,13 +2,13 @@
 type: handoff
 status: active
 area: project
-updated: 2026-10-10
+updated: 2026-10-19
 ---
 
 # Current handoff
 
 The working branch is `env/dev`; production releases use a PR into `env/prod`.
-The product version is 2.6.1. [[docs/system/overview|The current overview]] owns shipped behavior;
+The product version is 2.6.2. [[docs/system/overview|The current overview]] owns shipped behavior;
 [task files](../../tasks/README.md) own work status and historical evidence.
 
 The new English knowledge base has a feature registry, explicit review snapshots, independent
@@ -45,3 +45,15 @@ Fresh final evidence: 595 unit/fixture tests, 61 Chromium mock E2E, ten classifi
 - [BUG-70](../../tasks/BUG-70.md): wait for a real recurrence and captured causal sequence; no persistent dedupe, history sweep or guessed restart mitigation is accepted.
 
 These are separate decisions/evidence tasks and do not reopen the completed polish. [[docs/system/feature-review|The feature review]] retains their rationale. The first pushed polish CI exposed a transient-success timing fixture; ENG-25 fixes clock ordering while preserving priority, expiry and subsequent poll visibility. Its source-guard counter-check fails without protection and passes after restoration. Repository CI must be checked against the pushed env/dev revision; local results alone are not a CI outcome.
+
+
+## v2.6.2 release: 2026-10-19
+
+[BUG-80](../../tasks/BUG-80.md) corrects the deferred filename callback after a successful NAS-first
+browser torrent handoff. The callback is discarded after successful cancellation; cancellation
+failure still releases browser fallback. The browser regression reads Chromium's extension error
+log and retains the one-upload/no-local-file assertions. Dependency and cross-platform lockfile
+maintenance already on `env/dev` are included. Fresh release gates passed 597 unit/fixture tests, 61 Chromium mock E2E, 28 deployment tests,
+11 documentation tests, five quality-audit tests, six real-NAS spot checks with an empty owned-task
+ledger, types/Svelte/lint, contrast, production/dev/Storybook builds, Firefox packaging and
+documentation/language checks. No new feature or UI change is included.

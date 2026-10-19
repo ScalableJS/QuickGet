@@ -7,6 +7,10 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 
 ## Phase 0 — Shipped
 
+- **Quiet completion of successful torrent handoffs:** discard the deferred browser filename
+  callback after cancellation, preventing `Invalid downloadId` without releasing a local file.
+  Shipped in v2.6.2 (BUG-80).
+
 - Svelte 5 / TS / MV3 rewrite of the legacy extension; Vite + Biome + Vitest + Playwright.
 - Core task management: add URL / magnet / `.torrent`, list, start, pause, stop, remove,
   seeding view with share ratio.

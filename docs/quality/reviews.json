@@ -1390,10 +1390,10 @@
     "assessment": "reviewed-platform-build-boundary",
     "path": "vite.config.ts",
     "names": ["callback:process.argv.some", "devManifest"],
-    "sourceHash": "64cff997b9d47bcef4a3d3cd3806897f98229eab95b78f2880b7557427ccbd0c",
-    "reason": "Reviewed Chrome/dev/Firefox manifest selection, deliberate manifest literal narrowing, Storybook CRX exclusion and the supported standaloneFiles build option. Fresh IIFE execution resolves the reproduced cached-runtime boundary; no independent new loader or dependency is introduced.",
-    "task": "BUG-79",
-    "reviewedAt": "2026-10-10",
-    "reviewer": "Codex"
+    "sourceHash": "c068167702c831c516ba0adb18dc759856e588dd13d5179b016457dee414666b",
+    "reason": "Reviewed Chrome/dev/Firefox manifest selection, deliberate manifest literal narrowing, Storybook CRX exclusion and the supported standaloneFiles build option; modernized JSON imports with import attributes and import.meta.dirname for native Vite config loader compatibility.",
+    "task": "ENG-4",
+    "reviewedAt": "2026-10-14",
+    "reviewer": "Antigravity"
   }
 ]

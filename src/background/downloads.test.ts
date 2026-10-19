@@ -107,7 +107,7 @@ describe("download interception", () => {
     notifications = getChromeNotificationsMock();
   });
 
-  it("holds Chromium's filename decision and releases it after a successful NAS-first cancel", async () => {
+  it("discards Chromium's held filename decision after a successful NAS-first cancel", async () => {
     seedChromeStorage(createTestSettings());
     const nas = mockSuccessfulHandoff();
     const suggest = vi.fn();
@@ -117,7 +117,32 @@ describe("download interception", () => {
     await vi.waitFor(() => expect(downloads.erase).toHaveBeenCalledWith({ id: 1 }));
     expect(nas.addTorrentCalls).toBe(1);
     expect(downloads.cancel).toHaveBeenCalledWith(1);
-    expect(suggest).toHaveBeenCalledOnce();
+    expect(suggest).not.toHaveBeenCalled();
+  });
+
+  it("releases Chromium to the browser when cancelling a held torrent fails", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+    downloads.cancel.mockRejectedValueOnce(new Error("cancel failed"));
+    const suggest = vi.fn();
+
+    expect(handleDeterminingFilename(createDownloadItem(), suggest)).toBe(true);
+
+    await vi.waitFor(() => expect(suggest).toHaveBeenCalledOnce());
+    expect(downloads.erase).not.toHaveBeenCalled();
+  });
+
+  it("keeps Chromium's filename decision discarded when erasing cancelled history fails", async () => {
+    seedChromeStorage(createTestSettings());
+    mockSuccessfulHandoff();
+    downloads.erase.mockRejectedValueOnce(new Error("erase failed"));
+    const suggest = vi.fn();
+
+    expect(handleDeterminingFilename(createDownloadItem(), suggest)).toBe(true);
+
+    await vi.waitFor(() => expect(downloads.erase).toHaveBeenCalledWith({ id: 1 }));
+    expect(downloads.cancel).toHaveBeenCalledWith(1);
+    expect(suggest).not.toHaveBeenCalled();
   });
 
   it("releases Chromium to the browser when the NAS rejects a held torrent", async () => {

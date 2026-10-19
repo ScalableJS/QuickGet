@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: background
-updated: 2026-10-10
+updated: 2026-10-19
 features: ["torrent-handoff"]
 ---
 
@@ -22,14 +22,16 @@ This is browser-mediated fetching of a small torrent descriptor. It is distinct 
 
 ## Failures and lifetime
 
-Configuration, authentication, tracker, and NAS send failures leave normal browser behavior available. A cancellation failure after NAS acceptance can leave a browser copy; the code prefers that over losing the user's download. Failure notifications are throttled by episode. Claims and deferred filename callbacks are in memory for the current worker operation; they are not persistent cross-restart deduplication.
+Configuration, authentication, tracker, and NAS send failures leave normal browser behavior available. A cancellation failure after NAS acceptance can leave a browser copy; the code prefers that over losing the user's download. Failure notifications are throttled by episode. After a successful browser cancellation, the held filename callback is discarded before erasing history: calling it on a cancelled or erased download targets an invalid filename decision. If cancellation fails, the callback is still released for browser fallback. [BUG-80](../../tasks/BUG-80.md) records the reproduced Chromium runtime error and its regression.
+
+Claims and deferred filename callbacks are in memory for the current worker operation; they are not persistent cross-restart deduplication.
 
 [BUG-70](../../tasks/BUG-70.md) records intermittent reappearance of a deleted NAS task after a complete browser restart. No reproduced cause permits a restart-history mitigation. A clean mock suite is not proof that this observation is resolved.
 
 ## Sources and evidence
 
 - [downloads.ts](../../src/background/downloads.ts), [torrentSender.ts](../../src/lib/torrentSender.ts), [tabFetch.ts](../../src/lib/tabFetch.ts), [torrentMeta.ts](../../src/lib/torrentMeta.ts).
-- [Download interception E2E](../../tests/e2e/download-interception.spec.ts), [tracker guard E2E](../../tests/e2e/hotlink-guard.spec.ts), and corresponding unit tests verify request ownership, fallback, and browser file outcomes.
+- [Download interception E2E](../../tests/e2e/download-interception.spec.ts), [tracker guard E2E](../../tests/e2e/hotlink-guard.spec.ts), and corresponding unit tests verify request ownership, fallback, and browser file outcomes. The ordinary torrent-click case also reads Chromium's extension runtime error log; the local mock NAS confirms the handoff contract without claiming physical-NAS evidence.
 - [Real-NAS spot check](../../tests/e2e/prod-spotcheck.spec.ts) exercises the production bundle before releases; no new hardware run is claimed by this documentation audit.
 
 ## Accepted handoff and feedback bookkeeping

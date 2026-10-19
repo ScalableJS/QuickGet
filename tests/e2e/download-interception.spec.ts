@@ -25,6 +25,13 @@ const BODY_DELAY_MS = 3_000;
 
 type Settings = Record<string, unknown>;
 
+// Chrome exposes this API only to its own chrome://extensions page.
+type DeveloperPrivate = {
+  updateProfileConfiguration: (update: { inDeveloperMode: boolean }) => Promise<void>;
+  updateExtensionConfiguration: (update: { extensionId: string; errorCollection: boolean }) => Promise<void>;
+  getExtensionInfo: (id: string) => Promise<{ runtimeErrors: { message: string }[] }>;
+};
+
 function seedSettings(worker: Worker, settings: Settings): Promise<unknown> {
   return worker.evaluate((values) => chrome.storage.local.set(values as Settings), settings);
 }
@@ -360,6 +367,15 @@ test("ordinary torrent click sends to NAS and leaves no local file", async () =>
   const { torrentHost, session, downloadsPath } = await startSession({ nativeDownloads: true });
 
   try {
+    // Internal callback failures bypass Playwright console events. Collect Chrome's own log.
+    const extensionsPage = await session.context.newPage();
+    await extensionsPage.goto("chrome://extensions");
+    await extensionsPage.evaluate(async (extensionId) => {
+      const api = (chrome as typeof chrome & { developerPrivate: DeveloperPrivate }).developerPrivate;
+      await api.updateProfileConfiguration({ inDeveloperMode: true });
+      await api.updateExtensionConfiguration({ extensionId, errorCollection: true });
+    }, session.extensionId);
+
     // A retired opt-out in an old profile must not disable torrent interception.
     await seedSettings(session.worker, nasSettings(mockNas.port, { interceptTorrentLinks: false }));
 
@@ -379,6 +395,14 @@ test("ordinary torrent click sends to NAS and leaves no local file", async () =>
       .poll(() => session.worker.evaluate(async () => (await chrome.downloads.search({})).length), { timeout: 30_000 })
       .toBe(0);
     expect(await readdir(downloadsPath)).toEqual([]);
+
+    // Round-trip through the worker after cleanup, then read the browser's extension error log.
+    await session.worker.evaluate(() => chrome.downloads.search({}));
+    const runtimeErrors = await extensionsPage.evaluate(async (extensionId) => {
+      const api = (chrome as typeof chrome & { developerPrivate: DeveloperPrivate }).developerPrivate;
+      return (await api.getExtensionInfo(extensionId)).runtimeErrors;
+    }, session.extensionId);
+    expect(runtimeErrors, "Successful torrent handoff must not leave extension runtime errors").toEqual([]);
   } finally {
     await session.close();
     await torrentHost.close();
