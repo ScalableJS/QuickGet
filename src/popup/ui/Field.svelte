@@ -47,9 +47,11 @@
     {id}
     {type}
     class={[
-      "w-full px-2 border border-solid border-[var(--color-control-border)] rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] focus:outline-none focus:border-[var(--color-primary-visual)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
+      "w-full px-2 border border-solid rounded-[var(--radius)] bg-[var(--textbox-bg)] text-[var(--textbox-text)] placeholder:text-[var(--textbox-placeholder)] transition-[background-color,border-color,box-shadow] duration-[var(--duration-fast)] focus:outline-none focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_28%,transparent)]",
       sizeClasses[size],
-      error && "border-[var(--color-error)]",
+      error
+        ? "border-[var(--color-error)] focus:border-[var(--color-error)]"
+        : "border-[var(--color-control-border)] focus:border-[var(--color-primary-visual)]",
       klass,
     ]}
     aria-invalid={error ? "true" : undefined}

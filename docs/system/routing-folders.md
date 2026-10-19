@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: routing
-updated: 2026-10-09
+updated: 2026-10-19
 features: ["routing-rules", "nas-folders"]
 ---
 
@@ -22,7 +22,7 @@ Settings owns the rule drafts, condition errors, adding/removing, and priority r
 
 ## Folder paths and validation
 
-QNAP expects paths relative to the share root. `normalizeFolderPath()` strips the NAS prefix into that form. `Misc/Dir` supplies folder choices and writability metadata. Validation lists the parent and looks for the requested child; missing or read-only is invalid. An unreachable NAS is an unverifiable error, not evidence that a folder is invalid. Empty path handling is separate from the form's required Temp folder rule.
+QNAP expects paths relative to the share root. `normalizeFolderPath()` strips the NAS prefix into that form. `Misc/Dir` supplies folder choices and writability metadata. Validation lists the parent and looks for the requested child; missing or read-only is invalid. An unreachable NAS is an unverifiable error, not evidence that a folder is invalid. Empty path handling is separate from the form's required Temp folder rule. While the folder picker is open, Enter selects its highlighted writable entry or closes the list; it does not also submit Settings. Once the picker is closed, normal form submission is available.
 
 Top-level choices have a five-minute cache tied to endpoint/login identity, with explicit invalidation after settings changes. Folder existence/writability can change after validation; the NAS still decides whether the send succeeds. Both `temp` and `move` belong to the API contract, not merely UI conventions.
 

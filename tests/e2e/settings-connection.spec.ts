@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 
 import { expect, test } from "@playwright/test";
@@ -68,14 +69,14 @@ async function startSilentHost(): Promise<{ port: number; close: () => Promise<v
   };
 }
 
-test("a reachable NAS with the right password reports ready", async () => {
+test("Enter in the NAS password saves settings and reports the connection result", async () => {
   const mockNas = await startMockNas({ credentials: { user: FIELDS.login, password: FIELDS.password } });
   const session = await launchExtensionPopup(devBuildPath);
   const { page } = session;
 
   try {
     await fillConnection(page, `http://127.0.0.1:${mockNas.port}`, FIELDS.password);
-    await page.click("#save-btn");
+    await page.press("#NASpassword", "Enter");
 
     await expect(page.locator("#status-message")).toHaveText("Connected to the NAS", { timeout: 10_000 });
     // The form gives way to the card, and the card says what the check found.
@@ -83,6 +84,45 @@ test("a reachable NAS with the right password reports ready", async () => {
   } finally {
     await session.close();
     await mockNas.close();
+  }
+});
+
+test("Save highlights every empty connection field before parsing the server address", async () => {
+  const session = await launchExtensionPopup(devBuildPath);
+  const { page } = session;
+
+  try {
+    await waitForPopupReady(page);
+    await openSettingsPanel(page);
+    await switchSettingsTab(page, "Connection");
+    await page.locator("#serverUrl").focus();
+    await page.locator("#NASlogin").focus();
+    await page.fill("#NASpassword", "local-e2e-password");
+    await expect(page.locator("#serverUrl")).not.toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#NASlogin")).not.toHaveAttribute("aria-invalid", "true");
+    await page.click("#save-btn");
+
+    for (const id of ["serverUrl", "NASlogin"]) {
+      await expect(page.locator(`#${id}`)).toHaveAttribute("aria-invalid", "true");
+      await expect(page.locator(`#${id}-error`)).toContainText("required");
+      const errorColor = await page.locator(`#${id}-error`).evaluate((message) => getComputedStyle(message).color);
+      await expect(page.locator(`#${id}`), `${id} needs a visible error border, including while focused`).toHaveCSS(
+        "border-top-color", errorColor,
+      );
+    }
+    await expect(page.locator("#serverUrl")).toBeFocused();
+    await expect(page.locator("#status-message")).toHaveText("Fill in the highlighted fields before saving");
+    expect(await session.worker.evaluate(() => chrome.storage.local.get("NASpassword"))).toEqual({});
+
+    await page.fill("#serverUrl", "http://[");
+    await page.fill("#NASlogin", FIELDS.login);
+    await expect(page.locator("#NASlogin")).not.toHaveAttribute("aria-invalid", "true");
+    await page.press("#NASpassword", "Enter");
+    await expect(page.locator("#serverUrl-error")).toContainText("Invalid server address");
+    await expect(page.locator("#serverUrl")).toBeFocused();
+    expect(await session.worker.evaluate(() => chrome.storage.local.get("NASlogin"))).toEqual({});
+  } finally {
+    await session.close();
   }
 });
 
@@ -179,5 +219,97 @@ test("a NAS that accepts the connection and then goes quiet is given up on, not 
   } finally {
     await session.close();
     await silent.close();
+  }
+});
+
+
+test("an exported backup restores the NAS endpoint, username and folders in a fresh profile", async () => {
+  const mockNas = await startMockNas({ credentials: { user: FIELDS.login, password: FIELDS.password } });
+  const source = await launchExtensionPopup(devBuildPath);
+  const restored = await launchExtensionPopup(devBuildPath);
+  const serverUrl = `http://127.0.0.1:${mockNas.port}`;
+
+  try {
+    await fillConnection(source.page, serverUrl, FIELDS.password);
+    await source.page.click("#save-btn");
+    await expect(source.page.locator(".connection-health")).toHaveText("Ready");
+    await switchSettingsTab(source.page, "Advanced");
+    const pendingDownload = source.page.waitForEvent("download");
+    await source.page.getByRole("button", { name: "Export settings" }).click();
+    const download = await pendingDownload;
+    const backupPath = await download.path();
+    if (!backupPath) throw new Error("Export did not produce a local backup file");
+    const backup = await readFile(backupPath, "utf8");
+    const expected = {
+      NASaddress: "127.0.0.1",
+      NASport: String(mockNas.port),
+      NASsecure: false,
+      NASlogin: FIELDS.login,
+      NAStempdir: FIELDS.temp,
+      NASdir: FIELDS.target,
+    };
+    expect(JSON.parse(backup).settings).toMatchObject(expected);
+    expect(JSON.parse(backup).settings).not.toHaveProperty("NASpassword");
+
+    await waitForPopupReady(restored.page);
+    await openSettingsPanel(restored.page);
+    await switchSettingsTab(restored.page, "Advanced");
+    await restored.page.setInputFiles("#import-input", {
+      name: "quickget-settings.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(backup),
+    });
+    await switchSettingsTab(restored.page, "Connection");
+    await expect(restored.page.locator("#serverUrl")).toHaveValue(serverUrl);
+    await expect(restored.page.locator("#NASlogin")).toHaveValue(FIELDS.login);
+    await expect(restored.page.locator("#NAStempdir")).toHaveValue(FIELDS.temp);
+    await expect(restored.page.locator("#NASdir")).toHaveValue(FIELDS.target);
+    await expect(restored.page.locator("#NASpassword")).toHaveValue("");
+
+    await restored.page.fill("#NASpassword", FIELDS.password);
+    await restored.page.press("#NASpassword", "Enter");
+    await expect(restored.page.locator(".connection-health")).toHaveText("Ready");
+    expect(await restored.worker.evaluate(() => chrome.storage.local.get(null))).toMatchObject(expected);
+    await restored.page.reload({ waitUntil: "domcontentloaded" });
+    await waitForPopupReady(restored.page);
+    await openSettingsPanel(restored.page);
+    await expect(restored.page.locator(".connection-card")).toContainText(`${FIELDS.login}@127.0.0.1`);
+    await restored.page.getByRole("button", { name: "Edit", exact: true }).click();
+    await expect(restored.page.locator("#serverUrl")).toHaveValue(serverUrl);
+    await expect(restored.page.locator("#NASdir")).toHaveValue(FIELDS.target);
+  } finally {
+    await source.close();
+    await restored.close();
+    await mockNas.close();
+  }
+});
+
+
+test("Enter confirms the folder picker without saving the settings form", async () => {
+  const mockNas = await startMockNas({ credentials: { user: FIELDS.login, password: FIELDS.password } });
+  const session = await launchExtensionPopup(devBuildPath);
+  const { page } = session;
+
+  try {
+    await fillConnection(page, `http://127.0.0.1:${mockNas.port}`, FIELDS.password);
+    await page.fill("#NAStempdir", "Down");
+    await expect(page.getByRole("option", { name: "Download", exact: true })).toBeVisible();
+    await page.press("#NAStempdir", "ArrowDown");
+    await page.press("#NAStempdir", "Enter");
+    await expect(page.locator("#NAStempdir")).toHaveValue("Download");
+    await expect(page.locator("#save-btn")).toBeEnabled();
+    expect(await session.worker.evaluate(() => chrome.storage.local.get("NASaddress"))).toEqual({});
+
+    await page.press("#NAStempdir", "ArrowDown");
+    await expect(page.locator("#NAStempdir")).toHaveAttribute("aria-expanded", "true");
+    await page.press("#NAStempdir", "Enter");
+    await expect(page.locator("#NAStempdir")).toHaveAttribute("aria-expanded", "false");
+    expect(await session.worker.evaluate(() => chrome.storage.local.get("NASaddress"))).toEqual({});
+
+    await page.press("#NASpassword", "Enter");
+    await expect(page.locator(".connection-health")).toHaveText("Ready");
+  } finally {
+    await session.close();
+    await mockNas.close();
   }
 });

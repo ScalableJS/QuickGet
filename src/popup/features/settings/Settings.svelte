@@ -30,7 +30,7 @@
   import { invalidateClientCache } from "../../shared/api";
   import FolderSelect from "../folderPicker/FolderSelect.svelte";
   import type { FolderFieldStatus } from "../folderPicker/validateFolder.js";
-  import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
+  import { exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
   /** Which tab opens first. Only Storybook needs this — the popup always starts on Connection. */
   type Props = { initialTab?: "connection" | "advanced"; onConnectionSaved?: () => void };
@@ -74,10 +74,7 @@
   // Shown while the form is incomplete, so the gap is visible before a download reveals it.
   const configProblem = $derived(savedSignature === "" ? undefined : findConfigProblem(form));
 
-  /**
-   * Per-field errors, filled in as fields are left rather than only when Save is pressed.
-   * Waiting for Save is how an empty Temp Folder went unnoticed until every download failed.
-   */
+  /** Required-field errors appear on submit and clear when the user edits that field. */
   let fieldErrors = $state<Record<string, string>>({});
 
   /**
@@ -100,23 +97,17 @@
   let activeTab = $state(untrack(() => initialTab));
 
   /** Field ids in the order they appear, so Save can focus the first one that is wrong. */
-  const REQUIRED_FIELDS: { id: string; label: string; value: () => string; tab: NonNullable<Props["initialTab"]> }[] = [
-    { id: "serverUrl", label: "Server address", value: () => serverUrl, tab: "connection" },
-    { id: "NASlogin", label: "Username", value: () => form.NASlogin, tab: "connection" },
-    { id: "NASpassword", label: "Password", value: () => form.NASpassword, tab: "connection" },
-    { id: "NAStempdir", label: "Temp folder", value: () => form.NAStempdir, tab: "connection" },
+  const REQUIRED_FIELDS: { id: string; label: string; value: () => string }[] = [
+    { id: "serverUrl", label: "Server address", value: () => serverUrl },
+    { id: "NASlogin", label: "Username", value: () => form.NASlogin },
+    { id: "NASpassword", label: "Password", value: () => form.NASpassword },
+    { id: "NAStempdir", label: "Temp folder", value: () => form.NAStempdir },
   ];
 
-  function validateField(id: string): void {
-    const field = REQUIRED_FIELDS.find((candidate) => candidate.id === id);
-    if (!field) return;
-
-    if (field.value().trim()) {
-      const { [id]: _removed, ...rest } = fieldErrors;
-      fieldErrors = rest;
-    } else {
-      fieldErrors = { ...fieldErrors, [id]: `${field.label} is required` };
-    }
+  function clearFieldError(id: string): void {
+    if (!fieldErrors[id]) return;
+    const { [id]: _removed, ...rest } = fieldErrors;
+    fieldErrors = rest;
   }
 
   /** Marks every empty required field and returns the first one, for focus. */
@@ -275,44 +266,31 @@
     showStatus("Settings exported", "success", { autoHideMs: 1500 });
   }
 
-  /**
-   * A file chosen from disk used to overwrite the form the instant it was picked, with nothing
-   * said beforehand and no way back. It is held here instead until the user confirms, and the
-   * confirmation names what will change — the file's contents are otherwise invisible to them.
-   */
-  let pendingImport = $state<{ patch: Partial<Settings>; changes: string[] } | null>(null);
-
   async function importBackup(event: Event): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
 
     try {
+      // Parsing validates the file before anything in the current draft changes.
       const patch = parseImportedSettings(await file.text());
-      const changes = describeImport(patch);
-
-      if (changes.length === 0) {
-        showStatus("That backup contains no settings to import", "error");
-        return;
+      Object.assign(form, patch);
+      serverUrl = composeServerUrl(form);
+      routingRuleDrafts = form.routingRules.map((r) => toRoutingRuleDraft(r));
+      routingErrors = {};
+      if ("NASaddress" in patch || "NASlogin" in patch) {
+        activeTab = "connection";
+        editingConnection = true;
       }
-
-      pendingImport = { patch, changes };
+      fieldErrors = {};
+      tempStatus = "idle";
+      dirStatus = "idle";
+      showStatus("Settings imported into the form — review and Save", "info");
     } catch (error) {
       showStatus(`Import failed: ${getErrorMessage(error)}`, "error");
     } finally {
       input.value = ""; // let the same file be re-selected later
     }
-  }
-
-  function applyImport(): void {
-    if (!pendingImport) return;
-
-    Object.assign(form, pendingImport.patch);
-    serverUrl = composeServerUrl(form);
-    routingRuleDrafts = form.routingRules.map((r) => toRoutingRuleDraft(r));
-    routingErrors = {};
-    pendingImport = null;
-    showStatus("Settings imported — review and Save", "success", { autoHideMs: 2500 });
   }
 
   export async function load(): Promise<void> {
@@ -348,29 +326,35 @@
 
     try {
       isSaving = true;
-      applyServerUrl(serverUrl);
+      // Mark every missing field before parsing the address, so an empty URL cannot bypass
+      // the field errors and leave only a generic save failure.
+      const firstMissing = markMissingFields();
+      if (firstMissing) {
+        activeTab = "connection";
+        editingConnection = true;
+        await tick();
+        document.getElementById(firstMissing)?.focus();
+        showStatus("Fill in the highlighted fields before saving", "error");
+        return;
+      }
+
+      try {
+        applyServerUrl(serverUrl);
+      } catch (error) {
+        fieldErrors = { serverUrl: getErrorMessage(error) };
+        activeTab = "connection";
+        editingConnection = true;
+        await tick();
+        document.getElementById("serverUrl")?.focus();
+        showStatus("Fix the highlighted server address before saving", "error");
+        return;
+      }
       const shouldVerifyConnection = connectionSignature(form) !== savedConnectionSignature;
 
       // Block save on a folder we positively know is wrong. "error" (unverifiable,
       // e.g. NAS offline) is allowed through — we don't punish offline users.
       if (tempStatus === "invalid" || dirStatus === "invalid") {
         showStatus("Fix the highlighted folder path before saving", "error");
-        return;
-      }
-
-      // Saving an incomplete connection is what leaves the extension silently unable to reach
-      // the NAS later, so the required fields are checked here rather than trusting `required`
-      // on the inputs — nothing submits this form, so the browser never enforces them.
-      const firstMissing = markMissingFields();
-      if (firstMissing) {
-        // Take the user to the problem rather than describing it and leaving them to look. The
-        // field may live in a tab that isn't open, so switch there first or the focus is silently
-        // dropped into a hidden panel.
-        const field = REQUIRED_FIELDS.find((candidate) => candidate.id === firstMissing);
-        if (field) activeTab = field.tab;
-        await tick();
-        document.getElementById(firstMissing)?.focus();
-        showStatus("Fill in the highlighted fields before saving", "error");
         return;
       }
 
@@ -524,7 +508,10 @@
 
 </script>
 
-<div class="flex flex-col pb-0">
+<form class="flex flex-col pb-0" novalidate onsubmit={(event) => {
+  event.preventDefault();
+  void save();
+}}>
 {#if configProblem}
   <Alert tone="warning">
     {configProblem.summary} Downloads will stay in the browser until this is fixed.
@@ -585,22 +572,24 @@
     <Field
       id="serverUrl"
       label="Server address"
-      placeholder="http://192.168.1.100:8080"
+      placeholder="e.g. http://192.168.1.100:8080"
       required
       bind:value={serverUrl}
       error={fieldErrors.serverUrl}
-      oninput={(event) => syncServerUrl(event.currentTarget.value)}
-      onblur={() => validateField("serverUrl")}
+      oninput={(event) => {
+        syncServerUrl(event.currentTarget.value);
+        clearFieldError("serverUrl");
+      }}
     />
-    <Field id="NASlogin" label="Username" placeholder="QNAP username" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} onblur={() => validateField("NASlogin")} />
-    <Field id="NASpassword" label="Password" type="password" placeholder="Password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} onblur={() => validateField("NASpassword")} />
+    <Field id="NASlogin" label="Username" placeholder="Enter your NAS username" required bind:value={form.NASlogin} error={fieldErrors.NASlogin} oninput={() => clearFieldError("NASlogin")} />
+    <Field id="NASpassword" label="Password" type="password" placeholder="Enter your NAS password" required bind:value={form.NASpassword} error={fieldErrors.NASpassword} oninput={() => clearFieldError("NASpassword")} />
   {/if}
 </FormSection>
 
 <FormSection legend="Folders">
   <div>
     <label for="NAStempdir" class="block font-500 mb-2 text-[var(--color-text)]">Temp folder</label>
-    <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} />
+    <FolderSelect id="NAStempdir" placeholder="e.g. Download" settings={$state.snapshot(form)} bind:value={form.NAStempdir} bind:status={tempStatus} formError={fieldErrors.NAStempdir} oninput={() => clearFieldError("NAStempdir")} />
   </div>
 
   <div>
@@ -797,28 +786,12 @@
 </FormSection>
 
 <FormSection legend="Backup">
-  <Alert tone="hint">Export or import settings. Credentials are never included.</Alert>
+  <Alert tone="hint">Server address, username and folders are included. Passwords are not included.</Alert>
 
-  {#if pendingImport}
-    <Alert tone="warning">
-      This will overwrite current settings: {pendingImport.changes.join(", ")}.
-      Review and click Save to apply.
-    </Alert>
-    <!-- Dismissive left, destructive right, right-aligned — the ordering every desktop platform
-         and Material's dialog guidance use. `Replace settings` overwrites a working configuration
-         and is deliberately the one that is *not* reachable by a stray Enter on the other button. -->
-    <div class="flex justify-end gap-2">
-      <Button variant="secondary" onclick={() => (pendingImport = null)}>Cancel</Button>
-      <Button variant="destructive" onclick={applyImport}>Replace settings</Button>
-    </div>
-  {:else}
-    <!-- Two equal, non-destructive peers. 418px of content width fits both side by side, and a
-         popup this small cannot afford a row per button. -->
-    <div class="grid grid-cols-2 gap-2">
-      <Button variant="secondary" onclick={exportBackup} block>Export settings</Button>
-      <Button variant="secondary" onclick={() => importInput?.click()} block>Import settings</Button>
-    </div>
-  {/if}
+  <div class="grid grid-cols-2 gap-2">
+    <Button variant="secondary" onclick={exportBackup} block>Export settings</Button>
+    <Button variant="secondary" onclick={() => importInput?.click()} block>Import settings</Button>
+  </div>
 
   <!-- Named because the popup has another file input (torrent upload); an unqualified
        `input[type=file]` selector reaches the wrong one. -->
@@ -830,11 +803,11 @@
 
 <footer class="sticky bottom-0 z-10 flex items-center gap-2 py-3 bg-[var(--color-bg)]">
   <div class="flex flex-1 gap-2">
-    <Button id="save-btn" disabled={!isDirty || isSaving} onclick={save}>
+    <Button id="save-btn" type="submit" disabled={!isDirty || isSaving}>
       {isSaving ? "Saving…" : showConnectionForm ? "Save & test" : "Save settings"}
     </Button>
   </div>
 </footer>
 
 <p class="mt-1 mb-0 text-center text-11px text-[var(--text-secondary)]">Version {chrome.runtime.getManifest().version}</p>
-</div>
+</form>

@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: settings
-updated: 2026-10-10
+updated: 2026-10-19
 features: ["connection-settings", "settings-lock", "settings-backup"]
 ---
 
@@ -10,7 +10,7 @@ features: ["connection-settings", "settings-lock", "settings-backup"]
 
 ## Connection and saving
 
-The settings screen has Connection and Advanced tabs. A configured connection is summarized as a card; editing exposes fields. Server URL parsing resolves scheme, address, and port into stored settings. Required fields and folder checks belong to the form, while configuration health and the last connection-check result remain separate concepts.
+The settings screen has Connection and Advanced tabs. A configured connection is summarized as a card; editing exposes fields. Server URL parsing resolves scheme, address, and port into stored settings. Required fields and folder checks belong to the form, while configuration health and the last connection-check result remain separate concepts. Enter uses the same native form submission as Save. An open folder picker consumes Enter to confirm or close its own choice before settings submission. Missing fields are marked together on submit before URL parsing, and the first problem is focused. Malformed nonempty addresses receive an error on the address field. Required-field errors clear as that field is edited; error borders remain visible in focus.
 
 `pingNas()` performs only a login with a five-second budget. Ready, authentication failure, and unreachable are outcomes, not a claim that all Download Station operations work. Saving persists valid settings before following up with connection verification; a quiet NAS must not hold the Save button indefinitely. A plain `Settings saved` confirmation expires after 2.5 seconds; pending verification remains visible until its outcome. Saving or removing the connection invalidates pending downloads queries and commands, clears former rows/selection, and refreshes from the current configuration. Delayed former-NAS work cannot restore its rows or command feedback. The default Temp and Target folder is `Download`; missing configuration does not authorize interception.
 
@@ -30,7 +30,7 @@ Partial settings saves that omit `NASpassword` preserve the existing credential.
 
 ## Backup and import
 
-Export includes only portable non-secret fields: connection endpoint/login, folders, file-link interception, routing rules, and theme. NAS password, lock password, salt/verifier, and session flags are excluded. Import accepts the wrapper or a bare settings object, validates field types, ignores unknown fields, and sanitizes rules. The exported format is version 1; importing it is a settings patch, not a restore of an authenticated session. UI confirmation precedes replacement.
+Export uses the current settings draft and includes only portable non-secret fields: connection endpoint/login, folders, file-link interception, routing rules, and theme. NAS password, lock password, salt/verifier, and session flags are excluded. Import accepts the wrapper or a bare settings object, validates field types, ignores unknown fields, and sanitizes rules. The exported format is version 1; importing it is a settings patch, not a restore of an authenticated session. Choosing a valid file immediately fills the form and clears previous field/folder verdicts; a connection import opens the editable Connection tab. There is no intermediate replacement confirmation. An invalid file leaves the draft unchanged. A persistent status reminds the user to review and Save; only Save or Enter persists the imported draft. An excluded NAS password must still be supplied when the receiving profile has none.
 
 ## Theme
 
@@ -49,3 +49,14 @@ Source inspection and existing tests do not certify encrypted storage: there is 
 ## Interception default ownership
 
 Settings reads resolve defaults and legacy values in memory without writing inferred defaults back. A controlled older-snapshot interleaving reproduced overwriting newer file interception, HTTPS, port and theme choices. Explicit save and migration own persistence; stored boolean/string choices still follow the existing normalization contract. The absent file-interception choice remains false.
+
+
+## Authentication evidence and current scope
+
+Download Station access belongs to NAS user accounts with application privileges, as described in
+[QNAP's manual](https://docs.qnap.com/operating-system/qts/4.2.x/cat2/en-us/download_station.htm).
+The vendor login view fetched read-only from the NAS on 2026-10-19 accepts an empty password for
+submission and tries an existing QTS session on startup. Neither observation proves successful
+anonymous or blank-password task management. The extension continues to require an explicit
+username and password; no additional authentication mode was introduced in this form correction.
+[BUG-81](../../tasks/BUG-81.md) records the source evidence, browser regressions and consultation.

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { createTestSettings } from "../../../../tests/fixtures/settings.js";
-import { describeImport, exportSettings, parseImportedSettings } from "./settingsBackup.js";
+import { exportSettings, parseImportedSettings } from "./settingsBackup.js";
 
 describe("exportSettings", () => {
-  it("excludes credentials and wraps with metadata", () => {
+  it("excludes passwords and wraps with metadata", () => {
     const settings = createTestSettings({ NASpassword: "topsecret" });
     const json = exportSettings(settings, new Date("2026-06-20T10:00:00.000Z"));
     const parsed = JSON.parse(json);
@@ -59,40 +59,5 @@ describe("parseImportedSettings", () => {
 
   it("throws when nothing recognizable is present", () => {
     expect(() => parseImportedSettings(JSON.stringify({ foo: "bar" }))).toThrow(/recognizable/);
-  });
-});
-
-/**
- * The confirmation names what a backup will replace. Without it the user is asked to trust a
- * file whose contents they cannot see — and the old behaviour applied it before asking at all.
- */
-describe("describeImport", () => {
-  it("names the settings a backup carries, in human terms", () => {
-    const changes = describeImport({
-      NASaddress: "nas.local",
-      NASlogin: "admin",
-      NAStempdir: "Download",
-      theme: "dark",
-    });
-
-    expect(changes).toContain("Server address");
-    expect(changes).toContain("Username");
-    expect(changes).toContain("Temp Folder");
-    expect(changes).toContain("Theme");
-  });
-
-  it("counts routing rules, since the number is what the user is losing", () => {
-    const changes = describeImport({
-      routingRules: [
-        { namePattern: "mkv", destination: "Movies" },
-        { domain: "example.com", destination: "Other" },
-      ],
-    });
-
-    expect(changes).toEqual(["Routing rules (2)"]);
-  });
-
-  it("is empty for a backup that carries nothing importable", () => {
-    expect(describeImport({})).toEqual([]);
   });
 });
