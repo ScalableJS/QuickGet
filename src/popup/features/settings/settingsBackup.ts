@@ -89,25 +89,3 @@ export function parseImportedSettings(text: string): Partial<Settings> {
   }
   return result;
 }
-
-/**
- * Human-readable names for what a backup will replace, so the confirmation says what changes
- * rather than asking the user to trust a file they cannot see inside.
- */
-const IMPORT_LABELS: Partial<Record<keyof Settings, string>> = {
-  NASsecure: "HTTPS",
-  NASaddress: "Server address",
-  NASport: "Port",
-  NASlogin: "Username",
-  NAStempdir: "Temp Folder",
-  NASdir: "Target Folder",
-  interceptFileLinks: "File link interception",
-  routingRules: "Routing rules",
-  theme: "Theme",
-};
-
-export function describeImport(patch: Partial<Settings>): string[] {
-  return (Object.keys(patch) as (keyof Settings)[])
-    .map((key) => (key === "routingRules" ? `Routing rules (${patch.routingRules?.length ?? 0})` : IMPORT_LABELS[key]))
-    .filter((label): label is string => Boolean(label));
-}

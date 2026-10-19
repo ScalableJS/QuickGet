@@ -7,6 +7,10 @@ Verified maintenance work is tracked in `engineering-kanban.md`.
 
 ## Phase 0 — Shipped
 
+- **Settings that respond clearly:** Enter saves, missing/malformed inputs are identified at
+  submission, and importing a backup fills the form without an intermediate Replace step.
+  Shipped in v2.6.3 (BUG-81).
+
 - **Quiet completion of successful torrent handoffs:** discard the deferred browser filename
   callback after cancellation, preventing `Invalid downloadId` without releasing a local file.
   Shipped in v2.6.2 (BUG-80).

@@ -167,10 +167,14 @@
       const start = activeIndex < 0 ? (step === 1 ? 0 : filtered.length - 1) : activeIndex + step;
       const next = nextSelectable(start, step);
       if (next !== -1) activeIndex = next;
-    } else if (e.key === "Enter") {
-      if (open && activeIndex >= 0 && filtered[activeIndex]) {
-        e.preventDefault();
+    } else if (e.key === "Enter" && open) {
+      // Confirming the open picker must not also submit the surrounding settings form.
+      e.preventDefault();
+      if (activeIndex >= 0 && filtered[activeIndex]) {
         choose(filtered[activeIndex]);
+      } else {
+        open = false;
+        activeIndex = -1;
       }
     } else if (e.key === "Escape") {
       if (open) {

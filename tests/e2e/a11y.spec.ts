@@ -230,11 +230,7 @@ test.describe("accessibility", () => {
     }
   });
 
-  /**
-   * Importing used to overwrite the form the moment a file was picked. A file chosen from disk
-   * is opaque to the user, so the confirmation both asks first and says what will change.
-   */
-  test("an imported backup is not applied until it is confirmed", async () => {
+  test("choosing a valid backup fills the form immediately but does not persist it", async () => {
     const nas = await startMockNas();
     const session = await launchExtensionPopup(devBuildPath);
 
@@ -243,43 +239,37 @@ test.describe("accessibility", () => {
         (values) => chrome.storage.local.set(values as Record<string, unknown>),
         CONFIGURED(nas.port) as Record<string, unknown>,
       );
-
       await session.page.reload({ waitUntil: "domcontentloaded" });
       await session.page.getByRole("button", { name: "Open settings" }).click();
       await session.page.getByRole("tab", { name: "Advanced" }).click();
 
-      const backup = JSON.stringify({
-        settings: { NASaddress: "imported.local", NASlogin: "imported-user", theme: "dark" },
-      });
       await session.page.setInputFiles("#import-input", {
-        name: "quickget-settings.json",
+        name: "broken.json",
         mimeType: "application/json",
-        buffer: Buffer.from(backup),
+        buffer: Buffer.from("{invalid json"),
       });
-
-      // Named, not merely announced: the user is told which settings the file will replace.
-      const warning = session.page.getByText(/This will overwrite current settings/);
-      await expect(warning).toBeVisible();
-      await expect(warning).toContainText("Server address");
-      await expect(warning).toContainText("Username");
-
-      // Cancelling must leave the form exactly as it was.
-      await session.page.getByRole("button", { name: "Cancel" }).click();
+      await expect(session.page.locator("#status-message")).toContainText("Import failed");
       await session.page.getByRole("tab", { name: "Connection" }).click();
-      await session.page.getByRole("button", { name: "Edit" }).click();
+      await session.page.getByRole("button", { name: "Edit", exact: true }).click();
       await expect(session.page.locator("#NASlogin")).toHaveValue("demo-user");
 
-      // Confirming applies it — still only to the form, which Save then persists.
       await session.page.getByRole("tab", { name: "Advanced" }).click();
       await session.page.setInputFiles("#import-input", {
         name: "quickget-settings.json",
         mimeType: "application/json",
-        buffer: Buffer.from(backup),
+        buffer: Buffer.from(JSON.stringify({ settings: { NASaddress: "imported.local", NASlogin: "imported-user" } })),
       });
-      await session.page.getByRole("button", { name: "Replace settings" }).click();
 
-      await session.page.getByRole("tab", { name: "Connection" }).click();
+      await expect(session.page.getByRole("tab", { name: "Connection" })).toHaveAttribute("aria-selected", "true");
       await expect(session.page.locator("#NASlogin")).toHaveValue("imported-user");
+      await expect(session.page.locator("#serverUrl")).toHaveValue(`http://imported.local:${nas.port}`);
+      await expect(session.page.locator("#status-message")).toContainText("review and Save");
+      expect(await session.worker.evaluate(() => chrome.storage.local.get("NASlogin"))).toEqual({ NASlogin: "demo-user" });
+
+      await session.page.reload({ waitUntil: "domcontentloaded" });
+      await session.page.getByRole("button", { name: "Open settings" }).click();
+      await session.page.getByRole("button", { name: "Edit", exact: true }).click();
+      await expect(session.page.locator("#NASlogin")).toHaveValue("demo-user");
     } finally {
       await session.close();
       await nas.close();

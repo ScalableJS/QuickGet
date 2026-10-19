@@ -8,7 +8,7 @@ updated: 2026-10-19
 # Current handoff
 
 The working branch is `env/dev`; production releases use a PR into `env/prod`.
-The product version is 2.6.2. [[docs/system/overview|The current overview]] owns shipped behavior;
+The product version is 2.6.3. [[docs/system/overview|The current overview]] owns shipped behavior;
 [task files](../../tasks/README.md) own work status and historical evidence.
 
 The new English knowledge base has a feature registry, explicit review snapshots, independent
@@ -57,3 +57,19 @@ maintenance already on `env/dev` are included. Fresh release gates passed 597 un
 11 documentation tests, five quality-audit tests, six real-NAS spot checks with an empty owned-task
 ledger, types/Svelte/lint, contrast, production/dev/Storybook builds, Firefox packaging and
 documentation/language checks. No new feature or UI change is included.
+
+
+## v2.6.3 settings correction: 2026-10-19
+
+[BUG-81](../../tasks/BUG-81.md) makes Enter submit settings, marks missing and malformed fields
+before saving, and keeps invalid borders visible in focus. Choosing a valid backup fills the
+form immediately; Save or Enter persists it. Portable backup fields and password exclusion are
+unchanged. [DEMO-7](../../tasks/DEMO-7.md) remains open to refresh screenshots and evaluate whether
+the existing video needs replacement after this UI correction. Release verification is recorded
+in BUG-81; no new anonymous or blank-password authentication mode is claimed.
+
+
+Fresh v2.6.3 local release gates passed 594 unit/fixture tests, 64 Chromium mock E2E, 28 deployment
+tests, 11 documentation tests, five quality-audit tests, six real-NAS spot checks with an empty
+owned-task ledger, type/Svelte/lint/contrast checks, production/dev/Storybook builds, Firefox
+packaging and documentation/language checks.

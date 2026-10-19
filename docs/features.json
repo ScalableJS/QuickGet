@@ -69,10 +69,10 @@
       "assessment": "verified",
       "notes": "Storage precedence, local credential persistence, schema migration, configured-vs-health state and five-second login check were inspected.",
       "review": {
-        "date": "2026-10-14",
-        "reviewer": "Antigravity release agent",
-        "reason": "Only tests/e2e/feedback-normalization.spec.ts changed: the 'poll failures cannot replace settings or upload feedback' scenario now waits for the initial refresh and advances the paused clock until the first 2s poll fires, removing a CI race (failed in runs 38068161110 and 38615736670). Assertions, product source and canonical-page behavior are unchanged; 20/20 repeats and the full spec passed locally.",
-        "snapshot": "0044ed2f94f8b16508d25278b5e5dbb128640bc274818156fa1ce6809d911ab0"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "User-requested direct import: choosing a valid backup immediately fills the connection draft and reveals its fields; native Save/Enter remains the only persistence action. Reviewed malformed-file preservation and unchanged-storage browser assertions against canonical settings documentation.",
+        "snapshot": "1e9735b596f60130fa90a0073045856e130ce8a01358bd591e6e5c3cb2bb6816"
       }
     },
     {
@@ -97,10 +97,10 @@
       "assessment": "verified",
       "notes": "PBKDF2 verifier, session unlock and Settings-only mounting were inspected; no encrypted-credential guarantee is claimed.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed unchanged PBKDF2/session unlock and Settings-only protection against the updated shared settings page; read-only defaults do not change lock scope or encrypt credentials.",
-        "snapshot": "8bb072dbca211d0552bf998c72980772276b017fe6ac15fd7a0bbb1aa363c180"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Shared Settings review after removing import confirmation: only non-secret draft loading changed. Lock enable/disable, password confirmation, storage and native submit validation remain unchanged; security prose stays accurate.",
+        "snapshot": "12f65fb761c298382f2ebc2b1f1176fd65c4188a813b6b14af8afe264f42fbd3"
       }
     },
     {
@@ -124,10 +124,10 @@
       "assessment": "verified",
       "notes": "Portable keys, parser boundaries, password exclusion and confirmation path were compared with code and existing tests.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed unchanged portable import/export filtering and confirmation against the updated shared settings page; default persistence changes do not alter backup schema or password exclusion.",
-        "snapshot": "c17e047c976f498e6e51554d48082a62e6fc7656d7b9dff51b59e2ee2957ee36"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Final direct-import source review: removed pending confirmation and its unused description helper with clean EOFs; parser completes before draft mutation, passwords remain excluded, and Save/Enter owns persistence. Browser assertions cover invalid JSON, immediate fields and storage boundaries.",
+        "snapshot": "9588f80c6f42dd8ce88a58985a60da87dea2aa15f3fd81baa09dbe532dbf3086"
       }
     },
     {
@@ -156,10 +156,10 @@
       "assessment": "verified",
       "notes": "Classification, release-name routing, domains, list/glob matching and editor behavior were inspected; batch routing difference is explicit.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed explicit unknown-array iteration; routing behavior and canonical page remain unchanged, existing routing unit/browser coverage passes.",
-        "snapshot": "6e3ff0ede5a322b01c1445d7fee4004f4f9f3ecb5c9cabdc9186ca891c539e40"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Shared Settings review after direct-import simplification: valid imported rules still become drafts through the existing parser; validation, matching, reorder and Save serialization are unchanged. Removed confirmation does not persist rules before Save; routing documentation remains accurate.",
+        "snapshot": "cdb70e886d654d5fde8652502b55a654985f77e54a5d9419d68dce16cfd87bca"
       }
     },
     {
@@ -184,10 +184,10 @@
       "assessment": "verified",
       "notes": "Relative paths, parent listing, writability and invalid-vs-unverifiable outcomes were inspected; permissions can change after validation.",
       "review": {
-        "date": "2026-10-09",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed structural code narrowing for path-not-found without stricter Error-instance requirements; folder behavior and canonical page unchanged.",
-        "snapshot": "87d95f9d1c2ad8021730dc4373ef8037569e351a72a522b45d2db32323a66cd0"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Reviewed changed settings-connection evidence: backup round-trip now imports directly and saves with Enter; folder-picker keyboard boundary remains asserted unchanged. FolderSelect implementation and canonical keyboard/path semantics remain those accepted in BUG-81.",
+        "snapshot": "df599c349dac3fc46130b75a653adf46fa188787a49fd6ba998445fc1a3b44e7"
       }
     },
     {
@@ -496,10 +496,10 @@
       "assessment": "verified",
       "notes": "Entrypoint mounting, native themed dismissal, panel invalidation and active primitives were inspected; unused Card is removed.",
       "review": {
-        "date": "2026-10-14",
-        "reviewer": "Antigravity release agent",
-        "reason": "Only tests/e2e/feedback-normalization.spec.ts changed: the 'poll failures cannot replace settings or upload feedback' scenario now waits for the initial refresh and advances the paused clock until the first 2s poll fires, removing a CI race (failed in runs 38068161110 and 38615736670). Assertions, product source and canonical-page behavior are unchanged; 20/20 repeats and the full spec passed locally.",
-        "snapshot": "93a39dae969c0d7b8a5f316c540948cadc64905efdaf522edcb3543f4489a16f"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Reviewed updated accessibility scenario: valid file selection directly reveals editable connection fields, invalid JSON preserves the draft, and storage/reopen remain unchanged without Save. Existing field border, focus, theme tokens and accessibility behavior remain intact.",
+        "snapshot": "349bbb52ed3235025306c1361b942052a74452ad5e774617e23e0682ee223b2b"
       }
     },
     {
@@ -527,10 +527,10 @@
       "assessment": "verified",
       "notes": "Theme application, immediate saving, OS listener replacement and page-toast theme behavior were inspected.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed existing light checkbox-border reuse and unchanged dark token, auto-theme ownership and page rendering; visible control-boundary behavior and focus states remain consistent with the updated interface page.",
-        "snapshot": "a06ce89961fe34d5dc6f9e9ac1d661686226f674ff466d6cd2f1f98caf758749"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Shared Settings review after direct-import simplification: choosing a backup still loads its theme into the draft while explicit theme activation retains immediate persistence. Removing confirmation adds no theme side effect; theme documentation remains accurate.",
+        "snapshot": "8ce15103a80b843863b3d9160849d9da1b27d25a17207a5e7f71488ff49e5154"
       }
     },
     {
@@ -568,8 +568,8 @@
       "review": {
         "date": "2026-10-19",
         "reviewer": "Codex",
-        "reason": "Reviewed synchronized 2.6.2 package, lockfile and Chrome/Firefox manifest versions against env/dev-to-env/prod release workflow. Existing Node 22 CI pin and verified dependency/lockfile maintenance remain included; no build or publication semantics changed and canonical tooling documentation remains accurate.",
-        "snapshot": "5fd67bf5a9df817011e7d0cbb70db911cfb35ad4b37d5488773082a7c3483f7c"
+        "reason": "Reviewed synchronized 2.6.3 package, lockfile and Chrome/Firefox manifest versions against the unchanged env/dev-to-env/prod release workflow. No packaging or publication semantics changed; canonical build/release description remains accurate.",
+        "snapshot": "66a9b8b07afd51375afdeda6b490eacdddaa8d8e33e70c8ee6ee3c32794ba198"
       }
     },
     {
