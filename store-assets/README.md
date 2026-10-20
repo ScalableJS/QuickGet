@@ -17,8 +17,10 @@ It is public, allows embedding, has 1080p playback and a manually uploaded Engli
 Its description links to the Chrome Web Store listing. Manage it in
 [YouTube Studio](https://studio.youtube.com/video/SOMEJytR_0M/edit).
 The previous video, [ugg580zJbu8](https://www.youtube.com/watch?v=ugg580zJbu8), is retained.
-The Store listing's video reference was not changed by this YouTube publication; use the new
-full watch URL above when updating its promotional-video fields.
+On 2026-10-20 the maintainer reported submitting the refreshed Store listing for review after
+updating its media and description. The localized video field was already current; the global
+field was corrected to the same new watch URL during preparation. Review approval and public
+propagation have not been independently confirmed.
 
 `demo/promo-1920x1080.mp4` is the support walkthrough, with `demo/promo.en.srt` alongside it. Both are
 produced by a single recorded end-to-end run — the video and the pass/fail result come from the

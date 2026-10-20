@@ -155,3 +155,14 @@ the correct title, the Store link in the published description and a non-ASR Eng
 track after uploading the retained eight-cue SRT. The original video remains available; the
 Chrome Web Store's old promotional-video reference has not been replaced in this step.
 The asset README owns the current upload and Studio management links.
+
+## Store submission and cleanup: 2026-10-20
+
+The maintainer reported completing the screenshot and description update and submitting the
+listing for review. During preparation, the localized video field already contained the new
+URL and the global field was corrected from the old video to the same new URL. Submission is
+maintainer-reported; review approval and public propagation have not been independently verified.
+The upload master, SRT, screenshot PNGs and capture sources remain in Git. Temporary recordings,
+capture caches and local run reports were cleaned after acceptance; the owned NAS-task ledger
+was empty before removal. Task-owned browser sessions were closed; both delegated agents had
+already completed. This does not claim that the remaining feature backlog is empty.
