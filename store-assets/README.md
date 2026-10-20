@@ -12,6 +12,14 @@ npm run capture:store-assets
 
 ## Promo video
 
+Published walkthrough (2026-10-20): [QuickGet Remote: QNAP Download Station setup, folders and downloads](https://www.youtube.com/watch?v=SOMEJytR_0M).
+It is public, allows embedding, has 1080p playback and a manually uploaded English SRT track.
+Its description links to the Chrome Web Store listing. Manage it in
+[YouTube Studio](https://studio.youtube.com/video/SOMEJytR_0M/edit).
+The previous video, [ugg580zJbu8](https://www.youtube.com/watch?v=ugg580zJbu8), is retained.
+The Store listing's video reference was not changed by this YouTube publication; use the new
+full watch URL above when updating its promotional-video fields.
+
 `demo/promo-1920x1080.mp4` is the support walkthrough, with `demo/promo.en.srt` alongside it. Both are
 produced by a single recorded end-to-end run — the video and the pass/fail result come from the
 same pass, so a broken product yields no usable master:

@@ -5,7 +5,7 @@ status: "done"
 priority: "p2"
 area: "video"
 board: "demo-video"
-updated: "2026-10-19"
+updated: "2026-10-20"
 size: "S"
 depends_on: ["BUG-81"]
 ---
@@ -143,3 +143,15 @@ required for this scenario.
 - Fresh checks passed: typecheck, Svelte (0 errors/warnings), lint, 594 unit/fixture tests,
   production build, 64 Chromium mock E2E, both screenshot capture tests, both extended demo
   runs, 11 documentation tests, strict documentation and English-prose checks.
+
+## YouTube publication: 2026-10-20
+
+Published the reviewed master as [SOMEJytR_0M](https://www.youtube.com/watch?v=SOMEJytR_0M)
+on the same channel as the previous video, with public visibility and embedding enabled.
+The title and description use neutral support wording; the description links to the Chrome
+Web Store and explicitly identifies the mock NAS and simulated progress. YouTube checks found
+no violations. Browser verification confirmed available 1080p playback, a 60-second duration,
+the correct title, the Store link in the published description and a non-ASR English subtitle
+track after uploading the retained eight-cue SRT. The original video remains available; the
+Chrome Web Store's old promotional-video reference has not been replaced in this step.
+The asset README owns the current upload and Studio management links.
