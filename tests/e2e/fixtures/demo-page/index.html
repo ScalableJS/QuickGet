@@ -136,7 +136,7 @@
       }
 
       /* The click target of both the demo and the e2e test — deliberately roomy and unmissable. */
-      #download-torrent {
+      #download-torrent, #download-file {
         display: inline-block;
         padding: 1rem 2.25rem;
         border-radius: 8px;
@@ -149,7 +149,8 @@
       }
 
       #download-torrent:hover,
-      #download-torrent:focus-visible {
+      #download-torrent:focus-visible,
+      #download-file:hover, #download-file:focus-visible {
         background: var(--accent-hover);
       }
 
@@ -178,6 +179,7 @@
           <dd>Free/Open Source · multiple licenses</dd>
         </dl>
         <a id="download-torrent" href="debian-13.6.0-amd64-netinst.iso.torrent">Download .torrent</a>
+        <p><a id="download-file" href="example-files.zip">Download example ZIP</a></p>
       </article>
     </main>
 

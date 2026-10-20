@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { type BrowserContext, chromium, expect, type Page, test, type Worker } from "@playwright/test";
 import { closePopupWindow, openActionPopup, openPopupWindow, waitForActionPopupTarget } from "./support/actionPopup.js";
 import { prodBuildPath } from "./support/builds.js";
+import { narrationText, prepareNarration } from "./support/demoNarration.js";
 import { startDemoPageHost } from "./support/demoPageHost.js";
 import { createDemoProfile, demoWindowArgs, placeDemoWindow } from "./support/demoProfile.js";
 import { startMockNas } from "./support/mockNas.js";
@@ -30,14 +31,17 @@ test.describe("promo demo", () => {
   test.skip(process.env.E2E_RECORD_DEMO !== "true", "set E2E_RECORD_DEMO=true to record");
   test.setTimeout(300_000);
 
-  test("intercepts a torrent and shows it downloading on the NAS", async () => {
+  test("configures routing and sends a torrent and an ordinary file to the NAS", async () => {
     expect(await SystemCursor.isAvailable(), "cliclick is required to drive the on-camera pointer").toBe(true);
 
-    // A single downloading task, advancing on every poll, so the closing shot actually moves.
+    const narration = await prepareNarration(path.join(outputDir, "voice"));
+
+    // Downloading tasks advance on each poll, so the closing shot actually moves.
     // This scripts the *backend*; the popup still renders it with production code.
     const mockNas = await startMockNas({
       initialTasks: [],
-      progressFixture: { stepPercent: 12 },
+      progressFixture: { stepPercent: 3 },
+      extraRootFolders: ["dev"],
     });
     const host = await startDemoPageHost({ bodyDelayMs: 400 });
     const userDataDir = await createDemoProfile();
@@ -53,6 +57,7 @@ test.describe("promo demo", () => {
 
     const recorder = new SceneRecorder({
       outputPath: path.join(outputDir, "capture.mov"),
+      captureCursor: true,
     });
 
     try {
@@ -92,80 +97,102 @@ test.describe("promo demo", () => {
       // main window would click somewhere else entirely.
       const popupCursor = await SystemCursor.forWindow(popup);
       await openSettings(popup, popupCursor);
+      // Clear the previous list-refresh message through the product's own dismissal action.
+      // Connection fields remain empty; the live configuration warning stays on screen.
+      const dismiss = popup.getByRole("button", { name: "Dismiss message" });
+      if (await dismiss.isVisible()) await popupCursor.click(dismiss);
+      await cursor.park();
 
       recorder.setCrop(`${bounds.width}:${bounds.height}:${bounds.left}:${bounds.top}`);
       await recorder.start();
       await recorder.hold(700); // pre-roll on a settled frame
 
-      // ---- 1. An empty form, filled in on camera ---------------------------------------
-      //
-      // Typed with the real keyboard, not `fill()`: the demo claims a person can set this up, so
-      // the video shows the characters arriving. `delay` is what makes it legible — an instant
-      // substitution reads as a cut, not as typing. The short hold between fields is the beat a
-      // viewer needs to follow the focus moving, and it also lets the form settle before the
-      // system pointer aims at the next control.
-      recorder.mark("Point QuickGet at your QNAP — address, username, password");
+      // Introduce the support walkthrough before the first action.
+      recorder.mark(narrationText[0]);
+      await narration.finishScene(recorder);
+
+      recorder.mark(narrationText[1]);
       await popupCursor.click(popup.locator("#serverUrl"));
       await popup.locator("#serverUrl").pressSequentially(`http://127.0.0.1:${mockNas.port}`, { delay: 45 });
-      await recorder.hold(READ.glance);
-
       await popupCursor.click(popup.locator("#NASlogin"));
       await popup.locator("#NASlogin").pressSequentially("admin", { delay: 60 });
-      await recorder.hold(READ.glance);
-
       await popupCursor.click(popup.locator("#NASpassword"));
       await popup.locator("#NASpassword").pressSequentially("demo-password", { delay: 45 });
-      await recorder.hold(READ.normal);
-
-      // ---- 2. Folders are already right; torrents require no setting -----------------------
-      //
-      // Temp and Target come pre-filled from `DEFAULTS` (`Download`), so nothing is typed here —
-      // the shot is about what the user does *not* have to do. Torrent interception has no switch.
-      recorder.mark("Folders come ready to use — torrent links need no extra setting");
-      await expect(popup.locator("#NAStempdir")).toHaveValue("Download");
-      await expect(popup.locator("#interceptTorrentLinks")).toHaveCount(0);
-      await recorder.hold(READ.normal);
-
-      // ---- 3. Save & test — one action, and a real round-trip to the NAS -------------------
-      //
-      // The product deliberately couples saving to testing: settings that cannot reach the NAS
-      // should say so immediately. So this single click is also the proof the connection works.
-      recorder.mark("Save — QuickGet checks the connection straight away");
       await popupCursor.click(popup.getByRole("button", { name: /Save & test/i }));
       await expect(popup.getByText(/admin@127\.0\.0\.1/)).toBeVisible({ timeout: 15_000 });
+      await expect(popup.locator(".connection-health")).toHaveText("Ready");
       await recorder.hold(READ.page);
+      await narration.finishScene(recorder);
 
-      // Settings shown; close the popup so the next beats show the page and the real toolbar.
+      recorder.mark(narrationText[2]);
+      await expect(popup.locator("#NAStempdir")).toHaveValue("Download");
+      await expect(popup.locator("#NASdir")).toHaveValue("Download");
+      await popup.locator("#NASdir").evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await expect(popup.locator("#interceptTorrentLinks")).toHaveCount(0);
+      await narration.finishScene(recorder);
+
+      recorder.mark(narrationText[3]);
+      await popupCursor.click(popup.getByRole("tab", { name: "Advanced" }));
+      await popupCursor.click(popup.getByRole("button", { name: "Add rule" }));
+      await popupCursor.click(popup.locator("#routing-0-namePattern"));
+      await popup.locator("#routing-0-namePattern").pressSequentially(".iso", { delay: 100 });
+      await popupCursor.click(popup.locator("#routing-0-destination"));
+      await popup.locator("#routing-0-destination").pressSequentially("dev", { delay: 100 });
+      await popup.locator("#routing-0-destination").press("Escape");
+      await expect(popup.locator(".routing-rule")).toHaveCount(1);
+      await expect(popup.locator("#routing-0-destination")).toHaveValue("dev");
+      await narration.finishScene(recorder);
+
+      recorder.mark(narrationText[4]);
+      await popupCursor.click(popup.getByRole("tab", { name: "Connection" }));
+      await popup.locator("#interceptFileLinks").evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await popupCursor.click(popup.getByText("Send file links to Download Station", { exact: true }));
+      await expect(popup.locator("#interceptFileLinks")).toBeChecked();
+      await popupCursor.click(popup.locator("#save-btn"));
+      await expect
+        .poll(() =>
+          worker.evaluate(async () => {
+            const { routingRules, interceptFileLinks } = await chrome.storage.local.get([
+              "routingRules",
+              "interceptFileLinks",
+            ]);
+            return { routingRules, interceptFileLinks };
+          }),
+        )
+        .toEqual({ routingRules: [{ namePattern: ".iso", destination: "dev" }], interceptFileLinks: true });
+      await narration.finishScene(recorder);
       await closePopupWindow(worker, popupWindowId);
 
-      // ---- 4. An ordinary download page --------------------------------------------------
-      recorder.mark("Open a page with an ordinary .torrent link");
-      await page.goto(host.url);
-      await expect(page.locator("#download-torrent")).toBeVisible();
-      await recorder.hold(READ.glance);
-
-      // ---- 5. Interception, proven by the real toolbar badge -----------------------------
+      recorder.mark(narrationText[5]);
       await cursor.click(page.locator("#download-torrent"));
-
       await expect.poll(() => host.torrentRequestCount(), { timeout: 15_000 }).toBeGreaterThan(0);
       await expect.poll(() => worker.evaluate(() => chrome.action.getBadgeText({})), { timeout: 20_000 }).toBe("1");
-
-      recorder.mark(
-        "QuickGet intercepts the torrent and sends it to the NAS — the toolbar icon and badge show the active task",
-      );
+      const upload = mockNas.requestLog.toJSON().find((entry) => entry.path.endsWith("/Task/AddTorrent"));
+      expect(upload?.requestBody).toMatch(/name="move"\r?\n\r?\ndev\r?\n/);
       await cursor.park();
-      await recorder.hold(READ.study);
+      await narration.finishScene(recorder);
 
-      // ---- 6. The real popup, with progress actually moving -------------------------------
+      recorder.mark(narrationText[6]);
+      await cursor.click(page.locator("#download-file"));
+      await expect.poll(() => worker.evaluate(() => chrome.action.getBadgeText({})), { timeout: 20_000 }).toBe("2");
+      const fileRequest = mockNas.requestLog.toJSON().find((entry) => entry.path.endsWith("/Task/AddUrl"));
+      expect(new URLSearchParams(fileRequest?.requestBody).get("move")).toBe("Download");
+      await cursor.park();
+      await narration.finishScene(recorder);
+
       await openActionPopup(worker);
       await waitForActionPopupTarget(context, page, extensionId);
-
-      const firstProgress = await nasProgress(mockNas.port);
-      await expect.poll(() => nasProgress(mockNas.port), { timeout: 20_000 }).toBeGreaterThan(firstProgress);
-
-      recorder.mark("The download is running — progress is visible right inside QuickGet");
-      await recorder.hold(READ.study + 2_500); // hold on the motion, not a frozen number
-      await recorder.hold(700); // post-roll
+      const tasks = await nasTasks(mockNas.port);
+      expect(tasks).toHaveLength(2);
+      expect(tasks[0].move).toBe("dev");
+      expect(tasks[1].move).toBe("Download");
+      const firstProgress = tasks[0].progress;
+      await expect
+        .poll(async () => (await nasTasks(mockNas.port))[0].progress, { timeout: 20_000 })
+        .toBeGreaterThan(firstProgress);
+      recorder.mark(narrationText[7]);
+      await narration.finishScene(recorder);
+      await recorder.hold(700);
 
       recorder.assertRealTime();
     } finally {
@@ -177,10 +204,14 @@ test.describe("promo demo", () => {
 
     const srtPath = path.join(outputDir, "demo.en.srt");
     await recorder.writeSrt(srtPath);
+    const audioPath = path.join(outputDir, "narration.wav");
+    await narration.mix(recorder.sceneMarks, recorder.currentTime, audioPath);
     await finishMaster({
       capturePath: path.join(outputDir, "capture.mov"),
       outputPath: path.join(outputDir, "promo.mp4"),
       subtitles: srtPath,
+      narration: audioPath,
+      captions: recorder.sceneMarks,
     });
   });
 });
@@ -203,12 +234,12 @@ async function openSettings(popup: Page, cursor: SystemCursor): Promise<void> {
 }
 
 /** Reads the task's progress straight from the NAS, not by scraping the popup — see DEMO-5. */
-async function nasProgress(port: number): Promise<number> {
+async function nasTasks(port: number): Promise<Array<{ progress: number; move: string }>> {
   const response = await fetch(`http://127.0.0.1:${port}/downloadstation/V4/Task/Query`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: "from=0&limit=50",
   });
-  const payload = (await response.json()) as { data?: Array<{ progress?: number }> };
-  return payload.data?.[0]?.progress ?? 0;
+  const payload = (await response.json()) as { data: Array<{ progress: number; move: string }> };
+  return payload.data;
 }

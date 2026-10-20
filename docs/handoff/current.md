@@ -64,8 +64,8 @@ documentation/language checks. No new feature or UI change is included.
 [BUG-81](../../tasks/BUG-81.md) makes Enter submit settings, marks missing and malformed fields
 before saving, and keeps invalid borders visible in focus. Choosing a valid backup fills the
 form immediately; Save or Enter persists it. Portable backup fields and password exclusion are
-unchanged. [DEMO-7](../../tasks/DEMO-7.md) remains open to refresh screenshots and evaluate whether
-the existing video needs replacement after this UI correction. Release verification is recorded
+unchanged. [DEMO-7](../../tasks/DEMO-7.md) records the subsequent screenshot and support-video refresh
+after this UI correction. Release verification is recorded
 in BUG-81; no new anonymous or blank-password authentication mode is claimed.
 
 
@@ -73,3 +73,13 @@ Fresh v2.6.3 local release gates passed 594 unit/fixture tests, 64 Chromium mock
 tests, 11 documentation tests, five quality-audit tests, six real-NAS spot checks with an empty
 owned-task ledger, type/Svelte/lint/contrast checks, production/dev/Storybook builds, Firefox
 packaging and documentation/language checks.
+
+
+## Support media acceptance: 2026-10-19
+
+[DEMO-7](../../tasks/DEMO-7.md) is complete. All four light/dark store screenshots now show
+v2.6.3. The retained 59.77-second 1080p walkthrough includes English Emma narration, visible
+English captions and a matching SRT. It demonstrates connection setup, folders, an optional
+ISO-to-dev rule, torrent and ordinary ZIP interception, and the native popup. Its backend is
+mocked; it does not establish real-NAS transfers. The task records capture, media validation
+and green project gates; [asset operations](../../store-assets/README.md) explain regeneration.

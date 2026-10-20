@@ -8,6 +8,8 @@ import type { Task, TaskStatus } from "@lib/tasks.js";
 import { RedactedHttpLog } from "./redactedHttpLog.js";
 
 interface MockNasOptions {
+  /** Extra writable root folders for a demo-specific routing example. */
+  extraRootFolders?: string[];
   initialTasks?: Array<DownloadJob | Task>;
   removeDelayMs?: number;
   /**
@@ -642,12 +644,14 @@ export async function startMockNas(options: MockNasOptions = {}): Promise<MockNa
           { dir: "Movies", writtable: true },
           { dir: "Multimedia", writtable: true },
           { dir: "ReadOnly", writtable: false },
+          ...(options.extraRootFolders ?? []).map((dir) => ({ dir, writtable: true })),
         ],
         Multimedia: [
           { dir: "Books", writtable: true },
           { dir: "Movies", writtable: true },
         ],
         Download: [{ dir: "@Recycle", writtable: true }],
+        ...Object.fromEntries((options.extraRootFolders ?? []).map((dir) => [dir, []])),
       };
       const requested = readFormValue(body, "path") ?? "";
       const children = dirTree[requested];

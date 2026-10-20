@@ -1,24 +1,32 @@
 1
-00:00:00,733 --> 00:00:07,267
-Point QuickGet at your QNAP — address, username, password
+00:00:00,867 --> 00:00:10,900
+This guide shows how to connect the QuickGet Chrome extension to QNAP Download Station, set download folders, and download torrents and regular files.
 
 2
-00:00:07,267 --> 00:00:09,233
-Folders come ready to use — and the .torrent never touches this computer
+00:00:10,900 --> 00:00:17,300
+Enter your NAS address and login details, then save to check the connection.
 
 3
-00:00:09,233 --> 00:00:11,833
-Save — QuickGet checks the connection straight away
+00:00:17,300 --> 00:00:24,633
+Downloads start in the temporary folder. Download Station moves completed files to the target folder.
 
 4
-00:00:11,833 --> 00:00:14,067
-Open a page with an ordinary .torrent link
+00:00:24,633 --> 00:00:33,500
+Folder rules are optional. Here, names containing dot ISO go to dev. Other downloads keep the default target.
 
 5
-00:00:14,067 --> 00:00:18,100
-QuickGet intercepts the torrent and sends it to the NAS — the toolbar icon and badge show the active task
+00:00:33,500 --> 00:00:40,000
+Enable file links to send ordinary files to Download Station, then save these settings.
 
 6
-00:00:18,100 --> 00:00:25,267
-The download is running — progress is visible right inside QuickGet
+00:00:40,000 --> 00:00:46,033
+Click the torrent link. QuickGet sends it to Download Station using the dev rule.
+
+7
+00:00:46,033 --> 00:00:52,200
+This ZIP file does not match the ISO rule, so it uses the default Download folder.
+
+8
+00:00:52,200 --> 00:00:59,733
+Open QuickGet to follow both downloads. The torrent card shows dev as its destination.
 

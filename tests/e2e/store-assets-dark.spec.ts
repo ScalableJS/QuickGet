@@ -63,7 +63,8 @@ test("capture Chrome Web Store screenshots (dark theme) with mock NAS data", asy
     await page.screenshot({ path: path.join(assetPath, "settings.png") });
 
     await page.getByRole("button", { name: "Back to downloads" }).click();
-    await expect(page.locator("#downloads-list .download-item")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("#downloads-list .download-item")).toHaveCount(2);
+    await expect(page.locator("#downloads-list .download-item").first()).toBeVisible();
     const downloadsHeight = await page.evaluate(() => Math.ceil(document.body.getBoundingClientRect().height));
     await page.setViewportSize({ width: 450, height: downloadsHeight });
     await page.screenshot({ path: path.join(assetPath, "downloads.png") });

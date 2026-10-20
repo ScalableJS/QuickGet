@@ -2,6 +2,7 @@ import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 
 /**
  * Pause lengths, per the `demo-video` skill. Pause AFTER something changed the screen — never
@@ -262,19 +263,52 @@ export class SceneRecorder {
  * Retina supersampling on the recording display, so the encoder is all that protects glyph edges.
  *
  * `subtitles` are muxed as a **soft `mov_text` track**, selectable in a player and still editable
- * afterwards. Burning them into the picture is not offered: the local ffmpeg is built without
- * libass, so the `subtitles` filter does not exist here (verified — it fails with "Error parsing a
- * filter description" no matter how the path is escaped). Burn-in would need an ffmpeg with
- * `--enable-libass`.
+ * afterwards. Optional visible captions use raster overlays from the same scene marks: the local
+ * ffmpeg lacks libass, while Sharp is already used by the store-image compositor.
  */
 export async function finishMaster(options: {
   capturePath: string;
   outputPath: string;
   /** Path to an `.srt`, muxed as a selectable track. */
   subtitles?: string;
+  /** Scene-aligned English narration, prepared before encoding. */
+  narration?: string;
+  /** Visible captions for players that do not render embedded mov_text subtitles. */
+  captions?: readonly SceneMark[];
 }): Promise<void> {
   const subtitleInput = options.subtitles ? ["-i", options.subtitles] : [];
   const subtitleCodec = options.subtitles ? ["-c:s", "mov_text", "-metadata:s:s:0", "language=eng"] : [];
+  const audioInput = options.narration ? ["-i", options.narration] : [];
+  const audioMap = options.narration
+    ? ["-map", `${options.subtitles ? 2 : 1}:a:0`, "-c:a", "aac", "-b:a", "160k", "-metadata:s:a:0", "language=eng"]
+    : [];
+  const captionInputs: string[] = [];
+  const captionFilters: string[] = [];
+  for (const [index, mark] of (options.captions ?? []).entries()) {
+    const lines = Array.from(mark.caption.matchAll(/.{1,100}(?:\s|$)|\S+/g), ([line]) => line.trim());
+    const text = lines
+      .map((line, row) => {
+        const escaped = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `<text x="900" y="${44 + row * 40}" text-anchor="middle" font-family="Arial" font-size="30" fill="white">${escaped}</text>`;
+      })
+      .join("");
+    const height = lines.length * 40 + 32;
+    const file = path.join(path.dirname(options.outputPath), `caption-${index}.png`);
+    await sharp(
+      Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="${height}"><rect width="1800" height="${height}" rx="12" fill="#08111e" fill-opacity="0.92"/>${text}</svg>`,
+      ),
+    )
+      .png()
+      .toFile(file);
+    captionInputs.push("-i", file);
+    const inputIndex = 1 + Number(Boolean(options.subtitles)) + Number(Boolean(options.narration)) + index;
+    const previous = index === 0 ? "0:v" : `caption${index - 1}`;
+    const end = options.captions?.[index + 1]?.at ?? 1_000_000;
+    captionFilters.push(
+      `[${previous}][${inputIndex}:v]overlay=(W-w)/2:H-h-32:enable='between(t,${mark.at},${end})'[caption${index}]`,
+    );
+  }
 
   await new Promise<void>((resolve, reject) => {
     const encoder = spawn("ffmpeg", [
@@ -282,6 +316,13 @@ export async function finishMaster(options: {
       "-i",
       options.capturePath,
       ...subtitleInput,
+      ...audioInput,
+      ...captionInputs,
+      ...(captionFilters.length ? ["-filter_complex", captionFilters.join(";")] : []),
+      "-map",
+      captionFilters.length ? `[caption${captionFilters.length - 1}]` : "0:v:0",
+      ...(options.subtitles ? ["-map", "1:s:0"] : []),
+      ...audioMap,
       "-c:v",
       "libx264",
       "-preset",

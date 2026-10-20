@@ -36,10 +36,14 @@ async function createScreenshot(name, subtitle, sourceRoot, outputRoot) {
   const image = await sharp(path.join(sourceRoot, `${name}.png`))
     .png()
     .toBuffer();
-  const metadata = await sharp(image).metadata();
-  const panelWidth = 460;
-  const panelHeight = Math.round((panelWidth / (metadata.width ?? panelWidth)) * (metadata.height ?? 700));
-  const panel = await sharp(image).resize(panelWidth).png().toBuffer();
+  const panelTop = 226;
+  const availableHeight = 800 - panelTop - 40;
+  const panel = await sharp(image)
+    .resize({ width: 460, height: availableHeight, fit: "inside" })
+    .png()
+    .toBuffer();
+  const { width: panelWidth, height: panelHeight } = await sharp(panel).metadata();
+  const panelLeft = Math.round((1280 - panelWidth) / 2);
   const shadow = await sharp({
     create: { width: panelWidth + 30, height: panelHeight + 30, channels: 4, background: "#0f172a40" },
   })
@@ -54,8 +58,8 @@ async function createScreenshot(name, subtitle, sourceRoot, outputRoot) {
       { input: renderBackground(1280, 800), top: 0, left: 0 },
       { input: icon, top: 78, left: 112 },
       { input: text, top: 82, left: 212 },
-      { input: shadow, top: 241, left: 395 },
-      { input: panel, top: 226, left: 410 },
+      { input: shadow, top: panelTop - 15, left: panelLeft - 15 },
+      { input: panel, top: panelTop, left: panelLeft },
     ])
     .flatten({ background: "#0f172a" })
     .removeAlpha()

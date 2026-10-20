@@ -604,10 +604,10 @@
       "assessment": "verified",
       "notes": "Harness entrypoints and consumers were inventoried; compilation/capture quality is not inferred, and undeclared manual-stand tsx remains open.",
       "review": {
-        "date": "2026-10-10",
-        "reviewer": "Codex acceptance after Terra and Mimic review",
-        "reason": "Reviewed SpeedShowcase token-only delta and the added control contrast pair; stand execution uses declared tsx, while showcases remain development consumers and the interface page retains that boundary.",
-        "snapshot": "c001ec7b55b5a497668cce5e6beccfcf17ab240587233046542a04c25d68c387"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Compared the current screenshot compositor and light/dark captures with the real popup. Reviewed the native 1080p support recording, visible captions, scene-aligned Emma narration, routing and file-link flow. The interface page already describes capture tooling and its mock-NAS limits; operational details are maintained in store-assets/README.md.",
+        "snapshot": "ebf0d2176c3a9678731bd11a327f18986abc12a98f57d0ba0ec7446370c70566"
       }
     },
     {
@@ -621,6 +621,7 @@
       "sources": [
         "tests/e2e/support/actionPopup.ts",
         "tests/e2e/support/builds.ts",
+        "tests/e2e/support/demoNarration.ts",
         "tests/e2e/support/demoPageHost.ts",
         "tests/e2e/support/demoProfile.ts",
         "tests/e2e/support/e2eEnv.ts",
@@ -659,10 +660,10 @@
       "assessment": "verified",
       "notes": "Vitest projects, Chrome/MSW mocks, test stand and spotcheck ownership/redaction were inspected; no fresh hardware run is claimed.",
       "review": {
-        "date": "2026-10-14",
-        "reviewer": "Antigravity",
-        "reason": "Updated vite.config.ts hash in docs/quality/reviews.json following native config loader modernization; mock infrastructure, test stand, and spotcheck contracts remain identical.",
-        "snapshot": "309bb32eac20a7843889df797d8f236e11fc59b582cb14dd85e2769ecd2e7abe"
+        "date": "2026-10-19",
+        "reviewer": "Codex",
+        "reason": "Reviewed the demo host ZIP attachment, opt-in writable dev folder, unchanged default mock behavior, narration cache and media-clock audio assembly. The native scenario asserts persisted rule/interception settings, torrent move=dev, ZIP move=Download, two returned tasks, badge and advancing progress. Both extended recordings passed, 64 mock E2E passed; the verification page explicitly distinguishes this fixture evidence from real NAS transfers.",
+        "snapshot": "abcdad633b9bdb52fe126dd492a6c8a1303b0951b835386a4de587dea09a9890"
       }
     },
     {
@@ -1807,6 +1808,13 @@
         "verification-infrastructure"
       ],
       "reason": "Explicit manual audit decisions or production-versus-test type policy dependency."
+    },
+    {
+      "path": "tests/e2e/support/demoNarration.ts",
+      "features": [
+        "verification-infrastructure"
+      ],
+      "reason": "Scene-aligned English narration generation and audio assembly for the native recording harness; no product runtime behavior."
     }
   ],
   "retired": [],

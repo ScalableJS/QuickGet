@@ -29,6 +29,13 @@ Unit tests use the hand-written Chrome mock and MSW with unhandled requests trea
 
 The hardware spot check owns tasks by prefix and ledger, records intent before creation, cleans in `finally`, and fails if cleanup fails. It must not touch the user's own tasks. A LAN-bound stand is required when the NAS downloads a direct URL; loopback on the developer's computer is unreachable from the NAS.
 
+The native demo harness serves a real torrent and a valid fictional ZIP attachment locally.
+Its optional `dev` root folder and advancing progress are mock NAS fixtures. The recorded flow
+asserts the routed torrent `move` value, the unmatched ZIP's default destination, stored settings,
+toolbar badges and returned task folders. English speech is synthesized before capture and
+aligned to media-clock scene marks; overlapping speech fails audio assembly. This proves the
+extension's browser interaction and presentation against the fixture, not a physical NAS transfer.
+
 ## Boundaries of code coverage and static analysis
 
 Vitest coverage excludes declarations, stories, tests, and `index.ts` entrypoints. Therefore its percentage does not cover the whole product, Svelte rendering, or worker wiring. Knip is report-only; no-import findings need direct call-site checks, and globally installed tools such as ffmpeg are not automatically missing product dependencies.

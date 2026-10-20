@@ -51,6 +51,7 @@ test("capture Chrome Web Store screenshots with mock NAS data", async () => {
       NASpassword: "demo-password",
       NAStempdir: "Download",
       NASdir: "Multimedia/Movies",
+      theme: "light",
     });
     // Chrome lets the popup grow with its content up to 600px.
     await page.setViewportSize({ width: 450, height: 600 });
@@ -62,7 +63,8 @@ test("capture Chrome Web Store screenshots with mock NAS data", async () => {
     await page.screenshot({ path: path.join(assetPath, "settings.png") });
 
     await page.getByRole("button", { name: "Back to downloads" }).click();
-    await expect(page.locator("#downloads-list .download-item")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("#downloads-list .download-item")).toHaveCount(2);
+    await expect(page.locator("#downloads-list .download-item").first()).toBeVisible();
     const downloadsHeight = await page.evaluate(() => Math.ceil(document.body.getBoundingClientRect().height));
     await page.setViewportSize({ width: 450, height: downloadsHeight });
     await page.screenshot({ path: path.join(assetPath, "downloads.png") });

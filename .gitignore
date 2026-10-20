@@ -17,6 +17,7 @@ store-assets/.cache/
 store-assets/.cache-dark/
 build/
 *.zip
+!tests/e2e/fixtures/demo-page/example-files.zip
 web-ext-artifacts/
 playwright-report/
 test-results/

@@ -26,10 +26,11 @@ export interface DemoPageHostHandle {
  * Chrome start a genuine download and `chrome.downloads.onCreated` fires for real.
  */
 export async function startDemoPageHost(options: { bodyDelayMs?: number } = {}): Promise<DemoPageHostHandle> {
-  const [page, stylesheet, torrent] = await Promise.all([
+  const [page, stylesheet, torrent, archive] = await Promise.all([
     readFile(path.join(fixtureDir, "index.html")),
     readFile(path.join(fixtureDir, "simple.min.css")),
     readFile(path.join(fixtureDir, TORRENT_FILENAME)),
+    readFile(path.join(fixtureDir, "example-files.zip")),
   ]);
 
   let torrentRequests = 0;
@@ -52,6 +53,16 @@ export async function startDemoPageHost(options: { bodyDelayMs?: number } = {}):
         "content-length": String(stylesheet.byteLength),
       });
       response.end(stylesheet);
+      return;
+    }
+
+    if (pathname === "/example-files.zip") {
+      response.writeHead(200, {
+        "content-type": "application/zip",
+        "content-disposition": 'attachment; filename="example-files.zip"',
+        "content-length": String(archive.byteLength),
+      });
+      setTimeout(() => response.end(archive), options.bodyDelayMs ?? 0);
       return;
     }
 

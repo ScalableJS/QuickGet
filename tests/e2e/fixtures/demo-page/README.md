@@ -21,11 +21,14 @@ Full rationale lives in `agent-os/product/demo-video-kanban.md` (DEMO-3).
 
 | File | Notes |
 |---|---|
-| `index.html` | The page. Light palette is pinned in its own `<style>` — the recording machine runs dark mode and `simple.min.css` follows `prefers-color-scheme`. |
+| `index.html` | The page. Its dark palette is pinned to match the extension's demo theme rather than following the recording machine. |
 | `simple.min.css` | Simple.css v2.3.7, MIT, vendored verbatim. Do not edit — override in the page instead. |
 | `debian-13.6.0-amd64-netinst.iso.torrent` | The real file from `cdimage.debian.org` (60,868 bytes; `name = debian-13.6.0-amd64-netinst.iso`, 791,674,880 bytes). |
+| `example-files.zip` | A valid fictional archive containing one explanatory `readme.txt`; used to demonstrate ordinary-file interception and fallback to the default destination. |
 
 The card's version text and the torrent filename must stay in step with each other and with
 `TORRENT_FILENAME` in `demoPageHost.ts`. If the torrent is refreshed, update all three.
 
 `#download-torrent` is the click target of both the demo and its assertions — keep the id.
+`#download-file` is the corresponding ordinary ZIP link. Both attachments are served locally;
+the mock NAS records the requested destination without performing an external transfer.
